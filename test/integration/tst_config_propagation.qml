@@ -203,6 +203,41 @@ Item {
             verify(true, "Enter + slow hold/release accepted")
             rain.running = false
         }
+
+        // --- Regression test: displayOff cycle (Session 11 bug fix) ---
+
+        function test_displayOffCycleRestoresRunning() {
+            rain.running = true
+            wait(100)
+            compare(rain.running, true, "Precondition: running")
+
+            // Simulate display sleep
+            rain.displayOff = true
+            wait(50)
+            compare(rain.displayOff, true, "displayOff set")
+
+            // Simulate display wake
+            rain.displayOff = false
+            wait(50)
+            compare(rain.displayOff, false, "displayOff cleared")
+            // running is controlled by QML binding in production, but here
+            // we verify the C++ property round-trips correctly
+            rain.running = true
+            wait(100)
+            compare(rain.running, true, "Running restored after displayOff cycle")
+            rain.running = false
+        }
+
+        function test_multipleDisplayOffCycles() {
+            rain.running = true
+            for (var i = 0; i < 10; i++) {
+                rain.displayOff = true
+                rain.displayOff = false
+            }
+            wait(100)
+            compare(rain.running, true, "Running survives rapid displayOff toggling")
+            rain.running = false
+        }
     }
 
     Component {

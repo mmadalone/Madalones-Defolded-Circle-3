@@ -345,7 +345,7 @@ static inline void emitQuad(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf,
     vi += 4;
 }
 
-int MatrixRainItem::countVisibleQuads() const {
+int MatrixRainItem::countVisibleQuads() {
     int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
     const auto &streams = m_sim.streams();
     const auto &glitchTrails = m_sim.glitchTrails();
@@ -360,8 +360,7 @@ int MatrixRainItem::countVisibleQuads() const {
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
             int cellIdx = c * gridRows + r;
             if (m_cellDrawn[cellIdx]) continue;
-            // const_cast safe: m_cellDrawn is a counting buffer, not logical state
-            const_cast<QVector<bool>&>(m_cellDrawn)[cellIdx] = true;
+            m_cellDrawn[cellIdx] = true;
             quadCount++;
         }
     }
@@ -381,7 +380,7 @@ int MatrixRainItem::countVisibleQuads() const {
 
 void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf,
                                         int &vi, int &ii,
-                                        float colSp, float rowSp, float gw, float gh) const {
+                                        float colSp, float rowSp, float gw, float gh) {
     int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
     const auto &streams = m_sim.streams();
     const auto &charGrid = m_sim.charGrid();
@@ -398,8 +397,8 @@ void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, qui
             s.trailPos(d, c, r);
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
             int cellIdx = c * gridRows + r;
-            if (const_cast<QVector<bool>&>(m_cellDrawn)[cellIdx]) continue;
-            const_cast<QVector<bool>&>(m_cellDrawn)[cellIdx] = true;
+            if (m_cellDrawn[cellIdx]) continue;
+            m_cellDrawn[cellIdx] = true;
 
             int dist = simInvertTrail ? s.trailLength - 1 - d : d;
             int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
@@ -720,119 +719,123 @@ void MatrixRainItem::handleTapInput(const QString &params) {
         int colorVariants = m_atlas.colorVariants();
         std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
 
-        static const struct { int dx; int dy; } burstDirs[] = {
-            {0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,1},{1,-1},{-1,-1}
-        };
         int radius = qMax(3, qMin(gridCols, gridRows) / 6);
 
-        // 1) Scatter burst — glitch trails exploding from tap point
-        if (doBurst) {
-            int trailCount = 20 + static_cast<int>(m_sim.m_rng() % 15);
-            for (int i = 0; i < trailCount && m_sim.m_glitch.m_glitchTrails.size() < 300; ++i) {
-                GlitchTrail gt;
-                const auto &d = burstDirs[m_sim.m_rng() % 8];
-                gt.dx = d.dx; gt.dy = d.dy;
-                gt.col = tapCol; gt.row = tapRow;
-                gt.length = 3 + static_cast<int>(m_sim.m_rng() % 8);
-                gt.framesLeft = gt.length + 6;
-                gt.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-                m_sim.m_glitch.m_glitchTrails.append(gt);
+        if (doBurst)    tapBurst(tapCol, tapRow, colorVariants);
+        if (doFlash)    tapFlash(tapCol, tapRow, radius);
+        if (doScramble) tapScramble(tapCol, tapRow, gridCols, gridRows, radius);
+        if (doSpawn)    tapSpawn(tapCol, tapRow, colorVariants);
+        if (doMessage)  tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
+}
+
+// --- Tap effect sub-handlers ---
+
+static const struct { int dx; int dy; } s_burstDirs[] = {
+    {0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,1},{1,-1},{-1,-1}
+};
+
+void MatrixRainItem::tapBurst(int tapCol, int tapRow, int colorVariants) {
+    int trailCount = 20 + static_cast<int>(m_sim.m_rng() % 15);
+    for (int i = 0; i < trailCount && m_sim.m_glitch.m_glitchTrails.size() < 300; ++i) {
+        GlitchTrail gt;
+        const auto &d = s_burstDirs[m_sim.m_rng() % 8];
+        gt.dx = d.dx; gt.dy = d.dy;
+        gt.col = tapCol; gt.row = tapRow;
+        gt.length = 3 + static_cast<int>(m_sim.m_rng() % 8);
+        gt.framesLeft = gt.length + 6;
+        gt.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
+        m_sim.m_glitch.m_glitchTrails.append(gt);
+    }
+}
+
+void MatrixRainItem::tapFlash(int tapCol, int tapRow, int radius) {
+    for (auto &s : m_sim.m_streams) {
+        if (!s.active) continue;
+        int dc = qAbs(s.headCol - tapCol);
+        int dr = qAbs(s.headRow - tapRow);
+        if (dc <= radius && dr <= radius) {
+            s.flashFrames = qMax(s.flashFrames, 10 - qMax(dc, dr));
+        }
+    }
+}
+
+void MatrixRainItem::tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius) {
+    int glyphCount = m_atlas.glyphCount();
+    std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
+    int scrambleR = qMax(2, radius / 2);
+    for (int c = tapCol - scrambleR; c <= tapCol + scrambleR; ++c) {
+        for (int r = tapRow - scrambleR; r <= tapRow + scrambleR; ++r) {
+            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
+            int idx = c * gridRows + r;
+            if (idx >= 0 && idx < m_sim.m_charGrid.size())
+                m_sim.m_charGrid[idx] = charDist(m_sim.m_rng);
+        }
+    }
+}
+
+void MatrixRainItem::tapSpawn(int tapCol, int tapRow, int colorVariants) {
+    int spawnCount = 4 + static_cast<int>(m_sim.m_rng() % 4);
+    for (int i = 0; i < spawnCount; ++i) {
+        for (auto &s : m_sim.m_streams) {
+            if (s.active || s.pauseTicks > 0) continue;
+            const auto &d = s_burstDirs[m_sim.m_rng() % 8];
+            s.headCol = tapCol; s.headRow = tapRow;
+            s.headColF = static_cast<float>(tapCol);
+            s.headRowF = static_cast<float>(tapRow);
+            s.dx = d.dx; s.dy = d.dy;
+            s.dxF = static_cast<float>(d.dx);
+            s.dyF = static_cast<float>(d.dy);
+            s.trailLength = 5 + static_cast<int>(m_sim.m_rng() % 10);
+            s.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
+            s.active = true;
+            s.stutterFrames = 0;
+            s.flashFrames = 3;
+            s.histHead = 0; s.histCount = 0;
+            s.pushHistory();
+            break;
+        }
+    }
+}
+
+void MatrixRainItem::tapMessage(int tapCol, int tapRow, int gridCols, int gridRows,
+                                int colorVariants, float colSp, float rowSp) {
+    if (m_sim.m_message.m_messageList.isEmpty()) return;
+    const QString &msg = m_sim.m_message.m_messageList[m_sim.m_rng() % m_sim.m_message.m_messageList.size()];
+    int msgColor = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
+    float stepW = static_cast<float>(m_atlas.messageStepW());
+    float tapPxX = tapCol * colSp;
+    float tapPxY = tapRow * rowSp;
+    float totalW = msg.length() * stepW;
+    float startPx = tapPxX - totalW / 2.0f;
+
+    QString currentChars = GlyphAtlas::charsetString(m_sim.charset());
+    static const QString CHARS_MSG = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+
+    for (int i = 0; i < msg.length(); ++i) {
+        QChar ch = msg[i].toUpper();
+        int gi = currentChars.indexOf(ch);
+        if (gi < 0 && m_atlas.messageGlyphOffset() > 0) {
+            int mi = CHARS_MSG.indexOf(ch);
+            if (mi >= 0) gi = m_atlas.messageGlyphOffset() + mi;
+        }
+        if (gi < 0) continue;
+        float charPx = startPx + i * stepW;
+        float gwF = static_cast<float>(m_atlas.glyphW());
+        if (charPx < -gwF || charPx >= static_cast<float>(width()) + gwF) continue;
+
+        if (m_sim.m_message.m_messageOverlay.size() >= 500) break;
+        m_sim.m_message.m_messageOverlay.append({charPx, tapPxY, gi, 40, msgColor});
+
+        int col = qBound(0, static_cast<int>(charPx / colSp), gridCols - 1);
+        if (tapRow >= 0 && tapRow < gridRows) {
+            int idx = col * gridRows + tapRow;
+            if (idx >= 0 && idx < m_sim.m_charGrid.size()) {
+                m_sim.m_charGrid[idx] = gi;
+                if (idx < m_sim.m_message.m_messageBright.size())
+                    m_sim.m_message.m_messageBright[idx] = -40;
             }
         }
-
-        // 2) Flash shockwave — flash nearby streams within radius
-        if (doFlash) {
-            for (auto &s : m_sim.m_streams) {
-                if (!s.active) continue;
-                int dc = qAbs(s.headCol - tapCol);
-                int dr = qAbs(s.headRow - tapRow);
-                if (dc <= radius && dr <= radius) {
-                    int dist = qMax(dc, dr);
-                    s.flashFrames = qMax(s.flashFrames, 10 - dist);
-                }
-            }
-        }
-
-        // 3) Character scramble — randomize cells in radius around tap
-        if (doScramble) {
-            int scrambleR = qMax(2, radius / 2);
-            for (int c = tapCol - scrambleR; c <= tapCol + scrambleR; ++c) {
-                for (int r = tapRow - scrambleR; r <= tapRow + scrambleR; ++r) {
-                    if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-                    int idx = c * gridRows + r;
-                    if (idx >= 0 && idx < m_sim.m_charGrid.size())
-                        m_sim.m_charGrid[idx] = charDist(m_sim.m_rng);
-                }
-            }
-        }
-
-        // 4) Stream spawn — new short streams from tap point
-        if (doSpawn) {
-            int spawnCount = 4 + static_cast<int>(m_sim.m_rng() % 4);
-            for (int i = 0; i < spawnCount; ++i) {
-                for (auto &s : m_sim.m_streams) {
-                    if (s.active || s.pauseTicks > 0) continue;
-                    const auto &d = burstDirs[m_sim.m_rng() % 8];
-                    s.headCol = tapCol; s.headRow = tapRow;
-                    s.headColF = static_cast<float>(tapCol);
-                    s.headRowF = static_cast<float>(tapRow);
-                    s.dx = d.dx; s.dy = d.dy;
-                    s.dxF = static_cast<float>(d.dx);
-                    s.dyF = static_cast<float>(d.dy);
-                    s.trailLength = 5 + static_cast<int>(m_sim.m_rng() % 10);
-                    s.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-                    s.active = true;
-                    s.stutterFrames = 0;
-                    s.flashFrames = 3;
-                    s.histHead = 0; s.histCount = 0;
-                    s.pushHistory();
-                    break;
-                }
-            }
-        }
-
-        // 5) Message at tap — inject a random hidden message centered on the tap point
-        if (doMessage && !m_sim.m_message.m_messageList.isEmpty()) {
-            const QString &msg = m_sim.m_message.m_messageList[m_sim.m_rng() % m_sim.m_message.m_messageList.size()];
-            int msgColor = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-            float stepW = static_cast<float>(m_atlas.messageStepW());
-
-            // Pixel-positioned: chars touching (em-square step), centered on tap point
-            float tapPxX = tapCol * colSp;
-            float tapPxY = tapRow * rowSp;
-            float totalW = msg.length() * stepW;
-            float startPx = tapPxX - totalW / 2.0f;
-
-            QString currentChars = GlyphAtlas::charsetString(m_sim.charset());
-            static const QString CHARS_MSG = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
-
-            for (int i = 0; i < msg.length(); ++i) {
-                QChar ch = msg[i].toUpper();
-                int gi = currentChars.indexOf(ch);
-                if (gi < 0 && m_atlas.messageGlyphOffset() > 0) {
-                    int mi = CHARS_MSG.indexOf(ch);
-                    if (mi >= 0) gi = m_atlas.messageGlyphOffset() + mi;
-                }
-                if (gi < 0) continue;
-                float charPx = startPx + i * stepW;
-                float gwF = static_cast<float>(m_atlas.glyphW());
-                if (charPx < -gwF || charPx >= static_cast<float>(width()) + gwF) continue;
-
-                if (m_sim.m_message.m_messageOverlay.size() >= 500) break;  // cap overlay entries
-                m_sim.m_message.m_messageOverlay.append({charPx, tapPxY, gi, 40, msgColor});
-
-                // Mark nearest grid cell for overwrite protection
-                int col = qBound(0, static_cast<int>(charPx / colSp), gridCols - 1);
-                if (tapRow >= 0 && tapRow < gridRows) {
-                    int idx = col * gridRows + tapRow;
-                    if (idx >= 0 && idx < m_sim.m_charGrid.size()) {
-                        m_sim.m_charGrid[idx] = gi;
-                        if (idx < m_sim.m_message.m_messageBright.size())
-                            m_sim.m_message.m_messageBright[idx] = -40;
-                    }
-                }
-            }
-        }
+    }
 }
 
 // --- Enter button state machine ---

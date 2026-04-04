@@ -32,6 +32,7 @@ Popup {
     function saveDirection(dir) { if (Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = dir; }
     function restoreDirection() {
         if (!Config.chargingMatrixDpadPersist) return;
+        if (!ScreensaverConfig.dpadEnabled) return;
         var dir = ScreensaverConfig.lastDirection;
         if (dir !== "" && themeLoader.item && themeLoader.item.interactiveInput)
             themeLoader.item.interactiveInput(dir);

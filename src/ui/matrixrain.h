@@ -316,9 +316,9 @@ public:
 
     // updatePaintNode helpers (render thread)
     void uploadAtlasTexture(QSGNode *node);
-    int  countVisibleQuads() const;
+    int  countVisibleQuads();
     void renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
-                            float colSp, float rowSp, float gw, float gh) const;
+                            float colSp, float rowSp, float gw, float gh);
     void renderGlitchTrails(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
                             float colSp, float rowSp, float gw, float gh) const;
     void renderMessageFlash(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
@@ -332,6 +332,14 @@ public:
     void handleSlowInput(bool hold);
     void handleRestoreInput();
     void handleTapInput(const QString &params);
+
+    // Tap effect sub-handlers (called from handleTapInput)
+    void tapBurst(int tapCol, int tapRow, int colorVariants);
+    void tapFlash(int tapCol, int tapRow, int radius);
+    void tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius);
+    void tapSpawn(int tapCol, int tapRow, int colorVariants);
+    void tapMessage(int tapCol, int tapRow, int gridCols, int gridRows,
+                    int colorVariants, float colSp, float rowSp);
 
     // State
     QVector<bool> m_cellDrawn;  // per-cell dedup for stream trail rendering (reused, not per-frame alloc)

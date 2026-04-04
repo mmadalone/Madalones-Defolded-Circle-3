@@ -944,7 +944,58 @@ MatrixEffects.qml keeps: invert trail, head glow, glitch toggle + intensity + co
 
 **4. QML integration tests — deferred** — Needs Config + ScreensaverConfig test harness infrastructure (instantiate full singleton chain in test main). Not a quick fix.
 
-**Revised score: ~8.0/10.** Remaining gaps: accessibility hints, enter state machine in QML not C++.
+**Revised score: ~8.0/10.** ~~Remaining gaps: accessibility hints, enter state machine in QML not C++.~~ All addressed — see below.
+
+### Final Polish (Session 11, fifth deploy)
+
+**1. Enter state machine ported to C++** — `enterPressed()`, `enterReleased()`, `resetEnterState()` Q_INVOKABLE methods + `enterAction` signal on MatrixRainItem. Two `QTimer` members (300ms double-tap, 500ms hold). ChargingScreen.qml connects via `matrixRainItem` alias exposed by MatrixTheme.qml. QML Timer-based state machine removed entirely. 8 new integration tests cover single tap, double-tap, hold, release, reset, autoRepeat, safety, rapid cycles.
+
+**2. Accessibility hints** — 66 `Accessible.name` properties added across all 9 settings sub-components (CommonToggles, ThemeSelector, MatrixAppearance, MatrixEffects, DirectionGlitchSection, ChaosSection, TapSection, MessageSection, GeneralBehavior). Switches get static label text, sliders include `+ value` for live context, selector rows get descriptive names.
+
+**3. CI pipeline — verified green** — `.github/workflows/test.yml` runs unit tests (92) + integration tests (39) on every push to main and every PR. Ubuntu + Qt 5.15.2. Unit tests use `offscreen` QPA. Integration tests use `xvfb-run` + Mesa software GL (`QT_QUICK_BACKEND=software`) for headless OpenGL context. Both jobs green.
+
+**4. Doxygen API documentation** — 62 `///` annotations across 7 C++ headers: matrixrain.h, screensaverconfig.h, rainsimulation.h, glitchengine.h, messageengine.h, glyphatlas.h, gravitydirection.h. Covers class briefs, public methods, signals, structs, macro groups.
+
+**5. Header fix** — `signals:` section in matrixrain.h had incorrect scope: `bindToScreensaverConfig()` and all setters were accidentally inside the signals block. Fixed by adding `public:` access specifier after `enterAction` signal.
+
+### Final Audit Score: 8.9/10
+
+| Category | Grade |
+|----------|-------|
+| Architecture | A- |
+| C++ Code Quality | A- |
+| GPU Rendering | A- |
+| C++ Testing | A |
+| QML Architecture | A |
+| QML Testing | B+ |
+| Accessibility | B+ |
+| Error Handling | B+ |
+| Build/Deploy | A |
+| Documentation | A- |
+
+**Remaining (diminishing returns, not planned):** Color contrast audit (WCAG AA, manual), settings keyboard nav tests (needs Config mock harness), performance benchmarks on target hardware, fuzz testing.
+
+### Total Test Count: 131
+- 92 C++ unit tests (test/matrixrain/)
+- 39 QML integration tests (test/integration/): 9 lifecycle + 12 config propagation + 3 chaos stress + 8 enter state machine + 7 edge cases
+
+### Session 11 Summary
+
+Largest single session in the project. Delivered:
+- ScreensaverConfig C++ singleton (eliminated 170 lines QML boilerplate)
+- 5 audit remediation fixes (texture ownership, method splits, bounds checks, config validation)
+- MatrixEffects.qml split (1022→208 + 4 sub-components)
+- 2 flaky test fixes
+- BUILD.md
+- displayOff power gating fix (Idle vs Low_power)
+- displayOff/isClosing forwarding fix
+- InputController takeControl deferral (attempted and reverted — stock UC behavior, not our bug)
+- DPAD interactive toggle + direction persistence toggle
+- Enter state machine port to C++
+- 66 accessibility hints
+- CI pipeline (green)
+- 62 doxygen annotations
+- Audit score: 6.3 → 8.9
 
 ### Bug Fixes (Session 11, third deploy)
 
