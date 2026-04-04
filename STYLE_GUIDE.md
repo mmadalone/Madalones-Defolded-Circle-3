@@ -3,6 +3,24 @@
 > **Scope:** This guide governs all AI-assisted development on the UC Remote 3 custom firmware project. It covers coding conventions, architectural patterns, operational workflow, anti-patterns, quality gates, and session discipline. Adapted from the Project Fronkensteen HA Master Style Guide ("Rules of Acquisition") for the Qt 5.15 / QML / C++17 domain.
 >
 > **Reference docs:** [Qt 5.15 QML Coding Conventions](https://doc.qt.io/archives/qt-5.15/qml-codingconventions.html) · [Qt 5.15 Best Practices](https://doc.qt.io/archives/qt-5.15/qtquick-bestpractices.html) · [Qt Wiki Coding Conventions](https://wiki.qt.io/Coding_Conventions) · [Qt 5.15 Scene Graph](https://doc.qt.io/archives/qt-5.15/qtquick-visualcanvas-scenegraph.html) · [Qt 5.15 Scene Graph Renderer](https://doc.qt.io/archives/qt-5.15/qtquick-visualcanvas-scenegraph-renderer.html) · [Scene Graph Custom Geometry Example](https://doc.qt.io/qt-6/qtquick-scenegraph-customgeometry-example.html)
+>
+> **Verification status (2026-04-04):**
+>
+> | Layer | Source | Confidence |
+> |---|---|---|
+> | Qt 5.15 QML conventions | Official Qt docs (verified) | ✅ High |
+> | Qt scene graph / QSG threading | Official Qt docs (verified) | ✅ High |
+> | Qt Wiki C++ conventions | Qt Wiki (verified) | ✅ High |
+> | UC `CONTRIBUTING.md` requirements | Upstream repo (verified) | ✅ High |
+> | Embedded C++ / performance | Industry standards (verified) | ✅ High |
+> | Vibe coding operational framework | Community best practices 2026 (verified) | ✅ High |
+> | EntityController / Voice / Core API patterns | Read from UC source code — no official UC modding docs exist | ⚠️ Source-derived |
+> | Entity ID format (`hass.main.{id}`) | Read from integration source + live API test | ⚠️ Source-derived |
+> | Config / ScreensaverConfig bridge pattern | Our own custom code (established pattern) | ⚠️ Project-specific |
+> | GPU perf numbers (atlas rebuild, dual renderer) | Empirical testing on device (AVATAR_PLAN) | ⚠️ Empirical |
+> | UC3 SoC constraints | UC marketing materials + empirical | ⚠️ Partial |
+>
+> **What this means for Claude Code:** Items marked ✅ can be trusted as-is. Items marked ⚠️ were derived from reading the actual UC source code or from empirical device testing — they are the best available truth, but there are no official UC docs to cross-reference. If the upstream codebase changes significantly after a `git fetch upstream`, re-verify ⚠️ items by reading the updated source before relying on them. There is no UC3 firmware modding community or published modding guide — this project is pioneering that space.
 
 ---
 
