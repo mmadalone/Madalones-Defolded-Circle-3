@@ -54,6 +54,8 @@ jobs:
   integration-tests:
     name: "Integration tests (QML)"
     runs-on: ubuntu-latest
+    # Integration tests require OpenGL context (QSGGeometryNode rendering).
+    # xvfb + Mesa provides a software-rendered GL context on headless CI.
 
     steps:
       - name: Checkout
@@ -65,6 +67,9 @@ jobs:
           version: ${{ env.QT_VERSION }}
           modules: ""
 
+      - name: Install Mesa for software OpenGL
+        run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri
+
       - name: Build integration tests
         working-directory: test/integration
         run: |
@@ -73,9 +78,9 @@ jobs:
 
       - name: Run integration tests
         working-directory: test/integration
-        run: ./test_integration -o results.xml,xunitxml
+        run: xvfb-run --auto-servernum ./test_integration -o results.xml,xunitxml
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
 
       - name: Upload test results
         if: always()
