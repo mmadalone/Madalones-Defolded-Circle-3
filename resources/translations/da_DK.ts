@@ -1489,11 +1489,21 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="90"/>
-        <source>Idle screensaver</source>
+        <source>DPAD interactive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="114"/>
+        <source>Remember direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="142"/>
+        <source>Idle screensaver</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="166"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4438,7 +4448,7 @@ Tryk og hold stemmeknappen nede, og sig kommandoen.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="795"/>
+        <location filename="../../src/qml/main.qml" line="796"/>
         <source>Done</source>
         <translation>Færdig</translation>
     </message>

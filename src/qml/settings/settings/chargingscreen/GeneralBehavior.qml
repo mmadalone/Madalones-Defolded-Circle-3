@@ -71,7 +71,59 @@ ColumnLayout {
                 checked: Config.chargingMotionToClose
                 trigger: function() { Config.chargingMotionToClose = !Config.chargingMotionToClose; }
                 highlight: activeFocus && ui.keyNavigationEnabled
-                KeyNavigation.up: tapToCloseSwitch; KeyNavigation.down: idleEnabledSwitch
+                KeyNavigation.up: tapToCloseSwitch; KeyNavigation.down: dpadEnabledSwitch
+            }
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // 15b. DPAD INTERACTIVE
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("DPAD interactive"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: dpadEnabledSwitch
+                objectName: "dpadEnabledSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDpadEnabled
+                trigger: function() { Config.chargingMatrixDpadEnabled = !Config.chargingMatrixDpadEnabled; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                KeyNavigation.up: motionToCloseSwitch
+                KeyNavigation.down: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : idleEnabledSwitch
+            }
+        }
+    }
+
+    // 15c. PERSIST DIRECTION (visible when DPAD is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixDpadEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Remember direction"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: dpadPersistSwitch
+                objectName: "dpadPersistSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDpadPersist
+                trigger: function() {
+                    Config.chargingMatrixDpadPersist = !Config.chargingMatrixDpadPersist;
+                    if (!Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = "";
+                }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleEnabledSwitch
             }
         }
     }
@@ -97,7 +149,7 @@ ColumnLayout {
                 checked: Config.chargingIdleEnabled
                 trigger: function() { Config.chargingIdleEnabled = !Config.chargingIdleEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
-                KeyNavigation.up: motionToCloseSwitch; KeyNavigation.down: idleTimeoutSlider
+                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleTimeoutSlider
             }
         }
     }

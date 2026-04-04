@@ -8,9 +8,9 @@
 #include <QColor>
 #include <QQmlEngine>
 
-namespace uc {
+#include "../config/config.h"
 
-class Config;
+namespace uc {
 
 // ---------------------------------------------------------------------------
 // Read-only property macros — getter reads live from Config, signal forwarded.
@@ -130,6 +130,8 @@ class ScreensaverConfig : public QObject {
     SC_BOOL(motionToClose,  getChargingMotionToClose)
     SC_BOOL(idleEnabled,    getChargingIdleEnabled)
     SC_INT(idleTimeout,     getChargingIdleTimeout)
+    SC_BOOL(dpadEnabled,    getChargingMatrixDpadEnabled)
+    SC_STRING(lastDirection, getChargingMatrixLastDirection)
 
     // ---- Manually declared properties (custom getters with transforms) ----
 

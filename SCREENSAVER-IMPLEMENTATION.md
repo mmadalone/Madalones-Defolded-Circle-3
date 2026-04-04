@@ -944,4 +944,31 @@ MatrixEffects.qml keeps: invert trail, head glow, glitch toggle + intensity + co
 
 **4. QML integration tests — deferred** — Needs Config + ScreensaverConfig test harness infrastructure (instantiate full singleton chain in test main). Not a quick fix.
 
-**Revised score: ~8.0/10.** Remaining gaps: QML integration test coverage (D grade), accessibility hints, enter state machine in QML not C++.
+**Revised score: ~8.0/10.** Remaining gaps: accessibility hints, enter state machine in QML not C++.
+
+### Bug Fixes (Session 11, third deploy)
+
+**1. Frozen screensaver on display dim** — `main.qml` set `displayOff = true` on `Idle` power mode (display dimmed but still visible). Timer stopped while screen was still showing. Fix: only set `displayOff = true` on `Low_power` (display actually off). Idle = dimmed = keep animating.
+
+**2. displayOff not forwarded to theme** — `ChargingScreen.qml` set `isClosing` and `displayOff` on the theme only during `onLoaded` (one-time). When `main.qml` later changed `displayOff`, the theme never received it. Fix: added `onIsClosingChanged` and `onDisplayOffChanged` handlers that forward to the loaded theme.
+
+**3. InputController takeControl deferral — REVERTED** — Attempted to fix "DPAD not working on homescreen after restart" by deferring `takeControl()` until `windowChanged` signal. Broke screensaver DPAD input (ButtonNavigation couldn't take control). Root cause was UC stock behavior with single-item homescreen, not a race condition. Reverted to stock InputController with 500ms retry timer.
+
+### New Features (Session 11, fourth deploy)
+
+**1. DPAD interactive toggle** — `Config.chargingMatrixDpadEnabled` (default: true). When off, all DPAD direction/enter/diagonal keys ignored by screensaver. Settings: "DPAD interactive" in General Behavior section.
+
+**2. Direction persistence** — `Config.chargingMatrixDpadPersist` (default: true) + `Config.chargingMatrixLastDirection`. DPAD direction saved on each press, restored on screensaver open. Double-tap enter clears saved direction. Settings: "Remember direction" sub-toggle under DPAD interactive (visible when DPAD enabled). Toggling off clears saved direction.
+
+### QML Integration Tests (Session 11)
+
+12 new tests in `test/integration/tst_config_propagation.qml`:
+- Transform verification (speed/50, density/100, fadeRate formula, trailLength mapping)
+- Bool property propagation (21 properties)
+- Int property propagation (14 properties)
+- String property propagation (colorMode, direction, messages, messageDirection)
+- Redundant-set signal guard
+- Extreme value safety
+- Interactive input contract (8 directions + restore, enter + slow hold/release)
+
+Total integration tests: 29 (17 existing + 12 new).

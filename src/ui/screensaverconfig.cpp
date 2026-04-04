@@ -3,8 +3,8 @@
 
 #include "screensaverconfig.h"
 
-#include "config/config.h"
-#include "hardware/battery.h"
+#include "../config/config.h"
+#include "../hardware/battery.h"
 
 #include <QtMath>
 
@@ -155,6 +155,8 @@ void ScreensaverConfig::connectSignals() {
     connect(m_config, &Config::chargingMotionToCloseChanged, this, &ScreensaverConfig::motionToCloseChanged);
     connect(m_config, &Config::chargingIdleEnabledChanged,   this, &ScreensaverConfig::idleEnabledChanged);
     connect(m_config, &Config::chargingIdleTimeoutChanged,   this, &ScreensaverConfig::idleTimeoutChanged);
+    connect(m_config, &Config::chargingMatrixDpadEnabledChanged,    this, &ScreensaverConfig::dpadEnabledChanged);
+    connect(m_config, &Config::chargingMatrixLastDirectionChanged,  this, &ScreensaverConfig::lastDirectionChanged);
 }
 
 }  // namespace uc

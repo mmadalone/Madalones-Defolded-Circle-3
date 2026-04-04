@@ -5,6 +5,7 @@
 #pragma once
 
 #include <QQuickItem>
+#include <QQuickWindow>
 #include <QSGGeometry>
 #include <QTimer>
 

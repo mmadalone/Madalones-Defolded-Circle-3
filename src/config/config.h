@@ -160,6 +160,9 @@ class Config : public QObject {
     Q_PROPERTY(int chargingIdleTimeout READ getChargingIdleTimeout WRITE setChargingIdleTimeout NOTIFY chargingIdleTimeoutChanged)
     Q_PROPERTY(bool chargingMotionToClose READ getChargingMotionToClose WRITE setChargingMotionToClose NOTIFY chargingMotionToCloseChanged)
     Q_PROPERTY(bool chargingBatteryDockedOnly READ getChargingBatteryDockedOnly WRITE setChargingBatteryDockedOnly NOTIFY chargingBatteryDockedOnlyChanged)
+    Q_PROPERTY(bool chargingMatrixDpadEnabled READ getChargingMatrixDpadEnabled WRITE setChargingMatrixDpadEnabled NOTIFY chargingMatrixDpadEnabledChanged)
+    Q_PROPERTY(bool chargingMatrixDpadPersist READ getChargingMatrixDpadPersist WRITE setChargingMatrixDpadPersist NOTIFY chargingMatrixDpadPersistChanged)
+    Q_PROPERTY(QString chargingMatrixLastDirection READ getChargingMatrixLastDirection WRITE setChargingMatrixLastDirection NOTIFY chargingMatrixLastDirectionChanged)
 
  public:
     explicit Config(core::Api* core, QObject* parent = nullptr);
@@ -332,6 +335,9 @@ class Config : public QObject {
     CFG_INT(ChargingIdleTimeout,                "charging/idleTimeout",             45,               chargingIdleTimeoutChanged)
     CFG_BOOL(ChargingMotionToClose,             "charging/motionToClose",           false,            chargingMotionToCloseChanged)
     CFG_BOOL(ChargingBatteryDockedOnly,         "charging/batteryDockedOnly",       true,             chargingBatteryDockedOnlyChanged)
+    CFG_BOOL(ChargingMatrixDpadEnabled,         "charging/matrixDpadEnabled",       true,             chargingMatrixDpadEnabledChanged)
+    CFG_BOOL(ChargingMatrixDpadPersist,         "charging/matrixDpadPersist",       true,             chargingMatrixDpadPersistChanged)
+    CFG_STRING(ChargingMatrixLastDirection,      "charging/matrixLastDirection",     "",               chargingMatrixLastDirectionChanged)
     enum WakeupSensitivities { off = 0, low = 1, medium = 2, high = 3 };
     Q_ENUM(WakeupSensitivities)
 
@@ -521,6 +527,9 @@ class Config : public QObject {
     void chargingIdleTimeoutChanged();
     void chargingMotionToCloseChanged();
     void chargingBatteryDockedOnlyChanged();
+    void chargingMatrixDpadEnabledChanged();
+    void chargingMatrixDpadPersistChanged();
+    void chargingMatrixLastDirectionChanged();
 
  public slots:
     void onCoreConnected();

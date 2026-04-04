@@ -26,6 +26,19 @@ Popup {
     property bool isClosing: false
     property bool displayOff: false
 
+    // Forward runtime state changes to the loaded theme
+    onIsClosingChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = isClosing;
+    onDisplayOffChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = displayOff;
+
+    // Persist DPAD direction between sessions (gated by dpadPersist setting)
+    function saveDirection(dir) { if (Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = dir; }
+    function restoreDirection() {
+        if (!Config.chargingMatrixDpadPersist) return;
+        var dir = ScreensaverConfig.lastDirection;
+        if (dir !== "" && themeLoader.item && themeLoader.item.interactiveInput)
+            themeLoader.item.interactiveInput(dir);
+    }
+
     // Kill theme rendering immediately when close starts
     onOpenedChanged: {
         if (!opened) {
@@ -57,13 +70,14 @@ Popup {
             // Escape buttons — dismiss screensaver (gated by tapToClose)
             "BACK": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "HOME": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
-            // Interactive DPAD — controls rain direction / triggers chaos (unconditional)
-            "DPAD_UP":     { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up"); } },
-            "DPAD_DOWN":   { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down"); } },
-            "DPAD_LEFT":   { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("left"); } },
-            "DPAD_RIGHT":  { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("right"); } },
+            // Interactive DPAD — controls rain direction / triggers chaos (gated by dpadEnabled)
+            "DPAD_UP":     { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("up"); chargingScreenRoot.saveDirection("up"); } } },
+            "DPAD_DOWN":   { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("down"); chargingScreenRoot.saveDirection("down"); } } },
+            "DPAD_LEFT":   { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("left"); chargingScreenRoot.saveDirection("left"); } } },
+            "DPAD_RIGHT":  { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("right"); chargingScreenRoot.saveDirection("right"); } } },
             "DPAD_MIDDLE": {
                 "pressed": function() {
+                    if (!ScreensaverConfig.dpadEnabled) return;
                     if (!themeLoader.item || !themeLoader.item.interactiveInput) return;
                     if (enterState !== "idle") return;  // ignore autoRepeat
                     enterState = "pressed";
@@ -73,6 +87,7 @@ Popup {
                         enterHoldTimer.stop();
                         enterState = "idle";
                         themeLoader.item.interactiveInput("restore");
+                        Config.chargingMatrixLastDirection = "";  // clear persisted direction
                     } else {
                         // First press — start hold + double-tap timers
                         enterHoldTimer.restart();
@@ -92,14 +107,14 @@ Popup {
             },
             // Other buttons — dismiss screensaver (gated by tapToClose)
             "VOICE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
-            "VOLUME_UP": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up-left"); } },
-            "VOLUME_DOWN": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down-left"); } },
+            "VOLUME_UP": { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("up-left"); chargingScreenRoot.saveDirection("up-left"); } } },
+            "VOLUME_DOWN": { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("down-left"); chargingScreenRoot.saveDirection("down-left"); } } },
             "GREEN": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "YELLOW": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "RED": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "BLUE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
-            "CHANNEL_UP": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up-right"); } },
-            "CHANNEL_DOWN": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down-right"); } },
+            "CHANNEL_UP": { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("up-right"); chargingScreenRoot.saveDirection("up-right"); } } },
+            "CHANNEL_DOWN": { "pressed": function() { if (ScreensaverConfig.dpadEnabled && themeLoader.item && themeLoader.item.interactiveInput) { themeLoader.item.interactiveInput("down-right"); chargingScreenRoot.saveDirection("down-right"); } } },
             "MUTE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "PREV": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
             "PLAY": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
@@ -193,6 +208,8 @@ Popup {
             // Runtime state — not config, must be set explicitly
             if (item.hasOwnProperty("isClosing")) item.isClosing = chargingScreenRoot.isClosing;
             if (item.hasOwnProperty("displayOff")) item.displayOff = chargingScreenRoot.displayOff;
+            // Restore persisted DPAD direction from previous session
+            chargingScreenRoot.restoreDirection();
         }
     }
 

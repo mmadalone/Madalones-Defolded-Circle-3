@@ -561,8 +561,9 @@ ApplicationWindow {
                 ignoreUnknownSignals: true
 
                 function onPowerModeChanged(fromPowerMode, toPowerMode) {
-                    // Pause screensaver rendering when display is off (save CPU/GPU on battery)
-                    if ((toPowerMode === PowerModes.Idle || toPowerMode === PowerModes.Low_power)
+                    // Pause screensaver rendering when display is actually off (Low_power/Standby).
+                    // Idle = dimmed but still visible — screensaver should keep animating.
+                    if (toPowerMode === PowerModes.Low_power
                             && chargingScreenLoader.active && chargingScreenLoader.item) {
                         chargingScreenLoader.item.displayOff = true;
                     }
