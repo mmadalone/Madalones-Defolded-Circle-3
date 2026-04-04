@@ -1,0 +1,84 @@
+# Run unit tests on every push and PR. Gates merges on test passage.
+---
+name: "Tests"
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'src/**'
+      - 'test/**'
+      - 'remote-ui.pro'
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+env:
+  QT_VERSION: "5.15.2"
+
+jobs:
+  unit-tests:
+    name: "Unit tests (C++)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: "qtquickcontrols2"
+
+      - name: Build unit tests
+        working-directory: test/matrixrain
+        run: |
+          qmake matrixrain_test.pro
+          make -j$(nproc)
+
+      - name: Run unit tests
+        working-directory: test/matrixrain
+        run: ./test_matrixrain -o results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: unit-test-results
+          path: test/matrixrain/results.xml
+
+  integration-tests:
+    name: "Integration tests (QML)"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: "qtquickcontrols2"
+
+      - name: Build integration tests
+        working-directory: test/integration
+        run: |
+          qmake matrixrain_integration_test.pro
+          make -j$(nproc)
+
+      - name: Run integration tests
+        working-directory: test/integration
+        run: ./test_integration -o results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: integration-test-results
+          path: test/integration/results.xml

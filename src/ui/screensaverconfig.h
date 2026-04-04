@@ -12,10 +12,12 @@
 
 namespace uc {
 
-// ---------------------------------------------------------------------------
-// Read-only property macros — getter reads live from Config, signal forwarded.
-// These properties are read-only from QML (Config writes via settings pages).
-// ---------------------------------------------------------------------------
+/// @name SC_BOOL / SC_INT / SC_STRING macros
+/// Read-only Q_PROPERTY generator macros for ScreensaverConfig.
+/// Each macro expands to: a Q_PROPERTY declaration, a public getter that reads
+/// live from the Config singleton via the specified Getter method, and a signal.
+/// Properties are read-only from QML -- Config writes happen through settings pages.
+/// @{
 #define SC_BOOL(Name, Getter)                                                  \
     Q_PROPERTY(bool Name READ Name NOTIFY Name##Changed FINAL)                 \
 public:                                                                        \
@@ -39,6 +41,7 @@ public:                                                                        \
 Q_SIGNALS:                                                                     \
     void Name##Changed();                                                      \
 private:
+/// @}
 
 // ---------------------------------------------------------------------------
 // ScreensaverConfig — singleton bridge between Config and MatrixRainItem.
@@ -51,6 +54,11 @@ private:
 // QML usage:  import ScreensaverConfig 1.0
 //             MatrixRain { speed: ScreensaverConfig.speed }
 // ---------------------------------------------------------------------------
+/// @brief Singleton bridge between Config (QSettings) and MatrixRainItem.
+///
+/// Forwards Config change signals as domain-specific signals, applies value
+/// transforms (speed/50, density/100, fadeRate formula, trailLength mapping),
+/// and handles conditional logic (showBattery dockedOnly check).
 class ScreensaverConfig : public QObject {
     Q_OBJECT
 
@@ -145,16 +153,27 @@ class ScreensaverConfig : public QObject {
 public:
     explicit ScreensaverConfig(Config *config, QObject *parent = nullptr);
 
+    /// @brief QML singleton factory -- registered via qmlRegisterSingletonType.
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
+    /// @brief C++ singleton accessor. Returns null before construction.
     static ScreensaverConfig *instance() { return s_instance; }
 
-    // Transformed getters
+    /// @name Transformed getters
+    /// These apply value transforms to raw Config integers before exposing to QML.
+    /// @{
+    /// @brief Returns QColor parsed from Config's hex string.
     QColor color() const;
+    /// @brief Returns Config speed / 50.0 (normalized to ~0.0-2.0 range).
     qreal  speed() const;
+    /// @brief Returns Config density / 100.0 (normalized to 0.0-1.0 range).
     qreal  density() const;
+    /// @brief Returns transformed fade rate: 0.80 + (Config value / 100.0) * 0.18.
     qreal  fadeRate() const;
+    /// @brief Returns Config trail length mapped from percentage to cell count.
     int    trailLength() const;
+    /// @brief Returns true if battery overlay should show (respects dockedOnly + power state).
     bool   showBattery() const;
+    /// @}
 
 signals:
     void colorChanged();

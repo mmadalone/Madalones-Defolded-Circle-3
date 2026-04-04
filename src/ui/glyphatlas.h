@@ -11,15 +11,21 @@
 #include <QString>
 #include <QVector>
 
+/// @brief Pre-rendered glyph texture atlas for Matrix rain.
+///
+/// Renders all charset glyphs at multiple brightness levels and color variants into a
+/// single QImage. Uploaded once as a QSGTexture; per-frame rendering uses UV lookups
+/// into this atlas. Supports ASCII, katakana, CJK, binary, and custom charsets.
 class GlyphAtlas {
  public:
     GlyphAtlas() = default;
 
-    // Build the atlas texture with the given rendering parameters
+    /// @brief Rebuild the atlas image with the given rendering parameters.
+    /// Rasterizes all glyphs x brightness levels x color variants into a single QImage.
     void build(const QColor &color, const QString &colorMode,
                int fontSize, const QString &charset, qreal fadeRate);
 
-    // Load bundled CJK font for katakana support (call once at startup)
+    /// @brief Load bundled CJK font (NotoSansMonoCJKjp subset) for katakana charset. Call once at startup.
     static void loadCJKFont();
 
     // Resolve charset name to character string
@@ -34,10 +40,15 @@ class GlyphAtlas {
     int charStepW() const { return m_charStepW; }  // tight advance width (charset-dependent)
     int charStepH() const { return m_charStepH; }  // tight advance height (no leading)
     int messageStepW() const { return m_messageStepW; }  // ASCII advance width for messages
+    /// @brief Total number of unique glyphs in the atlas.
     int glyphCount() const { return m_glyphCount; }
+    /// @brief Number of brightness levels per glyph (typically 16).
     int brightnessLevels() const { return m_brightnessLevels; }
+    /// @brief Number of color variants (1 for mono, 7+ for rainbow modes).
     int colorVariants() const { return m_colorVariants; }
+    /// @brief Maps trail distance to brightness level index for fade calculation.
     const QVector<int>& brightnessMap() const { return m_brightnessMap; }
+    /// @brief UV rectangles for every (glyph x brightness x color) cell in the atlas texture.
     const QVector<QRectF>& glyphUVs() const { return m_glyphUVs; }
     int messageGlyphOffset() const { return m_messageGlyphOffset; }
     const QImage& atlasImage() const { return m_atlasImage; }

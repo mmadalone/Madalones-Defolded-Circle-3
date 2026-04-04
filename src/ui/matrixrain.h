@@ -15,6 +15,12 @@
 
 namespace uc { class ScreensaverConfig; }
 
+/// @brief GPU-accelerated Matrix rain QQuickItem using QSGGeometryNode.
+///
+/// Owns a RainSimulation (logic), GlyphAtlas (texture), and GravityDirection (auto-rotate).
+/// QML-facing properties are either atlas-affecting (trigger rebuild) or forwarded to the
+/// simulation. Rendering happens in updatePaintNode on the render thread; simulation
+/// advances on the main thread via QTimer tick.
 class MatrixRainItem : public QQuickItem {
     Q_OBJECT
 
@@ -132,47 +138,47 @@ class MatrixRainItem : public QQuickItem {
     // Direction helpers
     bool isDiagonal() const { return m_sim.isDiagonal(); }
 
-    // Atlas-affecting setters (implemented in .cpp)
+    /// @name Atlas-affecting setters
+    /// Changing these triggers a full glyph atlas rebuild (deferred to render thread).
+    /// @{
     void setColor(const QColor &c);
     void setColorMode(const QString &m);
     void setFontSize(int s);
     void setCharset(const QString &c);
     void setFadeRate(qreal r);
+    /// @}
 
-    // Interactive input from DPAD / touch / enter button.
-    //
-    // Action format:
-    //   Direction:  "up" | "down" | "left" | "right"
-    //               "up-left" | "up-right" | "down-left" | "down-right"
-    //               Enables gravity mode transiently, sets target direction via lerp.
-    //   Restore:    "restore"
-    //               Reverts DPAD override — restores auto-rotate if it was active,
-    //               otherwise disables gravity mode entirely. Also restores speed.
-    //   Enter:      "enter"
-    //               Triggers chaos burst (if glitch+chaos enabled) or flash-all.
-    //   Slow:       "slow:hold"   — reduces tick rate to 25% for hold effect
-    //               "slow:release" — restores normal tick rate
-    //   Tap:        "tap:x,y,burst,flash,scramble,spawn,message[,R{chance}]"
-    //               x,y = screen coordinates (float). Next 5 = "1"/"0" enable flags.
-    //               Optional R{chance} (10-90): randomize which effects fire per tap.
-    //               At least one enabled effect is guaranteed via fallback draw.
+    /// @brief Dispatch interactive input from DPAD, touch, or enter button.
+    ///
+    /// Action format:
+    ///   - Direction: "up"|"down"|"left"|"right"|"up-left"|"up-right"|"down-left"|"down-right"
+    ///     Enables gravity mode transiently, sets target direction via lerp.
+    ///   - "restore": Reverts DPAD override (restores auto-rotate or disables gravity).
+    ///   - "enter": Triggers chaos burst (if glitch+chaos enabled) or flash-all.
+    ///   - "slow:hold"/"slow:release": Reduces/restores tick rate for hold effect.
+    ///   - "tap:x,y,burst,flash,scramble,spawn,message[,R{chance}]": Touch interaction.
     Q_INVOKABLE void interactiveInput(const QString &action);
 
-    // Enter button state machine — replaces QML Timer-based logic.
-    // QML calls enterPressed/enterReleased; C++ handles timing and emits actions.
+    /// @brief Begin enter button press. Starts hold/double-tap detection timers.
     Q_INVOKABLE void enterPressed();
+    /// @brief End enter button press. Emits enterAction with "enter", "slow:hold", or "slow:release".
     Q_INVOKABLE void enterReleased();
-    Q_INVOKABLE void resetEnterState();  // call on screensaver close
+    /// @brief Reset enter state machine to idle. Call when closing the screensaver.
+    Q_INVOKABLE void resetEnterState();
 
 signals:
-    void enterAction(const QString &action);  // "enter", "slow:hold", "slow:release", "restore"
+    /// @brief Emitted by the enter button state machine with action strings for QML dispatch.
+    void enterAction(const QString &action);
 
 public:
-    // Auto-bind to ScreensaverConfig singleton (initial sync + live connects).
-    // Safe to call without ScreensaverConfig — returns early if instance is null.
+    /// @brief Bind all properties to ScreensaverConfig singleton (initial sync + live signal connects).
+    /// Safe to call when ScreensaverConfig is null -- returns early.
+    /// Called once from componentComplete after the QML scene is ready.
     void bindToScreensaverConfig();
 
-    // Complex setters with side effects (implemented in .cpp)
+    /// @name Complex setters with side effects
+    /// These adjust simulation parameters, timer intervals, or gravity state beyond simple forwarding.
+    /// @{
     void setSpeed(qreal s);
     void setDensity(qreal d);
     void setDirection(const QString &d);
@@ -181,6 +187,7 @@ public:
     void setAutoRotateBend(int v);
     void setRunning(bool r);
     void setDisplayOff(bool d);
+    /// @}
 
     // Trivial simulation-forwarding setters (inline — guard + emit)
     void setTrailLength(int t)  { if (m_sim.setTrailLength(t)) emit trailLengthChanged(); }

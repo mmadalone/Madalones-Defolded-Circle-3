@@ -17,7 +17,9 @@ static constexpr int MAX_TRAIL_HISTORY = 180;  // max trail length + headroom (3
 
 class GlyphAtlas;
 
-// Per-stream state — head advances 1 cell per tick along (dx, dy) vector
+/// @brief Per-stream state for a single rain column/trail.
+/// Head advances 1 cell per tick along the (dx, dy) direction vector.
+/// Maintains a position history ring buffer for curved trail rendering.
 struct StreamState {
     int  headCol;       // current head column position (rounded from float)
     int  headRow;       // current head row position (rounded from float)
@@ -62,17 +64,27 @@ enum ChaosType : int {
     ChaosScatter  = 1 << 3
 };
 
+/// @brief Pure C++ simulation engine for Matrix rain.
+///
+/// Owns all rain state (streams, character grid) and delegates glitch/chaos to GlitchEngine
+/// and message/subliminal rendering to MessageEngine. No Qt object system -- driven by
+/// MatrixRainItem's tick timer. Supports 8-direction movement with float-precision heads
+/// and gravity-based lerp transitions.
 class RainSimulation {
  public:
     RainSimulation();
 
-    // --- Core simulation methods ---
+    /// @brief Initialize or reinitialize the stream pool and grids for the given screen dimensions.
+    /// Call after screen resize or atlas rebuild. Allocates streams based on density and grid size.
     void initStreams(qreal screenWidth, qreal screenHeight, const GlyphAtlas &atlas);
+    /// @brief Advance the simulation by one tick. Moves stream heads, applies glitches, decays messages.
     void advanceSimulation(const GlyphAtlas &atlas);
+    /// @brief Respawn a single stream at a random entry edge position.
     void spawnStream(StreamState &s, bool stagger);
 
-    // --- Interactive burst methods (encapsulate SimContext creation) ---
+    /// @brief Trigger a chaos burst event (enter button action when glitch+chaos are enabled).
     void triggerChaosBurst(int glyphCount, int colorVariants);
+    /// @brief Flash all active streams to full brightness (enter button fallback action).
     void triggerFlashAll();
 
     // Direction helpers
@@ -81,7 +93,10 @@ class RainSimulation {
     int dy() const { return m_dy; }
     bool gravityMode() const { return m_gravityMode; }
     bool setGravityMode(bool g);
+    /// @brief Set the target gravity direction vector. Streams lerp toward this over time.
+    /// @return true if the direction actually changed.
     bool setGravityDirection(float dx, float dy);
+    /// @brief Set the per-tick lerp rate for stream direction convergence toward gravity target.
     void setGravityLerpRate(float rate) { m_gravityLerpRate = rate; }
 
     inline bool isStreamOffScreen(const StreamState &s) const {

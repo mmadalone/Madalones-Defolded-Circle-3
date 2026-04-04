@@ -6,6 +6,11 @@
 #include <QObject>
 #include <QTimer>
 
+/// @brief Auto-rotation direction controller for Matrix rain gravity mode.
+///
+/// Smoothly rotates the rain direction around a full circle using a timer-driven
+/// angle increment. Emits directionChanged with unit-vector (dxF, dyF) each tick.
+/// Used by MatrixRainItem when gravity mode + auto-rotate are both enabled.
 class GravityDirection : public QObject {
     Q_OBJECT
 
@@ -15,14 +20,19 @@ class GravityDirection : public QObject {
     float dxF() const { return m_dxF; }
     float dyF() const { return m_dyF; }
 
+    /// @brief Start the auto-rotation timer (50ms interval).
     void startAutoRotation();
+    /// @brief Stop the auto-rotation timer. Current angle is preserved for resume.
     void stopAutoRotation();
     bool isAutoRotating() const { return m_autoRotateTimer.isActive(); }
+    /// @brief Set rotation speed in radians per tick (higher = faster rotation).
     void setAutoRotateSpeed(float radiansPerTick) { m_autoRotateSpeed = radiansPerTick; }
     float autoAngle() const { return m_autoAngle; }
-    void tickAutoRotation() { autoRotateTick(); }  // public entry for testing
+    /// @brief Advance auto-rotation by one tick. Called from RainSimulation or tests.
+    void tickAutoRotation() { autoRotateTick(); }
 
  signals:
+    /// @brief Emitted each tick with the new unit-vector direction for gravity targeting.
     void directionChanged(float dxF, float dyF);
 
  private:

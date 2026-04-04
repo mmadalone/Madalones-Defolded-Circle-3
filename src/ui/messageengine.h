@@ -16,7 +16,8 @@
 struct StreamState;
 class GlyphAtlas;
 
-// Pixel-positioned message character (rendered independently of grid)
+/// @brief Pixel-positioned message character rendered independently of the rain grid.
+/// Used for overlay messages with tight spacing that bypass the cell grid.
 struct MessageCell {
     float px, py;       // pixel position (top-left of glyph)
     int glyphIdx;       // atlas glyph index
@@ -30,6 +31,11 @@ struct SubliminalCell {
     int framesLeft;     // ticks remaining before revert
 };
 
+/// @brief Message and subliminal text engine for Matrix rain.
+///
+/// Handles two message systems: grid-aligned messages (injected into the rain character grid
+/// with flash/pulse effects) and subliminal messages (brief in-stream or overlay injections).
+/// Pure C++ -- no Qt object system. Extracted from RainSimulation.
 class MessageEngine {
  public:
     MessageEngine() = default;
@@ -37,21 +43,25 @@ class MessageEngine {
     // --- Resize arrays (called by RainSimulation::initStreams) ---
     void resize(int gridCols, int gridRows);
 
-    // --- Simulation methods ---
+    /// @brief Inject a message into the rain grid along the configured direction.
     void injectMessage(const QString &msg, const GlyphAtlas &atlas, SimContext &ctx,
                        qreal screenW, qreal screenH, const QString &charset,
                        int dx, int dy);
+    /// @brief Inject subliminal text by replacing characters in active rain streams.
     void injectSubliminalStream(const GlyphAtlas &atlas,
                                 const QVector<StreamState> &streams, SimContext &ctx,
                                 const QString &charset);
+    /// @brief Inject subliminal text as pixel-positioned overlay characters outside the grid.
     void injectSubliminalOverlay(const GlyphAtlas &atlas,
                                  const QVector<StreamState> &streams, SimContext &ctx,
                                  qreal screenW, qreal screenH,
                                  const QString &charset);
+    /// @brief Advance message injection timers and trigger new messages/subliminals when due.
     void advanceInjection(const GlyphAtlas &atlas,
                           const QVector<StreamState> &streams, SimContext &ctx,
                           qreal screenW, qreal screenH, const QString &charset,
                           int dx, int dy, int timerMs);
+    /// @brief Decay active message brightness, expire subliminal cells and overlay characters.
     void advanceDecay(const GlyphAtlas &atlas, SimContext &ctx);
     bool isSubliminalCell(int col, int row, int gridRows) const;
 

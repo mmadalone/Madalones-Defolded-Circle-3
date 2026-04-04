@@ -12,7 +12,8 @@
 // Forward declarations — StreamState and ChaosType live in rainsimulation.h
 struct StreamState;
 
-// Overlay trail — short-lived trail spawned by direction glitch, doesn't affect the source stream
+/// @brief Short-lived overlay trail spawned by direction glitch.
+/// Rendered independently of the source stream -- purely visual, no simulation impact.
 struct GlitchTrail {
     int  col, row;      // current head position
     int  dx, dy;        // direction vector
@@ -21,19 +22,28 @@ struct GlitchTrail {
     int  colorVariant;  // inherit from source stream
 };
 
+/// @brief Glitch and chaos effect engine for Matrix rain.
+///
+/// Manages per-stream micro-glitches (flash, stutter, reverse, direction trails),
+/// macro chaos events (surge, scramble, freeze, scatter), and per-cell brightness
+/// overrides. Pure C++ -- no Qt object system. Extracted from RainSimulation.
 class GlitchEngine {
  public:
     GlitchEngine() = default;
 
-    // --- Simulation methods ---
+    /// @brief Advance chaos event timers and apply active chaos effects to streams.
     void advanceChaos(QVector<StreamState> &streams, SimContext &ctx,
                       int glyphCount, int colorVariants);
+    /// @brief Advance direction-glitch overlay trails (move heads, decrement lifetimes, cull expired).
     void advanceTrails(SimContext &ctx, int glyphCount);
+    /// @brief Precompute per-cell brightness values from stream trails into m_glitchBright.
     void precomputeBrightness(const QVector<StreamState> &streams,
                               const QVector<int> &brightnessMap, int brightnessLevels,
                               SimContext &ctx, bool invertTrail);
+    /// @brief Trigger a chaos burst event (compose surge/scramble/freeze/scatter from enabled flags).
     void triggerChaosEvent(QVector<StreamState> &streams, SimContext &ctx,
                            int glyphCount, int colorVariants);
+    /// @brief Apply per-stream micro-glitches (flash, stutter, reverse, direction trail spawn).
     void processStreamGlitches(StreamState &s, SimContext &ctx,
                                int glyphCount, int colorVariants);
 
