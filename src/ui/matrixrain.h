@@ -158,6 +158,16 @@ class MatrixRainItem : public QQuickItem {
     //               At least one enabled effect is guaranteed via fallback draw.
     Q_INVOKABLE void interactiveInput(const QString &action);
 
+    // Enter button state machine — replaces QML Timer-based logic.
+    // QML calls enterPressed/enterReleased; C++ handles timing and emits actions.
+    Q_INVOKABLE void enterPressed();
+    Q_INVOKABLE void enterReleased();
+    Q_INVOKABLE void resetEnterState();  // call on screensaver close
+
+signals:
+    void enterAction(const QString &action);  // "enter", "slow:hold", "slow:release", "restore"
+
+public:
     // Auto-bind to ScreensaverConfig singleton (initial sync + live connects).
     // Safe to call without ScreensaverConfig — returns early if instance is null.
     void bindToScreensaverConfig();
@@ -325,6 +335,14 @@ class MatrixRainItem : public QQuickItem {
     bool   m_interactiveOverride{false}; // gravity mode enabled transiently by DPAD input
     bool   m_autoRotateWasActive{false}; // was auto-rotate running before interactive override
     bool   m_slowOverride{false};        // speed slowed down by enter hold
+
+    // Enter button state machine (ported from QML timers)
+    enum EnterState { EnterIdle, EnterPressed, EnterHeld };
+    EnterState m_enterState{EnterIdle};
+    QTimer m_enterDoubleTapTimer;  // 300ms — single vs double tap detection
+    QTimer m_enterHoldTimer;       // 500ms — press vs hold detection
+    static constexpr int DOUBLE_TAP_MS = 300;
+    static constexpr int HOLD_THRESHOLD_MS = 500;
 
 #ifdef MATRIX_RAIN_TESTING
     friend class MatrixRainTest;

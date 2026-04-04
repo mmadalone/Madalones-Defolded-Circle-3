@@ -44,6 +44,7 @@ ColumnLayout {
                 checked: Config.chargingTapToClose
                 trigger: function() { Config.chargingTapToClose = !Config.chargingTapToClose; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Double-tap to close"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: motionToCloseSwitch
             }
@@ -71,6 +72,7 @@ ColumnLayout {
                 checked: Config.chargingMotionToClose
                 trigger: function() { Config.chargingMotionToClose = !Config.chargingMotionToClose; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Close on wake"
                 KeyNavigation.up: tapToCloseSwitch; KeyNavigation.down: dpadEnabledSwitch
             }
         }
@@ -97,6 +99,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixDpadEnabled
                 trigger: function() { Config.chargingMatrixDpadEnabled = !Config.chargingMatrixDpadEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "DPAD interactive"
                 KeyNavigation.up: motionToCloseSwitch
                 KeyNavigation.down: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : idleEnabledSwitch
             }
@@ -123,6 +126,7 @@ ColumnLayout {
                     if (!Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = "";
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Remember direction"
                 KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleEnabledSwitch
             }
         }
@@ -149,6 +153,7 @@ ColumnLayout {
                 checked: Config.chargingIdleEnabled
                 trigger: function() { Config.chargingIdleEnabled = !Config.chargingIdleEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Idle screensaver"
                 KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleTimeoutSlider
             }
         }
@@ -176,6 +181,7 @@ ColumnLayout {
             onValueChanged: Config.chargingIdleTimeout = value
             onUserInteractionEnded: Config.chargingIdleTimeout = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Idle timeout " + value
             KeyNavigation.up: idleEnabledSwitch
         }
     }

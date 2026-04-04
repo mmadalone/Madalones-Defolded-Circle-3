@@ -33,6 +33,7 @@ ColumnLayout {
         id: themeRow
         objectName: "themeRow"
         spacing: 10; focus: true
+        Accessible.name: "Theme selector"
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: root.navUpTarget
         KeyNavigation.down: root.navDownTarget

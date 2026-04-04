@@ -45,6 +45,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixInvertTrail
                 trigger: function() { Config.chargingMatrixInvertTrail = !Config.chargingMatrixInvertTrail; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Invert trail"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: glowSwitch
             }
@@ -72,6 +73,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlow
                 trigger: function() { Config.chargingMatrixGlow = !Config.chargingMatrixGlow; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Head glow"
                 KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: glitchSwitch
             }
         }
@@ -98,6 +100,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitch
                 trigger: function() { Config.chargingMatrixGlitch = !Config.chargingMatrixGlitch; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Glitch effect"
                 KeyNavigation.up: glowSwitch; KeyNavigation.down: glitchRateSlider
             }
         }
@@ -124,6 +127,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Glitch intensity " + value
             KeyNavigation.up: glitchSwitch; KeyNavigation.down: glitchFlashSwitch
         }
     }
@@ -145,6 +149,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchFlash
                 trigger: function() { Config.chargingMatrixGlitchFlash = !Config.chargingMatrixGlitchFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Column flash"
                 KeyNavigation.up: glitchRateSlider; KeyNavigation.down: glitchStutterSwitch
             }
         }
@@ -167,6 +172,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchStutter
                 trigger: function() { Config.chargingMatrixGlitchStutter = !Config.chargingMatrixGlitchStutter; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Column stutter"
                 KeyNavigation.up: glitchFlashSwitch; KeyNavigation.down: glitchReverseSwitch
             }
         }
@@ -189,6 +195,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchReverse
                 trigger: function() { Config.chargingMatrixGlitchReverse = !Config.chargingMatrixGlitchReverse; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Reverse glow"
                 KeyNavigation.up: glitchStutterSwitch; KeyNavigation.down: directionGlitchSection.firstFocusItem
             }
         }

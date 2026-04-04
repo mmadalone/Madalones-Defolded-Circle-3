@@ -44,6 +44,7 @@ ColumnLayout {
                 checked: Config.chargingShowClock
                 trigger: function() { Config.chargingShowClock = !Config.chargingShowClock; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Show clock"
                 Component.onCompleted: showClockSwitch.forceActiveFocus()
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: showBatterySwitch
@@ -72,6 +73,7 @@ ColumnLayout {
                 checked: Config.chargingShowBattery
                 trigger: function() { Config.chargingShowBattery = !Config.chargingShowBattery; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Show battery"
                 KeyNavigation.up: showClockSwitch
                 KeyNavigation.down: batteryDockedSwitch
             }
@@ -98,6 +100,7 @@ ColumnLayout {
                 checked: Config.chargingBatteryDockedOnly
                 trigger: function() { Config.chargingBatteryDockedOnly = !Config.chargingBatteryDockedOnly; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Charging only"
                 KeyNavigation.up: showBatterySwitch
                 KeyNavigation.down: root.navDownTarget
             }

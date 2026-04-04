@@ -41,6 +41,7 @@ ColumnLayout {
             id: solidColorRow
             objectName: "solidColorRow"
             spacing: 6; focus: true
+            Accessible.name: "Solid color selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: root.navUpTarget
             KeyNavigation.down: gradientColorRow
@@ -75,6 +76,7 @@ ColumnLayout {
             id: gradientColorRow
             objectName: "gradientColorRow"
             spacing: 6; focus: true
+            Accessible.name: "Gradient color selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: solidColorRow; KeyNavigation.down: charsetRow
             Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], Config.chargingMatrixColorMode, function(v){ Config.chargingMatrixColorMode = v }, -1)
@@ -169,6 +171,7 @@ ColumnLayout {
             id: charsetRow
             objectName: "charsetRow"
             spacing: 8; focus: true
+            Accessible.name: "Character set selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: gradientColorRow; KeyNavigation.down: fontSizeSlider
             Keys.onLeftPressed: root.settingsPage.cycleOption(["katakana","ascii","binary","digits"], Config.chargingMatrixCharset, function(v){ Config.chargingMatrixCharset = v }, -1)
@@ -220,6 +223,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixFontSize = value
             onUserInteractionEnded: Config.chargingMatrixFontSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Font size " + value
             KeyNavigation.up: charsetRow; KeyNavigation.down: speedSlider
         }
     }
@@ -246,6 +250,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixSpeed = value
             onUserInteractionEnded: Config.chargingMatrixSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Animation speed " + value
             KeyNavigation.up: fontSizeSlider; KeyNavigation.down: densitySlider
         }
     }
@@ -272,6 +277,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixDensity = value
             onUserInteractionEnded: Config.chargingMatrixDensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Column density " + value
             KeyNavigation.up: speedSlider; KeyNavigation.down: trailSlider
         }
     }
@@ -298,6 +304,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixTrail = value
             onUserInteractionEnded: Config.chargingMatrixTrail = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail length " + value
             KeyNavigation.up: densitySlider; KeyNavigation.down: fadeSlider
         }
     }
@@ -324,6 +331,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixFade = value
             onUserInteractionEnded: Config.chargingMatrixFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail fade " + value
             KeyNavigation.up: trailSlider; KeyNavigation.down: dirCardinalRow
         }
     }
@@ -349,6 +357,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGravity
                 trigger: function() { Config.chargingMatrixGravity = !Config.chargingMatrixGravity; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Auto-rotate"
                 KeyNavigation.up: fadeSlider
                 KeyNavigation.down: autoRotateSpeedSlider
             }
@@ -377,6 +386,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixAutoRotateSpeed = value
             onUserInteractionEnded: Config.chargingMatrixAutoRotateSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Rotation speed " + value
             KeyNavigation.up: gravitySwitch; KeyNavigation.down: autoRotateSmoothnessSlider
         }
     }
@@ -403,6 +413,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixAutoRotateBend = value
             onUserInteractionEnded: Config.chargingMatrixAutoRotateBend = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail bend " + value
             KeyNavigation.up: autoRotateSpeedSlider; KeyNavigation.down: dirCardinalRow
         }
     }
@@ -427,6 +438,7 @@ ColumnLayout {
             objectName: "dirCardinalRow"
             spacing: 8; focus: true
             enabled: !Config.chargingMatrixGravity
+            Accessible.name: "Cardinal direction selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: autoRotateSmoothnessSlider
             KeyNavigation.down: dirDiagRow
@@ -462,6 +474,7 @@ ColumnLayout {
             objectName: "dirDiagRow"
             spacing: 8; focus: true
             enabled: !Config.chargingMatrixGravity
+            Accessible.name: "Diagonal direction selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: dirCardinalRow
             KeyNavigation.down: root.navDownTarget

@@ -52,6 +52,23 @@ MatrixRainItem::MatrixRainItem(QQuickItem *parent)
             m_sim.setGravityDirection(dx, dy);
     });
 
+    // Enter button state machine timers
+    m_enterDoubleTapTimer.setSingleShot(true);
+    m_enterDoubleTapTimer.setInterval(DOUBLE_TAP_MS);
+    m_enterHoldTimer.setSingleShot(true);
+    m_enterHoldTimer.setInterval(HOLD_THRESHOLD_MS);
+
+    connect(&m_enterDoubleTapTimer, &QTimer::timeout, this, [this]() {
+        // Double-tap window expired — single tap confirmed → chaos burst
+        emit enterAction(QStringLiteral("enter"));
+    });
+    connect(&m_enterHoldTimer, &QTimer::timeout, this, [this]() {
+        // Hold threshold reached → activate slowdown
+        m_enterState = EnterHeld;
+        m_enterDoubleTapTimer.stop();
+        emit enterAction(QStringLiteral("slow:hold"));
+    });
+
     GlyphAtlas::loadCJKFont();
 }
 
@@ -816,6 +833,39 @@ void MatrixRainItem::handleTapInput(const QString &params) {
                 }
             }
         }
+}
+
+// --- Enter button state machine ---
+
+void MatrixRainItem::enterPressed() {
+    if (m_enterState != EnterIdle) return;  // ignore autoRepeat
+    m_enterState = EnterPressed;
+
+    if (m_enterDoubleTapTimer.isActive()) {
+        // Second press within window — double-tap → restore
+        m_enterDoubleTapTimer.stop();
+        m_enterHoldTimer.stop();
+        m_enterState = EnterIdle;
+        emit enterAction(QStringLiteral("restore"));
+    } else {
+        // First press — start hold + double-tap timers
+        m_enterHoldTimer.start();
+        m_enterDoubleTapTimer.start();
+    }
+}
+
+void MatrixRainItem::enterReleased() {
+    if (m_enterState == EnterHeld) {
+        emit enterAction(QStringLiteral("slow:release"));
+    }
+    m_enterHoldTimer.stop();
+    m_enterState = EnterIdle;
+}
+
+void MatrixRainItem::resetEnterState() {
+    m_enterState = EnterIdle;
+    m_enterDoubleTapTimer.stop();
+    m_enterHoldTimer.stop();
 }
 
 // Item-owned setters

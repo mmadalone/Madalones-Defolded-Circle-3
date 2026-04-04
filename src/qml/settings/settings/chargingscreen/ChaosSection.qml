@@ -38,6 +38,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchChaos
                 trigger: function() { Config.chargingMatrixGlitchChaos = !Config.chargingMatrixGlitchChaos; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Chaos events"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: chaosFrequencySlider
             }
         }
@@ -60,6 +61,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchChaosFrequency = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosFrequency = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchChaosSwitch; KeyNavigation.down: chaosIntensitySlider
         }
     }
@@ -81,6 +83,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchChaosIntensity = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosIntensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Intensity " + value
             KeyNavigation.up: chaosFrequencySlider; KeyNavigation.down: chaosSurgeSwitch
         }
     }
@@ -102,6 +105,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchChaosSurge
                 trigger: function() { Config.chargingMatrixGlitchChaosSurge = !Config.chargingMatrixGlitchChaosSurge; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Surge (flash)"
                 KeyNavigation.up: chaosIntensitySlider; KeyNavigation.down: chaosScrambleSwitch
             }
         }
@@ -116,6 +120,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchChaosScramble
                 trigger: function() { Config.chargingMatrixGlitchChaosScramble = !Config.chargingMatrixGlitchChaosScramble; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Scramble (mutate)"
                 KeyNavigation.up: chaosSurgeSwitch; KeyNavigation.down: chaosFreezeSwitch
             }
         }
@@ -130,6 +135,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchChaosFreeze
                 trigger: function() { Config.chargingMatrixGlitchChaosFreeze = !Config.chargingMatrixGlitchChaosFreeze; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Freeze (stutter)"
                 KeyNavigation.up: chaosScrambleSwitch; KeyNavigation.down: chaosScatterSwitch
             }
         }
@@ -144,6 +150,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchChaosScatter
                 trigger: function() { Config.chargingMatrixGlitchChaosScatter = !Config.chargingMatrixGlitchChaosScatter; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Scatter (burst)"
                 KeyNavigation.up: chaosFreezeSwitch; KeyNavigation.down: chaosScatterRateSlider
             }
         }
@@ -166,6 +173,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchChaosScatterRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Scatter frequency " + value
             KeyNavigation.up: chaosScatterSwitch; KeyNavigation.down: chaosScatterLengthSlider
         }
     }
@@ -187,6 +195,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchChaosScatterLength = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Scatter trail length " + value
             KeyNavigation.up: chaosScatterRateSlider; KeyNavigation.down: root.navDownTarget
         }
     }

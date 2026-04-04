@@ -20,8 +20,6 @@ Popup {
     padding: 0
 
     readonly property int doubleTapMs: 300   // max interval between taps for double-tap detection
-    readonly property int holdThresholdMs: 500  // min press duration to activate hold
-    readonly property real slowFactor: 0.25  // speed multiplier during enter hold
 
     property bool isClosing: false
     property bool displayOff: false
@@ -43,6 +41,7 @@ Popup {
     onOpenedChanged: {
         if (!opened) {
             isClosing = true;
+            if (matrixRainRef) matrixRainRef.resetEnterState();
             themeLoader.active = false;
         }
     }
@@ -78,31 +77,12 @@ Popup {
             "DPAD_MIDDLE": {
                 "pressed": function() {
                     if (!ScreensaverConfig.dpadEnabled) return;
-                    if (!themeLoader.item || !themeLoader.item.interactiveInput) return;
-                    if (enterState !== "idle") return;  // ignore autoRepeat
-                    enterState = "pressed";
-                    if (enterDoubleTapTimer.running) {
-                        // Second press within window — double-tap → restore
-                        enterDoubleTapTimer.stop();
-                        enterHoldTimer.stop();
-                        enterState = "idle";
-                        themeLoader.item.interactiveInput("restore");
-                        Config.chargingMatrixLastDirection = "";  // clear persisted direction
-                    } else {
-                        // First press — start hold + double-tap timers
-                        enterHoldTimer.restart();
-                        enterDoubleTapTimer.restart();
-                    }
+                    if (!matrixRainRef) return;
+                    matrixRainRef.enterPressed();
                 },
                 "released": function() {
-                    if (enterState === "held") {
-                        // Release after hold — restore speed
-                        if (themeLoader.item && themeLoader.item.interactiveInput)
-                            themeLoader.item.interactiveInput("slow:release");
-                    }
-                    // In "pressed" state: hold timer hasn't fired, double-tap timer handles it
-                    enterHoldTimer.stop();
-                    enterState = "idle";
+                    if (!matrixRainRef) return;
+                    matrixRainRef.enterReleased();
                 }
             },
             // Other buttons — dismiss screensaver (gated by tapToClose)
@@ -152,25 +132,16 @@ Popup {
             }
         }
     }
-    // Enter button state machine: idle → pressed → held (or back to idle via release)
-    // States: "idle" | "pressed" | "held"
-    property string enterState: "idle"
-    Timer {
-        id: enterDoubleTapTimer; interval: doubleTapMs
-        onTriggered: {
-            // Single tap confirmed — chaos burst
+    // Connect C++ enter state machine signals to interactiveInput + direction persistence
+    property var matrixRainRef: themeLoader.item && themeLoader.item.hasOwnProperty("matrixRainItem")
+                                ? themeLoader.item.matrixRainItem : null
+    Connections {
+        target: matrixRainRef
+        ignoreUnknownSignals: true
+        function onEnterAction(action) {
+            if (action === "restore") Config.chargingMatrixLastDirection = "";
             if (themeLoader.item && themeLoader.item.interactiveInput)
-                themeLoader.item.interactiveInput("enter");
-        }
-    }
-    Timer {
-        id: enterHoldTimer; interval: holdThresholdMs
-        onTriggered: {
-            // Hold threshold reached — activate slowdown
-            enterState = "held";
-            enterDoubleTapTimer.stop();
-            if (themeLoader.item && themeLoader.item.interactiveInput)
-                themeLoader.item.interactiveInput("slow:hold");
+                themeLoader.item.interactiveInput(action);
         }
     }
 

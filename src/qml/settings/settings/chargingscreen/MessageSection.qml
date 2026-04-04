@@ -44,6 +44,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixSubliminal
                 trigger: function() { Config.chargingMatrixSubliminal = !Config.chargingMatrixSubliminal; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Subliminal messages"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: Config.chargingMatrixSubliminal ? subliminalStreamSwitch : messagesInput
             }
@@ -67,6 +68,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixSubliminalStream
                 trigger: function() { Config.chargingMatrixSubliminalStream = !Config.chargingMatrixSubliminalStream; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "In-stream injection"
                 KeyNavigation.up: subliminalSwitch; KeyNavigation.down: subliminalOverlaySwitch
             }
         }
@@ -89,6 +91,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixSubliminalOverlay
                 trigger: function() { Config.chargingMatrixSubliminalOverlay = !Config.chargingMatrixSubliminalOverlay; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Overlay spanning"
                 KeyNavigation.up: subliminalStreamSwitch; KeyNavigation.down: subliminalFlashSwitch
             }
         }
@@ -111,6 +114,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixSubliminalFlash
                 trigger: function() { Config.chargingMatrixSubliminalFlash = !Config.chargingMatrixSubliminalFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Flash mode"
                 KeyNavigation.up: subliminalOverlaySwitch; KeyNavigation.down: subliminalIntervalSlider
             }
         }
@@ -133,6 +137,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixSubliminalInterval = value
             onUserInteractionEnded: Config.chargingMatrixSubliminalInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Interval " + value + "s"
             KeyNavigation.up: subliminalFlashSwitch; KeyNavigation.down: subliminalDurationSlider
         }
     }
@@ -154,6 +159,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixSubliminalDuration = value
             onUserInteractionEnded: Config.chargingMatrixSubliminalDuration = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Duration " + value
             KeyNavigation.up: subliminalIntervalSlider; KeyNavigation.down: messagesInput
         }
     }
@@ -182,6 +188,7 @@ ColumnLayout {
             inputField.text: Config.chargingMatrixMessages
             inputField.placeholderText: "HELLO, WORLD, WAKE UP"
             inputField.onTextChanged: Config.chargingMatrixMessages = inputField.text
+            Accessible.name: "Hidden messages"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: (Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal) ? subliminalDurationSlider : root.navUpTarget
             KeyNavigation.down: messageIntervalSlider
@@ -211,6 +218,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixMessageInterval = value
             onUserInteractionEnded: Config.chargingMatrixMessageInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Message interval " + value + "s"
             KeyNavigation.up: messagesInput; KeyNavigation.down: messageRandomSwitch
         }
     }
@@ -235,6 +243,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixMessageRandom
                 trigger: function() { Config.chargingMatrixMessageRandom = !Config.chargingMatrixMessageRandom; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Random order"
                 KeyNavigation.up: messageIntervalSlider; KeyNavigation.down: messageDirRow
             }
         }
@@ -256,6 +265,7 @@ ColumnLayout {
             id: messageDirRow
             objectName: "messageDirRow"
             spacing: 8; focus: true
+            Accessible.name: "Message direction"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: messageRandomSwitch; KeyNavigation.down: messageFlashSwitch
             Keys.onLeftPressed: root.settingsPage.cycleOption(["horizontal-lr","horizontal-rl","vertical-tb","vertical-bt","stream"], Config.chargingMatrixMessageDirection, function(v){ Config.chargingMatrixMessageDirection = v }, -1)
@@ -303,6 +313,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixMessageFlash
                 trigger: function() { Config.chargingMatrixMessageFlash = !Config.chargingMatrixMessageFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Surrounding flash"
                 KeyNavigation.up: messageDirRow; KeyNavigation.down: messagePulseSwitch
             }
         }
@@ -325,6 +336,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixMessagePulse
                 trigger: function() { Config.chargingMatrixMessagePulse = !Config.chargingMatrixMessagePulse; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Brightness pulse"
                 KeyNavigation.up: messageFlashSwitch
                 KeyNavigation.down: root.navDownTarget
             }

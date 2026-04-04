@@ -38,6 +38,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchDirection
                 trigger: function() { Config.chargingMatrixGlitchDirection = !Config.chargingMatrixGlitchDirection; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Direction change"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: glitchDirRateSlider
             }
         }
@@ -64,6 +65,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchDirRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchDirectionSwitch; KeyNavigation.down: glitchDirLengthSlider
         }
     }
@@ -85,6 +87,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchDirLength = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail length " + value
             KeyNavigation.up: glitchDirRateSlider; KeyNavigation.down: glitchDirCardinalRow
         }
     }
@@ -112,6 +115,7 @@ ColumnLayout {
             id: glitchDirCardinalRow
             objectName: "glitchDirCardinalRow"
             spacing: 8; focus: true
+            Accessible.name: "Glitch cardinal direction toggles"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: glitchDirLengthSlider; KeyNavigation.down: glitchDirDiagRow
             Repeater {
@@ -144,6 +148,7 @@ ColumnLayout {
             id: glitchDirDiagRow
             objectName: "glitchDirDiagRow"
             spacing: 8; focus: true
+            Accessible.name: "Glitch diagonal direction toggles"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: glitchDirCardinalRow; KeyNavigation.down: glitchDirFadeSlider
             Repeater {
@@ -189,6 +194,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchDirFade = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail fade " + value
             KeyNavigation.up: glitchDirDiagRow; KeyNavigation.down: glitchDirSpeedSlider
         }
     }
@@ -210,6 +216,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixGlitchDirSpeed = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Trail speed " + value
             KeyNavigation.up: glitchDirFadeSlider; KeyNavigation.down: glitchRandomColorSwitch
         }
     }
@@ -231,6 +238,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixGlitchRandomColor
                 trigger: function() { Config.chargingMatrixGlitchRandomColor = !Config.chargingMatrixGlitchRandomColor; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Random color"
                 KeyNavigation.up: glitchDirSpeedSlider; KeyNavigation.down: root.navDownTarget
             }
         }

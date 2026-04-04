@@ -16,6 +16,7 @@ Item {
     // Runtime state (set by ChargingScreen, not config)
     property bool isClosing: false
     property bool displayOff: false
+    property alias matrixRainItem: matrixRain  // expose for ChargingScreen enter state machine
 
     // DPAD gravity override — imperative assignment only (no declarative binding).
     // Prevents the QML binding fight from Session 10 Bug 5: DPAD sets localGravity

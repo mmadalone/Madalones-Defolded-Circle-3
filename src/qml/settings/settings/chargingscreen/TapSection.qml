@@ -46,6 +46,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapBurst
                 trigger: function() { Config.chargingMatrixTapBurst = !Config.chargingMatrixTapBurst; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Scatter burst"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: tapFlashSwitch
             }
         }
@@ -60,6 +61,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapFlash
                 trigger: function() { Config.chargingMatrixTapFlash = !Config.chargingMatrixTapFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Flash shockwave"
                 KeyNavigation.up: tapBurstSwitch; KeyNavigation.down: tapScrambleSwitch
             }
         }
@@ -74,6 +76,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapScramble
                 trigger: function() { Config.chargingMatrixTapScramble = !Config.chargingMatrixTapScramble; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Character scramble"
                 KeyNavigation.up: tapFlashSwitch; KeyNavigation.down: tapSpawnSwitch
             }
         }
@@ -88,6 +91,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapSpawn
                 trigger: function() { Config.chargingMatrixTapSpawn = !Config.chargingMatrixTapSpawn; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Stream spawn"
                 KeyNavigation.up: tapScrambleSwitch; KeyNavigation.down: tapMessageSwitch
             }
         }
@@ -102,6 +106,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapMessage
                 trigger: function() { Config.chargingMatrixTapMessage = !Config.chargingMatrixTapMessage; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Show message"
                 KeyNavigation.up: tapSpawnSwitch; KeyNavigation.down: tapRandomizeSwitch
             }
         }
@@ -123,6 +128,7 @@ ColumnLayout {
                 checked: Config.chargingMatrixTapRandomize
                 trigger: function() { Config.chargingMatrixTapRandomize = !Config.chargingMatrixTapRandomize; }
                 highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Randomize"
                 KeyNavigation.up: tapMessageSwitch
                 KeyNavigation.down: Config.chargingMatrixTapRandomize ? tapRandomizeChanceSlider : root.navDownTarget
             }
@@ -146,6 +152,7 @@ ColumnLayout {
             onValueChanged: Config.chargingMatrixTapRandomizeChance = value
             onUserInteractionEnded: Config.chargingMatrixTapRandomizeChance = value
             highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Chance " + value + "%"
             KeyNavigation.up: tapRandomizeSwitch; KeyNavigation.down: root.navDownTarget
         }
     }
