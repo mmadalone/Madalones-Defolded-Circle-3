@@ -26,6 +26,10 @@
         <file alias="settings/settings/chargingscreen/CommonToggles.qml">../../src/qml/settings/settings/chargingscreen/CommonToggles.qml</file>
         <file alias="settings/settings/chargingscreen/MatrixAppearance.qml">../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml</file>
         <file alias="settings/settings/chargingscreen/MatrixEffects.qml">../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml</file>
+        <file alias="settings/settings/chargingscreen/DirectionGlitchSection.qml">../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml</file>
+        <file alias="settings/settings/chargingscreen/ChaosSection.qml">../../src/qml/settings/settings/chargingscreen/ChaosSection.qml</file>
+        <file alias="settings/settings/chargingscreen/TapSection.qml">../../src/qml/settings/settings/chargingscreen/TapSection.qml</file>
+        <file alias="settings/settings/chargingscreen/MessageSection.qml">../../src/qml/settings/settings/chargingscreen/MessageSection.qml</file>
         <file alias="settings/settings/chargingscreen/GeneralBehavior.qml">../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml</file>
         <file alias="components/themes/MatrixTheme.qml">../../src/qml/components/themes/MatrixTheme.qml</file>
         <file alias="components/themes/StarfieldTheme.qml">../../src/qml/components/themes/StarfieldTheme.qml</file>

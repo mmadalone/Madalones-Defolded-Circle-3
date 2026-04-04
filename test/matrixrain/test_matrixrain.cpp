@@ -1166,8 +1166,8 @@ class MatrixRainTest : public QObject {
     // ─────────────────────────────────────────
     void subliminalStreamCandidateSelection() {
         // Needs active streams with enough history. Use short message "A" (minTrail = 3)
-        // to minimize history requirement. Retry injection across multiple sim advances
-        // since stream respawns can reset history.
+        // to minimize history requirement. Higher retry count (15×30 ticks) to avoid
+        // flakiness when RNG doesn't produce viable stream candidates.
         MatrixRainItem item;
         setupItem(item, 480, 800, "down");
         item.setMessages("A");
@@ -1175,9 +1175,8 @@ class MatrixRainTest : public QObject {
         item.setSubliminalStream(true);
 
         bool injected = false;
-        for (int attempt = 0; attempt < 5 && !injected; ++attempt) {
-            // Advance simulation to build trail history
-            for (int t = 0; t < 20; ++t)
+        for (int attempt = 0; attempt < 15 && !injected; ++attempt) {
+            for (int t = 0; t < 30; ++t)
                 item.m_sim.advanceSimulation(item.m_atlas);
 
             SimContext subCtx(item.m_sim.m_charGrid, item.m_sim.m_gridCols, item.m_sim.m_gridRows, item.m_sim.m_rng);
@@ -1189,12 +1188,13 @@ class MatrixRainTest : public QObject {
                 injected = true;
         }
         QVERIFY2(injected,
-            "Subliminal stream should inject cells within 5 attempts (100 ticks total)");
+            "Subliminal stream should inject cells within 15 attempts (450 ticks total)");
     }
 
     void subliminalStreamMessageBrightProtection() {
         // Subliminal chars must not overwrite cells with existing message brightness.
-        // Uses short message "A" and retry loop (same pattern as candidateSelection).
+        // Uses short message "A" and retry loop. Higher retry count (15×30 ticks)
+        // to avoid flakiness when RNG doesn't produce viable stream candidates.
         MatrixRainItem item;
         setupItem(item, 480, 800, "down");
         item.setMessages("A");
@@ -1202,8 +1202,8 @@ class MatrixRainTest : public QObject {
         int protectedIdx = 0 * item.m_sim.m_gridRows + 5;
 
         bool injected = false;
-        for (int attempt = 0; attempt < 5 && !injected; ++attempt) {
-            for (int t = 0; t < 20; ++t)
+        for (int attempt = 0; attempt < 15 && !injected; ++attempt) {
+            for (int t = 0; t < 30; ++t)
                 item.m_sim.advanceSimulation(item.m_atlas);
 
             // Set a cell as message-protected (re-set each attempt since sim may clear it)

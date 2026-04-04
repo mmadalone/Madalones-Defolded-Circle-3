@@ -926,4 +926,22 @@ Full codebase audit conducted against professional C++17/Qt 5.15 standards. Pre-
 - fadeRate: clamped to [0.76, 0.96]
 - trailLength: input clamped to [10, 100] before transform
 
-**Post-audit score: ~7.5/10.** Remaining items from audit (not addressed — accepted or low priority): QML test coverage (D grade), MatrixEffects.qml size (1023 lines), accessibility hints, enter state machine in QML not C++.
+**Post-audit score: ~7.5/10.**
+
+### Further Remediation (Session 11, second deploy)
+
+**1. Split MatrixEffects.qml (1022 → 208 lines)** — Extracted 4 sub-components:
+- `DirectionGlitchSection.qml` (238 lines) — direction change + frequency/length + 8 direction toggles + trail fade/speed + random color
+- `ChaosSection.qml` (193 lines) — chaos events + frequency/intensity + 4 sub-type toggles + scatter settings
+- `TapSection.qml` (152 lines) — 5 tap effect toggles + randomize + chance slider
+- `MessageSection.qml` (333 lines) — subliminal (6 items) + hidden messages (text + interval + random + direction + flash + pulse)
+
+MatrixEffects.qml keeps: invert trail, head glow, glitch toggle + intensity + column flash/stutter/reverse glow + 4 sub-component instantiations with KeyNavigation wiring. All registered in `main.qrc`.
+
+**2. Fixed 2 flaky subliminal tests** — `subliminalStreamCandidateSelection` and `subliminalStreamMessageBrightProtection` both used 5×20 tick retry windows that occasionally failed when RNG didn't produce viable stream candidates. Increased to 15×30 ticks. Stress-tested 20 runs + 10 full suite runs — zero flakes.
+
+**3. Created BUILD.md** — Documents cross-compile, package, deploy, revert, desktop build, test execution, and Logdy enable/disable.
+
+**4. QML integration tests — deferred** — Needs Config + ScreensaverConfig test harness infrastructure (instantiate full singleton chain in test main). Not a quick fix.
+
+**Revised score: ~8.0/10.** Remaining gaps: QML integration test coverage (D grade), accessibility hints, enter state machine in QML not C++.

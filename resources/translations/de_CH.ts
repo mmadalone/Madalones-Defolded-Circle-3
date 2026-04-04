@@ -725,6 +725,54 @@
     </message>
 </context>
 <context>
+    <name>ChaosSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="32"/>
+        <source>Chaos events</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="52"/>
+        <source>Frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="73"/>
+        <source>Intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="96"/>
+        <source>Surge (flash)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="110"/>
+        <source>Scramble (mutate)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="124"/>
+        <source>Freeze (stutter)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="138"/>
+        <source>Scatter (burst)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="158"/>
+        <source>Scatter frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="179"/>
+        <source>Scatter trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Climate</name>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
@@ -999,6 +1047,44 @@ Climate fan</extracomment>
         <source>Stop</source>
         <extracomment>Button caption to stop window blinds motion</extracomment>
         <translation>Stoppen</translation>
+    </message>
+</context>
+<context>
+    <name>DirectionGlitchSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="32"/>
+        <source>Direction change</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="55"/>
+        <source>Frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="77"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="99"/>
+        <source>Glitch directions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="181"/>
+        <source>Trail fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="202"/>
+        <source>Trail speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="225"/>
+        <source>Random color</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -2090,214 +2176,38 @@ Climate fan</extracomment>
 <context>
     <name>MatrixEffects</name>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="37"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="38"/>
         <source>Invert trail</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="64"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="65"/>
         <source>Head glow</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="90"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="91"/>
         <source>Glitch effect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="114"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="115"/>
         <source>Glitch intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="138"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="139"/>
         <source>Column flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="160"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="161"/>
         <source>Column stutter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="182"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="183"/>
         <source>Reverse glow</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="204"/>
-        <source>Direction change</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="227"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="439"/>
-        <source>Frequency</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="249"/>
-        <source>Trail length</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="271"/>
-        <source>Glitch directions</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="353"/>
-        <source>Trail fade</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="374"/>
-        <source>Trail speed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="397"/>
-        <source>Random color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="419"/>
-        <source>Chaos events</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="460"/>
-        <source>Intensity</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="483"/>
-        <source>Surge (flash)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="497"/>
-        <source>Scramble (mutate)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="511"/>
-        <source>Freeze (stutter)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="525"/>
-        <source>Scatter (burst)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="545"/>
-        <source>Scatter frequency</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="566"/>
-        <source>Scatter trail length</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="595"/>
-        <source>Tap effects</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="600"/>
-        <source>Scatter burst</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="614"/>
-        <source>Flash shockwave</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="628"/>
-        <source>Character scramble</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="642"/>
-        <source>Stream spawn</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="656"/>
-        <source>Show message</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="677"/>
-        <source>Randomize</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="698"/>
-        <source>Chance</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="727"/>
-        <source>Subliminal messages</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="750"/>
-        <source>In-stream injection</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="772"/>
-        <source>Overlay spanning</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="794"/>
-        <source>Flash mode</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="814"/>
-        <source>Interval</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="835"/>
-        <source>Duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="864"/>
-        <source>Hidden messages</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="890"/>
-        <source>Message interval</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="917"/>
-        <source>Random order</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="941"/>
-        <source>Message direction</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="986"/>
-        <source>Surrounding flash</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="1008"/>
-        <source>Brightness pulse</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2504,6 +2414,69 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="688"/>
         <source>Try something else.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MessageSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="38"/>
+        <source>Subliminal messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="61"/>
+        <source>In-stream injection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="83"/>
+        <source>Overlay spanning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="105"/>
+        <source>Flash mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="125"/>
+        <source>Interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="146"/>
+        <source>Duration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="175"/>
+        <source>Hidden messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="201"/>
+        <source>Message interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="228"/>
+        <source>Random order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="252"/>
+        <source>Message direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="297"/>
+        <source>Surrounding flash</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="319"/>
+        <source>Brightness pulse</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3639,6 +3612,49 @@ vom Web-Konfigurator</translation>
         <location filename="../../src/ui/entity/switch.h" line="45"/>
         <source>Off</source>
         <translation>Aus</translation>
+    </message>
+</context>
+<context>
+    <name>TapSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="35"/>
+        <source>Tap effects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="40"/>
+        <source>Scatter burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="54"/>
+        <source>Flash shockwave</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="68"/>
+        <source>Character scramble</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="82"/>
+        <source>Stream spawn</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="96"/>
+        <source>Show message</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="117"/>
+        <source>Randomize</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="138"/>
+        <source>Chance</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
