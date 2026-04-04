@@ -169,11 +169,11 @@ Base portrait (full grid — mood-specific)
 3. **Real-time overlays on top of hourly base.** Hourly tags/stability = base mood arc. Event-driven triggers (bedtime, theatrical, agent change) = real-time context modifiers.
 4. **Avatar is a feature overlay, not a theme.** The avatar is a configurable layer that can appear on top of ANY screensaver theme (Matrix, Starfield, Minimal), not a theme itself. Follows the same pattern as the existing clock and battery overlays. Toggled via `Config.avatarShowOnScreensaver`. The screensaver and avatar are separate systems that optionally coexist.
 5. **Two-layer composited rendering (when on screensaver).** Two independent QQuickItems z-stacked in QML:
-   - **[z:0] Active screensaver theme** — Matrix/Starfield/Minimal, unchanged.
-   - **[z:1] AvatarGridItem** — renders portrait + ambient cells only. Background transparent — screensaver shows through. Portrait cells opaque, occlude theme beneath.
-   - Two GPU draw calls when both active. No shared grid, no simulation entanglement.
-   - **Screensaver reacts to avatar mood via QML property bindings** — mood changes drive rain color/speed/glitch on Matrix theme. Other themes get simpler reactions (color tint). Avatar controls the screensaver as a mood amplifier without sharing code.
-6. **Cell-level sprite animation (AvatarGridItem).** Per-cell character/brightness/color control via GlyphAtlas texture atlas (shared with screensaver). Pre-drawn region variants (eyes, mouth) swapped at the character cell level. Eye blink = ~184 cell writes. Talking = mouth cell cycling. Expression changes = eye + mouth region swap.
+   - **[z:0] Active screensaver theme** — Matrix/Starfield/Minimal, unchanged. Loaded via `themeLoader` in ChargingScreen.qml.
+   - **[z:1] AvatarGridItem** — renders portrait + ambient cells only. Background transparent — screensaver shows through. Portrait cells opaque, occlude theme beneath. Loaded via `avatarOverlayLoader` in ChargingScreen.qml.
+   - Two GPU draw calls when both active. Each renderer owns its own GlyphAtlas instance (different charset/color). No shared grid, no simulation entanglement.
+   - **Screensaver reacts to avatar mood via ScreensaverConfig override properties** — mood changes drive rain color/speed/glitch on Matrix theme through `moodColorOverride`/`moodSpeedOverride`/`moodGlitchRateOverride` (NOT direct QML property sets, which fight C++ bindings from `bindToScreensaverConfig()`). Q_INVOKABLE calls (triggerChaosBurst) route through `themeItem.matrixRainItem` alias. Overrides cleared on avatar deactivation — user settings always resume.
+6. **Cell-level sprite animation (AvatarGridItem).** Per-cell character/brightness/color control via own GlyphAtlas texture atlas (same class as screensaver, separate instance with braille charset). Pre-drawn region variants (eyes, mouth) swapped at the character cell level. Eye blink = ~184 cell writes. Talking = mouth cell cycling. Expression changes = eye + mouth region swap.
 7. **Unified overlay, two modes.** One AvatarOverlay component serves both voice (mic button) and push (HA-initiated) interactions. AvatarGridItem visual, different lifecycle drivers.
 7. **Push channel via entity state.** HA triggers the UC3 avatar by writing to `sensor.ai_avatar_active`. The existing Core API WebSocket delivers entity changes in real time. No new protocol.
 8. **Remote-only by design.** Voice mode is inherently UC3-only (physical mic button). Push mode is opt-in per blueprint instance (`show_on_uc3` input). Satellite interactions never trigger the avatar.
@@ -188,6 +188,11 @@ Base portrait (full grid — mood-specific)
 | Entity ID format: `hass.main.{ha_entity_id}` (confirmed from integration source) | Plan must use full prefixed IDs | `hass.main.sensor.ai_avatar_mood` etc. |
 | EntityController loads entities on demand (entityController.h:71) | Avatar entities not auto-available | Call `EntityController.load()` on component creation; listen for `entityLoaded` signal |
 | Two-layer compositing = two GPU draw calls | Marginal perf cost vs. single renderer | Proven fine on ARM for two items. Avoids entangling rain simulation with portrait logic — clean separation worth the extra draw call. |
+| MatrixRain properties bound in C++ via `bindToScreensaverConfig()` | Can't set rain color/speed/glitchRate from QML — C++ bindings overwrite | Mood-to-rain overrides go through ScreensaverConfig override properties, not direct QML property sets (see §1.4.3) |
+| ScreensaverConfig is the config bridge for screensaver, not Config directly | Avatar screensaver surface must interface with ScreensaverConfig for any rain reactions | ScreensaverConfig gets optional mood-override properties; avatar QML sets these, ScreensaverConfig forwards to MatrixRain |
+| ChargingScreen has complex interactive input routing (DPAD + tap effects) | When avatar overlay sits at z:1 on screensaver, input routing must be explicit | Avatar TouchHandler consumes avatar-specific gestures; passthrough to theme for DPAD/tap effects (see §1.10) |
+| GlyphAtlas is per-renderer instance, not shared singleton | AvatarGridItem and MatrixRainItem each own a separate `m_atlas` with different charset/color = two GPU textures | Expected fine — avatar atlas is smaller (256 Braille glyphs × 16 brightness vs. 51+ katakana × 8-24 brightness × color variants) |
+| themeLoader.item is MatrixTheme (QML wrapper), not MatrixRain (C++ item) | Avatar screensaver overlay receives MatrixTheme, must use `.matrixRainItem` alias to reach C++ renderer | Use `themeItem.matrixRainItem` for Q_INVOKABLE calls like `triggerChaosBurst()` |
 | Braille art ~90x120 effective pixels | Not enough resolution for procedural deformation | Cell-level sprite animation (pre-drawn region variants) instead |
 | Sensor `getValue()` returns QString (sensor.h:280) | Energy is a string "0"-"100", not int | Use `parseInt()` in QML for numeric comparisons |
 | `state.set()` sensors don't persist across HA restart | Sensors briefly absent after reboot | state_bridge.py seeds on startup; QML null-guards entity access |
@@ -259,17 +264,18 @@ AvatarGridItem is a separate renderer that shares only GlyphAtlas with the scree
 
 | File | Change |
 |---|---|
-| `src/main.cpp` | Add `#include "ui/avatargrid.h"` + `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` + `GlyphAtlas::loadBrailleFont()` |
-| `src/ui/glyphatlas.h/.cpp` | Add `"braille"` charset (U+2800-U+28FF). Add `loadBrailleFont()` (same pattern as `loadCJKFont()`). |
-| `remote-ui.pro` | Add `avatargrid.h/.cpp` to HEADERS/SOURCES |
-| `src/qml/components/VoiceOverlay.qml` | Add conditional: when `Config.avatarEnabled`, delegate to AvatarOverlay in voice mode instead of showing EQ bars/circles. Pass Voice singleton signals through. |
-| `src/qml/components/ChargingScreen.qml` | Add AvatarScreensaverOverlay Loader (active when `Config.avatarShowOnScreensaver`). Sits above theme Loader at z:1. Passes `displayOff`/`isClosing` through. |
-| `src/qml/main.qml` | Add AvatarOverlay Loader for push mode (alongside existing VoiceOverlay and ChargingScreen loaders, ~line 460 area). Wire `sensor.ai_avatar_active` entity changes to popup open/close. |
-| `src/qml/settings/settings/ChargingScreen.qml` | Add "Show avatar on screensaver" toggle (below existing theme selector) |
+| `src/main.cpp` | Add `#include "ui/avatargrid.h"` + `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` + `GlyphAtlas::loadBrailleFont()` (alongside existing `loadCJKFont()` call and `MatrixRainItem` registration at line 76) |
+| `src/ui/glyphatlas.h/.cpp` | Add `"braille"` charset (U+2800-U+28FF, 256 glyphs). Add `loadBrailleFont()` (same pattern as `loadCJKFont()`, lines 46-63). Add `CHARS_BRAILLE` string constant alongside existing `CHARS_KATAKANA`/`CHARS_ASCII`/etc (lines 27-37). |
+| `src/ui/screensaverconfig.h/.cpp` | Add mood-override properties: `moodColorOverride` (QColor), `moodSpeedOverride` (qreal), `moodGlitchRateOverride` (int). Transform getters check override before user config. ~30 lines. See §1.4.3. |
+| `remote-ui.pro` | Add `avatargrid.h/.cpp` to HEADERS/SOURCES (after existing screensaver entries at lines 141-147 / 209-215) |
+| `src/qml/components/VoiceOverlay.qml` | Add conditional in `start()` (line 56): when `Config.avatarEnabled && Config.avatarVoiceOverlay`, delegate to AvatarOverlay in voice mode instead of showing EQ bars/circles (lines 335-638). Pass Voice singleton signals through. |
+| `src/qml/components/ChargingScreen.qml` | Add AvatarScreensaverOverlay Loader after themeLoader (line 166). z:1 above theme. Propagate `displayOff`/`isClosing` via `Qt.binding()` (same pattern as themeLoader.onLoaded lines 168-186). Pass `themeItem` ref for Q_INVOKABLE routing. |
+| `src/qml/main.qml` | Add AvatarOverlay Loader for push mode (alongside VoiceOverlay at line 459 and ChargingScreen Loader at line 526). Wire `sensor.ai_avatar_active` entity changes to popup open/close. |
+| `src/qml/settings/settings/ChargingScreen.qml` | Add "Show avatar on screensaver" toggle (below existing theme selector in ThemeSelector sub-component) |
 | `src/qml/settings/Settings.qml` | Add "Avatar" menu entry |
-| `src/config/config.h` | Add ~20 avatar Q_PROPERTY declarations (using CFG_BOOL/CFG_INT/CFG_STRING macros) |
+| `src/config/config.h` | Add ~20 avatar Q_PROPERTY declarations (using CFG_BOOL/CFG_INT/CFG_STRING macros from config_macros.h) |
 | `src/config/config.cpp` | Add avatar getter/setter/defaults (via config_macros.h) |
-| `resources/qrc/main.qrc` | Register new QML + art asset files |
+| `resources/qrc/main.qrc` | Register new QML + art asset files (after existing screensaver entries at lines 24-38) |
 
 ### 1.3 Config Properties (QSettings)
 
@@ -303,27 +309,18 @@ Each property gets a Q_PROPERTY + NOTIFY signal in config.h. Charging theme uses
 
 ### 1.4 Two-Layer Composited Rendering
 
-**Architecture:** Two independent QQuickItems z-stacked in QML. Each has its own simulation, its own timer, its own rendering. Connected only through QML property bindings.
+**Architecture:** Two independent QQuickItems z-stacked in QML. Each has its own simulation, its own timer, its own rendering. Each renderer owns its own GlyphAtlas instance (different charset, different color palette = separate GPU textures). Connected through ScreensaverConfig override properties for mood-to-rain reactions.
+
+**Important:** This section describes the screensaver surface only. The avatar also appears in voice overlay and push overlay contexts where there is no screensaver — see §1.6 and §1.7.
 
 ```qml
-// Charging theme: rain behind, avatar on top
-Item {
-    MatrixRain {
-        id: rain
-        anchors.fill: parent
-        z: 0
-        // Rain reacts to avatar mood via bindings (see 1.4.3)
-    }
-    AvatarGrid {
-        id: avatar
-        anchors.fill: parent
-        z: 1
-        // Portrait cells opaque, background transparent
-        // Rain visible through empty cells
-    }
-}
-
-// Voice/push overlay: avatar only (no rain), or avatar + rain (configurable)
+// Screensaver surface: theme behind, avatar on top (inside ChargingScreen.qml)
+// themeLoader at z:0 loads MatrixTheme/StarfieldTheme/MinimalTheme (existing, unchanged)
+// avatarOverlayLoader at z:1 loads AvatarScreensaverOverlay (new)
+//
+// MatrixRain binds to ScreensaverConfig in C++ via bindToScreensaverConfig().
+// Avatar drives rain mood reactions through ScreensaverConfig override properties,
+// NOT through direct QML property sets (which would fight C++ bindings).
 ```
 
 #### 1.4.1 AvatarGridItem (new C++ class)
@@ -415,62 +412,97 @@ Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
 
 #### 1.4.2 Screensaver themes (existing, unchanged)
 
-MatrixRainItem, StarfieldTheme, MinimalTheme — all used as-is. No modifications. The avatar overlay sits on top via QML z-stacking. When `Config.avatarShowOnScreensaver` is false, screensaver runs exactly as before. When true, the avatar overlay loads on top and optionally drives mood-reactive properties on the theme (see 1.4.3).
+MatrixRainItem, StarfieldTheme, MinimalTheme — all used as-is. No modifications to theme code. The avatar overlay sits on top via QML z-stacking. When `Config.avatarShowOnScreensaver` is false, screensaver runs exactly as before. When true, the avatar overlay loads on top and optionally drives mood-reactive properties on the theme (see 1.4.3).
 
-#### 1.4.3 QML Mood-to-Rain Bindings
+**Completed screensaver architecture (confirmed):**
+- MatrixTheme.qml wraps MatrixRain (C++ QQuickItem) + ClockOverlay + BatteryOverlay
+- MatrixRain binds all visual properties in C++ via `bindToScreensaverConfig()` in `componentComplete()`
+- MatrixTheme exposes `matrixRainItem` alias (line 19) for access to the C++ item
+- StarfieldTheme uses Canvas-based 2D rendering (no C++ item, no property interface for mood)
+- MinimalTheme is pure QML Text (clock/date display, no mood interface)
+- ChargingScreen routes interactive input (DPAD + tap effects) to themes via `interactiveInput()` function
 
-The avatar doesn't modify rain code. It controls rain behavior through QML property bindings — the same way the settings page already controls the screensaver:
+#### 1.4.3 Mood-to-Rain via ScreensaverConfig Overrides
 
+**Problem:** MatrixRain's properties (color, speed, glitchRate, density) are bound in C++ to ScreensaverConfig via `bindToScreensaverConfig()`. Setting these from QML would be overwritten by C++ bindings the next time any Config signal fires. The plan's original QML-based `rain.color = avatar.moodColor` approach is wrong.
+
+**Solution:** Add mood-override properties to ScreensaverConfig. When set (non-null/non-empty), they take precedence over the user's configured values. When cleared, user settings resume. ScreensaverConfig already does transforms and signal forwarding — adding override logic is a natural extension.
+
+**ScreensaverConfig additions (~30 lines):**
+```cpp
+// In screensaverconfig.h — new override properties
+Q_PROPERTY(QColor moodColorOverride READ moodColorOverride WRITE setMoodColorOverride NOTIFY colorChanged)
+Q_PROPERTY(qreal moodSpeedOverride READ moodSpeedOverride WRITE setMoodSpeedOverride NOTIFY speedChanged)
+Q_PROPERTY(int moodGlitchRateOverride READ moodGlitchRateOverride WRITE setMoodGlitchRateOverride NOTIFY glitchRateChanged)
+
+// In screensaverconfig.cpp — transform getters check override first
+QColor color() const {
+    if (m_moodColorOverride.isValid()) return m_moodColorOverride;
+    return QColor(m_config->getChargingMatrixColor());
+}
+qreal speed() const {
+    if (m_moodSpeedOverride > 0) return m_moodSpeedOverride;
+    return qBound(0.2, m_config->getChargingMatrixSpeed() / 50.0, 2.0);
+}
+```
+
+**Avatar QML drives rain through ScreensaverConfig (not direct property sets):**
 ```qml
 // In AvatarScreensaverOverlay.qml
-MatrixRain {
-    id: rain
-    // Base rain config from settings
-    color: Config.chargingMatrixColor
-    speed: Config.chargingMatrixSpeed / 50.0
-
-    // Mood-reactive overrides (when avatar is active)
-    Behavior on color { ColorAnimation { duration: 1000 } }
-}
-
 AvatarGrid {
     id: avatar
 
     onMoodChanged: {
-        // Rain reacts to avatar mood
+        // Drive rain via ScreensaverConfig overrides — C++ bindings respect these
         switch (mood) {
             case "angry":
             case "annoyed":
-                rain.glitchRate = 80;
-                rain.speed = 2.0;
-                rain.color = avatar.moodColor;
+                ScreensaverConfig.moodColorOverride = avatar.moodColor;
+                ScreensaverConfig.moodSpeedOverride = 2.0;
+                ScreensaverConfig.moodGlitchRateOverride = 80;
                 break;
             case "sleepy":
             case "sad":
-                rain.speed = 0.3;
-                rain.density = 0.4;
-                rain.color = Qt.darker(avatar.moodColor, 1.5);
+                ScreensaverConfig.moodColorOverride = Qt.darker(avatar.moodColor, 1.5);
+                ScreensaverConfig.moodSpeedOverride = 0.3;
+                ScreensaverConfig.moodGlitchRateOverride = -1;  // clear override
                 break;
             case "dramatic":
-                rain.triggerChaosBurst();  // existing Q_INVOKABLE
-                rain.color = avatar.moodColor;
+                ScreensaverConfig.moodColorOverride = avatar.moodColor;
+                ScreensaverConfig.moodSpeedOverride = -1;  // clear override
+                // triggerChaosBurst is Q_INVOKABLE — must reach C++ item through theme
+                if (root.themeItem && root.themeItem.matrixRainItem)
+                    root.themeItem.matrixRainItem.triggerChaosBurst();
                 break;
             default:
-                rain.speed = Config.chargingMatrixSpeed / 50.0;  // back to user setting
-                rain.color = avatar.moodColor;
+                ScreensaverConfig.moodColorOverride = avatar.moodColor;
+                ScreensaverConfig.moodSpeedOverride = -1;  // clear = back to user setting
+                ScreensaverConfig.moodGlitchRateOverride = -1;
                 break;
         }
     }
 
     onCharacterChanged: {
-        // Character entrance: chaos burst, rain goes agent color
-        rain.triggerChaosBurst();
-        rain.color = avatar.moodColor;
+        ScreensaverConfig.moodColorOverride = avatar.moodColor;
+        if (root.themeItem && root.themeItem.matrixRainItem)
+            root.themeItem.matrixRainItem.triggerChaosBurst();
+    }
+
+    // Clear all overrides when avatar screensaver overlay deactivates
+    Component.onDestruction: {
+        ScreensaverConfig.moodColorOverride = Qt.rgba(0,0,0,0);  // invalid = cleared
+        ScreensaverConfig.moodSpeedOverride = -1;
+        ScreensaverConfig.moodGlitchRateOverride = -1;
     }
 }
 ```
 
-This gives the "dope effects" — rain reacting to mood — without the two renderers sharing any code. The rain is a mood amplifier controlled through the same property interface the settings page uses.
+**Why ScreensaverConfig overrides instead of alternatives:**
+- Direct QML property sets fight C++ bindings — broken
+- Override properties on MatrixRainItem would couple it to avatar awareness — violates "no screensaver modifications"
+- ScreensaverConfig is already the transform layer between Config and MatrixRain — override logic belongs here
+- Overrides are cleared on avatar deactivation — user settings always resume cleanly
+- Starfield/Minimal themes don't bind to ScreensaverConfig color/speed, so overrides naturally have no effect on them (correct behavior)
 
 ### 1.5 Portrait Art Requirements
 
@@ -713,35 +745,26 @@ The avatar is NOT a screensaver theme. It's a feature overlay that sits on top o
 
 **ChargingScreen.qml changes:**
 
-```qml
-// Existing theme Loader (unchanged)
-Loader {
-    id: themeLoader
-    anchors.fill: parent
-    z: 0
-    source: {
-        switch (Config.chargingTheme) {
-            case "matrix": return "qrc:/components/themes/MatrixTheme.qml";
-            case "starfield": return "qrc:/components/themes/StarfieldTheme.qml";
-            case "minimal": return "qrc:/components/themes/MinimalTheme.qml";
-            default: return "qrc:/components/themes/MatrixTheme.qml";
-        }
-    }
-}
+ChargingScreen.qml (203 lines) is a Popup with a theme Loader (line 166), ButtonNavigation for interactive input (lines 74-98), tap handler with effect flags (lines 154-162), and DPAD direction persistence. The avatar overlay adds a second Loader alongside the existing theme Loader.
 
-// NEW: Avatar overlay (loads on top of any theme when enabled)
+```qml
+// Existing theme Loader at line 166 (unchanged) — switches on ScreensaverConfig.theme
+// Existing ButtonNavigation and tap handler (unchanged) — routes to themeLoader.item.interactiveInput()
+
+// NEW: Avatar overlay Loader — add after themeLoader, before any existing overlays
 Loader {
     id: avatarOverlayLoader
     anchors.fill: parent
-    z: 1
+    z: 1    // above themeLoader (z:0 implicit)
     active: Config.avatarEnabled && Config.avatarShowOnScreensaver
     source: "qrc:/components/avatar/AvatarScreensaverOverlay.qml"
 
     onLoaded: {
         if (item) {
+            // Same propagation pattern as themeLoader.onLoaded (lines 168-186)
             item.displayOff = Qt.binding(function() { return chargingScreenRoot.displayOff; });
             item.isClosing = Qt.binding(function() { return chargingScreenRoot.isClosing; });
-            // Pass theme item ref so avatar can drive mood reactions on it
+            // Pass theme item ref so avatar can call triggerChaosBurst() on mood transitions
             item.themeItem = Qt.binding(function() { return themeLoader.item; });
         }
     }
@@ -758,7 +781,7 @@ Item {
     anchors.fill: parent
     property bool displayOff: false
     property bool isClosing: false
-    property var themeItem: null   // ref to active theme (MatrixRain, etc.)
+    property var themeItem: null   // ref to active theme (MatrixTheme, StarfieldTheme, etc.)
 
     AvatarGrid {
         id: avatar
@@ -768,33 +791,17 @@ Item {
         // Portrait cells opaque, background transparent — theme shows through
     }
 
-    // Mood-to-screensaver bindings (only when theme supports it)
-    onThemeItemChanged: {
-        if (!themeItem) return;
-        // Matrix theme has color, speed, glitchRate, etc.
-        // Starfield/Minimal may not — use hasOwnProperty guards
-    }
+    // Mood-to-rain via ScreensaverConfig overrides (see §1.4.3)
+    // Q_INVOKABLE calls (triggerChaosBurst) via themeItem.matrixRainItem alias
+    // Clear all overrides on destruction so user settings resume
 
-    Connections {
-        target: avatar
-        function onMoodChanged() {
-            if (!root.themeItem) return;
-            // Drive screensaver properties based on mood
-            if (root.themeItem.hasOwnProperty("color"))
-                root.themeItem.color = avatar.moodColor;
-            if (root.themeItem.hasOwnProperty("glitchRate") && avatar.mood === "angry")
-                root.themeItem.glitchRate = 80;
-        }
-        function onCharacterChanged() {
-            // Chaos burst on character entrance (Matrix theme only)
-            if (root.themeItem && root.themeItem.hasOwnProperty("triggerChaosBurst"))
-                root.themeItem.triggerChaosBurst();
-        }
-    }
+    // Touch routing: portrait-area taps → avatar reaction; outside taps → passthrough (see §1.10)
 }
 ```
 
-This works with any current or future theme. Matrix gets full mood-reactive rain. Starfield/Minimal get color tinting at most. No theme needs to know the avatar exists.
+Mood-to-rain binding implementation is in §1.4.3 (ScreensaverConfig override approach). This overlay is purely the QML composition — the mood logic lives in the override properties.
+
+Matrix gets full mood-reactive rain (color, speed, glitch, chaos bursts). Starfield/Minimal don't bind to ScreensaverConfig's color/speed, so overrides naturally have no effect — correct behavior. No theme needs to know the avatar exists.
 
 ### 1.9 MoodEngine
 
@@ -851,7 +858,22 @@ Responds to touch on the avatar (primarily for screensaver; disabled during voic
 - **Long press:** Show mood/character info
 - **Swipe:** Dismiss (screensaver only)
 
-**Conflict avoidance:** When AvatarOverlay is in voice or push mode, TouchHandler is disabled. For screensaver, ChargingScreen's close-on-tap MouseArea must cooperate: if avatar theme is active and `Config.avatarTouchEnabled`, touch events go to TouchHandler first; ChargingScreen close is triggered by swipe or button press instead.
+**Interactive input routing (screensaver surface):**
+
+ChargingScreen has a complex input system: ButtonNavigation maps 24 remote buttons to `interactiveInput()` calls (DPAD directions, tap coordinates + effect flags for burst/flash/scramble/spawn/message). This must coexist with the avatar's TouchHandler when the avatar screensaver overlay is active.
+
+| Input | Avatar overlay active | Avatar overlay inactive |
+|-------|----------------------|------------------------|
+| **Tap on avatar portrait** | Avatar TouchHandler (surprise reaction) | N/A |
+| **Tap outside portrait** | Passthrough to theme `interactiveInput()` (tap effects on rain) | Theme `interactiveInput()` (existing behavior) |
+| **DPAD directions** | Passthrough to theme `interactiveInput()` (rain direction control) | Theme `interactiveInput()` (existing behavior) |
+| **Double tap** | Avatar TouchHandler (cycle mood label) | ChargingScreen close (if `tapToClose`) |
+| **Swipe** | Avatar dismiss (overlay closes, screensaver continues) | ChargingScreen close |
+| **HOME/BACK buttons** | ChargingScreen close (existing ButtonNavigation) | ChargingScreen close |
+
+**Implementation:** AvatarScreensaverOverlay's MouseArea checks tap coordinates against portrait bounds. Taps inside portrait → avatar reaction. Taps outside portrait → `accepted = false` (event propagates to theme below). DPAD routing stays in ChargingScreen's ButtonNavigation unchanged — it calls `themeLoader.item.interactiveInput()` which routes to MatrixTheme, not the avatar overlay.
+
+**Conflict avoidance:** When AvatarOverlay is in voice or push mode (not screensaver), TouchHandler is disabled entirely — those modes have their own lifecycle (Voice singleton controls voice mode; entity state controls push mode).
 
 ### 1.11 Settings Page
 
@@ -1196,11 +1218,11 @@ Item {
 **None.** All changes are additive.
 
 - VoiceOverlay falls back to stock EQ/circles when avatar is disabled
-- ChargingScreen adds a new theme option without affecting existing themes
+- ChargingScreen adds a new overlay Loader without affecting existing theme Loader or interactive input routing
 - All new Config properties default to off/safe values
 - Blueprints gain an optional input that defaults to false
 
-**Binary size impact:** ~150-200KB (AvatarGridItem C++ ~550 lines compiled + QML files + Braille art text files + BrailleFont.otf ~30-50KB subset). Negligible relative to existing binary (MatrixRainItem alone is ~1800 lines across 4 files).
+**Binary size impact:** ~150-200KB (AvatarGridItem C++ ~550 lines compiled + QML files + Braille art text files + BrailleFont.otf ~30-50KB subset). Negligible relative to existing binary (MatrixRainItem alone is ~1800 lines across 7 files: matrixrain, rainsimulation, glitchengine, messageengine, gravitydirection, glyphatlas, screensaverconfig).
 
 ---
 
@@ -1334,7 +1356,7 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 
 ---
 
-## Architecture Review Findings (2026-04-03 — 2026-04-04)
+## Architecture Review Findings (2026-04-03 — 2026-04-04, updated 2026-04-04 post-screensaver completion)
 
 ### UC3 Hardware (researched)
 - CPU: Quad-core ARM64, 1.8 GHz (exact SoC undisclosed)
@@ -1353,15 +1375,23 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 ### Codebase Reuse Assessment (verified by reading actual source)
 
 **GlyphAtlas (~90% reusable):**
-- Add `"braille"` charset to `charsetString()` (1 line + string constant)
-- Add `loadBrailleFont()` alongside `loadCJKFont()` (same pattern, ~15 lines)
+- Add `"braille"` charset to `charsetString()` (1 line + string constant). Existing charsets: katakana (51 glyphs), ascii (36), binary (2), digits (10).
+- Add `loadBrailleFont()` alongside `loadCJKFont()` (same pattern, ~15 lines). Font loaded from `deploy/config/BrailleFont.otf`.
 - Atlas build, UV lookup, brightness map, font loading — all work as-is
 - Atlas rebuild is ~50-150ms on ARM — fine for mood transitions, not per-frame color fading
+- **Per-renderer instance:** Each renderer owns its own `m_atlas` member. AvatarGridItem gets a separate GlyphAtlas instance with braille charset + agent mood color. Two GPU textures total when both active (screensaver surface). Avatar atlas is smaller: 256 Braille glyphs × 16 mono brightness levels vs. 51+ katakana × variable brightness × color variants for rainbow/neon modes.
+
+**ScreensaverConfig (new since original plan — confirmed):**
+- Singleton at `src/ui/screensaverconfig.h/.cpp`, registered in `main.cpp` line 106
+- Transforms raw Config values (speed/50.0, density/100.0, fadeRate mapping, trailLength percentage-to-cells)
+- MatrixRain binds to ScreensaverConfig in C++ via `bindToScreensaverConfig()` in `componentComplete()`
+- **Impact on avatar:** Mood-to-rain overrides must go through ScreensaverConfig override properties, not direct QML property sets. See §1.4.3 for the override approach.
 
 **MatrixRainItem (pattern reuse, ~60%):**
-- Copy verbatim: `MatrixRainNode` destructor, atlas texture upload (`matrixrain.cpp:115-131`), quad vertex construction (`266-273`), timer/tick/displayOff, `componentComplete()` deferred init
-- NOT reusable: stream rendering loop (iterates streams, not cells), `RainSimulation`, `GlitchEngine` (stream-scoped)
+- Copy verbatim: `MatrixRainNode` destructor (`matrixrain.cpp:32-41`), atlas texture upload (`matrixrain.cpp:274-289`), quad vertex construction (`matrixrain.cpp:334-346`), timer/tick/displayOff, `componentComplete()` deferred init with 2-second safety retry (`matrixrain.cpp:93-100`)
+- NOT reusable: stream rendering loop (iterates streams via `renderStreamTrails()`, not cells), `RainSimulation`, `GlitchEngine`, `MessageEngine` (all stream-scoped)
 - AvatarGridItem iterates all non-empty cells directly — simpler loop than stream trail walking
+- Timer: TICK_BASE_MS = 50ms (20fps). Avatar uses same pattern at 20fps.
 
 **Why "extend MatrixRainItem" was rejected:**
 - Render loop iterates STREAMS not cells — portrait cells with no stream never render
@@ -1372,7 +1402,8 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 
 **Two-layer compositing chosen instead:**
 - MatrixRainItem at z:0 (unchanged), AvatarGridItem at z:1 (transparent background)
-- Rain reacts to avatar mood via QML property bindings (same interface settings page uses)
+- Rain reacts to avatar mood via ScreensaverConfig override properties (NOT direct QML property bindings — those fight C++ bindings)
+- Q_INVOKABLE calls (triggerChaosBurst) route through `themeItem.matrixRainItem` alias
 - No shared grid, no simulation entanglement, no code changes to screensaver
 - Two GPU draw calls — expected fine with 4GB RAM, quad-core 1.8GHz, but must verify on device
 
@@ -1392,6 +1423,9 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 **Screensaver overlay — HIGH confidence with one caveat:**
 - QML z-stacking, alpha transparency verified in code (`QSGTextureMaterial` + `TextureHasAlphaChannel` + `ARGB32_Premultiplied` atlas)
 - AvatarGridItem skips empty cells (no quad emitted) — theme shows through naturally
+- ChargingScreen Loader pattern confirmed: `themeLoader` at z:0, avatar `avatarOverlayLoader` at z:1. `displayOff`/`isClosing` propagation via `Qt.binding()` — exact same pattern as themeLoader.onLoaded (lines 168-186).
+- Mood-to-rain via ScreensaverConfig overrides (§1.4.3), not direct QML property sets. Q_INVOKABLE calls route through `themeItem.matrixRainItem` alias.
+- Interactive input: DPAD + tap effects route to `themeLoader.item.interactiveInput()` (unchanged). Avatar TouchHandler only consumes portrait-area taps (§1.10).
 - Caveat: dual-renderer GPU frame rate unverified on device. Degradation path: reduce rain density when avatar active.
 
 ### Edge Cases Requiring Careful Implementation
