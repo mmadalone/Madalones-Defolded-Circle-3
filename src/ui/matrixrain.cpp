@@ -679,11 +679,11 @@ void MatrixRainItem::handleTapInput(const QString &params) {
             int chance = parts[7].mid(1).toInt();
             chance = qBound(10, chance, 90);
             // Each enabled effect gets an independent coin flip
-            if (doBurst)    doBurst    = (static_cast<int>(m_sim.m_rng() % 100) < chance);
-            if (doFlash)    doFlash    = (static_cast<int>(m_sim.m_rng() % 100) < chance);
-            if (doScramble) doScramble = (static_cast<int>(m_sim.m_rng() % 100) < chance);
-            if (doSpawn)    doSpawn    = (static_cast<int>(m_sim.m_rng() % 100) < chance);
-            if (doMessage)  doMessage  = (static_cast<int>(m_sim.m_rng() % 100) < chance);
+            if (doBurst)    doBurst    = (m_sim.randomInt(100) < chance);
+            if (doFlash)    doFlash    = (m_sim.randomInt(100) < chance);
+            if (doScramble) doScramble = (m_sim.randomInt(100) < chance);
+            if (doSpawn)    doSpawn    = (m_sim.randomInt(100) < chance);
+            if (doMessage)  doMessage  = (m_sim.randomInt(100) < chance);
             // Guarantee at least one effect fires
             if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) {
                 int enabled[5], count = 0;
@@ -693,7 +693,7 @@ void MatrixRainItem::handleTapInput(const QString &params) {
                 if (parts.size() > 5 && parts[5] == QLatin1String("1")) enabled[count++] = 3;
                 if (parts.size() > 6 && parts[6] == QLatin1String("1")) enabled[count++] = 4;
                 if (count > 0) {
-                    switch (enabled[m_sim.m_rng() % count]) {
+                    switch (enabled[m_sim.randomInt(count)]) {
                         case 0: doBurst = true; break;
                         case 1: doFlash = true; break;
                         case 2: doScramble = true; break;
@@ -728,114 +728,31 @@ void MatrixRainItem::handleTapInput(const QString &params) {
         if (doMessage)  tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
 }
 
-// --- Tap effect sub-handlers ---
-
-static const struct { int dx; int dy; } s_burstDirs[] = {
-    {0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,1},{1,-1},{-1,-1}
-};
+// --- Tap effect sub-handlers — delegate to RainSimulation ---
 
 void MatrixRainItem::tapBurst(int tapCol, int tapRow, int colorVariants) {
-    int trailCount = 20 + static_cast<int>(m_sim.m_rng() % 15);
-    for (int i = 0; i < trailCount && m_sim.m_glitch.m_glitchTrails.size() < 300; ++i) {
-        GlitchTrail gt;
-        const auto &d = s_burstDirs[m_sim.m_rng() % 8];
-        gt.dx = d.dx; gt.dy = d.dy;
-        gt.col = tapCol; gt.row = tapRow;
-        gt.length = 3 + static_cast<int>(m_sim.m_rng() % 8);
-        gt.framesLeft = gt.length + 6;
-        gt.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-        m_sim.m_glitch.m_glitchTrails.append(gt);
-    }
+    m_sim.tapBurst(tapCol, tapRow, colorVariants);
 }
 
 void MatrixRainItem::tapFlash(int tapCol, int tapRow, int radius) {
-    for (auto &s : m_sim.m_streams) {
-        if (!s.active) continue;
-        int dc = qAbs(s.headCol - tapCol);
-        int dr = qAbs(s.headRow - tapRow);
-        if (dc <= radius && dr <= radius) {
-            s.flashFrames = qMax(s.flashFrames, 10 - qMax(dc, dr));
-        }
-    }
+    m_sim.tapFlash(tapCol, tapRow, radius);
 }
 
 void MatrixRainItem::tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius) {
-    int glyphCount = m_atlas.glyphCount();
-    std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
-    int scrambleR = qMax(2, radius / 2);
-    for (int c = tapCol - scrambleR; c <= tapCol + scrambleR; ++c) {
-        for (int r = tapRow - scrambleR; r <= tapRow + scrambleR; ++r) {
-            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-            int idx = c * gridRows + r;
-            if (idx >= 0 && idx < m_sim.m_charGrid.size())
-                m_sim.m_charGrid[idx] = charDist(m_sim.m_rng);
-        }
-    }
+    Q_UNUSED(gridCols); Q_UNUSED(gridRows);
+    m_sim.tapScramble(tapCol, tapRow, radius, m_atlas.glyphCount());
 }
 
 void MatrixRainItem::tapSpawn(int tapCol, int tapRow, int colorVariants) {
-    int spawnCount = 4 + static_cast<int>(m_sim.m_rng() % 4);
-    for (int i = 0; i < spawnCount; ++i) {
-        for (auto &s : m_sim.m_streams) {
-            if (s.active || s.pauseTicks > 0) continue;
-            const auto &d = s_burstDirs[m_sim.m_rng() % 8];
-            s.headCol = tapCol; s.headRow = tapRow;
-            s.headColF = static_cast<float>(tapCol);
-            s.headRowF = static_cast<float>(tapRow);
-            s.dx = d.dx; s.dy = d.dy;
-            s.dxF = static_cast<float>(d.dx);
-            s.dyF = static_cast<float>(d.dy);
-            s.trailLength = 5 + static_cast<int>(m_sim.m_rng() % 10);
-            s.colorVariant = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-            s.active = true;
-            s.stutterFrames = 0;
-            s.flashFrames = 3;
-            s.histHead = 0; s.histCount = 0;
-            s.pushHistory();
-            break;
-        }
-    }
+    m_sim.tapSpawn(tapCol, tapRow, colorVariants);
 }
 
 void MatrixRainItem::tapMessage(int tapCol, int tapRow, int gridCols, int gridRows,
                                 int colorVariants, float colSp, float rowSp) {
-    if (m_sim.m_message.m_messageList.isEmpty()) return;
-    const QString &msg = m_sim.m_message.m_messageList[m_sim.m_rng() % m_sim.m_message.m_messageList.size()];
-    int msgColor = (colorVariants > 1) ? static_cast<int>(m_sim.m_rng() % colorVariants) : 0;
-    float stepW = static_cast<float>(m_atlas.messageStepW());
-    float tapPxX = tapCol * colSp;
-    float tapPxY = tapRow * rowSp;
-    float totalW = msg.length() * stepW;
-    float startPx = tapPxX - totalW / 2.0f;
-
-    QString currentChars = GlyphAtlas::charsetString(m_sim.charset());
-    static const QString CHARS_MSG = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
-
-    for (int i = 0; i < msg.length(); ++i) {
-        QChar ch = msg[i].toUpper();
-        int gi = currentChars.indexOf(ch);
-        if (gi < 0 && m_atlas.messageGlyphOffset() > 0) {
-            int mi = CHARS_MSG.indexOf(ch);
-            if (mi >= 0) gi = m_atlas.messageGlyphOffset() + mi;
-        }
-        if (gi < 0) continue;
-        float charPx = startPx + i * stepW;
-        float gwF = static_cast<float>(m_atlas.glyphW());
-        if (charPx < -gwF || charPx >= static_cast<float>(width()) + gwF) continue;
-
-        if (m_sim.m_message.m_messageOverlay.size() >= 500) break;
-        m_sim.m_message.m_messageOverlay.append({charPx, tapPxY, gi, 40, msgColor});
-
-        int col = qBound(0, static_cast<int>(charPx / colSp), gridCols - 1);
-        if (tapRow >= 0 && tapRow < gridRows) {
-            int idx = col * gridRows + tapRow;
-            if (idx >= 0 && idx < m_sim.m_charGrid.size()) {
-                m_sim.m_charGrid[idx] = gi;
-                if (idx < m_sim.m_message.m_messageBright.size())
-                    m_sim.m_message.m_messageBright[idx] = -40;
-            }
-        }
-    }
+    Q_UNUSED(gridCols); Q_UNUSED(gridRows);
+    m_sim.tapMessage(tapCol, tapRow, colorVariants, colSp, rowSp,
+                     m_atlas.messageStepW(), m_atlas.messageGlyphOffset(),
+                     m_atlas.glyphW(), static_cast<float>(width()), m_sim.charset());
 }
 
 // --- Enter button state machine ---
@@ -887,7 +804,7 @@ void MatrixRainItem::setRunning(bool r) {
             }
             m_autoRotateWasActive = false;
             m_slowOverride = false;
-            m_sim.m_message.m_subliminalCells.clear();
+            m_sim.clearSubliminalCells();
             m_gravity.stopAutoRotation();
         }
         emit runningChanged();

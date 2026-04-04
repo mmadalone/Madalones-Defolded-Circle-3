@@ -387,3 +387,112 @@ void RainSimulation::triggerFlashAll() {
         if (s.active) s.flashFrames = 8;
     }
 }
+
+// --- Tap effects ---
+
+static const struct { int dx; int dy; } s_tapDirs[] = {
+    {0,1},{0,-1},{1,0},{-1,0},{1,1},{-1,1},{1,-1},{-1,-1}
+};
+
+void RainSimulation::tapBurst(int col, int row, int colorVariants) {
+    int trailCount = 20 + randomInt(15);
+    for (int i = 0; i < trailCount && m_glitch.m_glitchTrails.size() < 300; ++i) {
+        GlitchTrail gt;
+        const auto &d = s_tapDirs[randomInt(8)];
+        gt.dx = d.dx; gt.dy = d.dy;
+        gt.col = col; gt.row = row;
+        gt.length = 3 + randomInt(8);
+        gt.framesLeft = gt.length + 6;
+        gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+        m_glitch.m_glitchTrails.append(gt);
+    }
+}
+
+void RainSimulation::tapFlash(int col, int row, int radius) {
+    for (auto &s : m_streams) {
+        if (!s.active) continue;
+        int dc = qAbs(s.headCol - col);
+        int dr = qAbs(s.headRow - row);
+        if (dc <= radius && dr <= radius)
+            s.flashFrames = qMax(s.flashFrames, 10 - qMax(dc, dr));
+    }
+}
+
+void RainSimulation::tapScramble(int col, int row, int radius, int glyphCount) {
+    std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
+    int scrambleR = qMax(2, radius / 2);
+    for (int c = col - scrambleR; c <= col + scrambleR; ++c) {
+        for (int r = row - scrambleR; r <= row + scrambleR; ++r) {
+            if (c < 0 || c >= m_gridCols || r < 0 || r >= m_gridRows) continue;
+            int idx = c * m_gridRows + r;
+            if (idx >= 0 && idx < m_charGrid.size())
+                m_charGrid[idx] = charDist(m_rng);
+        }
+    }
+}
+
+void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
+    int spawnCount = 4 + randomInt(4);
+    for (int i = 0; i < spawnCount; ++i) {
+        for (auto &s : m_streams) {
+            if (s.active || s.pauseTicks > 0) continue;
+            const auto &d = s_tapDirs[randomInt(8)];
+            s.headCol = col; s.headRow = row;
+            s.headColF = static_cast<float>(col);
+            s.headRowF = static_cast<float>(row);
+            s.dx = d.dx; s.dy = d.dy;
+            s.dxF = static_cast<float>(d.dx);
+            s.dyF = static_cast<float>(d.dy);
+            s.trailLength = 5 + randomInt(10);
+            s.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+            s.active = true;
+            s.stutterFrames = 0;
+            s.flashFrames = 3;
+            s.histHead = 0; s.histCount = 0;
+            s.pushHistory();
+            break;
+        }
+    }
+}
+
+void RainSimulation::tapMessage(int col, int row, int colorVariants, float colSp, float rowSp,
+                                int messageStepW, int messageGlyphOffset, int glyphW,
+                                float screenWidth, const QString &charset) {
+    if (m_message.m_messageList.isEmpty()) return;
+    const QString &msg = m_message.m_messageList[randomInt(m_message.m_messageList.size())];
+    int msgColor = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    float stepW = static_cast<float>(messageStepW);
+    float tapPxX = col * colSp;
+    float tapPxY = row * rowSp;
+    float totalW = msg.length() * stepW;
+    float startPx = tapPxX - totalW / 2.0f;
+
+    QString currentChars = GlyphAtlas::charsetString(charset);
+    static const QString CHARS_MSG = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
+
+    for (int i = 0; i < msg.length(); ++i) {
+        QChar ch = msg[i].toUpper();
+        int gi = currentChars.indexOf(ch);
+        if (gi < 0 && messageGlyphOffset > 0) {
+            int mi = CHARS_MSG.indexOf(ch);
+            if (mi >= 0) gi = messageGlyphOffset + mi;
+        }
+        if (gi < 0) continue;
+        float charPx = startPx + i * stepW;
+        float gwF = static_cast<float>(glyphW);
+        if (charPx < -gwF || charPx >= screenWidth + gwF) continue;
+
+        if (m_message.m_messageOverlay.size() >= 500) break;
+        m_message.m_messageOverlay.append({charPx, tapPxY, gi, 40, msgColor});
+
+        int c = qBound(0, static_cast<int>(charPx / colSp), m_gridCols - 1);
+        if (row >= 0 && row < m_gridRows) {
+            int idx = c * m_gridRows + row;
+            if (idx >= 0 && idx < m_charGrid.size()) {
+                m_charGrid[idx] = gi;
+                if (idx < m_message.m_messageBright.size())
+                    m_message.m_messageBright[idx] = -40;
+            }
+        }
+    }
+}

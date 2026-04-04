@@ -87,6 +87,24 @@ class RainSimulation {
     /// @brief Flash all active streams to full brightness (enter button fallback action).
     void triggerFlashAll();
 
+    // --- Tap effects (called from MatrixRainItem tap handler) ---
+    /// @brief Generate random int in [0, max) using the simulation RNG.
+    int randomInt(int max) { return (max > 0) ? static_cast<int>(m_rng() % max) : 0; }
+    /// @brief Spawn glitch trails radiating from (col, row) in random directions.
+    void tapBurst(int col, int row, int colorVariants);
+    /// @brief Flash nearby streams within radius of (col, row).
+    void tapFlash(int col, int row, int radius);
+    /// @brief Randomize grid characters within radius of (col, row).
+    void tapScramble(int col, int row, int radius, int glyphCount);
+    /// @brief Spawn new short streams from (col, row) in random directions.
+    void tapSpawn(int col, int row, int colorVariants);
+    /// @brief Inject a random message centered at (col, row) as pixel-positioned overlay.
+    void tapMessage(int col, int row, int colorVariants, float colSp, float rowSp,
+                    int messageStepW, int messageGlyphOffset, int glyphW,
+                    float screenWidth, const QString &charset);
+    /// @brief Clear subliminal cells (called on screensaver close).
+    void clearSubliminalCells() { m_message.m_subliminalCells.clear(); }
+
     // Direction helpers
     bool isDiagonal() const { return m_dx != 0 && m_dy != 0; }
     int dx() const { return m_dx; }
