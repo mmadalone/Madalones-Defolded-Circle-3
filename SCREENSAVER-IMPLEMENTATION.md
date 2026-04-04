@@ -958,26 +958,44 @@ MatrixEffects.qml keeps: invert trail, head glow, glitch toggle + intensity + co
 
 **5. Header fix** — `signals:` section in matrixrain.h had incorrect scope: `bindToScreensaverConfig()` and all setters were accidentally inside the signals block. Fixed by adding `public:` access specifier after `enterAction` signal.
 
-### Final Audit Score: 8.9/10
+### Final Code Quality Pass (Session 11, sixth deploy)
+
+**1. Split handleTapInput into 5 sub-handlers** — tapBurst, tapFlash, tapScramble, tapSpawn, tapMessage. Shared burst directions moved to file-scope static `s_burstDirs` → `s_tapDirs` (in rainsimulation.cpp).
+
+**2. Encapsulate m_sim member access** — all 5 tap effects moved from MatrixRainItem into RainSimulation. Added `randomInt()`, `clearSubliminalCells()` accessors. **Zero `m_sim.m_` direct member access remains in matrixrain.cpp.** Tap helpers on MatrixRainItem are now thin wrappers.
+
+**3. Remove const_cast** — `countVisibleQuads()` and `renderStreamTrails()` made non-const instead of const_casting `m_cellDrawn`.
+
+**4. Guard restoreDirection** — added `dpadEnabled` check so persisted direction doesn't activate gravity mode when DPAD is disabled.
+
+**5. displayOff cycle tests** — 2 regression tests (single cycle + rapid toggling) in tst_config_propagation.qml.
+
+**6. CI fixes** — bumped deprecated GitHub Actions v3→v4 in build.yml. Added workflow self-trigger path. Added xvfb + Mesa software GL for integration tests on headless CI.
+
+**Deferred with justification:**
+- `visible:` → `Loader { active: }` in settings — breaks KeyNavigation id references across 30+ items for negligible memory savings on 4GB. AP-UC-13 (INFO severity).
+- `MATRIX_RAIN_TESTING` preprocessor guard — the clean alternative (stub .cpp) can't access `s_instance` (private). The guard is the simplest correct solution.
+
+### Final Audit Score: 9.1/10
 
 | Category | Grade |
 |----------|-------|
-| Architecture | A- |
-| C++ Code Quality | A- |
+| Architecture | A |
+| C++ Code Quality | A |
 | GPU Rendering | A- |
 | C++ Testing | A |
 | QML Architecture | A |
 | QML Testing | B+ |
 | Accessibility | B+ |
-| Error Handling | B+ |
+| Error Handling | A- |
 | Build/Deploy | A |
 | Documentation | A- |
 
-**Remaining (diminishing returns, not planned):** Color contrast audit (WCAG AA, manual), settings keyboard nav tests (needs Config mock harness), performance benchmarks on target hardware, fuzz testing.
+**Remaining (diminishing returns, consciously not addressed):** Color contrast audit (WCAG AA, manual), settings keyboard nav tests (Config mock harness cost exceeds value), `visible:` pattern (justified — KeyNavigation breakage), `MATRIX_RAIN_TESTING` preprocessor guard (justified — simplest correct solution).
 
-### Total Test Count: 131
+### Total Test Count: 133
 - 92 C++ unit tests (test/matrixrain/)
-- 39 QML integration tests (test/integration/): 9 lifecycle + 12 config propagation + 3 chaos stress + 8 enter state machine + 7 edge cases
+- 41 QML integration tests (test/integration/): 9 lifecycle + 14 config propagation + 3 chaos stress + 8 enter state machine + 7 edge cases
 
 ### Session 11 Summary
 
@@ -993,9 +1011,11 @@ Largest single session in the project. Delivered:
 - DPAD interactive toggle + direction persistence toggle
 - Enter state machine port to C++
 - 66 accessibility hints
-- CI pipeline (green)
+- CI pipeline (green, with xvfb + Mesa for integration tests)
 - 62 doxygen annotations
-- Audit score: 6.3 → 8.9
+- Tap handler split + m_sim encapsulation (zero direct member access from renderer)
+- CI Actions v3→v4 deprecation fix
+- Audit score: 6.3 → 9.1
 
 ### Bug Fixes (Session 11, third deploy)
 
