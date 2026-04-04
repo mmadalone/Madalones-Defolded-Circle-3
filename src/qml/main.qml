@@ -146,6 +146,10 @@ ApplicationWindow {
                 if (!applicationWindow.visible) {
                     applicationWindow.visible = true;
                 }
+                // Reset idle screensaver timer on ANY activity (power mode to Normal = user interacted)
+                if (idleScreensaverTimer.running) {
+                    idleScreensaverTimer.restart();
+                }
             }
         }
     }
@@ -457,6 +461,68 @@ ApplicationWindow {
             anchors.centerIn: parent
         }
 
+        // Idle screensaver: touch-anywhere detection resets the idle timer
+        MouseArea {
+            anchors.fill: parent
+            z: 9999
+            enabled: idleScreensaverTimer.running && !chargingScreenLoader.active
+            propagateComposedEvents: true
+            onPressed: {
+                idleScreensaverTimer.restart();
+                mouse.accepted = false;
+            }
+            onReleased: { mouse.accepted = false; }
+            onClicked: { mouse.accepted = false; }
+        }
+
+        // Hardware button + touch detection resets idle screensaver timer
+        // (keyPressed fires for ALL 24 buttons including DPAD, independent of ButtonNavigation stack)
+        // (touchDetected fires from C++ event filter — reliable over Flickables unlike QML MouseArea)
+        Connections {
+            target: ui.inputController
+            function onKeyPressed() {
+                if (idleScreensaverTimer.running) {
+                    idleScreensaverTimer.restart();
+                }
+            }
+            function onTouchDetected() {
+                if (idleScreensaverTimer.running) {
+                    idleScreensaverTimer.restart();
+                }
+            }
+        }
+
+        // Idle screensaver timer — activates screensaver after N seconds of inactivity when undocked
+        Timer {
+            id: idleScreensaverTimer
+            repeat: false
+            running: false
+            interval: Config.chargingIdleTimeout * 1000
+            onTriggered: {
+                if (Config.chargingIdleEnabled && !Battery.powerSupply && !chargingScreenLoader.active) {
+                    chargingScreenLoader.active = true;
+                }
+            }
+        }
+
+        Connections {
+            target: Config
+            ignoreUnknownSignals: true
+
+            function onChargingIdleEnabledChanged() {
+                if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+                    idleScreensaverTimer.restart();
+                } else {
+                    idleScreensaverTimer.stop();
+                }
+            }
+
+            function onChargingIdleTimeoutChanged() {
+                idleScreensaverTimer.interval = Config.chargingIdleTimeout * 1000;
+                if (idleScreensaverTimer.running) idleScreensaverTimer.restart();
+            }
+        }
+
         Loader {
             id: chargingScreenLoader
             anchors.fill: parent
@@ -476,11 +542,15 @@ ApplicationWindow {
 
                 function onPowerSupplyChanged(value) {
                     if (value) {
+                        idleScreensaverTimer.stop();
                         chargingScreenLoader.active = true;
                         SoundEffects.play(SoundEffects.BatteryCharge);
                     } else {
                         if (chargingScreenLoader.active) {
                             chargingScreenLoader.item.close();
+                        }
+                        if (Config.chargingIdleEnabled) {
+                            idleScreensaverTimer.restart();
                         }
                     }
                 }
@@ -491,8 +561,29 @@ ApplicationWindow {
                 ignoreUnknownSignals: true
 
                 function onPowerModeChanged(fromPowerMode, toPowerMode) {
-                    if (toPowerMode === PowerModes.Normal && fromPowerMode !== PowerModes.Idle && Battery.isCharging && Battery.powerSupply) {
-                        chargingScreenLoader.active = true;
+                    // Pause screensaver rendering when display is off (save CPU/GPU on battery)
+                    if ((toPowerMode === PowerModes.Idle || toPowerMode === PowerModes.Low_power)
+                            && chargingScreenLoader.active && chargingScreenLoader.item) {
+                        chargingScreenLoader.item.displayOff = true;
+                    }
+
+                    if (toPowerMode === PowerModes.Normal) {
+                        // Resume screensaver rendering
+                        if (chargingScreenLoader.active && chargingScreenLoader.item) {
+                            chargingScreenLoader.item.displayOff = false;
+                        }
+                        // Motion/pickup detected while screensaver is showing — close it if enabled
+                        if (Config.chargingMotionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
+                            chargingScreenLoader.item.close();
+                        }
+                        // Re-open screensaver when waking from suspend while charging (if not motion-closed)
+                        else if (fromPowerMode !== PowerModes.Idle && Battery.isCharging && Battery.powerSupply) {
+                            chargingScreenLoader.active = true;
+                        }
+                        // Reset idle timer on activity
+                        if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+                            idleScreensaverTimer.restart();
+                        }
                     }
                 }
             }
@@ -503,6 +594,10 @@ ApplicationWindow {
 
                 function onClosed() {
                     chargingScreenLoader.active = false;
+                    // Restart idle timer after user dismisses screensaver (if enabled and undocked)
+                    if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+                        idleScreensaverTimer.restart();
+                    }
                 }
             }
         }

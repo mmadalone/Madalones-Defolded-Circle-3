@@ -30,6 +30,9 @@ Item {
         buttonNavigation.takeControl();
         ui.inputController.setBaseOwner(mainContainerRoot);
     }
+    // Retry takeControl after startup — cleanupStack may reject the first call
+    // if the window isn't fully visible yet during Component.onCompleted.
+    Timer { interval: 500; running: true; repeat: false; onTriggered: buttonNavigation.takeControl() }
 
     property alias statusBar: statusBar
     property alias pages: pages

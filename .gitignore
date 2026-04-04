@@ -77,6 +77,22 @@ qt-creator-license-template
 /resources/fonts/*
 build/osx-x86_64/release/moc/moc_predefs.h
 
+# Build artifacts & binaries (custom additions)
+build-desktop/
+build/
+binaries/
+deploy/bin/
+*.tar.gz
+
+# Test build artifacts
+test/*/build*/.qmake.stash
+test/*/build*/moc_predefs.h
+test/*/build*/target_wrapper.sh
+test/*/build*/testdir.h
+test/*/.qmake.stash
+test/*/moc_predefs.h
+test/*/target_wrapper.sh
+
 # Legal info
 /resources/about_html/*
 

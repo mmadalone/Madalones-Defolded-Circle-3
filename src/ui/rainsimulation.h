@@ -1,0 +1,239 @@
+// Copyright (c) 2024 madalone. Rain simulation logic for Matrix rain screensaver.
+// Pure C++ class — no Qt object system. Owns all simulation state and config properties.
+// SPDX-License-Identifier: GPL-3.0-or-later
+
+#pragma once
+
+#include <QMap>
+#include <QString>
+#include <QVector>
+#include <array>
+#include <random>
+
+#include "glitchengine.h"
+#include "messageengine.h"
+
+static constexpr int MAX_TRAIL_HISTORY = 180;  // max trail length + headroom (3× original)
+
+class GlyphAtlas;
+
+// Per-stream state — head advances 1 cell per tick along (dx, dy) vector
+struct StreamState {
+    int  headCol;       // current head column position (rounded from float)
+    int  headRow;       // current head row position (rounded from float)
+    int  dx, dy;        // direction vector per tick (-1/0/+1 each, derived from float)
+    float headColF;     // fractional column position (continuous movement)
+    float headRowF;     // fractional row position (continuous movement)
+    float dxF, dyF;     // float direction vector (unit length, continuous angle)
+    int  trailLength;   // visible trail cells behind head
+    int  colorVariant;  // atlas color variant (rainbow mode)
+    bool active;        // currently raining
+    int  pauseTicks;    // countdown before restarting
+    int  stutterFrames; // > 0 = stream paused (stutter glitch)
+    int  flashFrames;   // > 0 = stream at full brightness (flash glitch)
+
+    // Position history ring buffer — stores past head positions for curved trail rendering
+    std::array<int, MAX_TRAIL_HISTORY> histCol{};
+    std::array<int, MAX_TRAIL_HISTORY> histRow{};
+    int  histHead = 0;   // write index (most recent position)
+    int  histCount = 0;  // number of valid entries
+
+    // Push current head position into history
+    void pushHistory() {
+        histCol[histHead] = headCol;
+        histRow[histHead] = headRow;
+        histHead = (histHead + 1) % MAX_TRAIL_HISTORY;
+        if (histCount < MAX_TRAIL_HISTORY) histCount++;
+    }
+    // Get trail position d steps behind head (0 = current head)
+    void trailPos(int d, int &c, int &r) const {
+        if (d <= 0 || d >= histCount) { c = headCol; r = headRow; return; }
+        int idx = (histHead - 1 - d + MAX_TRAIL_HISTORY) % MAX_TRAIL_HISTORY;
+        c = histCol[idx];
+        r = histRow[idx];
+    }
+};
+
+// Chaos event type bitmask — macro glitch bursts composing existing primitives
+enum ChaosType : int {
+    ChaosSurge    = 1 << 0,
+    ChaosScramble = 1 << 1,
+    ChaosFreeze   = 1 << 2,
+    ChaosScatter  = 1 << 3
+};
+
+class RainSimulation {
+ public:
+    RainSimulation();
+
+    // --- Core simulation methods ---
+    void initStreams(qreal screenWidth, qreal screenHeight, const GlyphAtlas &atlas);
+    void advanceSimulation(const GlyphAtlas &atlas);
+    void spawnStream(StreamState &s, bool stagger);
+
+    // --- Interactive burst methods (encapsulate SimContext creation) ---
+    void triggerChaosBurst(int glyphCount, int colorVariants);
+    void triggerFlashAll();
+
+    // Direction helpers
+    bool isDiagonal() const { return m_dx != 0 && m_dy != 0; }
+    int dx() const { return m_dx; }
+    int dy() const { return m_dy; }
+    bool gravityMode() const { return m_gravityMode; }
+    bool setGravityMode(bool g);
+    bool setGravityDirection(float dx, float dy);
+    void setGravityLerpRate(float rate) { m_gravityLerpRate = rate; }
+
+    inline bool isStreamOffScreen(const StreamState &s) const {
+        int headC = qRound(s.headColF);
+        int headR = qRound(s.headRowF);
+        int tailCol = qRound(s.headColF - (s.trailLength - 1) * s.dxF);
+        int tailRow = qRound(s.headRowF - (s.trailLength - 1) * s.dyF);
+        // Only check the EXIT edge per axis (direction of travel).
+        // Prevents killing streams entering from the entry edge after direction change.
+        bool offH, offV;
+        if (s.dxF < -0.01f)       offH = qMax(headC, tailCol) < 0;              // left → exit left
+        else if (s.dxF > 0.01f)   offH = qMin(headC, tailCol) >= m_gridCols;     // right → exit right
+        else                       offH = (qMax(headC, tailCol) < 0 || qMin(headC, tailCol) >= m_gridCols);
+        if (s.dyF < -0.01f)       offV = qMax(headR, tailRow) < 0;              // up → exit top
+        else if (s.dyF > 0.01f)   offV = qMin(headR, tailRow) >= m_gridRows;     // down → exit bottom
+        else                       offV = (qMax(headR, tailRow) < 0 || qMin(headR, tailRow) >= m_gridRows);
+        return offH || offV;
+    }
+
+    // --- Const accessors for rendering (updatePaintNode) ---
+    const QVector<StreamState>& streams() const { return m_streams; }
+    const QVector<int>& charGrid() const { return m_charGrid; }
+    const QVector<GlitchTrail>& glitchTrails() const { return m_glitch.trails(); }
+    const QVector<int>& glitchBright() const { return m_glitch.glitchBright(); }
+    const QVector<int>& messageBright() const { return m_message.messageBright(); }
+    const QVector<int>& messageColor() const { return m_message.messageColor(); }
+    const QVector<MessageCell>& messageOverlay() const { return m_message.messageOverlay(); }
+    int gridCols() const { return m_gridCols; }
+    int gridRows() const { return m_gridRows; }
+
+    // --- Config property getters ---
+    qreal   speed()       const { return m_speed; }
+    qreal   density()     const { return m_density; }
+    int     trailLength() const { return m_trailLength; }
+    bool    glow()        const { return m_glow; }
+    bool    glitch()      const { return m_glitch.glitch(); }
+    int     glitchRate()  const { return m_glitch.glitchRate(); }
+    bool    glitchFlash()   const { return m_glitch.glitchFlash(); }
+    bool    glitchStutter() const { return m_glitch.glitchStutter(); }
+    bool    glitchReverse()    const { return m_glitch.glitchReverse(); }
+    bool    glitchDirection()  const { return m_glitch.glitchDirection(); }
+    int     glitchDirRate()    const { return m_glitch.glitchDirRate(); }
+    int     glitchDirMask()      const { return m_glitch.glitchDirMask(); }
+    int     glitchDirFade()      const { return m_glitch.glitchDirFade(); }
+    int     glitchDirSpeed()     const { return m_glitch.glitchDirSpeed(); }
+    int     glitchDirLength()   const { return m_glitch.glitchDirLength(); }
+    bool    glitchRandomColor() const { return m_glitch.glitchRandomColor(); }
+    bool    glitchChaos()          const { return m_glitch.glitchChaos(); }
+    int     glitchChaosFrequency() const { return m_glitch.glitchChaosFrequency(); }
+    bool    glitchChaosSurge()     const { return m_glitch.glitchChaosSurge(); }
+    bool    glitchChaosScramble()  const { return m_glitch.glitchChaosScramble(); }
+    bool    glitchChaosFreeze()    const { return m_glitch.glitchChaosFreeze(); }
+    bool    glitchChaosScatter()   const { return m_glitch.glitchChaosScatter(); }
+    int     glitchChaosIntensity()    const { return m_glitch.glitchChaosIntensity(); }
+    int     glitchChaosScatterRate()   const { return m_glitch.glitchChaosScatterRate(); }
+    int     glitchChaosScatterLength() const { return m_glitch.glitchChaosScatterLength(); }
+    bool    invertTrail()   const { return m_invertTrail; }
+    QString charset()       const { return m_charset; }
+    QString direction()     const { return m_direction; }
+    // Message/subliminal getters — forwarded to MessageEngine
+    QString messages()        const { return m_message.messages(); }
+    int     messageInterval() const { return m_message.messageInterval(); }
+    bool    messageRandom()   const { return m_message.messageRandom(); }
+    QString messageDirection() const { return m_message.messageDirection(); }
+    bool    messageFlash()     const { return m_message.messageFlash(); }
+    bool    messagePulse()     const { return m_message.messagePulse(); }
+    bool    subliminal()          const { return m_message.subliminal(); }
+    int     subliminalInterval()  const { return m_message.subliminalInterval(); }
+    int     subliminalDuration()  const { return m_message.subliminalDuration(); }
+    bool    subliminalStream()    const { return m_message.subliminalStream(); }
+    bool    subliminalOverlay()   const { return m_message.subliminalOverlay(); }
+    bool    subliminalFlash()     const { return m_message.subliminalFlash(); }
+
+    // --- Config property setters (return true if value changed) ---
+    bool setSpeed(qreal s);
+    bool setDensity(qreal d);
+    bool setTrailLength(int t);
+    bool setGlow(bool g)            { if (m_glow == g) { return false; } m_glow = g; return true; }
+    bool setGlitch(bool g)          { return m_glitch.setGlitch(g); }
+    bool setGlitchFlash(bool v)     { return m_glitch.setGlitchFlash(v); }
+    bool setGlitchStutter(bool v)   { return m_glitch.setGlitchStutter(v); }
+    bool setGlitchReverse(bool v)   { return m_glitch.setGlitchReverse(v); }
+    bool setGlitchDirection(bool v) { return m_glitch.setGlitchDirection(v); }
+    bool setGlitchDirMask(int v)  { return m_glitch.setGlitchDirMask(v); }
+    bool setGlitchDirFade(int v)  { return m_glitch.setGlitchDirFade(v); }
+    bool setGlitchDirSpeed(int v) { return m_glitch.setGlitchDirSpeed(v); }
+    bool setGlitchRandomColor(bool v) { return m_glitch.setGlitchRandomColor(v); }
+    bool setGlitchRate(int r)       { return m_glitch.setGlitchRate(r); }
+    bool setGlitchDirRate(int r)    { return m_glitch.setGlitchDirRate(r); }
+    bool setGlitchDirLength(int v)  { return m_glitch.setGlitchDirLength(v); }
+    bool setGlitchChaos(bool v)     { return m_glitch.setGlitchChaos(v); }
+    bool setGlitchChaosFrequency(int v) { return m_glitch.setGlitchChaosFrequency(v); }
+    bool setGlitchChaosSurge(bool v)    { return m_glitch.setGlitchChaosSurge(v); }
+    bool setGlitchChaosScramble(bool v) { return m_glitch.setGlitchChaosScramble(v); }
+    bool setGlitchChaosFreeze(bool v)   { return m_glitch.setGlitchChaosFreeze(v); }
+    bool setGlitchChaosScatter(bool v)  { return m_glitch.setGlitchChaosScatter(v); }
+    bool setGlitchChaosIntensity(int v) { return m_glitch.setGlitchChaosIntensity(v); }
+    bool setGlitchChaosScatterRate(int v)   { return m_glitch.setGlitchChaosScatterRate(v); }
+    bool setGlitchChaosScatterLength(int v) { return m_glitch.setGlitchChaosScatterLength(v); }
+    bool setInvertTrail(bool v) { if (m_invertTrail == v) { return false; } m_invertTrail = v; return true; }
+    bool setCharset(const QString &c) { if (m_charset == c) { return false; } m_charset = c; return true; }
+    bool setDirection(const QString &d);
+    // Message/subliminal setters — forwarded to MessageEngine
+    bool setMessages(const QString &m)           { return m_message.setMessages(m); }
+    bool setMessageInterval(int v)               { return m_message.setMessageInterval(v); }
+    bool setMessageRandom(bool v)                { return m_message.setMessageRandom(v); }
+    bool setMessageDirection(const QString &d)   { return m_message.setMessageDirection(d); }
+    bool setMessageFlash(bool v)                 { return m_message.setMessageFlash(v); }
+    bool setMessagePulse(bool v)                 { return m_message.setMessagePulse(v); }
+    bool setSubliminal(bool v)                   { return m_message.setSubliminal(v); }
+    bool setSubliminalInterval(int v)            { return m_message.setSubliminalInterval(v); }
+    bool setSubliminalDuration(int v)            { return m_message.setSubliminalDuration(v); }
+    bool setSubliminalStream(bool v)             { return m_message.setSubliminalStream(v); }
+    bool setSubliminalOverlay(bool v)            { return m_message.setSubliminalOverlay(v); }
+    bool setSubliminalFlash(bool v)              { return m_message.setSubliminalFlash(v); }
+
+    // --- Runtime state (public for grid/stream access) ---
+    QVector<StreamState> m_streams;
+    QVector<int> m_charGrid;  // [col * gridRows + row] = glyph index
+    int m_gridCols = 0;       // physical horizontal grid positions
+    int m_gridRows = 0;       // physical vertical grid positions
+    qreal m_screenW = 0;      // stored from initStreams for message spacing
+    qreal m_screenH = 0;
+    std::mt19937 m_rng;
+
+    // Glitch engine (owns all glitch/chaos state and config)
+    GlitchEngine m_glitch;
+
+    // Message engine (owns all message/subliminal state and config)
+    MessageEngine m_message;
+
+    // Global direction vector (set from direction string or gravity)
+    int m_dx = 0;
+    int m_dy = 1;  // default: down
+    float m_dxF = 0.0f;
+    float m_dyF = 1.0f;  // default: down
+    bool m_gravityMode = false;
+    float m_gravityLerpRate = 0.08f;  // per-stream lerp toward global direction (configurable)
+    int m_gravitySpawnRow = 0;  // golden ratio counter for even horizontal row distribution
+    QString m_savedDirection;  // saved manual direction when entering gravity mode
+
+ private:
+    // Config properties
+    qreal   m_speed{1.0};
+    qreal   m_density{0.7};
+    int     m_trailLength{25};
+    bool    m_glow{true};
+    QString m_charset{"ascii"};
+    bool    m_invertTrail{false};
+    QString m_direction{"down"};
+
+#ifdef MATRIX_RAIN_TESTING
+    friend class MatrixRainTest;
+#endif
+};

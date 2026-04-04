@@ -329,6 +329,19 @@
     </message>
 </context>
 <context>
+    <name>BatteryOverlay</name>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="37"/>
+        <source>Fully charged</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
+        <source> - Charging</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Binary sensor state battery</name>
     <message>
         <location filename="../../src/ui/entity/sensor.h" line="141"/>
@@ -712,14 +725,6 @@
     </message>
 </context>
 <context>
-    <name>ChargingScreen</name>
-    <message>
-        <location filename="../../src/qml/components/ChargingScreen.qml" line="275"/>
-        <source> - Charging</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
     <name>Climate</name>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
@@ -845,6 +850,24 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/settings/settings/Color.qml" line="180"/>
         <source>Main text color</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>CommonToggles</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="37"/>
+        <source>Show clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="65"/>
+        <source>Show battery</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="91"/>
+        <source>Charging only</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1352,6 +1375,29 @@ Climate fan</extracomment>
         <location filename="../../src/qml/components/entities/cover/deviceclass/Garage.qml" line="293"/>
         <source>Stop</source>
         <extracomment>Button caption to stop window blinds motion</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>GeneralBehavior</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="37"/>
+        <source>Double-tap to close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="64"/>
+        <source>Close on wake</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="90"/>
+        <source>Idle screensaver</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="114"/>
+        <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -1881,63 +1927,63 @@ Climate fan</extracomment>
 <context>
     <name>MainContainer</name>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="50"/>
+        <location filename="../../src/qml/MainContainer.qml" line="53"/>
         <source>Add entity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="58"/>
+        <location filename="../../src/qml/MainContainer.qml" line="61"/>
         <source>Add group</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="66"/>
+        <location filename="../../src/qml/MainContainer.qml" line="69"/>
         <source>Reorder</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="72"/>
+        <location filename="../../src/qml/MainContainer.qml" line="75"/>
         <source>Page is empty</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="72"/>
+        <location filename="../../src/qml/MainContainer.qml" line="75"/>
         <source>There is nothing to reorder. Try adding entities or groups first.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="78"/>
+        <location filename="../../src/qml/MainContainer.qml" line="81"/>
         <source>Show tips</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="96"/>
-        <location filename="../../src/qml/MainContainer.qml" line="138"/>
+        <location filename="../../src/qml/MainContainer.qml" line="99"/>
+        <location filename="../../src/qml/MainContainer.qml" line="141"/>
         <source>Rename</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="104"/>
+        <location filename="../../src/qml/MainContainer.qml" line="107"/>
         <source>Change icon</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="113"/>
+        <location filename="../../src/qml/MainContainer.qml" line="116"/>
         <source>Remove</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="146"/>
+        <location filename="../../src/qml/MainContainer.qml" line="149"/>
         <source>Edit entities</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="154"/>
+        <location filename="../../src/qml/MainContainer.qml" line="157"/>
         <source>Delete</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/MainContainer.qml" line="391"/>
+        <location filename="../../src/qml/MainContainer.qml" line="394"/>
         <source>Profile is restricted</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1980,6 +2026,278 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="227"/>
         <source>Remove</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatrixAppearance</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="36"/>
+        <source>Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="165"/>
+        <source>Characters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="211"/>
+        <source>Font size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="237"/>
+        <source>Animation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="263"/>
+        <source>Column density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="289"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="315"/>
+        <source>Trail fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="342"/>
+        <source>Auto-rotate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="367"/>
+        <source>Rotation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="393"/>
+        <source>Trail bend</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="421"/>
+        <source>Direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatrixEffects</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="37"/>
+        <source>Invert trail</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="64"/>
+        <source>Head glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="90"/>
+        <source>Glitch effect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="114"/>
+        <source>Glitch intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="138"/>
+        <source>Column flash</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="160"/>
+        <source>Column stutter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="182"/>
+        <source>Reverse glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="204"/>
+        <source>Direction change</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="227"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="439"/>
+        <source>Frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="249"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="271"/>
+        <source>Glitch directions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="353"/>
+        <source>Trail fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="374"/>
+        <source>Trail speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="397"/>
+        <source>Random color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="419"/>
+        <source>Chaos events</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="460"/>
+        <source>Intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="483"/>
+        <source>Surge (flash)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="497"/>
+        <source>Scramble (mutate)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="511"/>
+        <source>Freeze (stutter)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="525"/>
+        <source>Scatter (burst)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="545"/>
+        <source>Scatter frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="566"/>
+        <source>Scatter trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="595"/>
+        <source>Tap effects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="600"/>
+        <source>Scatter burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="614"/>
+        <source>Flash shockwave</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="628"/>
+        <source>Character scramble</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="642"/>
+        <source>Stream spawn</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="656"/>
+        <source>Show message</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="677"/>
+        <source>Randomize</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="698"/>
+        <source>Chance</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="727"/>
+        <source>Subliminal messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="750"/>
+        <source>In-stream injection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="772"/>
+        <source>Overlay spanning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="794"/>
+        <source>Flash mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="814"/>
+        <source>Interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="835"/>
+        <source>Duration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="864"/>
+        <source>Hidden messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="890"/>
+        <source>Message interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="917"/>
+        <source>Random order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="941"/>
+        <source>Message direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="986"/>
+        <source>Surrounding flash</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="1008"/>
+        <source>Brightness pulse</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2029,162 +2347,162 @@ Climate fan</extracomment>
 <context>
     <name>MediaBrowser</name>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="411"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="403"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="426"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="464"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="456"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="527"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="519"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="174"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="185"/>
         <source>Track</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="156"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="167"/>
         <source>Album</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="159"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="170"/>
         <source>Artist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="170"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="181"/>
         <source>Playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="166"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="177"/>
         <source>Genre</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="171"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="182"/>
         <source>Podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="164"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="175"/>
         <source>Episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="172"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="183"/>
         <source>Radio</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="160"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="171"/>
         <source>Channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="157"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="168"/>
         <source>App</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="158"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="169"/>
         <source>Apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="161"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="172"/>
         <source>Channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="162"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="173"/>
         <source>Composer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="163"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="174"/>
         <source>Directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="165"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="176"/>
         <source>Game</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="167"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="178"/>
         <source>Image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="168"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="179"/>
         <source>Movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="169"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="180"/>
         <source>Music</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="173"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="184"/>
         <source>Season</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="175"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="186"/>
         <source>TV Show</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="176"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="187"/>
         <source>URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="177"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="188"/>
         <source>Video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="690"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="682"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="696"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="688"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="69"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="70"/>
         <source>Play now</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="72"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="73"/>
         <source>Play next</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="75"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="76"/>
         <source>Add to queue</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="410"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="402"/>
         <source>Could not load media</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2459,7 +2777,7 @@ Climate fan</extracomment>
 <context>
     <name>PopupMenu</name>
     <message>
-        <location filename="../../src/qml/components/PopupMenu.qml" line="246"/>
+        <location filename="../../src/qml/components/PopupMenu.qml" line="247"/>
         <source>Close</source>
         <extracomment>As in close the menu</extracomment>
         <translation type="unfinished"></translation>
@@ -2990,37 +3308,42 @@ no return</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="72"/>
-        <source>Sound &amp; Haptic</source>
+        <location filename="../../src/qml/settings/Settings.qml" line="67"/>
+        <source>Screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="77"/>
-        <source>Voice Control</source>
+        <source>Sound &amp; Haptic</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="82"/>
-        <source>Power Saving</source>
+        <source>Voice Control</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="87"/>
-        <source>Wifi &amp; Bluetooth</source>
+        <source>Power Saving</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="92"/>
-        <source>Localisation</source>
+        <source>Wifi &amp; Bluetooth</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="97"/>
-        <source>Administrator PIN</source>
+        <source>Localisation</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/Settings.qml" line="102"/>
+        <source>Administrator PIN</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/Settings.qml" line="107"/>
         <source>Factory reset</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3349,6 +3672,14 @@ Tap the QR code to show it on the screen.</source>
         <location filename="../../src/qml/onboarding/Terms.qml" line="97"/>
         <source>Agree</source>
         <extracomment>Agree to terms and conditions</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>ThemeSelector</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ThemeSelector.qml" line="29"/>
+        <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4021,7 +4352,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="700"/>
+        <location filename="../../src/qml/main.qml" line="795"/>
         <source>Done</source>
         <translation type="unfinished"></translation>
     </message>

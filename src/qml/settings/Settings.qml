@@ -63,6 +63,11 @@ Settings.Page {
                     page: "Ui",
                     icon: "uc:list"
                 },
+                {
+                    itemTitle: QT_TR_NOOP("Screensaver"),
+                    page: "ChargingScreen",
+                    icon: "uc:bolt"
+                },
                 //                {
                 //                    itemTitle: QT_TR_NOOP("Colors"),
                 //                    page: "Color",

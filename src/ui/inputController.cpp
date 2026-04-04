@@ -184,6 +184,9 @@ bool InputController::eventFilter(QObject *obj, QEvent *event) {
                 event->ignore();
                 return true;
             }
+            // Signal touch activity for idle timer reset
+            if (event->type() == QEvent::TouchBegin || event->type() == QEvent::MouseButtonPress)
+                emit touchDetected();
             break;
         }
         default:  // do nothing

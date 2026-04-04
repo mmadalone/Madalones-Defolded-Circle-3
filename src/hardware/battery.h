@@ -37,6 +37,7 @@ class Battery : public QObject {
     void getPowerMode();
 
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
+    static Battery *instance() { return s_instance; }
 
  signals:
     void levelChanged();

@@ -1,10 +1,13 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2024 madalone. Configurable screensaver with theme support.
+// Config propagation handled in C++ via ScreensaverConfig singleton.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
-import Battery 1.0
+import Config 1.0
+import ScreensaverConfig 1.0
 
 import "qrc:/components" as Components
 
@@ -13,269 +16,198 @@ Popup {
     width: ui.width; height: ui.height
     opacity: 0
     modal: false
-    closePolicy: Popup.CloseOnPressOutside
+    closePolicy: Popup.NoAutoClose
     padding: 0
 
+    readonly property int doubleTapMs: 300   // max interval between taps for double-tap detection
+    readonly property int holdThresholdMs: 500  // min press duration to activate hold
+    readonly property real slowFactor: 0.25  // speed multiplier during enter hold
+
+    property bool isClosing: false
+    property bool displayOff: false
+
+    // Kill theme rendering immediately when close starts
+    onOpenedChanged: {
+        if (!opened) {
+            isClosing = true;
+            themeLoader.active = false;
+        }
+    }
+
     onOpened: {
-        buttonNavigation.takeControl();
+        isClosing = false;
+        themeLoader.active = true;
+        if (themeLoader.item) {
+            // Only take focus if theme actually loaded — prevents invisible Popup
+            // from consuming keys when the theme fails to render.
+            buttonNavigation.takeControl();
+            if (themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = false;
+            if (themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = chargingScreenRoot.displayOff;
+        }
     }
 
     onClosed: {
+        isClosing = false;
         buttonNavigation.releaseControl();
     }
 
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
-            "BACK": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "HOME": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "VOICE": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "VOLUME_UP": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "VOLUME_DOWN": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "GREEN": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "DPAD_UP": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "YELLOW": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "DPAD_LEFT": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
+            // Escape buttons — dismiss screensaver (gated by tapToClose)
+            "BACK": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "HOME": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            // Interactive DPAD — controls rain direction / triggers chaos (unconditional)
+            "DPAD_UP":     { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up"); } },
+            "DPAD_DOWN":   { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down"); } },
+            "DPAD_LEFT":   { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("left"); } },
+            "DPAD_RIGHT":  { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("right"); } },
             "DPAD_MIDDLE": {
                 "pressed": function() {
-                    chargingScreenRoot.close();
+                    if (!themeLoader.item || !themeLoader.item.interactiveInput) return;
+                    if (enterState !== "idle") return;  // ignore autoRepeat
+                    enterState = "pressed";
+                    if (enterDoubleTapTimer.running) {
+                        // Second press within window — double-tap → restore
+                        enterDoubleTapTimer.stop();
+                        enterHoldTimer.stop();
+                        enterState = "idle";
+                        themeLoader.item.interactiveInput("restore");
+                    } else {
+                        // First press — start hold + double-tap timers
+                        enterHoldTimer.restart();
+                        enterDoubleTapTimer.restart();
+                    }
+                },
+                "released": function() {
+                    if (enterState === "held") {
+                        // Release after hold — restore speed
+                        if (themeLoader.item && themeLoader.item.interactiveInput)
+                            themeLoader.item.interactiveInput("slow:release");
+                    }
+                    // In "pressed" state: hold timer hasn't fired, double-tap timer handles it
+                    enterHoldTimer.stop();
+                    enterState = "idle";
                 }
             },
-            "DPAD_RIGHT": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "RED": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "DPAD_DOWN": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "BLUE": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "CHANNEL_UP": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "CHANNEL_DOWN": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "MUTE": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "PREV": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "PLAY": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "NEXT": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "POWER": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "STOP": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "RECORD": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            },
-            "MENU": {
-                "pressed": function() {
-                    chargingScreenRoot.close();
-                }
-            }
+            // Other buttons — dismiss screensaver (gated by tapToClose)
+            "VOICE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "VOLUME_UP": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up-left"); } },
+            "VOLUME_DOWN": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down-left"); } },
+            "GREEN": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "YELLOW": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "RED": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "BLUE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "CHANNEL_UP": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("up-right"); } },
+            "CHANNEL_DOWN": { "pressed": function() { if (themeLoader.item && themeLoader.item.interactiveInput) themeLoader.item.interactiveInput("down-right"); } },
+            "MUTE": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "PREV": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "PLAY": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "NEXT": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "POWER": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "STOP": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "RECORD": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } },
+            "MENU": { "pressed": function() { if (ScreensaverConfig.tapToClose) chargingScreenRoot.close(); } }
         }
     }
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; easing.type: Easing.OutExpo; duration: 300 }
-        PropertyAnimation { target: chargeIndicator; properties: "anchors.bottomMargin"; to: 0; easing.type: Easing.OutExpo; duration: 500 }
     }
 
     exit: Transition {
-        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; easing.type: Easing.OutExpo; duration: 300 }
-        PropertyAnimation { target: chargeIndicator; properties: "anchors.bottomMargin"; to: -100; easing.type: Easing.OutExpo; duration: 500 }
+        NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 50 }
     }
 
-    background: Rectangle { color: colors.black }
+    background: Rectangle { color: "black" }
 
+    // Double-tap to close — single tap triggers corruption burst at touch point
+    property real lastTapX: 0
+    property real lastTapY: 0
     MouseArea {
         anchors.fill: parent
-        onClicked: chargingScreenRoot.close()
+        onClicked: {
+            if (doubleTapTimer.running) {
+                doubleTapTimer.stop();
+                if (ScreensaverConfig.tapToClose) chargingScreenRoot.close();
+            } else {
+                chargingScreenRoot.lastTapX = mouse.x;
+                chargingScreenRoot.lastTapY = mouse.y;
+                doubleTapTimer.restart();
+            }
+        }
+    }
+    // Enter button state machine: idle → pressed → held (or back to idle via release)
+    // States: "idle" | "pressed" | "held"
+    property string enterState: "idle"
+    Timer {
+        id: enterDoubleTapTimer; interval: doubleTapMs
+        onTriggered: {
+            // Single tap confirmed — chaos burst
+            if (themeLoader.item && themeLoader.item.interactiveInput)
+                themeLoader.item.interactiveInput("enter");
+        }
+    }
+    Timer {
+        id: enterHoldTimer; interval: holdThresholdMs
+        onTriggered: {
+            // Hold threshold reached — activate slowdown
+            enterState = "held";
+            enterDoubleTapTimer.stop();
+            if (themeLoader.item && themeLoader.item.interactiveInput)
+                themeLoader.item.interactiveInput("slow:hold");
+        }
     }
 
-    Item {
-        id: clock
-        width: ui.width-80; height: width
-        anchors.centerIn: parent
+    Timer {
+        id: doubleTapTimer; interval: doubleTapMs
+        onTriggered: {
+            // Single tap confirmed — fire corruption burst at tap point
+            // Format: "tap:x,y,burst,flash,scramble,spawn,message[,R{chance}]"
+            if (themeLoader.item && themeLoader.item.interactiveInput) {
+                var flags = (ScreensaverConfig.tapBurst ? "1" : "0") + "," +
+                            (ScreensaverConfig.tapFlash ? "1" : "0") + "," +
+                            (ScreensaverConfig.tapScramble ? "1" : "0") + "," +
+                            (ScreensaverConfig.tapSpawn ? "1" : "0") + "," +
+                            (ScreensaverConfig.tapMessage ? "1" : "0") +
+                            (ScreensaverConfig.tapRandomize ? ",R" + ScreensaverConfig.tapRandomizeChance : "");
+                themeLoader.item.interactiveInput("tap:" + chargingScreenRoot.lastTapX + "," + chargingScreenRoot.lastTapY + "," + flags);
+            }
+        }
+    }
 
-        property int hours: ui.time.getHours()
-        property int minutes: ui.time.getMinutes()
-        property int seconds: ui.time.getSeconds()
+    Loader {
+        id: themeLoader
+        anchors.fill: parent
+        source: {
+            switch (ScreensaverConfig.theme) {
+                case "matrix": return "qrc:/components/themes/MatrixTheme.qml";
+                case "starfield": return "qrc:/components/themes/StarfieldTheme.qml";
+                case "minimal": return "qrc:/components/themes/MinimalTheme.qml";
+                default: return "qrc:/components/themes/MatrixTheme.qml";
+            }
+        }
 
-        Repeater {
-            model: 12
+        onLoaded: {
+            if (!item) return;
+            // Runtime state — not config, must be set explicitly
+            if (item.hasOwnProperty("isClosing")) item.isClosing = chargingScreenRoot.isClosing;
+            if (item.hasOwnProperty("displayOff")) item.displayOff = chargingScreenRoot.displayOff;
+        }
+    }
 
-            Item {
-                id: dotContainer
-                height: parent.height/2
-                transformOrigin:  Item.Bottom
-                rotation: index * 30
-                x: parent.width/2
-                y: 0
-
-                Rectangle {
-                    width: 12; height: 12
-                    radius: 6
-                    color: colors.offwhite
-                    opacity: index == 0 || index == 3 || index == 6 || index ==9 ? 1 : 0.6
-                    anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 4 }
+    // Theme switch when config changes
+    Connections {
+        target: ScreensaverConfig
+        function onThemeChanged() {
+            themeLoader.source = Qt.binding(function() {
+                switch (ScreensaverConfig.theme) {
+                    case "matrix": return "qrc:/components/themes/MatrixTheme.qml";
+                    case "starfield": return "qrc:/components/themes/StarfieldTheme.qml";
+                    case "minimal": return "qrc:/components/themes/MinimalTheme.qml";
+                    default: return "qrc:/components/themes/MatrixTheme.qml";
                 }
-            }
-        }
-
-        Item {
-            id: seconds
-            anchors { top: parent.top; bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-
-            property int value: clock.seconds
-            property int granularity: 60
-
-            Rectangle {
-                width: 1; height: clock.width/2 - 20
-                color: colors.red
-                anchors { horizontalCenter: parent.horizontalCenter }
-                antialiasing: true
-                y: parent.height * 0.05
-            }
-            rotation: 360/granularity * (value % granularity)
-            antialiasing: true
-
-            //            Behavior on rotation {
-            //                NumberAnimation { duration: 1000 }
-            //            }
-        }
-
-        Item {
-            id: minutes
-            anchors { top: parent.top; bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-
-            property int value: clock.minutes
-            property int granularity: 60
-
-            Rectangle {
-                width: 4; height: clock.width/2 - 40
-                color: colors.offwhite
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.verticalCenter }
-                antialiasing: true
-            }
-            rotation: 360/granularity * (value % granularity)
-            antialiasing: true
-        }
-
-        Item {
-            id: hours
-            anchors { top: parent.top; bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-
-            property int value: clock.hours
-            property int valueMinute: clock.minutes
-            property int granularity: 12
-
-            Rectangle {
-                width: 4; height: clock.width/2 - 80
-                color: colors.offwhite
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.verticalCenter }
-                antialiasing: true
-            }
-            rotation: 360/granularity * (value % granularity) + 360 / granularity * (valueMinute / 60)
-            antialiasing: true
-        }
-
-    }
-
-    Item {
-        id: chargeIndicator
-        width: childrenRect.width
-        height: 70
-        anchors { bottom: parent.bottom; bottomMargin: -100; horizontalCenter: parent.horizontalCenter }
-
-        Components.Icon {
-            id: icon
-            icon: "uc:bolt"
-            color: colors.offwhite
-            anchors { left: parent.left; leftMargin: -10 }
-            size: 60
-        }
-
-        Text {
-            color: colors.offwhite
-            text: Battery.level + "%" + (Battery.isCharging ? qsTr(" - Charging") : "")
-            anchors { left: icon.right; leftMargin: 10; verticalCenter: icon.verticalCenter }
-            font: fonts.primaryFont(24)
+            });
         }
     }
-
 }

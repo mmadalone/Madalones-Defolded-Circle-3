@@ -1054,4 +1054,6 @@ void Config::setCountryNameAsSelectedLanguage() {
     }
 }
 
+// Charging screen settings — now inline in config.h via CFG_BOOL/CFG_INT/CFG_STRING macros
+
 }  // namespace uc

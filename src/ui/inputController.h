@@ -72,6 +72,7 @@ class InputController : public QQuickItem {
  signals:
     void keyPressed(QString key);
     void keyReleased(QString key);
+    void touchDetected();
     void activeItemChanged();
 
  public slots:

@@ -1,0 +1,14 @@
+{
+  "theme": "matrix",
+  "show_clock": false,
+  "show_battery": true,
+  "matrix": {
+    "color": "#00ff41",
+    "speed": 1.0,
+    "density": 0.385
+  },
+  "starfield": {
+    "star_count": 200,
+    "speed": 1.0
+  }
+}

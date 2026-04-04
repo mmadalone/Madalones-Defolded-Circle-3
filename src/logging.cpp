@@ -27,6 +27,7 @@ Q_LOGGING_CATEGORY(lcIntegrationController, "uc.integration.controller");
 Q_LOGGING_CATEGORY(lcIntegrationDriver, "uc.integration.driver");
 
 Q_LOGGING_CATEGORY(lcDockController, "uc.dock.controller");
+Q_LOGGING_CATEGORY(lcScreensaver, "uc.ui.screensaver");
 
 /// HW
 Q_LOGGING_CATEGORY(lcHw, "uc.hw");

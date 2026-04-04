@@ -21,6 +21,17 @@
         <file alias="components/SelectWidget.qml">../../src/qml/components/SelectWidget.qml</file>
         <file alias="components/Poweroff.qml">../../src/qml/components/Poweroff.qml</file>
         <file alias="components/ChargingScreen.qml">../../src/qml/components/ChargingScreen.qml</file>
+        <file alias="settings/settings/ChargingScreen.qml">../../src/qml/settings/settings/ChargingScreen.qml</file>
+        <file alias="settings/settings/chargingscreen/ThemeSelector.qml">../../src/qml/settings/settings/chargingscreen/ThemeSelector.qml</file>
+        <file alias="settings/settings/chargingscreen/CommonToggles.qml">../../src/qml/settings/settings/chargingscreen/CommonToggles.qml</file>
+        <file alias="settings/settings/chargingscreen/MatrixAppearance.qml">../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml</file>
+        <file alias="settings/settings/chargingscreen/MatrixEffects.qml">../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml</file>
+        <file alias="settings/settings/chargingscreen/GeneralBehavior.qml">../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml</file>
+        <file alias="components/themes/MatrixTheme.qml">../../src/qml/components/themes/MatrixTheme.qml</file>
+        <file alias="components/themes/StarfieldTheme.qml">../../src/qml/components/themes/StarfieldTheme.qml</file>
+        <file alias="components/themes/MinimalTheme.qml">../../src/qml/components/themes/MinimalTheme.qml</file>
+        <file alias="components/overlays/ClockOverlay.qml">../../src/qml/components/overlays/ClockOverlay.qml</file>
+        <file alias="components/overlays/BatteryOverlay.qml">../../src/qml/components/overlays/BatteryOverlay.qml</file>
         <file alias="components/RemoteOpen.qml">../../src/qml/components/RemoteOpen.qml</file>
         <file alias="components/PopupMenu.qml">../../src/qml/components/PopupMenu.qml</file>
         <file alias="components/PopupList.qml">../../src/qml/components/PopupList.qml</file>
