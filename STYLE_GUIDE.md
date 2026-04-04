@@ -1,6 +1,8 @@
 # STYLE_GUIDE.md — UC Remote 3 Coding, Architecture & Operational Standards
 
 > **Scope:** This guide governs all AI-assisted development on the UC Remote 3 custom firmware project. It covers coding conventions, architectural patterns, operational workflow, anti-patterns, quality gates, and session discipline. Adapted from the Project Fronkensteen HA Master Style Guide ("Rules of Acquisition") for the Qt 5.15 / QML / C++17 domain.
+>
+> **Reference docs:** [Qt 5.15 QML Coding Conventions](https://doc.qt.io/archives/qt-5.15/qml-codingconventions.html) · [Qt 5.15 Best Practices](https://doc.qt.io/archives/qt-5.15/qtquick-bestpractices.html) · [Qt Wiki Coding Conventions](https://wiki.qt.io/Coding_Conventions) · [Qt 5.15 Scene Graph](https://doc.qt.io/archives/qt-5.15/qtquick-visualcanvas-scenegraph.html) · [Qt 5.15 Scene Graph Renderer](https://doc.qt.io/archives/qt-5.15/qtquick-visualcanvas-scenegraph-renderer.html) · [Scene Graph Custom Geometry Example](https://doc.qt.io/qt-6/qtquick-scenegraph-customgeometry-example.html)
 
 ---
 
@@ -35,6 +37,7 @@
   - `Popup` for overlays (not custom `Item` with manual z-ordering).
   - `Loader` for conditional components (not `visible: false` with full instantiation).
   - `EntityController.load()` → `onEntityLoaded` for entity access (not raw WebSocket).
+- **Prefer declarative property bindings over imperative JavaScript.** QML is a declarative language — use bindings for reactive UI updates. Use imperative JS only for complex logic that can't be expressed declaratively (multi-step calculations, network calls, state machine transitions). If a binding expression exceeds ~3 lines, extract it into a JS function — but the function should still *return* a value for binding, not imperatively set properties.
 
 ### §1.5 Uncertainty signals — stop and ask, don't guess (MANDATORY)
 - If you are **unsure about a Qt API, UC Core API, entity schema, or integration behavior**, STOP and tell the user. Do not guess.
@@ -77,6 +80,8 @@ Before generating **any** code (C++, QML, .pro changes, qrc registration), you M
 2. **Explain your approach** — which patterns you'll follow, which existing code you'll reference, which files you'll modify.
 3. **Flag ambiguities or risks** — anything unclear, any Qt behavior you're unsure about (§1.5), any complexity budget concerns (§1.6), any upstream compatibility risks.
 4. **Only then** generate the code.
+
+**Claude Code workflow:** Use Plan Mode (Shift+Tab twice) for the reasoning step — it prevents accidental file writes while you're still designing. Only exit Plan Mode and write code after the user confirms the approach.
 
 **Exceptions:** Trivial one-line fixes the user explicitly asked for. Or when the user says "skip the explanation."
 
@@ -283,7 +288,7 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-04 | ⚠️ | Removed behavior without user confirmation | §1.3 |
 | AP-UC-05 | ⚠️ | Code generated with no preceding reasoning | §1.7 |
 | AP-UC-06 | ⚠️ | Hardcoded entity ID instead of configurable prefix | §8.4 |
-| AP-UC-07 | ❌ | `updatePaintNode()` accesses data not prepared in `tick()` | §7.4 |
+| AP-UC-07 | ❌ | `updatePaintNode()` creates QSG objects outside render sync point, or modifies simulation state | §7.4 |
 | AP-UC-08 | ❌ | Timer continues when `displayOff` is true | §7.5 |
 | AP-UC-09 | ⚠️ | Qt 6 API used (project is Qt 5.15) | §1.4 |
 | AP-UC-10 | ⚠️ | Missing `id:` on QML Loader | §8.2 |
@@ -292,18 +297,23 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-13 | ℹ️ | `visible: false` where `Loader` with `active:` would avoid instantiation | §1.4 |
 | AP-UC-14 | ⚠️ | Single-pass generation over ~150 lines | §4.5 |
 | AP-UC-15 | ⚠️ | Missing copyright header on new file | §6.1 |
-| AP-UC-16 | ℹ️ | QML property without type annotation when type is known | §8.1 |
+| AP-UC-16 | ⚠️ | QML property declared as `var` when concrete type is known (`string`, `int`, `bool`, `color`, `real`) | §8.1 |
+| AP-UC-17 | ⚠️ | QObject subclass missing `Q_OBJECT` macro | §6.5 |
+| AP-UC-18 | ⚠️ | Reimplemented virtual method missing `override` keyword or with redundant `virtual` in header | §6.5 |
+| AP-UC-19 | ⚠️ | Imperative JS setting QML properties where a declarative binding would work | §1.4 |
 
 ### Renderer / GPU
 
 | ID | Sev | Trigger pattern | Fix ref |
 |---|---|---|---|
 | AP-UC-20 | ❌ | Atlas rebuilt per frame | §7.3 |
-| AP-UC-21 | ❌ | `QSGTexture` created outside `updatePaintNode()` | §7.4 |
+| AP-UC-21 | ❌ | `QSGTexture` or `QSGNode` created outside `updatePaintNode()` (wrong thread) | §7.4 |
 | AP-UC-22 | ⚠️ | Vertex buffer fully reconstructed when only UVs changed | §7.4 |
-| AP-UC-23 | ❌ | `QSGNode` leaked — missing destructor cleanup | §7.4 |
+| AP-UC-23 | ❌ | `QSGNode` leaked — missing destructor cleanup, or QSGNode reference retained in QQuickItem class | §7.4 |
 | AP-UC-24 | ⚠️ | Per-frame trig that could be precomputed into lookup table | §7.6 |
 | AP-UC-25 | ⚠️ | `GlyphAtlas` charset registered but font not loaded in `main.cpp` | §7.3 |
+| AP-UC-26 | ❌ | QQuickItem constructor missing `setFlag(ItemHasContents, true)` — `updatePaintNode()` will never be called | §7.2 |
+| AP-UC-27 | ❌ | Geometry or material changed in `updatePaintNode()` without calling `node->markDirty()` — changes won't render | §7.4 |
 
 ### Entity / HA Bridge
 
@@ -349,101 +359,354 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 - Warnings: `-Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`
 
 ### §6.3 Include ordering
-1. Own header · 2. Qt headers · 3. Project headers
+1. Own header (`#include "ui/avatargrid.h"`)
+2. Qt headers (`#include <QObject>`, `#include <QQuickItem>`)
+3. Project headers (`#include "../config/config.h"`)
 
 ### §6.4 Namespace
 `uc` namespace (matches upstream).
 
-### §6.5 Q_PROPERTY ordering
-Group: lifecycle → state → visual config → computed. New properties at END.
+### §6.5 Class conventions (Qt-specific)
+
+**Q_OBJECT macro (MANDATORY):** Every QObject subclass MUST have the `Q_OBJECT` macro, even if it has no signals or slots. Without it, `qobject_cast` fails and meta-object features break. (Source: [Qt Wiki Coding Conventions](https://wiki.qt.io/Coding_Conventions))
+
+**Virtual method reimplementation:** When reimplementing a virtual method:
+- Do NOT put `virtual` in the header for the reimplementation.
+- DO annotate with `override` after the declaration, before the `;`.
+- Example: `QSGNode *updatePaintNode(QSGNode *old, UpdatePaintNodeData *) override;`
+
+(Source: [Qt Wiki Coding Conventions](https://wiki.qt.io/Coding_Conventions))
+
+**Q_PROPERTY ordering:** Group properties by domain: lifecycle → state → visual config → computed. New custom properties always at the END of the property list (minimizes merge conflicts with upstream).
+
+**Signal naming:** `{propertyName}Changed` for property notifications. No other pattern.
 
 ### §6.6 Config macros
-`CFG_BOOL`, `CFG_INT`, `CFG_STRING` in `config_macros.h`. QSettings key namespacing: `"charging/"`, `"avatar/"`. Always provide safe defaults.
+Defined in `config_macros.h`:
+
+| Macro | Type | Usage |
+|---|---|---|
+| `CFG_BOOL(Func, key, def, sig)` | `bool` | `CFG_BOOL(AvatarEnabled, "avatar/enabled", false, avatarEnabledChanged)` |
+| `CFG_INT(Func, key, def, sig)` | `int` | `CFG_INT(AvatarOverlayOpacity, "avatar/overlayOpacity", 90, avatarOverlayOpacityChanged)` |
+| `CFG_STRING(Func, key, def, sig)` | `QString` | `CFG_STRING(AvatarCharacter, "avatar/character", "auto", avatarCharacterChanged)` |
+
+QSettings key namespacing: `"charging/"` for screensaver, `"avatar/"` for avatar. Always provide a safe default.
 
 ### §6.7 Config bridge singletons
-When QML needs transformed values → bridge singleton (`ScreensaverConfig` pattern). Raw values → `Config` directly.
+When QML needs **transformed** config values (speed/50.0, conditional logic, cross-property derivations), create a bridge singleton (`ScreensaverConfig` pattern). Raw values → `Config` directly.
 
 ---
 
 ## §7 GPU RENDERER PATTERNS
 
+> **Source:** [Qt 5.15 Scene Graph](https://doc.qt.io/archives/qt-5.15/qtquick-visualcanvas-scenegraph.html) · [Custom Geometry Example](https://doc.qt.io/qt-6/qtquick-scenegraph-customgeometry-example.html)
+
 ### §7.1 Anatomy
-`src/ui/myrenderer.h` (declaration) + `src/ui/myrenderer.cpp` (implementation).
+```
+src/ui/myrenderer.h      — QQuickItem subclass declaration
+src/ui/myrenderer.cpp    — Grid model, simulation tick, QSG rendering
+```
 
 ### §7.2 Lifecycle
-`componentComplete()` → timer → `tick()` → `update()` → `updatePaintNode()`.
 
-### §7.3 GlyphAtlas
-Register charset → add font loader → atlas provides UV per `(glyph, brightness)`. Rebuild ~50-150ms on ARM. Font in `deploy/config/`.
+1. **Constructor** — call `setFlag(ItemHasContents, true)`. This is MANDATORY — without this flag, Qt will never call `updatePaintNode()` and nothing renders. (AP-UC-26)
+2. **`componentComplete()`** — deferred init. Do heavy setup here (load fonts, build atlas, allocate grid arrays), NOT in the constructor. Copy this pattern from `MatrixRainItem`.
+3. **Timer** fires `tick()` at target FPS, gated by `m_displayOff`.
+4. **`tick()`** updates all simulation state: cell values, animation timers, brightness arrays. Calls `update()` to schedule a render sync.
+5. **`update()`** → Qt schedules `updatePaintNode()` at the next sync point.
+6. **`updatePaintNode()`** — builds/updates `QSGGeometryNode`. This is the ONLY place to create or modify QSG objects.
 
-### §7.4 Thread safety
-`updatePaintNode()` on render thread. Only read tick-prepared data. Create textures here. Copy MatrixRainNode destructor pattern.
+```cpp
+// Constructor — MANDATORY flag
+MyRenderer::MyRenderer(QQuickItem *parent) : QQuickItem(parent) {
+    setFlag(ItemHasContents, true);  // Without this, updatePaintNode() is never called
+}
+```
 
-### §7.5 displayOff (MANDATORY)
-Stop timer when `displayOff` true. Zero CPU/GPU. Non-negotiable.
+### §7.3 GlyphAtlas integration
+- Register charset in `glyphatlas.h` `charsetString()`.
+- Add font loader alongside `loadCJKFont()` (same pattern, ~15 lines).
+- Atlas provides UV lookup per `(glyphIndex, brightnessLevel)`.
+- Atlas rebuild is ~50-150ms on ARM — acceptable for mood transitions, NOT per-frame. (AP-UC-20)
+- Font bundled in `deploy/config/`, subsetted via `pyftsubset`.
 
-### §7.6 Performance
-Precompute brightness maps. Lookup tables over per-frame math. Two renderers max. Degradation path: reduce density if frame budget exceeded.
+### §7.4 Thread safety and the render sync point
+
+Qt's scene graph runs on a **separate render thread**. The `updatePaintNode()` call happens at a **sync point** where the GUI (main) thread is blocked. This means:
+
+**SAFE in `updatePaintNode()`:**
+- Reading member variables (`m_gridChar[]`, `m_gridBright[]`, etc.) that were prepared by `tick()` on the main thread. The GUI thread is blocked, so there's no race.
+- Creating `QSGNode` subclasses (`QSGGeometryNode`, `QSGSimpleTextureNode`, etc.).
+- Creating `QSGTexture` via `window()->createTextureFromImage()`.
+- Updating vertex buffers, index buffers, UV coordinates.
+- Reading `width()`, `height()`, and other QQuickItem geometry.
+
+**NEVER do in `updatePaintNode()`:**
+- Call `tick()` or modify simulation state — the render thread shouldn't drive simulation.
+- Create `QSGTexture` or `QSGNode` objects anywhere else (they belong to the render thread).
+- Retain `QSGNode` pointers as class members — the scene graph owns the nodes.
+
+**Rule of thumb from Qt docs:** Only use classes with the `QSG` prefix inside `updatePaintNode()`.
+
+**Marking nodes dirty (MANDATORY):** After changing geometry or material properties on a node, you MUST call `node->markDirty(QSGNode::DirtyGeometry)` and/or `node->markDirty(QSGNode::DirtyMaterial)`. Without this, the scene graph doesn't know the node changed and won't re-render it. (AP-UC-27)
+
+```cpp
+// Example: updating geometry in updatePaintNode()
+node->setGeometry(geometry);
+node->markDirty(QSGNode::DirtyGeometry);
+
+// Example: updating material/texture
+node->setMaterial(material);
+node->markDirty(QSGNode::DirtyMaterial);
+```
+
+**Node ownership:** The scene graph manages node lifetime. Never retain `QSGNode` references in QQuickItem member variables — they can be destroyed by the scene graph at any time on the render thread. The `oldNode` parameter in `updatePaintNode(QSGNode *oldNode, ...)` is the only safe way to access your previous node. If `oldNode` is null, create a new one; otherwise, update the existing one.
+
+**Destructor cleanup:** Copy the `MatrixRainNode` destructor pattern — clean up GPU resources (textures) on the render thread, not in the QQuickItem destructor (which runs on the GUI thread).
+
+**Alternative to timer-driven updates:** For nodes that need pre-render preparation without a timer, set `QSGNode::UsePreprocess` flag and override `QSGNode::preprocess()`. This is called just before rendering each frame. Useful for one-off adjustments, but our renderers use timers for their main simulation loop.
+
+### §7.5 displayOff power gating (MANDATORY)
+Every renderer MUST stop its timer when `displayOff` is true. Zero CPU/GPU when screen off. Non-negotiable for battery life. (AP-UC-08)
+
+```cpp
+void MyRenderer::setDisplayOff(bool off) {
+    if (m_displayOff == off) return;
+    m_displayOff = off;
+    if (off) m_timer.stop();
+    else if (m_running) m_timer.start();
+    emit displayOffChanged();
+}
+```
+
+### §7.6 Performance rules
+- Precompute brightness maps: `m_brightnessMap[distance] → atlas_level`.
+- Use lookup tables for trig functions in animation loops (AP-UC-24).
+- Two concurrent renderers (rain + avatar) expected fine, but verify on device.
+- Degradation path: reduce density/effects when dual-rendering if frame budget exceeded.
+- Prefer stack allocation over heap for per-frame temporary data.
+- The scene graph renderer batches draw calls and retains geometry on GPU — design nodes to be batch-friendly (same material/texture where possible).
 
 ---
 
 ## §8 QML CONVENTIONS
 
-### §8.1 Property order
-id → anchors → visual → custom properties → readonly → signals → handlers → children → Connections → functions → Component.onCompleted.
+> **Source:** [Qt 5.15 QML Coding Conventions](https://doc.qt.io/archives/qt-5.15/qml-codingconventions.html) · [Qt 5.15 Best Practices](https://doc.qt.io/archives/qt-5.15/qtquick-bestpractices.html)
 
-### §8.2 Naming
-PascalCase files. Every Loader gets an `id`.
+### §8.1 Property declaration order
 
-### §8.3 Entity access
-`EntityController.load()` on `Component.onCompleted`. `ignoreUnknownSignals: true` on all entity Connections. Null-guard all access.
+This project extends the official Qt QML attribute ordering with additional granularity for our component patterns. The [Qt 5.15 official order](https://doc.qt.io/archives/qt-5.15/qml-codingconventions.html) is: id → property declarations → signal declarations → JavaScript functions → object properties → child objects → states → transitions. We split "object properties" into anchors/geometry vs visual, add explicit slots for Connections/Loaders, and place `Component.onCompleted` last for readability:
 
-### §8.4 Entity values
-`getValue()` returns `QString`. `parseInt()` for numbers. Configurable prefix via `Config.avatarHaPrefix`.
+```qml
+Item {
+    id: myComponent                          // 1. id (always first)
 
-### §8.5 HA bridge
-`state.set()` sensors seeded via `state_bridge.py`. HA optional — local fallback. `hasOwnProperty` guards on theme properties.
+    // 2. Property declarations (custom + alias)
+    property bool isActive: false
+    property string currentMood: "neutral"
+    property var entityRef: null             // Use concrete types when possible (AP-UC-16)
+    readonly property string _prefix: "hass.main"
 
-### §8.6 Settings decomposition
-Sub-pages when >12 items (ChargingScreen pattern).
+    // 3. Signal declarations
+    signal moodChanged(string newMood)
+
+    // 4. JavaScript functions
+    function resolveMood() { ... }
+
+    // 5. Object properties (anchors, geometry, visual)
+    anchors.fill: parent
+    width: 480; height: 850
+    opacity: 1.0
+    visible: true
+
+    // 6. Signal handlers
+    onIsActiveChanged: { ... }
+
+    // 7. Child components, Loaders, Repeaters
+    Loader { id: featureLoader; ... }
+
+    // 8. Connections blocks
+    Connections { target: ...; ignoreUnknownSignals: true; ... }
+
+    // 9. States and Transitions
+    states: [ State { name: "active"; ... } ]
+    transitions: [ Transition { from: ""; to: "active"; ... } ]
+
+    // 10. Component.onCompleted (always last)
+    Component.onCompleted: { ... }
+}
+```
+
+**Typed properties (AP-UC-16):** Always use the actual type when known: `property string name`, `property int size`, `property color moodColor`. Avoid `property var` unless the value genuinely can be multiple types or null. Untyped properties defeat static analysis and produce confusing error messages pointing to the declaration rather than the assignment.
+
+**Group notation:** When using multiple properties from the same group, prefer group notation:
+```qml
+// Prefer this:
+font { pixelSize: 14; family: "monospace" }
+// Over this:
+font.pixelSize: 14
+font.family: "monospace"
+```
+
+### §8.2 Component naming & files
+PascalCase files: `AvatarDisplay.qml`, `MoodEngine.qml`. Every `Loader` gets an `id`.
+
+### §8.3 Entity access pattern
+```qml
+Component.onCompleted: EntityController.load(entityId)
+Connections {
+    target: EntityController
+    ignoreUnknownSignals: true  // MANDATORY (AP-UC-02) — entity may not exist
+    function onEntityLoaded(success, entityId) {
+        if (!success) return;
+        myEntity = EntityController.get(entityId);
+    }
+}
+```
+Entity IDs: `{prefix}.{ha_entity_id}` → `hass.main.sensor.ai_avatar_mood`. Prefix is configurable via `Config.avatarHaPrefix`.
+
+### §8.4 Entity value handling
+`sensor.getValue()` returns `QString`. Use `parseInt()` for numeric comparisons. Always null-guard: `if (myEntity && myEntity.value !== "")`.
+
+### §8.5 HA bridge rules
+- All `state.set()` sensors are volatile — seed via `state_bridge.py` on HA startup.
+- Entity access is optional — mods must work without HA (local fallback).
+- `hasOwnProperty` guards when driving properties on dynamically loaded themes.
+
+### §8.6 Settings page decomposition
+Sub-pages when >12 items (ChargingScreen pattern with `chargingscreen/` subfolder).
 
 ---
 
-## §9 MOD ANATOMY
+## §9 MOD ANATOMY — Template for New Features
 
-New mod template: C++ renderer → config bridge → QML components → settings pages → assets → qrc/pro registration → CUSTOM_FILES.md update. Full checklist in §9 of the extended guide.
+```
+src/ui/{feature}.h/.cpp                   C++ renderer or logic
+src/ui/{feature}config.h/.cpp             Config bridge singleton (if needed)
+src/qml/components/{feature}/             QML components
+  {Feature}Display.qml                      Main visual wrapper
+  {Feature}Engine.qml                       State/logic resolver
+  {Feature}Overlay.qml                      Popup overlay (if applicable)
+src/qml/components/overlays/              Shared overlay components
+src/qml/settings/settings/
+  {Feature}.qml                             Settings page entry
+  {feature}/                                Settings sub-pages
+deploy/config/                             Bundled assets (fonts)
+src/qml/components/{feature}/art/         Art assets (compiled to qrc)
+```
+
+**Registration checklist:**
+- [ ] `.h` → HEADERS in `remote-ui.pro` (at END)
+- [ ] `.cpp` → SOURCES in `remote-ui.pro` (at END)
+- [ ] `qmlRegisterType<>()` in `main.cpp`
+- [ ] `setFlag(ItemHasContents, true)` in constructor (if visual QQuickItem)
+- [ ] `Q_OBJECT` macro in class declaration
+- [ ] Config bridge instantiation in `main.cpp` (if applicable)
+- [ ] All QML files in `resources/qrc/main.qrc`
+- [ ] Q_PROPERTYs in `config.h`/`config.cpp` (at END)
+- [ ] Settings entry in `Settings.qml`
+- [ ] Update `docs/CUSTOM_FILES.md`
 
 ---
 
 ## §10 QA AUDIT CHECKLIST
 
 ### §10.1 Pre-build gate
-Design doc read? Pattern match? Mod anatomy? Git pre-flight? Complexity budget?
+Before writing code for any new component:
+
+| Check | What to verify |
+|---|---|
+| **Design doc read** | Have you read the relevant design doc? All decisions resolved? |
+| **Pattern match** | Does the task match an existing pattern (screensaver, overlay, settings)? |
+| **Mod anatomy** | Does the planned file structure follow §9? |
+| **Git pre-flight** | §3.3 completed? |
+| **Complexity budget** | Does the planned scope fit §1.6 limits? |
 
 ### §10.2 Pre-output self-check
-Anti-pattern scan (§5) → displayOff check → thread safety → null guards → config defaults → copyright → registration → ignoreUnknownSignals → upstream diff position → fallback behavior.
+Before presenting generated code to the user:
+
+| # | Check | What to look for | Severity |
+|---|---|---|---|
+| Q1 | **Anti-pattern scan** | Scan §5 table top to bottom | Per AP |
+| Q2 | **displayOff** | Does every timer/animation stop when displayOff is true? | ❌ |
+| Q3 | **Thread safety** | Does updatePaintNode only create/modify QSG objects at sync point? | ❌ |
+| Q4 | **ItemHasContents** | Does every visual QQuickItem set the flag in constructor? | ❌ |
+| Q5 | **markDirty** | Is markDirty called after every geometry/material change? | ❌ |
+| Q6 | **Q_OBJECT** | Does every QObject subclass have the macro? | ⚠️ |
+| Q7 | **override** | Do reimplemented virtuals use `override` and omit `virtual`? | ⚠️ |
+| Q8 | **Null guards** | Are all entity accesses null-guarded? | ❌ |
+| Q9 | **Config defaults** | Do all new Config properties have safe defaults? | ⚠️ |
+| Q10 | **Copyright** | Do new files have the copyright header? | ⚠️ |
+| Q11 | **Registration** | Are new files registered in .pro, .qrc, main.cpp? | ❌ |
+| Q12 | **ignoreUnknownSignals** | On every Connections to dynamic targets? | ⚠️ |
+| Q13 | **Upstream diff** | Are custom additions at END of upstream lists? | ⚠️ |
+| Q14 | **Fallback** | Does the feature degrade gracefully when disabled/HA unavailable? | ⚠️ |
+| Q15 | **Typed properties** | Are QML properties declared with concrete types? | ⚠️ |
+| Q16 | **Node ownership** | Are QSGNode references NOT retained as class members? | ❌ |
 
 ### §10.3 Periodic audit
-Performance (displayOff, precomputation) → Memory (QSGNode cleanup, atlas rebuilds) → Upstream (no reformatting, end-of-list additions) → Config (defaults, signals) → Docs (CUSTOM_FILES current) → Git (clean state).
+For full codebase audits (run quarterly or before major features):
+
+| Domain | Check | Severity |
+|---|---|---|
+| **Performance** | Any renderer running without displayOff gating? | ❌ |
+| **Performance** | Any per-frame computation that could be precomputed? | ⚠️ |
+| **Memory** | Any QSGNode without proper cleanup in destructor? | ❌ |
+| **Memory** | Any QSGNode reference retained in QQuickItem? | ❌ |
+| **Memory** | Any atlas rebuilt unnecessarily? | ⚠️ |
+| **Upstream** | Any upstream files reformatted? | ⚠️ |
+| **Upstream** | Custom additions not at end of lists? | ℹ️ |
+| **Config** | Any property without default? | ⚠️ |
+| **Config** | Any property missing NOTIFY signal? | ❌ |
+| **Docs** | `CUSTOM_FILES.md` up to date? | ⚠️ |
+| **Docs** | Design docs reflect current implementation? | ℹ️ |
+| **Git** | Any uncommitted work? | ⚠️ |
 
 ---
 
 ## §11 SESSION DISCIPLINE
 
-### §11.1 Ship it or lose it — write to disk immediately.
-### §11.2 Reference, don't repeat — don't paste code twice.
-### §11.3 Artifact-first — write files, not conversational narration.
-### §11.4 One major deliverable per session.
-### §11.5 ~15 exchanges without shipping = pause and reassess.
+### §11.1 Ship it or lose it
+When a file is finalized, write it to disk immediately. Don't hold finished code in conversation.
+
+### §11.2 Reference, don't repeat
+Once a code block has been established, refer to it by name or location — don't paste it again. If the user needs to see something again, re-read the file.
+
+### §11.3 Artifact-first
+When the deliverable is code, write the file. Don't narrate 300 lines of C++ across conversational messages.
+
+| Situation | Do this | Not this |
+|---|---|---|
+| Delivering a new class | Write the file, summarize in 2-3 sentences | Walk through every method conversationally |
+| Applying 5 fixes | Make the edits, list what changed | Explain each fix in a paragraph, then edit |
+| User asks "what changed?" | Reference the git diff | Paste before and after |
+
+### §11.4 Session scoping
+One major deliverable per session. Don't start a second renderer in the same conversation where you just finished a 400-line C++ class. Quick follow-ups are fine.
+
+### §11.5 Turn threshold
+~15 exchanges without shipping = pause and reassess scope.
 
 ---
 
-## §12 HARDWARE CONSTRAINTS
+## §12 UC3 HARDWARE CONSTRAINTS
 
-ARM64 1.8 GHz, 4 GB RAM, 480×850 IPS, ~8.88 Wh battery, 32 GB eMMC. displayOff gating mandatory. Single draw call preferred, two max.
+| Spec | Value | Impact |
+|---|---|---|
+| CPU | ARM64 quad-core 1.8 GHz | Budget simulation complexity |
+| GPU | Embedded (in SoC) | Single draw call preferred; two max |
+| RAM | 4 GB | Atlas textures live in GPU memory |
+| Display | 480 × 850px IPS | 14px font → ~68×67 cell grid. No burn-in risk. |
+| Battery | ~8.88 Wh Li-ion | displayOff gating MANDATORY |
+| Storage | 32 GB eMMC | Binary size matters |
 
 ---
 
 ## §13 COMMUNICATION STYLE
 
-Talk like Quark. Curse when it fits. Be direct. Explain as you go. Edit files directly. Present trade-offs, let the user choose.
+- Talk like Quark from DS9. Curse when it fits — for emphasis, frustration, or color.
+- Be direct. Don't over-explain obvious things.
+- When reviewing, suggest concrete improvements with code.
+- Edit files directly when filesystem access is available.
+- Present options with trade-offs and let the user choose.
+- **Explain as you go** — narrate reasoning in real time, not just in footnotes after 400 lines of C++. If you hit a surprise mid-generation, say so.
