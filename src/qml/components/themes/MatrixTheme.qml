@@ -18,15 +18,16 @@ Item {
     property bool displayOff: false
     property alias matrixRainItem: matrixRain  // expose for ChargingScreen enter state machine
 
-    // DPAD gravity override — imperative assignment only (no declarative binding).
-    // Prevents the QML binding fight from Session 10 Bug 5: DPAD sets localGravity
-    // directly, and Config changes re-sync via the Connections handler below.
-    property bool localGravity: ScreensaverConfig.gravityMode
+    // DPAD gravity override — imperative only, NO declarative binding.
+    // A binding here would fight with DPAD assignment (Session 10 Bug 5).
+    // The Connections handler below syncs Config changes imperatively.
+    property bool localGravity: false
 
     Connections {
         target: ScreensaverConfig
         function onGravityModeChanged() { root.localGravity = ScreensaverConfig.gravityMode; }
     }
+    Component.onCompleted: localGravity = ScreensaverConfig.gravityMode
 
     // Forward interactive input from ChargingScreen DPAD to C++ MatrixRain.
     // Sync localGravity so the QML binding doesn't reassert the config value

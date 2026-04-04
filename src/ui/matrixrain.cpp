@@ -663,69 +663,65 @@ void MatrixRainItem::handleRestoreInput() {
 }
 
 void MatrixRainItem::handleTapInput(const QString &params) {
-        // Corruption burst at touch point — parse "x,y,burst,flash,scramble,spawn[,message][,R{chance}]"
-        auto parts = params.midRef(0).split(QLatin1Char(','));
-        if (parts.size() < 2) return;
-        float px = parts[0].toFloat();
-        float py = parts[1].toFloat();
-        bool doBurst    = (parts.size() > 2) ? parts[2] == QLatin1String("1") : true;
-        bool doFlash    = (parts.size() > 3) ? parts[3] == QLatin1String("1") : true;
-        bool doScramble = (parts.size() > 4) ? parts[4] == QLatin1String("1") : true;
-        bool doSpawn    = (parts.size() > 5) ? parts[5] == QLatin1String("1") : true;
-        bool doMessage  = (parts.size() > 6) ? parts[6] == QLatin1String("1") : true;
+    // Parse "x,y,burst,flash,scramble,spawn,message[,R{chance}]"
+    auto parts = params.midRef(0).split(QLatin1Char(','));
+    if (parts.size() < 2) return;
+    float px = parts[0].toFloat();
+    float py = parts[1].toFloat();
+    bool doBurst    = (parts.size() > 2) ? parts[2] == QLatin1String("1") : true;
+    bool doFlash    = (parts.size() > 3) ? parts[3] == QLatin1String("1") : true;
+    bool doScramble = (parts.size() > 4) ? parts[4] == QLatin1String("1") : true;
+    bool doSpawn    = (parts.size() > 5) ? parts[5] == QLatin1String("1") : true;
+    bool doMessage  = (parts.size() > 6) ? parts[6] == QLatin1String("1") : true;
 
-        // Parse randomize flag: ",R{chance}" in position 7
-        if (parts.size() > 7 && parts[7].startsWith(QLatin1Char('R'))) {
-            int chance = parts[7].mid(1).toInt();
-            chance = qBound(10, chance, 90);
-            // Each enabled effect gets an independent coin flip
-            if (doBurst)    doBurst    = (m_sim.randomInt(100) < chance);
-            if (doFlash)    doFlash    = (m_sim.randomInt(100) < chance);
-            if (doScramble) doScramble = (m_sim.randomInt(100) < chance);
-            if (doSpawn)    doSpawn    = (m_sim.randomInt(100) < chance);
-            if (doMessage)  doMessage  = (m_sim.randomInt(100) < chance);
-            // Guarantee at least one effect fires
-            if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) {
-                int enabled[5], count = 0;
-                if (parts.size() > 2 && parts[2] == QLatin1String("1")) enabled[count++] = 0;
-                if (parts.size() > 3 && parts[3] == QLatin1String("1")) enabled[count++] = 1;
-                if (parts.size() > 4 && parts[4] == QLatin1String("1")) enabled[count++] = 2;
-                if (parts.size() > 5 && parts[5] == QLatin1String("1")) enabled[count++] = 3;
-                if (parts.size() > 6 && parts[6] == QLatin1String("1")) enabled[count++] = 4;
-                if (count > 0) {
-                    switch (enabled[m_sim.randomInt(count)]) {
-                        case 0: doBurst = true; break;
-                        case 1: doFlash = true; break;
-                        case 2: doScramble = true; break;
-                        case 3: doSpawn = true; break;
-                        case 4: doMessage = true; break;
-                    }
+    // Parse randomize flag: ",R{chance}" in position 7
+    if (parts.size() > 7 && parts[7].startsWith(QLatin1Char('R'))) {
+        int chance = parts[7].mid(1).toInt();
+        chance = qBound(10, chance, 90);
+        if (doBurst)    doBurst    = (m_sim.randomInt(100) < chance);
+        if (doFlash)    doFlash    = (m_sim.randomInt(100) < chance);
+        if (doScramble) doScramble = (m_sim.randomInt(100) < chance);
+        if (doSpawn)    doSpawn    = (m_sim.randomInt(100) < chance);
+        if (doMessage)  doMessage  = (m_sim.randomInt(100) < chance);
+        // Guarantee at least one effect fires
+        if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) {
+            int enabled[5], count = 0;
+            if (parts.size() > 2 && parts[2] == QLatin1String("1")) enabled[count++] = 0;
+            if (parts.size() > 3 && parts[3] == QLatin1String("1")) enabled[count++] = 1;
+            if (parts.size() > 4 && parts[4] == QLatin1String("1")) enabled[count++] = 2;
+            if (parts.size() > 5 && parts[5] == QLatin1String("1")) enabled[count++] = 3;
+            if (parts.size() > 6 && parts[6] == QLatin1String("1")) enabled[count++] = 4;
+            if (count > 0) {
+                switch (enabled[m_sim.randomInt(count)]) {
+                    case 0: doBurst = true; break;
+                    case 1: doFlash = true; break;
+                    case 2: doScramble = true; break;
+                    case 3: doSpawn = true; break;
+                    case 4: doMessage = true; break;
                 }
             }
         }
+    }
 
-        if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) return;
+    if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) return;
 
-        int gridCols = m_sim.gridCols();
-        int gridRows = m_sim.gridRows();
-        if (gridCols <= 0 || gridRows <= 0) return;
+    int gridCols = m_sim.gridCols();
+    int gridRows = m_sim.gridRows();
+    if (gridCols <= 0 || gridRows <= 0) return;
 
-        float colSp = static_cast<float>(width()) / static_cast<float>(gridCols);
-        float rowSp = static_cast<float>(height()) / static_cast<float>(gridRows);
-        int tapCol = qBound(0, static_cast<int>(px / colSp), gridCols - 1);
-        int tapRow = qBound(0, static_cast<int>(py / rowSp), gridRows - 1);
+    float colSp = static_cast<float>(width()) / static_cast<float>(gridCols);
+    float rowSp = static_cast<float>(height()) / static_cast<float>(gridRows);
+    int tapCol = qBound(0, static_cast<int>(px / colSp), gridCols - 1);
+    int tapRow = qBound(0, static_cast<int>(py / rowSp), gridRows - 1);
 
-        int glyphCount = m_atlas.glyphCount();
-        int colorVariants = m_atlas.colorVariants();
-        std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
+    int colorVariants = m_atlas.colorVariants();
+    int radius = qMax(3, qMin(gridCols, gridRows) / 6);
 
-        int radius = qMax(3, qMin(gridCols, gridRows) / 6);
-
-        if (doBurst)    tapBurst(tapCol, tapRow, colorVariants);
-        if (doFlash)    tapFlash(tapCol, tapRow, radius);
-        if (doScramble) tapScramble(tapCol, tapRow, gridCols, gridRows, radius);
-        if (doSpawn)    tapSpawn(tapCol, tapRow, colorVariants);
-        if (doMessage)  tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
+    if (doBurst)    tapBurst(tapCol, tapRow, colorVariants);
+    if (doFlash)    tapFlash(tapCol, tapRow, radius);
+    if (doScramble) tapScramble(tapCol, tapRow, gridCols, gridRows, radius);
+    if (doSpawn)    tapSpawn(tapCol, tapRow, colorVariants);
+    if (doMessage)  tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
 }
 
 // --- Tap effect sub-handlers — delegate to RainSimulation ---
