@@ -65,6 +65,10 @@ Please be aware, that **installing a custom remote-ui version on the Remote Two 
 
 Please read [CONTRIBUTING.md](CONTRIBUTING.md) for details on how to contribute and submit pull requests to us.
 
+## Custom Mods
+
+- **[Custom Screensaver](SCREENSAVER.md)** — GPU-accelerated Matrix rain, Starfield, and Minimal clock themes with full settings UI and DPAD interaction.
+
 ## License
 
 The Remote-UI is published under the [GPL v3](LICENSE) open source license.
