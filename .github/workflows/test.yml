@@ -6,6 +6,7 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/test.yml'
       - 'src/**'
       - 'test/**'
       - 'remote-ui.pro'
