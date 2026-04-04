@@ -993,6 +993,42 @@ MatrixEffects.qml keeps: invert trail, head glow, glitch toggle + intensity + co
 
 **Remaining (diminishing returns, consciously not addressed):** Color contrast audit (WCAG AA, manual), settings keyboard nav tests (Config mock harness cost exceeds value), `visible:` pattern (justified — KeyNavigation breakage), `MATRIX_RAIN_TESTING` preprocessor guard (justified — simplest correct solution).
 
+### Final Fixes (Session 11, seventh/eighth deploy)
+
+**1. Tap handler cleanup** — fixed double-indentation (leftover from old if/else chain), fixed stale comment (`[,message]` marked optional but isn't), removed unused `glyphCount`/`charDist` variables (leftovers from pre-encapsulation).
+
+**2. Gravity binding — attempted refactor, reverted** — removed declarative `localGravity: ScreensaverConfig.gravityMode` binding in favor of imperative-only (`false` + `Component.onCompleted` sync). Broke first-load DPAD because `Component.onCompleted` fires after ScreensaverConfig init timing. Reverted: the declarative binding is the correct pattern — it evaluates immediately at creation (guaranteed initial value), DPAD breaks it (intended), Connections handler re-syncs on Config changes. Now properly documented.
+
+**3. SCREENSAVER.md** — user-facing README with full feature list, settings reference table, install/revert instructions, technical summary. Linked from upstream README under "Custom Mods".
+
+**4. CI fixes** — bumped deprecated GitHub Actions v3→v4 in build.yml. Added `testdir.h` to `.gitignore`.
+
+### Gravity Binding Pattern (Session 11 — resolved)
+
+The `localGravity` property in MatrixTheme.qml uses a deliberate pattern:
+```
+property bool localGravity: ScreensaverConfig.gravityMode   // declarative — initial value
+Connections { onGravityModeChanged: localGravity = ... }     // imperative — re-sync on changes
+function interactiveInput() { localGravity = true/false }    // imperative — breaks binding (intended)
+```
+
+**Why this works:** The declarative binding gives the correct initial value at creation. First DPAD press breaks the binding (QML behavior: imperative assignment kills declarative binding). After that, the Connections handler takes over for Config changes. This is NOT a binding fight — it's a deliberate one-shot-then-imperative pattern.
+
+**Why `false` + `Component.onCompleted` failed:** `onCompleted` fires after QML property initialization. If ScreensaverConfig hasn't emitted yet (startup timing), the value is wrong on first load. The declarative binding evaluates during property initialization — before onCompleted — so it always gets the right value.
+
+### TODO
+
+- [ ] Add screenshots to SCREENSAVER.md — 9 photos needed from physical remote:
+  1. Matrix Rain — default green (docked)
+  2. Matrix Rain — neon or rainbow color mode
+  3. Matrix Rain — auto-rotate with curved trails
+  4. Matrix Rain — glitch effects visible (column flash or direction glitch)
+  5. Starfield theme
+  6. Minimal clock theme
+  7. Settings page — top (theme + overlays + color/charset)
+  8. Settings page — middle (sliders + direction)
+  9. Settings page — bottom (glitch toggles + behavior)
+
 ### Total Test Count: 133
 - 92 C++ unit tests (test/matrixrain/)
 - 41 QML integration tests (test/integration/): 9 lifecycle + 14 config propagation + 3 chaos stress + 8 enter state machine + 7 edge cases
