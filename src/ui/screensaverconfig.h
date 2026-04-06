@@ -97,7 +97,11 @@ class ScreensaverConfig : public QObject {
     SC_BOOL(glitchChaosSurge,    getChargingMatrixGlitchChaosSurge)
     SC_BOOL(glitchChaosScramble, getChargingMatrixGlitchChaosScramble)
     SC_BOOL(glitchChaosFreeze,   getChargingMatrixGlitchChaosFreeze)
-    SC_BOOL(glitchChaosScatter,  getChargingMatrixGlitchChaosScatter)
+    SC_BOOL(glitchChaosScatter,     getChargingMatrixGlitchChaosScatter)
+    SC_BOOL(glitchChaosSquareBurst,     getChargingMatrixGlitchChaosSquareBurst)
+    SC_INT(glitchChaosSquareBurstSize, getChargingMatrixGlitchChaosSquareBurstSize)
+    SC_BOOL(glitchChaosRipple,          getChargingMatrixGlitchChaosRipple)
+    SC_BOOL(glitchChaosWipe,            getChargingMatrixGlitchChaosWipe)
     SC_INT(glitchChaosIntensity, getChargingMatrixGlitchChaosIntensity)
     SC_INT(glitchChaosScatterRate,   getChargingMatrixGlitchChaosScatterRate)
     SC_INT(glitchChaosScatterLength, getChargingMatrixGlitchChaosScatterLength)
@@ -126,10 +130,18 @@ class ScreensaverConfig : public QObject {
 
     // --- Tap interaction flags (read on-demand by ChargingScreen.qml tap handler) ---
     SC_BOOL(tapBurst,            getChargingMatrixTapBurst)
+    SC_INT(tapBurstCount,       getChargingMatrixTapBurstCount)
+    SC_INT(tapBurstLength,      getChargingMatrixTapBurstLength)
     SC_BOOL(tapFlash,            getChargingMatrixTapFlash)
     SC_BOOL(tapScramble,         getChargingMatrixTapScramble)
     SC_BOOL(tapSpawn,            getChargingMatrixTapSpawn)
+    SC_INT(tapSpawnCount,       getChargingMatrixTapSpawnCount)
+    SC_INT(tapSpawnLength,      getChargingMatrixTapSpawnLength)
     SC_BOOL(tapMessage,          getChargingMatrixTapMessage)
+    SC_BOOL(tapSquareBurst,        getChargingMatrixTapSquareBurst)
+    SC_INT(tapSquareBurstSize,    getChargingMatrixTapSquareBurstSize)
+    SC_BOOL(tapRipple,           getChargingMatrixTapRipple)
+    SC_BOOL(tapWipe,             getChargingMatrixTapWipe)
     SC_BOOL(tapRandomize,        getChargingMatrixTapRandomize)
     SC_INT(tapRandomizeChance,   getChargingMatrixTapRandomizeChance)
 
@@ -139,6 +151,7 @@ class ScreensaverConfig : public QObject {
     SC_BOOL(idleEnabled,    getChargingIdleEnabled)
     SC_INT(idleTimeout,     getChargingIdleTimeout)
     SC_BOOL(dpadEnabled,    getChargingMatrixDpadEnabled)
+    SC_BOOL(tapDirection,   getChargingMatrixTapDirection)
     SC_STRING(lastDirection, getChargingMatrixLastDirection)
 
     // ---- Manually declared properties (custom getters with transforms) ----

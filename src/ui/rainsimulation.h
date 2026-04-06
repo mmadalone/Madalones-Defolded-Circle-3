@@ -58,10 +58,13 @@ struct StreamState {
 
 // Chaos event type bitmask — macro glitch bursts composing existing primitives
 enum ChaosType : int {
-    ChaosSurge    = 1 << 0,
-    ChaosScramble = 1 << 1,
-    ChaosFreeze   = 1 << 2,
-    ChaosScatter  = 1 << 3
+    ChaosSurge       = 1 << 0,
+    ChaosScramble    = 1 << 1,
+    ChaosFreeze      = 1 << 2,
+    ChaosScatter     = 1 << 3,
+    ChaosSquareBurst = 1 << 4,
+    ChaosRipple      = 1 << 5,
+    ChaosWipe        = 1 << 6
 };
 
 /// @brief Pure C++ simulation engine for Matrix rain.
@@ -92,6 +95,12 @@ class RainSimulation {
     int randomInt(int max) { return (max > 0) ? static_cast<int>(m_rng() % max) : 0; }
     /// @brief Spawn glitch trails radiating from (col, row) in random directions.
     void tapBurst(int col, int row, int colorVariants);
+    /// @brief Spawn glitch trails along expanding square edges from (col, row).
+    void tapSquareBurst(int col, int row, int colorVariants);
+    /// @brief Spawn concentric ring trails expanding outward from (col, row).
+    void tapRipple(int col, int row, int colorVariants);
+    /// @brief Spawn a vertical line of trails sweeping horizontally from (col, row).
+    void tapWipe(int col, int row, int colorVariants);
     /// @brief Flash nearby streams within radius of (col, row).
     void tapFlash(int col, int row, int radius);
     /// @brief Randomize grid characters within radius of (col, row).
@@ -167,7 +176,16 @@ class RainSimulation {
     bool    glitchChaosSurge()     const { return m_glitch.glitchChaosSurge(); }
     bool    glitchChaosScramble()  const { return m_glitch.glitchChaosScramble(); }
     bool    glitchChaosFreeze()    const { return m_glitch.glitchChaosFreeze(); }
-    bool    glitchChaosScatter()   const { return m_glitch.glitchChaosScatter(); }
+    bool    glitchChaosScatter()      const { return m_glitch.glitchChaosScatter(); }
+    bool    glitchChaosSquareBurst()     const { return m_glitch.glitchChaosSquareBurst(); }
+    int     glitchChaosSquareBurstSize() const { return m_glitch.glitchChaosSquareBurstSize(); }
+    bool    glitchChaosRipple()          const { return m_glitch.glitchChaosRipple(); }
+    bool    glitchChaosWipe()            const { return m_glitch.glitchChaosWipe(); }
+    int     tapBurstCount()              const { return m_tapBurstCount; }
+    int     tapBurstLength()             const { return m_tapBurstLength; }
+    int     tapSpawnCount()              const { return m_tapSpawnCount; }
+    int     tapSpawnLength()             const { return m_tapSpawnLength; }
+    int     tapSquareBurstSize()         const { return m_tapSquareBurstSize; }
     int     glitchChaosIntensity()    const { return m_glitch.glitchChaosIntensity(); }
     int     glitchChaosScatterRate()   const { return m_glitch.glitchChaosScatterRate(); }
     int     glitchChaosScatterLength() const { return m_glitch.glitchChaosScatterLength(); }
@@ -210,7 +228,26 @@ class RainSimulation {
     bool setGlitchChaosSurge(bool v)    { return m_glitch.setGlitchChaosSurge(v); }
     bool setGlitchChaosScramble(bool v) { return m_glitch.setGlitchChaosScramble(v); }
     bool setGlitchChaosFreeze(bool v)   { return m_glitch.setGlitchChaosFreeze(v); }
-    bool setGlitchChaosScatter(bool v)  { return m_glitch.setGlitchChaosScatter(v); }
+    bool setGlitchChaosScatter(bool v)     { return m_glitch.setGlitchChaosScatter(v); }
+    bool setGlitchChaosSquareBurst(bool v)     { return m_glitch.setGlitchChaosSquareBurst(v); }
+    bool setGlitchChaosSquareBurstSize(int v) { return m_glitch.setGlitchChaosSquareBurstSize(v); }
+    bool setGlitchChaosRipple(bool v)          { return m_glitch.setGlitchChaosRipple(v); }
+    bool setGlitchChaosWipe(bool v)            { return m_glitch.setGlitchChaosWipe(v); }
+    bool setTapBurstCount(int v) {
+        v = qBound(10, v, 50); if (m_tapBurstCount == v) { return false; } m_tapBurstCount = v; return true;
+    }
+    bool setTapBurstLength(int v) {
+        v = qBound(2, v, 15); if (m_tapBurstLength == v) { return false; } m_tapBurstLength = v; return true;
+    }
+    bool setTapSpawnCount(int v) {
+        v = qBound(2, v, 12); if (m_tapSpawnCount == v) { return false; } m_tapSpawnCount = v; return true;
+    }
+    bool setTapSpawnLength(int v) {
+        v = qBound(3, v, 20); if (m_tapSpawnLength == v) { return false; } m_tapSpawnLength = v; return true;
+    }
+    bool setTapSquareBurstSize(int v) {
+        v = qBound(2, v, 10); if (m_tapSquareBurstSize == v) { return false; } m_tapSquareBurstSize = v; return true;
+    }
     bool setGlitchChaosIntensity(int v) { return m_glitch.setGlitchChaosIntensity(v); }
     bool setGlitchChaosScatterRate(int v)   { return m_glitch.setGlitchChaosScatterRate(v); }
     bool setGlitchChaosScatterLength(int v) { return m_glitch.setGlitchChaosScatterLength(v); }
@@ -264,6 +301,11 @@ class RainSimulation {
     bool    m_glow{true};
     QString m_charset{"ascii"};
     bool    m_invertTrail{false};
+    int     m_tapBurstCount{25};
+    int     m_tapBurstLength{6};
+    int     m_tapSpawnCount{6};
+    int     m_tapSpawnLength{10};
+    int     m_tapSquareBurstSize{5};
     QString m_direction{"down"};
 
 #ifdef MATRIX_RAIN_TESTING

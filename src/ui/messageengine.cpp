@@ -38,11 +38,12 @@ void MessageEngine::injectMessage(const QString &msg, const GlyphAtlas &atlas, S
     bool horiz = m_messageDirection.startsWith("horizontal");
     bool reversed = m_messageDirection.endsWith("-rl") || m_messageDirection.endsWith("-bt");
 
-    // "stream" direction: follow the current rain direction
+    // "stream" direction: follow the current rain axis but never reverse reading order.
+    // Messages always read left-to-right (horizontal) or top-to-bottom (vertical).
     bool isStream = m_messageDirection == "stream";
     if (isStream) {
         horiz = (dx != 0 && dy == 0);
-        reversed = (dx < 0 || dy < 0);
+        reversed = false;  // never mirror text — always natural reading order
     }
 
     float gw = static_cast<float>(atlas.glyphW());

@@ -727,47 +727,67 @@
 <context>
     <name>ChaosSection</name>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="32"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="35"/>
         <source>Chaos events</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="53"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="56"/>
         <source>Frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="75"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="78"/>
         <source>Intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="99"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="102"/>
         <source>Surge (flash)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="114"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="117"/>
         <source>Scramble (mutate)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="129"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="132"/>
         <source>Freeze (stutter)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="144"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="170"/>
+        <source>Square size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="194"/>
+        <source>Ripple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="218"/>
+        <source>Screen wipe</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="241"/>
         <source>Scatter (burst)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="165"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="148"/>
+        <source>Square burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="263"/>
         <source>Scatter frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="187"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="285"/>
         <source>Scatter trail length</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1499,11 +1519,21 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="146"/>
+        <source>Touch directions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="165"/>
+        <source>Tap screen zones to change direction. Triple-tap to close.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="181"/>
         <source>Idle screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="171"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="206"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3643,37 +3673,77 @@ le configurateur web</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="40"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="41"/>
         <source>Scatter burst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="55"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="63"/>
+        <source>Trail count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="84"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="106"/>
         <source>Flash shockwave</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="70"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="124"/>
         <source>Character scramble</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="85"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="141"/>
         <source>Stream spawn</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="100"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="163"/>
+        <source>Spawn count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="184"/>
+        <source>Spawn length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="206"/>
         <source>Show message</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="122"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="224"/>
+        <source>Square burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="246"/>
+        <source>Square size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="269"/>
+        <source>Ripple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="287"/>
+        <source>Screen wipe</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="309"/>
         <source>Randomize</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="144"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="331"/>
         <source>Chance</source>
         <translation type="unfinished"></translation>
     </message>

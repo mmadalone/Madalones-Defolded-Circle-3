@@ -1018,6 +1018,7 @@ function interactiveInput() { localGravity = true/false }    // imperative — b
 
 ### TODO
 
+- [ ] **TV Static theme** — new screensaver theme. Menu order: Matrix → TV Static → Starfield → Minimal. Analog TV static/snow noise effect. Design TBD.
 - [ ] Add screenshots to SCREENSAVER.md — 9 photos needed from physical remote:
   1. Matrix Rain — default green (docked)
   2. Matrix Rain — neon or rainbow color mode
@@ -1079,3 +1080,129 @@ Largest single session in the project. Delivered:
 - Interactive input contract (8 directions + restore, enter + slow hold/release)
 
 Total integration tests: 29 (17 existing + 12 new).
+
+## Session 12 — Touch Directions, Gestures, New Effects, Bug Fixes (2026-04-05)
+
+Largest feature session since Session 11. Added touch-zone direction control, swipe/hold gestures, 4 new visual effects (square burst, ripple, screen wipe, plus exposed burst/spawn tuning), and fixed mirrored text.
+
+### Touch-Zone Directions
+
+New interaction mode: split the display into a 3×3 grid, each zone maps to a DPAD direction (edges) or enter (center). Mutually exclusive with DPAD interactive — toggling one auto-disables the other via bidirectional `Connections` on Config.
+
+**Center zone multi-tap state machine:**
+
+| Tap | Action |
+|-----|--------|
+| 1-2 | Enter/glitch + tap effects |
+| 3 | Restore direction (reset to default) |
+| 4 | Close screensaver |
+
+Edge zones fire direction + tap effects on every tap, with no close mechanism. Center tap counter resets on any edge tap or after 400ms inactivity. Config: `chargingMatrixTapDirection` (bool, default false).
+
+### Swipe & Hold Gestures
+
+Three gesture types distinguished by movement + duration on the same MouseArea:
+- **Tap** (< 30px movement, quick release): existing tap/zone behavior
+- **Swipe** (> 30px vertical movement): adjusts `Config.chargingMatrixSpeed` proportionally. Swipe up = faster, swipe down = slower. ~100px = 10 speed units. Persists to config (visible in settings slider).
+- **Hold** (no movement, long press): staged slowdown. 500ms = slow to 25% (reuses `handleSlowInput`), 1500ms = pause (stops timer). Release restores.
+
+All three coexist without conflict — movement threshold separates swipe from tap, hold timer cancels on movement.
+
+### DPAD Passthrough
+
+When `dpadEnabled` is OFF, all DPAD/direction buttons now close the screensaver (previously did nothing). All other physical buttons (HOME, BACK, VOICE, media, etc.) now always close unconditionally — removed the `tapToClose` gate on hardware buttons. Only screen tap close is gated by `tapToClose`.
+
+### New Visual Effects
+
+**Square Burst (PulseOverlay):** Animated expanding square outline overlay. Starts as a point, grows 1 cell per tick, highlighting perimeter cells via `messageBright` + random glyph writes to `charGrid`. Renders through `renderMessageFlash` pass — visible on empty cells, not just stream trails. Configurable max size (2-10). Available as both tap effect and chaos sub-type.
+
+**Ripple (PulseOverlay):** Animated expanding circular ring. Same `PulseOverlay` struct with `circular = true`. Uses Euclidean distance annulus (`r² > (sz-1)² && r² ≤ sz²`) for clean ring geometry. Available as both tap effect and chaos sub-type.
+
+**Screen Wipe:** Vertical column of GlitchTrails sweeping horizontally from tap point. Direction auto-detected (left of center → sweep right, right → sweep left). Chaos version picks random position and random direction. Available as both tap effect and chaos sub-type.
+
+**PulseOverlay Architecture:**
+```cpp
+struct PulseOverlay {
+    int centerCol, centerRow, currentSize, maxSize, colorVariant;
+    bool circular;  // true = circle, false = square
+};
+```
+- Stored in `GlitchEngine::m_pulses` (max 10 concurrent)
+- Advanced by `advancePulses()` called AFTER `precomputeBrightness()` (critical — otherwise `m_glitchBright.fill(-1)` clears the pulse)
+- Writes to `messageBright` (not `glitchBright`) so cells render even without stream trails
+- Writes random glyphs to `charGrid` for visible character content
+
+### Exposed Tap Effect Settings
+
+Following the scatter/square burst pattern (toggle + sub-settings visible when on):
+
+| Effect | New Settings | Range | Default |
+|--------|-------------|-------|---------|
+| Scatter burst | Trail count | 10-50 | 25 |
+| Scatter burst | Trail length | 2-15 | 6 |
+| Stream spawn | Spawn count | 2-12 | 6 |
+| Stream spawn | Spawn length | 3-20 | 10 |
+| Square burst | Square size | 2-10 | 5 |
+
+Burst and spawn now use config values instead of hardcoded random ranges.
+
+### Bug Fix: Mirrored Message Text
+
+Messages displayed backwards when rain direction was left or up (e.g., "HOLA JESSICA" → "SSEJSSEJ ALOH"). Root cause: `messageDirection == "stream"` set `reversed = true` when `dx < 0 || dy < 0`, causing character positions to flip.
+
+Fix: `reversed = false` hardcoded in the "stream" direction branch. Messages always read left-to-right / top-to-bottom regardless of rain direction. Explicit directional modes (horizontal-rl, vertical-bt) still reverse when the user explicitly chose that.
+
+### New Config Properties (Session 12)
+
+| Property | Type | Default | Purpose |
+|----------|------|---------|---------|
+| `chargingMatrixTapDirection` | bool | false | Touch-zone direction mode |
+| `chargingMatrixTapSquareBurst` | bool | true | Tap square burst effect |
+| `chargingMatrixTapSquareBurstSize` | int | 5 | Tap square burst max size (2-10) |
+| `chargingMatrixTapRipple` | bool | true | Tap ripple effect |
+| `chargingMatrixTapWipe` | bool | false | Tap screen wipe effect |
+| `chargingMatrixTapBurstCount` | int | 25 | Scatter burst trail count (10-50) |
+| `chargingMatrixTapBurstLength` | int | 6 | Scatter burst trail length (2-15) |
+| `chargingMatrixTapSpawnCount` | int | 6 | Stream spawn count (2-12) |
+| `chargingMatrixTapSpawnLength` | int | 10 | Stream spawn trail length (3-20) |
+| `chargingMatrixGlitchChaosSquareBurst` | bool | true | Chaos square burst events |
+| `chargingMatrixGlitchChaosSquareBurstSize` | int | 5 | Chaos square burst max size (2-10) |
+| `chargingMatrixGlitchChaosRipple` | bool | true | Chaos ripple events |
+| `chargingMatrixGlitchChaosWipe` | bool | false | Chaos screen wipe events |
+
+### Chaos Sub-Type Order (Settings UI)
+
+1. Surge (flash)
+2. Scramble (mutate)
+3. Freeze (stutter)
+4. Square burst + size slider
+5. Ripple
+6. Screen wipe
+7. Scatter (burst) + frequency slider + trail length slider
+
+### Files Modified (Session 12)
+
+| File | Changes |
+|------|---------|
+| `src/config/config.h` | +13 Q_PROPERTYs, +13 CFG_*, +13 signals |
+| `src/config/config_macros.h` | unchanged |
+| `src/ui/screensaverconfig.h` | +13 SC_BOOL/SC_INT macros |
+| `src/ui/screensaverconfig.cpp` | +13 signal connects |
+| `src/ui/matrixrain.h` | +PulseOverlay-related Q_PROPERTYs, +tapRipple/tapWipe sub-handlers, +signals |
+| `src/ui/matrixrain.cpp` | handleTapInput expanded to 10 flags, +sub-handlers, +bindings |
+| `src/ui/rainsimulation.h` | +ChaosRipple/ChaosWipe enum, +tapRipple/tapWipe/PulseOverlay methods, +4 int members |
+| `src/ui/rainsimulation.cpp` | tapBurst/tapSpawn use config, +tapRipple/tapWipe/tapSquareBurst as PulseOverlay, +advancePulses call |
+| `src/ui/glitchengine.h` | +PulseOverlay struct (replaces SquarePulse), +m_pulses vector, +advancePulses, +ripple/wipe config |
+| `src/ui/glitchengine.cpp` | +advancePulses (circle + square), chaos ripple/wipe handlers, replaced trail-based square burst |
+| `src/ui/messageengine.cpp` | Fixed reversed text: `reversed = false` in stream mode |
+| `src/qml/components/ChargingScreen.qml` | Touch-zone directions, swipe/hold gestures, center multi-tap, physical button passthrough |
+| `src/qml/settings/settings/chargingscreen/TapSection.qml` | +burst count/length, +spawn count/length, +ripple/wipe toggles |
+| `src/qml/settings/settings/chargingscreen/ChaosSection.qml` | +square burst above scatter, +size slider, +ripple/wipe toggles |
+| `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` | +touch directions toggle + description |
+
+### Lessons Learned (Session 12)
+
+- **`glitchBright` only affects stream trail cells.** Setting brightness on empty cells does nothing — the renderer only draws cells that are part of an active stream trail. For arbitrary-cell effects (expanding pulse outlines), use `messageBright` which renders through `renderMessageFlash` independently.
+- **`precomputeBrightness` clears `m_glitchBright.fill(-1)`.** Any brightness written before this call is wiped. Pulse advancement must run AFTER precompute, not before.
+- **"Fix" that repeats the same math is a no-op.** Moving `int ci = reversed ? (len-1-i) : i` to `float posPx = reversed ? (start + (len-1-i) * step) : (start + i * step)` is the same computation. The real fix was removing `reversed` from the stream direction branch entirely.
+- **Touch gesture disambiguation is clean with movement threshold.** 30px threshold cleanly separates tap from swipe. Hold timer cancels on movement. No ambiguity between the three gesture types.

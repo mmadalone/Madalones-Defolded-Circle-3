@@ -101,7 +101,7 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "DPAD interactive"
                 KeyNavigation.up: motionToCloseSwitch
-                KeyNavigation.down: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : idleEnabledSwitch
+                KeyNavigation.down: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
             }
         }
     }
@@ -127,8 +127,43 @@ ColumnLayout {
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Remember direction"
-                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleEnabledSwitch
+                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: tapDirectionSwitch
             }
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // 15d. TOUCH DIRECTIONS (mutually exclusive with DPAD interactive)
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("Touch directions"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: tapDirectionSwitch
+                objectName: "tapDirectionSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixTapDirection
+                trigger: function() { Config.chargingMatrixTapDirection = !Config.chargingMatrixTapDirection; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Touch directions"
+                KeyNavigation.up: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : dpadEnabledSwitch
+                KeyNavigation.down: idleEnabledSwitch
+            }
+        }
+        Text {
+            visible: Config.chargingMatrixTapDirection
+            Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
+            color: colors.medium; wrapMode: Text.WordWrap
+            text: qsTr("Tap screen zones to change direction. Triple-tap to close.")
+            font: fonts.primaryFont(20)
         }
     }
 
@@ -154,7 +189,7 @@ ColumnLayout {
                 trigger: function() { Config.chargingIdleEnabled = !Config.chargingIdleEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Idle screensaver"
-                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: idleTimeoutSlider
+                KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: idleTimeoutSlider
             }
         }
     }

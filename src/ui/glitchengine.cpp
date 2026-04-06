@@ -154,6 +154,55 @@ void GlitchEngine::advanceTrails(SimContext &ctx, int glyphCount) {
     }
 }
 
+void GlitchEngine::advancePulses(SimContext &ctx, QVector<int> &messageBright, int glyphCount) {
+    std::uniform_int_distribution<int> charDist(0, qMax(0, glyphCount - 1));
+    for (int i = m_pulses.size() - 1; i >= 0; --i) {
+        auto &p = m_pulses[i];
+        int sz = p.currentSize;
+
+        auto highlightCell = [&](int c, int r) {
+            if (c < 0 || c >= ctx.gridCols || r < 0 || r >= ctx.gridRows) return;
+            int idx = c * ctx.gridRows + r;
+            if (idx < 0 || idx >= messageBright.size()) return;
+            messageBright[idx] = 3;
+            if (idx < ctx.charGrid.size())
+                ctx.charGrid[idx] = charDist(ctx.rng);
+        };
+
+        if (p.circular) {
+            // Circle: highlight cells at Chebyshev distance == sz that are within Euclidean radius
+            // Bresenham-style midpoint circle for clean ring
+            int r2lo = (sz > 0) ? (sz - 1) * (sz - 1) : 0;
+            int r2hi = sz * sz;
+            for (int dc = -sz; dc <= sz; ++dc) {
+                for (int dr = -sz; dr <= sz; ++dr) {
+                    int d2 = dc * dc + dr * dr;
+                    if (d2 <= r2hi && d2 > r2lo)
+                        highlightCell(p.centerCol + dc, p.centerRow + dr);
+                }
+            }
+        } else {
+            // Square: highlight perimeter
+            int cMin = p.centerCol - sz, cMax = p.centerCol + sz;
+            int rMin = p.centerRow - sz, rMax = p.centerRow + sz;
+            for (int c = cMin; c <= cMax; ++c) {
+                highlightCell(c, rMin);
+                if (rMax != rMin) highlightCell(c, rMax);
+            }
+            for (int r = rMin + 1; r < rMax; ++r) {
+                highlightCell(cMin, r);
+                if (cMax != cMin) highlightCell(cMax, r);
+            }
+        }
+
+        p.currentSize++;
+        if (p.currentSize > p.maxSize) {
+            m_pulses[i] = m_pulses.last();
+            m_pulses.removeLast();
+        }
+    }
+}
+
 void GlitchEngine::precomputeBrightness(const QVector<StreamState> &streams,
                                           const QVector<int> &brightnessMap, int brightnessLevels,
                                           SimContext &ctx, bool invertTrail) {
@@ -184,9 +233,12 @@ void GlitchEngine::triggerChaosEvent(QVector<StreamState> &streams, SimContext &
                                       int glyphCount, int colorVariants) {
     // Collect enabled non-scatter event types (scatter has its own timer)
     QVector<int> enabled;
-    if (m_glitchChaosSurge)    enabled.append(ChaosSurge);
-    if (m_glitchChaosScramble) enabled.append(ChaosScramble);
-    if (m_glitchChaosFreeze)   enabled.append(ChaosFreeze);
+    if (m_glitchChaosSurge)       enabled.append(ChaosSurge);
+    if (m_glitchChaosScramble)    enabled.append(ChaosScramble);
+    if (m_glitchChaosFreeze)      enabled.append(ChaosFreeze);
+    if (m_glitchChaosSquareBurst) enabled.append(ChaosSquareBurst);
+    if (m_glitchChaosRipple)      enabled.append(ChaosRipple);
+    if (m_glitchChaosWipe)        enabled.append(ChaosWipe);
     if (enabled.isEmpty()) {
         // Reset countdown even if nothing to fire
         int interval = CHAOS_INTERVAL_MAX - (m_glitchChaosFrequency - 1) *
@@ -234,6 +286,53 @@ void GlitchEngine::triggerChaosEvent(QVector<StreamState> &streams, SimContext &
             if (s.active) s.flashFrames = qMax(s.flashFrames, qMin(dur, 5));
         }
         m_chaosActiveFrames = qMax(m_chaosActiveFrames, dur);
+    }
+
+    if (m_chaosActiveType & ChaosSquareBurst) {
+        int burstCount = qMax(1, static_cast<int>(1 + 2 * intensityScale));
+        int maxSz = qBound(2, m_glitchChaosSquareBurstSize, 10);
+        for (int b = 0; b < burstCount && m_pulses.size() < 10; ++b) {
+            PulseOverlay p;
+            p.centerCol = static_cast<int>(ctx.rng() % qMax(1, ctx.gridCols));
+            p.centerRow = static_cast<int>(ctx.rng() % qMax(1, ctx.gridRows));
+            p.currentSize = 0;
+            p.maxSize = maxSz + static_cast<int>(ctx.rng() % qMax(1, maxSz));
+            p.colorVariant = (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
+            p.circular = false;
+            m_pulses.append(p);
+        }
+    }
+
+    if (m_chaosActiveType & ChaosRipple) {
+        int burstCount = qMax(1, static_cast<int>(1 + 2 * intensityScale));
+        for (int b = 0; b < burstCount && m_pulses.size() < 10; ++b) {
+            PulseOverlay p;
+            p.centerCol = static_cast<int>(ctx.rng() % qMax(1, ctx.gridCols));
+            p.centerRow = static_cast<int>(ctx.rng() % qMax(1, ctx.gridRows));
+            p.currentSize = 0;
+            p.maxSize = 6 + static_cast<int>(ctx.rng() % 8);  // radius 6-13
+            p.colorVariant = (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
+            p.circular = true;
+            m_pulses.append(p);
+        }
+    }
+
+    if (m_chaosActiveType & ChaosWipe) {
+        // Spawn a vertical column of trails sweeping horizontally
+        int col = static_cast<int>(ctx.rng() % qMax(1, ctx.gridCols));
+        int dir = (static_cast<int>(ctx.rng() % 2) == 0) ? 1 : -1;
+        int height = qMin(ctx.gridRows, 40);
+        int startRow = qMax(0, (ctx.gridRows - height) / 2);
+        for (int r = startRow; r < startRow + height && m_glitchTrails.size() < 300; ++r) {
+            if (static_cast<int>(ctx.rng() % 4) == 0) continue;
+            GlitchTrail gt;
+            gt.col = col; gt.row = r;
+            gt.dx = dir; gt.dy = 0;
+            gt.length = 3 + static_cast<int>(ctx.rng() % 5);
+            gt.framesLeft = gt.length + 6;
+            gt.colorVariant = (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
+            m_glitchTrails.append(gt);
+        }
     }
 
     Q_UNUSED(glyphCount);

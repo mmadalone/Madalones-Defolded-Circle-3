@@ -51,7 +51,16 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(bool     glitchChaosSurge     READ glitchChaosSurge     WRITE setGlitchChaosSurge     NOTIFY glitchChaosSurgeChanged)
     Q_PROPERTY(bool     glitchChaosScramble  READ glitchChaosScramble  WRITE setGlitchChaosScramble  NOTIFY glitchChaosScrambleChanged)
     Q_PROPERTY(bool     glitchChaosFreeze    READ glitchChaosFreeze    WRITE setGlitchChaosFreeze    NOTIFY glitchChaosFreezeChanged)
-    Q_PROPERTY(bool     glitchChaosScatter   READ glitchChaosScatter   WRITE setGlitchChaosScatter   NOTIFY glitchChaosScatterChanged)
+    Q_PROPERTY(bool     glitchChaosScatter      READ glitchChaosScatter      WRITE setGlitchChaosScatter      NOTIFY glitchChaosScatterChanged)
+    Q_PROPERTY(bool     glitchChaosSquareBurst     READ glitchChaosSquareBurst     WRITE setGlitchChaosSquareBurst     NOTIFY glitchChaosSquareBurstChanged)
+    Q_PROPERTY(int      glitchChaosSquareBurstSize READ glitchChaosSquareBurstSize WRITE setGlitchChaosSquareBurstSize NOTIFY glitchChaosSquareBurstSizeChanged)
+    Q_PROPERTY(bool     glitchChaosRipple          READ glitchChaosRipple          WRITE setGlitchChaosRipple          NOTIFY glitchChaosRippleChanged)
+    Q_PROPERTY(bool     glitchChaosWipe            READ glitchChaosWipe            WRITE setGlitchChaosWipe            NOTIFY glitchChaosWipeChanged)
+    Q_PROPERTY(int      tapSquareBurstSize         READ tapSquareBurstSize         WRITE setTapSquareBurstSize         NOTIFY tapSquareBurstSizeChanged)
+    Q_PROPERTY(int      tapBurstCount              READ tapBurstCount              WRITE setTapBurstCount              NOTIFY tapBurstCountChanged)
+    Q_PROPERTY(int      tapBurstLength             READ tapBurstLength             WRITE setTapBurstLength             NOTIFY tapBurstLengthChanged)
+    Q_PROPERTY(int      tapSpawnCount              READ tapSpawnCount              WRITE setTapSpawnCount              NOTIFY tapSpawnCountChanged)
+    Q_PROPERTY(int      tapSpawnLength             READ tapSpawnLength             WRITE setTapSpawnLength             NOTIFY tapSpawnLengthChanged)
     Q_PROPERTY(int      glitchChaosIntensity    READ glitchChaosIntensity    WRITE setGlitchChaosIntensity    NOTIFY glitchChaosIntensityChanged)
     Q_PROPERTY(int      glitchChaosScatterRate   READ glitchChaosScatterRate   WRITE setGlitchChaosScatterRate   NOTIFY glitchChaosScatterRateChanged)
     Q_PROPERTY(int      glitchChaosScatterLength READ glitchChaosScatterLength WRITE setGlitchChaosScatterLength NOTIFY glitchChaosScatterLengthChanged)
@@ -108,7 +117,16 @@ class MatrixRainItem : public QQuickItem {
     bool    glitchChaosSurge()     const { return m_sim.glitchChaosSurge(); }
     bool    glitchChaosScramble()  const { return m_sim.glitchChaosScramble(); }
     bool    glitchChaosFreeze()    const { return m_sim.glitchChaosFreeze(); }
-    bool    glitchChaosScatter()   const { return m_sim.glitchChaosScatter(); }
+    bool    glitchChaosScatter()      const { return m_sim.glitchChaosScatter(); }
+    bool    glitchChaosSquareBurst()     const { return m_sim.glitchChaosSquareBurst(); }
+    int     glitchChaosSquareBurstSize() const { return m_sim.glitchChaosSquareBurstSize(); }
+    bool    glitchChaosRipple()          const { return m_sim.glitchChaosRipple(); }
+    bool    glitchChaosWipe()            const { return m_sim.glitchChaosWipe(); }
+    int     tapBurstCount()              const { return m_sim.tapBurstCount(); }
+    int     tapBurstLength()             const { return m_sim.tapBurstLength(); }
+    int     tapSpawnCount()              const { return m_sim.tapSpawnCount(); }
+    int     tapSpawnLength()             const { return m_sim.tapSpawnLength(); }
+    int     tapSquareBurstSize()         const { return m_sim.tapSquareBurstSize(); }
     int     glitchChaosIntensity()    const { return m_sim.glitchChaosIntensity(); }
     int     glitchChaosScatterRate()   const { return m_sim.glitchChaosScatterRate(); }
     int     glitchChaosScatterLength() const { return m_sim.glitchChaosScatterLength(); }
@@ -210,7 +228,16 @@ public:
     void setGlitchChaosSurge(bool v)    { if (m_sim.setGlitchChaosSurge(v)) emit glitchChaosSurgeChanged(); }
     void setGlitchChaosScramble(bool v) { if (m_sim.setGlitchChaosScramble(v)) emit glitchChaosScrambleChanged(); }
     void setGlitchChaosFreeze(bool v)   { if (m_sim.setGlitchChaosFreeze(v)) emit glitchChaosFreezeChanged(); }
-    void setGlitchChaosScatter(bool v)  { if (m_sim.setGlitchChaosScatter(v)) emit glitchChaosScatterChanged(); }
+    void setGlitchChaosScatter(bool v)     { if (m_sim.setGlitchChaosScatter(v)) emit glitchChaosScatterChanged(); }
+    void setGlitchChaosSquareBurst(bool v)     { if (m_sim.setGlitchChaosSquareBurst(v)) emit glitchChaosSquareBurstChanged(); }
+    void setGlitchChaosSquareBurstSize(int v) { if (m_sim.setGlitchChaosSquareBurstSize(v)) emit glitchChaosSquareBurstSizeChanged(); }
+    void setGlitchChaosRipple(bool v)          { if (m_sim.setGlitchChaosRipple(v)) emit glitchChaosRippleChanged(); }
+    void setGlitchChaosWipe(bool v)            { if (m_sim.setGlitchChaosWipe(v)) emit glitchChaosWipeChanged(); }
+    void setTapBurstCount(int v)              { if (m_sim.setTapBurstCount(v)) emit tapBurstCountChanged(); }
+    void setTapBurstLength(int v)             { if (m_sim.setTapBurstLength(v)) emit tapBurstLengthChanged(); }
+    void setTapSpawnCount(int v)              { if (m_sim.setTapSpawnCount(v)) emit tapSpawnCountChanged(); }
+    void setTapSpawnLength(int v)             { if (m_sim.setTapSpawnLength(v)) emit tapSpawnLengthChanged(); }
+    void setTapSquareBurstSize(int v)         { if (m_sim.setTapSquareBurstSize(v)) emit tapSquareBurstSizeChanged(); }
     void setGlitchChaosIntensity(int v) { if (m_sim.setGlitchChaosIntensity(v)) emit glitchChaosIntensityChanged(); }
     void setGlitchChaosScatterRate(int v)   { if (m_sim.setGlitchChaosScatterRate(v)) emit glitchChaosScatterRateChanged(); }
     void setGlitchChaosScatterLength(int v) { if (m_sim.setGlitchChaosScatterLength(v)) emit glitchChaosScatterLengthChanged(); }
@@ -256,6 +283,15 @@ public:
     void glitchChaosScrambleChanged();
     void glitchChaosFreezeChanged();
     void glitchChaosScatterChanged();
+    void glitchChaosSquareBurstChanged();
+    void glitchChaosSquareBurstSizeChanged();
+    void glitchChaosRippleChanged();
+    void glitchChaosWipeChanged();
+    void tapBurstCountChanged();
+    void tapBurstLengthChanged();
+    void tapSpawnCountChanged();
+    void tapSpawnLengthChanged();
+    void tapSquareBurstSizeChanged();
     void glitchChaosIntensityChanged();
     void glitchChaosScatterRateChanged();
     void glitchChaosScatterLengthChanged();
@@ -335,6 +371,9 @@ public:
 
     // Tap effect sub-handlers (called from handleTapInput)
     void tapBurst(int tapCol, int tapRow, int colorVariants);
+    void tapSquareBurst(int tapCol, int tapRow, int colorVariants);
+    void tapRipple(int tapCol, int tapRow, int colorVariants);
+    void tapWipe(int tapCol, int tapRow, int colorVariants);
     void tapFlash(int tapCol, int tapRow, int radius);
     void tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius);
     void tapSpawn(int tapCol, int tapRow, int colorVariants);

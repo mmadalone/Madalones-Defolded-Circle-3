@@ -143,10 +143,18 @@ class Config : public QObject {
     Q_PROPERTY(bool chargingMatrixMessageFlash READ getChargingMatrixMessageFlash WRITE setChargingMatrixMessageFlash NOTIFY chargingMatrixMessageFlashChanged)
     Q_PROPERTY(bool chargingMatrixMessagePulse READ getChargingMatrixMessagePulse WRITE setChargingMatrixMessagePulse NOTIFY chargingMatrixMessagePulseChanged)
     Q_PROPERTY(bool chargingMatrixTapBurst READ getChargingMatrixTapBurst WRITE setChargingMatrixTapBurst NOTIFY chargingMatrixTapBurstChanged)
+    Q_PROPERTY(int chargingMatrixTapBurstCount READ getChargingMatrixTapBurstCount WRITE setChargingMatrixTapBurstCount NOTIFY chargingMatrixTapBurstCountChanged)
+    Q_PROPERTY(int chargingMatrixTapBurstLength READ getChargingMatrixTapBurstLength WRITE setChargingMatrixTapBurstLength NOTIFY chargingMatrixTapBurstLengthChanged)
     Q_PROPERTY(bool chargingMatrixTapFlash READ getChargingMatrixTapFlash WRITE setChargingMatrixTapFlash NOTIFY chargingMatrixTapFlashChanged)
     Q_PROPERTY(bool chargingMatrixTapScramble READ getChargingMatrixTapScramble WRITE setChargingMatrixTapScramble NOTIFY chargingMatrixTapScrambleChanged)
     Q_PROPERTY(bool chargingMatrixTapSpawn READ getChargingMatrixTapSpawn WRITE setChargingMatrixTapSpawn NOTIFY chargingMatrixTapSpawnChanged)
+    Q_PROPERTY(int chargingMatrixTapSpawnCount READ getChargingMatrixTapSpawnCount WRITE setChargingMatrixTapSpawnCount NOTIFY chargingMatrixTapSpawnCountChanged)
+    Q_PROPERTY(int chargingMatrixTapSpawnLength READ getChargingMatrixTapSpawnLength WRITE setChargingMatrixTapSpawnLength NOTIFY chargingMatrixTapSpawnLengthChanged)
     Q_PROPERTY(bool chargingMatrixTapMessage READ getChargingMatrixTapMessage WRITE setChargingMatrixTapMessage NOTIFY chargingMatrixTapMessageChanged)
+    Q_PROPERTY(bool chargingMatrixTapSquareBurst READ getChargingMatrixTapSquareBurst WRITE setChargingMatrixTapSquareBurst NOTIFY chargingMatrixTapSquareBurstChanged)
+    Q_PROPERTY(int chargingMatrixTapSquareBurstSize READ getChargingMatrixTapSquareBurstSize WRITE setChargingMatrixTapSquareBurstSize NOTIFY chargingMatrixTapSquareBurstSizeChanged)
+    Q_PROPERTY(bool chargingMatrixTapRipple READ getChargingMatrixTapRipple WRITE setChargingMatrixTapRipple NOTIFY chargingMatrixTapRippleChanged)
+    Q_PROPERTY(bool chargingMatrixTapWipe READ getChargingMatrixTapWipe WRITE setChargingMatrixTapWipe NOTIFY chargingMatrixTapWipeChanged)
     Q_PROPERTY(bool chargingMatrixTapRandomize READ getChargingMatrixTapRandomize WRITE setChargingMatrixTapRandomize NOTIFY chargingMatrixTapRandomizeChanged)
     Q_PROPERTY(int chargingMatrixTapRandomizeChance READ getChargingMatrixTapRandomizeChance WRITE setChargingMatrixTapRandomizeChance NOTIFY chargingMatrixTapRandomizeChanceChanged)
     Q_PROPERTY(bool chargingMatrixSubliminal READ getChargingMatrixSubliminal WRITE setChargingMatrixSubliminal NOTIFY chargingMatrixSubliminalChanged)
@@ -159,9 +167,14 @@ class Config : public QObject {
     Q_PROPERTY(bool chargingIdleEnabled READ getChargingIdleEnabled WRITE setChargingIdleEnabled NOTIFY chargingIdleEnabledChanged)
     Q_PROPERTY(int chargingIdleTimeout READ getChargingIdleTimeout WRITE setChargingIdleTimeout NOTIFY chargingIdleTimeoutChanged)
     Q_PROPERTY(bool chargingMotionToClose READ getChargingMotionToClose WRITE setChargingMotionToClose NOTIFY chargingMotionToCloseChanged)
+    Q_PROPERTY(bool chargingMatrixGlitchChaosSquareBurst READ getChargingMatrixGlitchChaosSquareBurst WRITE setChargingMatrixGlitchChaosSquareBurst NOTIFY chargingMatrixGlitchChaosSquareBurstChanged)
+    Q_PROPERTY(int chargingMatrixGlitchChaosSquareBurstSize READ getChargingMatrixGlitchChaosSquareBurstSize WRITE setChargingMatrixGlitchChaosSquareBurstSize NOTIFY chargingMatrixGlitchChaosSquareBurstSizeChanged)
+    Q_PROPERTY(bool chargingMatrixGlitchChaosRipple READ getChargingMatrixGlitchChaosRipple WRITE setChargingMatrixGlitchChaosRipple NOTIFY chargingMatrixGlitchChaosRippleChanged)
+    Q_PROPERTY(bool chargingMatrixGlitchChaosWipe READ getChargingMatrixGlitchChaosWipe WRITE setChargingMatrixGlitchChaosWipe NOTIFY chargingMatrixGlitchChaosWipeChanged)
     Q_PROPERTY(bool chargingBatteryDockedOnly READ getChargingBatteryDockedOnly WRITE setChargingBatteryDockedOnly NOTIFY chargingBatteryDockedOnlyChanged)
     Q_PROPERTY(bool chargingMatrixDpadEnabled READ getChargingMatrixDpadEnabled WRITE setChargingMatrixDpadEnabled NOTIFY chargingMatrixDpadEnabledChanged)
     Q_PROPERTY(bool chargingMatrixDpadPersist READ getChargingMatrixDpadPersist WRITE setChargingMatrixDpadPersist NOTIFY chargingMatrixDpadPersistChanged)
+    Q_PROPERTY(bool chargingMatrixTapDirection READ getChargingMatrixTapDirection WRITE setChargingMatrixTapDirection NOTIFY chargingMatrixTapDirectionChanged)
     Q_PROPERTY(QString chargingMatrixLastDirection READ getChargingMatrixLastDirection WRITE setChargingMatrixLastDirection NOTIFY chargingMatrixLastDirectionChanged)
 
  public:
@@ -302,6 +315,10 @@ class Config : public QObject {
     CFG_BOOL(ChargingMatrixGlitchChaosScramble, "charging/matrixGlitchChaosScramble", true,           chargingMatrixGlitchChaosScrambleChanged)
     CFG_BOOL(ChargingMatrixGlitchChaosFreeze,   "charging/matrixGlitchChaosFreeze", true,             chargingMatrixGlitchChaosFreezeChanged)
     CFG_BOOL(ChargingMatrixGlitchChaosScatter,  "charging/matrixGlitchChaosScatter", true,            chargingMatrixGlitchChaosScatterChanged)
+    CFG_BOOL(ChargingMatrixGlitchChaosSquareBurst,     "charging/matrixGlitchChaosSquareBurst",     true,  chargingMatrixGlitchChaosSquareBurstChanged)
+    CFG_INT(ChargingMatrixGlitchChaosSquareBurstSize, "charging/matrixGlitchChaosSquareBurstSize", 5,    chargingMatrixGlitchChaosSquareBurstSizeChanged)
+    CFG_BOOL(ChargingMatrixGlitchChaosRipple,        "charging/matrixGlitchChaosRipple",         true,  chargingMatrixGlitchChaosRippleChanged)
+    CFG_BOOL(ChargingMatrixGlitchChaosWipe,          "charging/matrixGlitchChaosWipe",           false, chargingMatrixGlitchChaosWipeChanged)
     CFG_INT(ChargingMatrixGlitchChaosIntensity, "charging/matrixGlitchChaosIntensity", 50,            chargingMatrixGlitchChaosIntensityChanged)
     CFG_INT(ChargingMatrixGlitchChaosScatterRate,   "charging/matrixGlitchChaosScatterRate", 50,      chargingMatrixGlitchChaosScatterRateChanged)
     CFG_INT(ChargingMatrixGlitchChaosScatterLength, "charging/matrixGlitchChaosScatterLength", 8,     chargingMatrixGlitchChaosScatterLengthChanged)
@@ -318,10 +335,18 @@ class Config : public QObject {
     CFG_BOOL(ChargingMatrixMessageFlash,        "charging/matrixMessageFlash",      true,             chargingMatrixMessageFlashChanged)
     CFG_BOOL(ChargingMatrixMessagePulse,        "charging/matrixMessagePulse",      true,             chargingMatrixMessagePulseChanged)
     CFG_BOOL(ChargingMatrixTapBurst,            "charging/matrixTapBurst",          true,             chargingMatrixTapBurstChanged)
+    CFG_INT(ChargingMatrixTapBurstCount,       "charging/matrixTapBurstCount",     25,               chargingMatrixTapBurstCountChanged)
+    CFG_INT(ChargingMatrixTapBurstLength,      "charging/matrixTapBurstLength",    6,                chargingMatrixTapBurstLengthChanged)
     CFG_BOOL(ChargingMatrixTapFlash,            "charging/matrixTapFlash",          true,             chargingMatrixTapFlashChanged)
     CFG_BOOL(ChargingMatrixTapScramble,         "charging/matrixTapScramble",       true,             chargingMatrixTapScrambleChanged)
     CFG_BOOL(ChargingMatrixTapSpawn,            "charging/matrixTapSpawn",          true,             chargingMatrixTapSpawnChanged)
+    CFG_INT(ChargingMatrixTapSpawnCount,       "charging/matrixTapSpawnCount",     6,                chargingMatrixTapSpawnCountChanged)
+    CFG_INT(ChargingMatrixTapSpawnLength,      "charging/matrixTapSpawnLength",    10,               chargingMatrixTapSpawnLengthChanged)
     CFG_BOOL(ChargingMatrixTapMessage,          "charging/matrixTapMessage",        true,             chargingMatrixTapMessageChanged)
+    CFG_BOOL(ChargingMatrixTapSquareBurst,      "charging/matrixTapSquareBurst",    true,             chargingMatrixTapSquareBurstChanged)
+    CFG_INT(ChargingMatrixTapSquareBurstSize,  "charging/matrixTapSquareBurstSize", 5,               chargingMatrixTapSquareBurstSizeChanged)
+    CFG_BOOL(ChargingMatrixTapRipple,           "charging/matrixTapRipple",         true,             chargingMatrixTapRippleChanged)
+    CFG_BOOL(ChargingMatrixTapWipe,             "charging/matrixTapWipe",           false,            chargingMatrixTapWipeChanged)
     CFG_BOOL(ChargingMatrixTapRandomize,        "charging/matrixTapRandomize",      false,            chargingMatrixTapRandomizeChanged)
     CFG_INT(ChargingMatrixTapRandomizeChance,   "charging/matrixTapRandomizeChance", 50,              chargingMatrixTapRandomizeChanceChanged)
     CFG_BOOL(ChargingMatrixSubliminal,          "charging/matrixSubliminal",        false,            chargingMatrixSubliminalChanged)
@@ -337,6 +362,7 @@ class Config : public QObject {
     CFG_BOOL(ChargingBatteryDockedOnly,         "charging/batteryDockedOnly",       true,             chargingBatteryDockedOnlyChanged)
     CFG_BOOL(ChargingMatrixDpadEnabled,         "charging/matrixDpadEnabled",       true,             chargingMatrixDpadEnabledChanged)
     CFG_BOOL(ChargingMatrixDpadPersist,         "charging/matrixDpadPersist",       true,             chargingMatrixDpadPersistChanged)
+    CFG_BOOL(ChargingMatrixTapDirection,        "charging/matrixTapDirection",      false,            chargingMatrixTapDirectionChanged)
     CFG_STRING(ChargingMatrixLastDirection,      "charging/matrixLastDirection",     "",               chargingMatrixLastDirectionChanged)
     enum WakeupSensitivities { off = 0, low = 1, medium = 2, high = 3 };
     Q_ENUM(WakeupSensitivities)
@@ -494,6 +520,10 @@ class Config : public QObject {
     void chargingMatrixGlitchChaosScrambleChanged();
     void chargingMatrixGlitchChaosFreezeChanged();
     void chargingMatrixGlitchChaosScatterChanged();
+    void chargingMatrixGlitchChaosSquareBurstChanged();
+    void chargingMatrixGlitchChaosSquareBurstSizeChanged();
+    void chargingMatrixGlitchChaosRippleChanged();
+    void chargingMatrixGlitchChaosWipeChanged();
     void chargingMatrixGlitchChaosIntensityChanged();
     void chargingMatrixGlitchChaosScatterRateChanged();
     void chargingMatrixGlitchChaosScatterLengthChanged();
@@ -510,10 +540,18 @@ class Config : public QObject {
     void chargingMatrixMessageFlashChanged();
     void chargingMatrixMessagePulseChanged();
     void chargingMatrixTapBurstChanged();
+    void chargingMatrixTapBurstCountChanged();
+    void chargingMatrixTapBurstLengthChanged();
     void chargingMatrixTapFlashChanged();
     void chargingMatrixTapScrambleChanged();
     void chargingMatrixTapSpawnChanged();
+    void chargingMatrixTapSpawnCountChanged();
+    void chargingMatrixTapSpawnLengthChanged();
     void chargingMatrixTapMessageChanged();
+    void chargingMatrixTapSquareBurstChanged();
+    void chargingMatrixTapSquareBurstSizeChanged();
+    void chargingMatrixTapRippleChanged();
+    void chargingMatrixTapWipeChanged();
     void chargingMatrixTapRandomizeChanged();
     void chargingMatrixTapRandomizeChanceChanged();
     void chargingMatrixSubliminalChanged();
@@ -529,6 +567,7 @@ class Config : public QObject {
     void chargingBatteryDockedOnlyChanged();
     void chargingMatrixDpadEnabledChanged();
     void chargingMatrixDpadPersistChanged();
+    void chargingMatrixTapDirectionChanged();
     void chargingMatrixLastDirectionChanged();
 
  public slots:

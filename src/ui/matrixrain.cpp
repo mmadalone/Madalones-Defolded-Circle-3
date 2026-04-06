@@ -143,6 +143,15 @@ void MatrixRainItem::bindToScreensaverConfig() {
         setGlitchChaosScramble(sc->glitchChaosScramble());
         setGlitchChaosFreeze(sc->glitchChaosFreeze());
         setGlitchChaosScatter(sc->glitchChaosScatter());
+        setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst());
+        setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize());
+        setGlitchChaosRipple(sc->glitchChaosRipple());
+        setGlitchChaosWipe(sc->glitchChaosWipe());
+        setTapBurstCount(sc->tapBurstCount());
+        setTapBurstLength(sc->tapBurstLength());
+        setTapSpawnCount(sc->tapSpawnCount());
+        setTapSpawnLength(sc->tapSpawnLength());
+        setTapSquareBurstSize(sc->tapSquareBurstSize());
         setGlitchChaosIntensity(sc->glitchChaosIntensity());
         setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
         setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
@@ -200,7 +209,16 @@ void MatrixRainItem::bindToScreensaverConfig() {
     connect(sc, &uc::ScreensaverConfig::glitchChaosSurgeChanged,    this, [this, sc]() { setGlitchChaosSurge(sc->glitchChaosSurge()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosScrambleChanged, this, [this, sc]() { setGlitchChaosScramble(sc->glitchChaosScramble()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosFreezeChanged,   this, [this, sc]() { setGlitchChaosFreeze(sc->glitchChaosFreeze()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterChanged,  this, [this, sc]() { setGlitchChaosScatter(sc->glitchChaosScatter()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterChanged,     this, [this, sc]() { setGlitchChaosScatter(sc->glitchChaosScatter()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstChanged,     this, [this, sc]() { setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstSizeChanged, this, [this, sc]() { setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosRippleChanged,        this, [this, sc]() { setGlitchChaosRipple(sc->glitchChaosRipple()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosWipeChanged,          this, [this, sc]() { setGlitchChaosWipe(sc->glitchChaosWipe()); });
+    connect(sc, &uc::ScreensaverConfig::tapBurstCountChanged,              this, [this, sc]() { setTapBurstCount(sc->tapBurstCount()); });
+    connect(sc, &uc::ScreensaverConfig::tapBurstLengthChanged,            this, [this, sc]() { setTapBurstLength(sc->tapBurstLength()); });
+    connect(sc, &uc::ScreensaverConfig::tapSpawnCountChanged,              this, [this, sc]() { setTapSpawnCount(sc->tapSpawnCount()); });
+    connect(sc, &uc::ScreensaverConfig::tapSpawnLengthChanged,            this, [this, sc]() { setTapSpawnLength(sc->tapSpawnLength()); });
+    connect(sc, &uc::ScreensaverConfig::tapSquareBurstSizeChanged,         this, [this, sc]() { setTapSquareBurstSize(sc->tapSquareBurstSize()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosIntensityChanged, this, [this, sc]() { setGlitchChaosIntensity(sc->glitchChaosIntensity()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosScatterRateChanged,   this, [this, sc]() { setGlitchChaosScatterRate(sc->glitchChaosScatterRate()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged, this, [this, sc]() { setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
@@ -663,34 +681,45 @@ void MatrixRainItem::handleRestoreInput() {
 }
 
 void MatrixRainItem::handleTapInput(const QString &params) {
-    // Parse "x,y,burst,flash,scramble,spawn,message[,R{chance}]"
+    // Parse "x,y,burst,flash,scramble,spawn,message,squareBurst,ripple,wipe[,R{chance}]"
     auto parts = params.midRef(0).split(QLatin1Char(','));
     if (parts.size() < 2) return;
     float px = parts[0].toFloat();
     float py = parts[1].toFloat();
-    bool doBurst    = (parts.size() > 2) ? parts[2] == QLatin1String("1") : true;
-    bool doFlash    = (parts.size() > 3) ? parts[3] == QLatin1String("1") : true;
-    bool doScramble = (parts.size() > 4) ? parts[4] == QLatin1String("1") : true;
-    bool doSpawn    = (parts.size() > 5) ? parts[5] == QLatin1String("1") : true;
-    bool doMessage  = (parts.size() > 6) ? parts[6] == QLatin1String("1") : true;
+    bool doBurst       = (parts.size() > 2) ? parts[2] == QLatin1String("1") : true;
+    bool doFlash       = (parts.size() > 3) ? parts[3] == QLatin1String("1") : true;
+    bool doScramble    = (parts.size() > 4) ? parts[4] == QLatin1String("1") : true;
+    bool doSpawn       = (parts.size() > 5) ? parts[5] == QLatin1String("1") : true;
+    bool doMessage     = (parts.size() > 6) ? parts[6] == QLatin1String("1") : true;
+    bool doSquareBurst = (parts.size() > 7) ? parts[7] == QLatin1String("1") : false;
+    bool doRipple      = (parts.size() > 8) ? parts[8] == QLatin1String("1") : false;
+    bool doWipe        = (parts.size() > 9) ? parts[9] == QLatin1String("1") : false;
 
-    // Parse randomize flag: ",R{chance}" in position 7
-    if (parts.size() > 7 && parts[7].startsWith(QLatin1Char('R'))) {
-        int chance = parts[7].mid(1).toInt();
+    // Parse randomize flag: ",R{chance}" — now in position 10
+    int rIdx = (parts.size() > 10) ? 10 : -1;
+    if (rIdx >= 0 && parts[rIdx].startsWith(QLatin1Char('R'))) {
+        int chance = parts[rIdx].mid(1).toInt();
         chance = qBound(10, chance, 90);
-        if (doBurst)    doBurst    = (m_sim.randomInt(100) < chance);
-        if (doFlash)    doFlash    = (m_sim.randomInt(100) < chance);
-        if (doScramble) doScramble = (m_sim.randomInt(100) < chance);
-        if (doSpawn)    doSpawn    = (m_sim.randomInt(100) < chance);
-        if (doMessage)  doMessage  = (m_sim.randomInt(100) < chance);
+        if (doBurst)       doBurst       = (m_sim.randomInt(100) < chance);
+        if (doFlash)       doFlash       = (m_sim.randomInt(100) < chance);
+        if (doScramble)    doScramble    = (m_sim.randomInt(100) < chance);
+        if (doSpawn)       doSpawn       = (m_sim.randomInt(100) < chance);
+        if (doMessage)     doMessage     = (m_sim.randomInt(100) < chance);
+        if (doSquareBurst) doSquareBurst = (m_sim.randomInt(100) < chance);
+        if (doRipple)      doRipple      = (m_sim.randomInt(100) < chance);
+        if (doWipe)        doWipe        = (m_sim.randomInt(100) < chance);
         // Guarantee at least one effect fires
-        if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) {
-            int enabled[5], count = 0;
+        if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage &&
+            !doSquareBurst && !doRipple && !doWipe) {
+            int enabled[8], count = 0;
             if (parts.size() > 2 && parts[2] == QLatin1String("1")) enabled[count++] = 0;
             if (parts.size() > 3 && parts[3] == QLatin1String("1")) enabled[count++] = 1;
             if (parts.size() > 4 && parts[4] == QLatin1String("1")) enabled[count++] = 2;
             if (parts.size() > 5 && parts[5] == QLatin1String("1")) enabled[count++] = 3;
             if (parts.size() > 6 && parts[6] == QLatin1String("1")) enabled[count++] = 4;
+            if (parts.size() > 7 && parts[7] == QLatin1String("1")) enabled[count++] = 5;
+            if (parts.size() > 8 && parts[8] == QLatin1String("1")) enabled[count++] = 6;
+            if (parts.size() > 9 && parts[9] == QLatin1String("1")) enabled[count++] = 7;
             if (count > 0) {
                 switch (enabled[m_sim.randomInt(count)]) {
                     case 0: doBurst = true; break;
@@ -698,12 +727,16 @@ void MatrixRainItem::handleTapInput(const QString &params) {
                     case 2: doScramble = true; break;
                     case 3: doSpawn = true; break;
                     case 4: doMessage = true; break;
+                    case 5: doSquareBurst = true; break;
+                    case 6: doRipple = true; break;
+                    case 7: doWipe = true; break;
                 }
             }
         }
     }
 
-    if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage) return;
+    if (!doBurst && !doFlash && !doScramble && !doSpawn && !doMessage &&
+        !doSquareBurst && !doRipple && !doWipe) return;
 
     int gridCols = m_sim.gridCols();
     int gridRows = m_sim.gridRows();
@@ -717,17 +750,32 @@ void MatrixRainItem::handleTapInput(const QString &params) {
     int colorVariants = m_atlas.colorVariants();
     int radius = qMax(3, qMin(gridCols, gridRows) / 6);
 
-    if (doBurst)    tapBurst(tapCol, tapRow, colorVariants);
-    if (doFlash)    tapFlash(tapCol, tapRow, radius);
-    if (doScramble) tapScramble(tapCol, tapRow, gridCols, gridRows, radius);
-    if (doSpawn)    tapSpawn(tapCol, tapRow, colorVariants);
-    if (doMessage)  tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
+    if (doBurst)       tapBurst(tapCol, tapRow, colorVariants);
+    if (doSquareBurst) tapSquareBurst(tapCol, tapRow, colorVariants);
+    if (doRipple)      tapRipple(tapCol, tapRow, colorVariants);
+    if (doWipe)        tapWipe(tapCol, tapRow, colorVariants);
+    if (doFlash)       tapFlash(tapCol, tapRow, radius);
+    if (doScramble)    tapScramble(tapCol, tapRow, gridCols, gridRows, radius);
+    if (doSpawn)       tapSpawn(tapCol, tapRow, colorVariants);
+    if (doMessage)     tapMessage(tapCol, tapRow, gridCols, gridRows, colorVariants, colSp, rowSp);
 }
 
 // --- Tap effect sub-handlers — delegate to RainSimulation ---
 
 void MatrixRainItem::tapBurst(int tapCol, int tapRow, int colorVariants) {
     m_sim.tapBurst(tapCol, tapRow, colorVariants);
+}
+
+void MatrixRainItem::tapSquareBurst(int tapCol, int tapRow, int colorVariants) {
+    m_sim.tapSquareBurst(tapCol, tapRow, colorVariants);
+}
+
+void MatrixRainItem::tapRipple(int tapCol, int tapRow, int colorVariants) {
+    m_sim.tapRipple(tapCol, tapRow, colorVariants);
+}
+
+void MatrixRainItem::tapWipe(int tapCol, int tapRow, int colorVariants) {
+    m_sim.tapWipe(tapCol, tapRow, colorVariants);
 }
 
 void MatrixRainItem::tapFlash(int tapCol, int tapRow, int radius) {

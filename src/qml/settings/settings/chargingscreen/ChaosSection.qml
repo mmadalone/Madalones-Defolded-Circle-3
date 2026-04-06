@@ -15,7 +15,10 @@ ColumnLayout {
     required property Item settingsPage
 
     property alias firstFocusItem: glitchChaosSwitch
-    property alias lastFocusItem: chaosScatterLengthSlider
+    property Item lastFocusItem: {
+        if (Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosScatter) return chaosScatterLengthSlider;
+        return chaosScatterLengthSlider;  // fallback — KeyNav handles visibility
+    }
     property Item navUpTarget
     property Item navDownTarget
 
@@ -136,9 +139,103 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixGlitchChaosFreeze = !Config.chargingMatrixGlitchChaosFreeze; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Freeze (stutter)"
-                KeyNavigation.up: chaosScrambleSwitch; KeyNavigation.down: chaosScatterSwitch
+                KeyNavigation.up: chaosScrambleSwitch; KeyNavigation.down: chaosSquareBurstSwitch
             }
         }
+        // Square burst — ABOVE scatter
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square burst"); font: fonts.primaryFont(24) }
+            Components.Switch {
+                id: chaosSquareBurstSwitch
+                objectName: "chaosSquareBurstSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixGlitchChaosSquareBurst
+                trigger: function() { Config.chargingMatrixGlitchChaosSquareBurst = !Config.chargingMatrixGlitchChaosSquareBurst; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Square burst"
+                KeyNavigation.up: chaosFreezeSwitch
+                KeyNavigation.down: Config.chargingMatrixGlitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosRippleSwitch
+            }
+        }
+    }
+
+    // 12j2. SQUARE BURST SIZE (visible when square burst is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosSquareBurst
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 70; Layout.rightMargin: 10
+        spacing: 10
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square size") + " (" + Config.chargingMatrixGlitchChaosSquareBurstSize + ")"; font: fonts.primaryFont(22) }
+        Components.Slider {
+            id: chaosSquareBurstSizeSlider
+            objectName: "chaosSquareBurstSizeSlider"
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            height: 60; Layout.fillWidth: true
+            from: 2; to: 10; stepSize: 1; live: true
+            value: Config.chargingMatrixGlitchChaosSquareBurstSize
+            onValueChanged: Config.chargingMatrixGlitchChaosSquareBurstSize = value
+            onUserInteractionEnded: Config.chargingMatrixGlitchChaosSquareBurstSize = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Square size " + value
+            KeyNavigation.up: chaosSquareBurstSwitch; KeyNavigation.down: chaosRippleSwitch
+        }
+    }
+
+    // 12j3. Ripple
+    ColumnLayout {
+        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 50; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Ripple"); font: fonts.primaryFont(24) }
+            Components.Switch {
+                id: chaosRippleSwitch
+                objectName: "chaosRippleSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixGlitchChaosRipple
+                trigger: function() { Config.chargingMatrixGlitchChaosRipple = !Config.chargingMatrixGlitchChaosRipple; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Ripple"
+                KeyNavigation.up: Config.chargingMatrixGlitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosSquareBurstSwitch
+                KeyNavigation.down: chaosWipeSwitch
+            }
+        }
+    }
+
+    // 12j4. Screen wipe
+    ColumnLayout {
+        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 50; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Screen wipe"); font: fonts.primaryFont(24) }
+            Components.Switch {
+                id: chaosWipeSwitch
+                objectName: "chaosWipeSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixGlitchChaosWipe
+                trigger: function() { Config.chargingMatrixGlitchChaosWipe = !Config.chargingMatrixGlitchChaosWipe; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Screen wipe"
+                KeyNavigation.up: chaosRippleSwitch; KeyNavigation.down: chaosScatterSwitch
+            }
+        }
+    }
+
+    // 12j5. Scatter (burst)
+    ColumnLayout {
+        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 50; Layout.rightMargin: 10
+        spacing: 10
         RowLayout {
             spacing: 10
             Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Scatter (burst)"); font: fonts.primaryFont(24) }
@@ -151,7 +248,8 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixGlitchChaosScatter = !Config.chargingMatrixGlitchChaosScatter; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Scatter (burst)"
-                KeyNavigation.up: chaosFreezeSwitch; KeyNavigation.down: chaosScatterRateSlider
+                KeyNavigation.up: chaosWipeSwitch
+                KeyNavigation.down: Config.chargingMatrixGlitchChaosScatter ? chaosScatterRateSlider : root.navDownTarget
             }
         }
     }

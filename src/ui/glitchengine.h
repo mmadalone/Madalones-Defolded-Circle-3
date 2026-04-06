@@ -12,6 +12,16 @@
 // Forward declarations — StreamState and ChaosType live in rainsimulation.h
 struct StreamState;
 
+/// @brief Animated expanding pulse overlay (square or circle).
+/// Grows 1 cell per tick from center, highlighting cells at the perimeter.
+struct PulseOverlay {
+    int  centerCol, centerRow;  // origin
+    int  currentSize;           // current radius (grows each tick)
+    int  maxSize;               // maximum radius before expiry
+    int  colorVariant;          // atlas color variant
+    bool circular;              // true = circle, false = square
+};
+
 /// @brief Short-lived overlay trail spawned by direction glitch.
 /// Rendered independently of the source stream -- purely visual, no simulation impact.
 struct GlitchTrail {
@@ -36,6 +46,9 @@ class GlitchEngine {
                       int glyphCount, int colorVariants);
     /// @brief Advance direction-glitch overlay trails (move heads, decrement lifetimes, cull expired).
     void advanceTrails(SimContext &ctx, int glyphCount);
+    /// @brief Advance square pulse overlays (grow size, cull expired). Writes brightness to messageBright
+    /// and glyphs to charGrid so perimeter cells render even without stream trails.
+    void advancePulses(SimContext &ctx, QVector<int> &messageBright, int glyphCount);
     /// @brief Precompute per-cell brightness values from stream trails into m_glitchBright.
     void precomputeBrightness(const QVector<StreamState> &streams,
                               const QVector<int> &brightnessMap, int brightnessLevels,
@@ -72,7 +85,11 @@ class GlitchEngine {
     bool    glitchChaosSurge()    const { return m_glitchChaosSurge; }
     bool    glitchChaosScramble() const { return m_glitchChaosScramble; }
     bool    glitchChaosFreeze()   const { return m_glitchChaosFreeze; }
-    bool    glitchChaosScatter()  const { return m_glitchChaosScatter; }
+    bool    glitchChaosScatter()     const { return m_glitchChaosScatter; }
+    bool    glitchChaosSquareBurst()     const { return m_glitchChaosSquareBurst; }
+    int     glitchChaosSquareBurstSize() const { return m_glitchChaosSquareBurstSize; }
+    bool    glitchChaosRipple()          const { return m_glitchChaosRipple; }
+    bool    glitchChaosWipe()            const { return m_glitchChaosWipe; }
     int     glitchChaosIntensity()    const { return m_glitchChaosIntensity; }
     int     glitchChaosScatterRate()   const { return m_glitchChaosScatterRate; }
     int     glitchChaosScatterLength() const { return m_glitchChaosScatterLength; }
@@ -107,7 +124,13 @@ class GlitchEngine {
     bool setGlitchChaosSurge(bool v)    { if (m_glitchChaosSurge == v) { return false; } m_glitchChaosSurge = v; return true; }
     bool setGlitchChaosScramble(bool v) { if (m_glitchChaosScramble == v) { return false; } m_glitchChaosScramble = v; return true; }
     bool setGlitchChaosFreeze(bool v)   { if (m_glitchChaosFreeze == v) { return false; } m_glitchChaosFreeze = v; return true; }
-    bool setGlitchChaosScatter(bool v)  { if (m_glitchChaosScatter == v) { return false; } m_glitchChaosScatter = v; return true; }
+    bool setGlitchChaosScatter(bool v)     { if (m_glitchChaosScatter == v) { return false; } m_glitchChaosScatter = v; return true; }
+    bool setGlitchChaosSquareBurst(bool v) { if (m_glitchChaosSquareBurst == v) { return false; } m_glitchChaosSquareBurst = v; return true; }
+    bool setGlitchChaosRipple(bool v)      { if (m_glitchChaosRipple == v) { return false; } m_glitchChaosRipple = v; return true; }
+    bool setGlitchChaosWipe(bool v)        { if (m_glitchChaosWipe == v) { return false; } m_glitchChaosWipe = v; return true; }
+    bool setGlitchChaosSquareBurstSize(int v) {
+        v = qBound(2, v, 10); if (m_glitchChaosSquareBurstSize == v) { return false; } m_glitchChaosSquareBurstSize = v; return true;
+    }
     bool setGlitchChaosIntensity(int v) {
         v = qBound(1, v, 100); if (m_glitchChaosIntensity == v) { return false; } m_glitchChaosIntensity = v; return true;
     }
@@ -118,6 +141,7 @@ class GlitchEngine {
 
     // --- Runtime state (public for test access and RainSimulation forwarding) ---
     QVector<GlitchTrail> m_glitchTrails;   // active overlay trails from direction glitch
+    QVector<PulseOverlay> m_pulses;        // active expanding pulse overlays (square + circle)
     QVector<int> m_glitchBright;           // per-cell glitch brightness override (-1 = no override)
 
     // Chaos state
@@ -147,6 +171,10 @@ class GlitchEngine {
     bool    m_glitchChaosScramble{true};
     bool    m_glitchChaosFreeze{true};
     bool    m_glitchChaosScatter{true};
+    bool    m_glitchChaosSquareBurst{true};
+    int     m_glitchChaosSquareBurstSize{5};
+    bool    m_glitchChaosRipple{true};
+    bool    m_glitchChaosWipe{false};
     int     m_glitchChaosIntensity{50};
     int     m_glitchChaosScatterRate{50};
     int     m_glitchChaosScatterLength{8};

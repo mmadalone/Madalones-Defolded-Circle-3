@@ -304,6 +304,7 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
     m_glitch.advanceTrails(ctx, atlas.glyphCount());
     m_glitch.precomputeBrightness(m_streams, atlas.brightnessMap(), atlas.brightnessLevels(),
                                   ctx, m_invertTrail);
+    m_glitch.advancePulses(ctx, m_message.m_messageBright, atlas.glyphCount());
 
     // Message and subliminal injection (delegated to MessageEngine)
     int timerMs = qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_speed), TICK_MAX_MS);
@@ -395,13 +396,59 @@ static const struct { int dx; int dy; } s_tapDirs[] = {
 };
 
 void RainSimulation::tapBurst(int col, int row, int colorVariants) {
-    int trailCount = 20 + randomInt(15);
+    int count = qBound(10, m_tapBurstCount, 50);
+    int len = qBound(2, m_tapBurstLength, 15);
+    int trailCount = count - count / 4 + randomInt(count / 2 + 1);
     for (int i = 0; i < trailCount && m_glitch.m_glitchTrails.size() < 300; ++i) {
         GlitchTrail gt;
         const auto &d = s_tapDirs[randomInt(8)];
         gt.dx = d.dx; gt.dy = d.dy;
         gt.col = col; gt.row = row;
-        gt.length = 3 + randomInt(8);
+        gt.length = qMax(2, len / 2) + randomInt(len);
+        gt.framesLeft = gt.length + 6;
+        gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+        m_glitch.m_glitchTrails.append(gt);
+    }
+}
+
+void RainSimulation::tapSquareBurst(int col, int row, int colorVariants) {
+    if (m_glitch.m_pulses.size() >= 10) return;
+    int maxSz = qBound(2, m_tapSquareBurstSize, 10);
+    PulseOverlay p;
+    p.centerCol = col;
+    p.centerRow = row;
+    p.currentSize = 0;
+    p.maxSize = maxSz + randomInt(qMax(1, maxSz));
+    p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    p.circular = false;
+    m_glitch.m_pulses.append(p);
+}
+
+void RainSimulation::tapRipple(int col, int row, int colorVariants) {
+    if (m_glitch.m_pulses.size() >= 10) return;
+    PulseOverlay p;
+    p.centerCol = col;
+    p.centerRow = row;
+    p.currentSize = 0;
+    p.maxSize = 6 + randomInt(8);  // radius 6-13
+    p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    p.circular = true;
+    m_glitch.m_pulses.append(p);
+}
+
+void RainSimulation::tapWipe(int col, int row, int colorVariants) {
+    Q_UNUSED(row);
+    // Spawn a vertical column of short trails all traveling right (or left if tap is right of center)
+    int dir = (col < m_gridCols / 2) ? 1 : -1;
+    int height = qMin(m_gridRows, 40);
+    int startRow = qMax(0, (m_gridRows - height) / 2);
+    for (int r = startRow; r < startRow + height && m_glitch.m_glitchTrails.size() < 300; ++r) {
+        if (randomInt(4) == 0) continue;  // skip ~25% for organic look
+        GlitchTrail gt;
+        gt.col = col;
+        gt.row = r;
+        gt.dx = dir; gt.dy = 0;
+        gt.length = 3 + randomInt(5);
         gt.framesLeft = gt.length + 6;
         gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
         m_glitch.m_glitchTrails.append(gt);
@@ -432,7 +479,9 @@ void RainSimulation::tapScramble(int col, int row, int radius, int glyphCount) {
 }
 
 void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
-    int spawnCount = 4 + randomInt(4);
+    int count = qBound(2, m_tapSpawnCount, 12);
+    int len = qBound(3, m_tapSpawnLength, 20);
+    int spawnCount = count - count / 4 + randomInt(count / 2 + 1);
     for (int i = 0; i < spawnCount; ++i) {
         for (auto &s : m_streams) {
             if (s.active || s.pauseTicks > 0) continue;
@@ -443,7 +492,7 @@ void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
             s.dx = d.dx; s.dy = d.dy;
             s.dxF = static_cast<float>(d.dx);
             s.dyF = static_cast<float>(d.dy);
-            s.trailLength = 5 + randomInt(10);
+            s.trailLength = qMax(3, len / 2) + randomInt(len);
             s.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
             s.active = true;
             s.stutterFrames = 0;

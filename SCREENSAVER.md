@@ -49,8 +49,12 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Surge (full-screen flash)
 - Scramble (character mutation wave)
 - Freeze (all streams pause)
-- Scatter (burst of glitch trails)
+- Square burst (expanding square outline overlay)
+- Ripple (expanding circular ring overlay)
+- Screen wipe (brightness wave sweeps across screen)
+- Scatter (burst of glitch trails from random points)
 - Configurable frequency, intensity, and individual sub-type toggles
+- Square burst has independent size slider
 
 **Hidden Messages:**
 - Configurable message text (comma-separated)
@@ -66,13 +70,26 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 **Tap Interaction:**
 - Single tap — corruption burst at touch point with configurable effects:
-  - Scatter burst (glitch trails explode from tap)
+  - Scatter burst (glitch trails explode from tap) — configurable count + length
   - Flash shockwave (nearby streams flash)
   - Character scramble (randomize cells around tap)
-  - Stream spawn (new streams from tap point)
+  - Stream spawn (new streams from tap point) — configurable count + length
   - Message injection (hidden message at tap point)
+  - Square burst (expanding square outline overlay) — configurable size
+  - Ripple (expanding circular ring overlay)
+  - Screen wipe (brightness sweep from tap point)
 - Randomize mode — each effect gets an independent coin flip per tap
 - Double-tap to close screensaver (toggleable)
+
+**Touch-Zone Directions (alternative to DPAD):**
+- Screen split into 3×3 grid — tap a zone to change rain direction
+- Center zone: tap 1-2 = glitch + effects, tap 3 = restore direction, tap 4 = close
+- Edge zones: every tap fires direction + effects
+- Mutually exclusive with DPAD interactive
+
+**Swipe & Hold Gestures:**
+- Swipe up/down — adjust rain speed (persists to settings)
+- Hold — staged slowdown: 500ms = slow to 25%, 1500ms = pause. Release restores.
 
 **DPAD Interaction:**
 - Arrow keys change rain direction in real-time
@@ -80,6 +97,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Enter: single tap = chaos burst, double-tap = restore direction, hold = slow motion
 - DPAD interactive toggle (enable/disable all DPAD controls)
 - Direction persistence — remembers last DPAD direction between sessions (toggleable)
+- When DPAD interactive is OFF, all DPAD buttons dismiss the screensaver
 
 ### Overlays
 
@@ -89,8 +107,9 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 ### General Behavior
 
-- **Double-tap to close** — dismiss screensaver with a screen double-tap
+- **Double-tap to close** — dismiss screensaver with a screen double-tap (touch-zone mode: 4-tap center)
 - **Close on wake** — automatically close when picking up the remote
+- **Any physical button dismisses** — all remote buttons close the screensaver unconditionally
 - **Idle screensaver** — activate screensaver after configurable idle timeout (15-55s) when undocked
 - **Display power gating** — animation pauses when display is off, resumes on wake
 
@@ -107,11 +126,11 @@ All settings are in **Settings > Screensaver** on the remote.
 | Visual | Invert trail, Head glow |
 | Glitch | Master toggle, Intensity, Column flash/stutter, Reverse glow |
 | Direction Glitch | Toggle, Frequency, Length, 8 direction toggles, Fade, Speed, Random color |
-| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Scatter, Scatter settings |
-| Tap Effects | Burst, Flash, Scramble, Spawn, Message, Randomize + chance |
+| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe/Scatter (+ freq + length) |
+| Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance |
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse |
-| Behavior | Double-tap to close, Close on wake, DPAD interactive, Remember direction, Idle screensaver, Idle timeout |
+| Behavior | Double-tap to close, Close on wake, DPAD interactive, Remember direction, Touch directions, Idle screensaver, Idle timeout |
 
 ## Installation
 

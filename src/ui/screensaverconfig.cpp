@@ -114,7 +114,11 @@ void ScreensaverConfig::connectSignals() {
     connect(m_config, &Config::chargingMatrixGlitchChaosSurgeChanged,    this, &ScreensaverConfig::glitchChaosSurgeChanged);
     connect(m_config, &Config::chargingMatrixGlitchChaosScrambleChanged, this, &ScreensaverConfig::glitchChaosScrambleChanged);
     connect(m_config, &Config::chargingMatrixGlitchChaosFreezeChanged,   this, &ScreensaverConfig::glitchChaosFreezeChanged);
-    connect(m_config, &Config::chargingMatrixGlitchChaosScatterChanged,  this, &ScreensaverConfig::glitchChaosScatterChanged);
+    connect(m_config, &Config::chargingMatrixGlitchChaosScatterChanged,     this, &ScreensaverConfig::glitchChaosScatterChanged);
+    connect(m_config, &Config::chargingMatrixGlitchChaosSquareBurstChanged,     this, &ScreensaverConfig::glitchChaosSquareBurstChanged);
+    connect(m_config, &Config::chargingMatrixGlitchChaosSquareBurstSizeChanged, this, &ScreensaverConfig::glitchChaosSquareBurstSizeChanged);
+    connect(m_config, &Config::chargingMatrixGlitchChaosRippleChanged,        this, &ScreensaverConfig::glitchChaosRippleChanged);
+    connect(m_config, &Config::chargingMatrixGlitchChaosWipeChanged,          this, &ScreensaverConfig::glitchChaosWipeChanged);
     connect(m_config, &Config::chargingMatrixGlitchChaosIntensityChanged, this, &ScreensaverConfig::glitchChaosIntensityChanged);
     connect(m_config, &Config::chargingMatrixGlitchChaosScatterRateChanged,   this, &ScreensaverConfig::glitchChaosScatterRateChanged);
     connect(m_config, &Config::chargingMatrixGlitchChaosScatterLengthChanged, this, &ScreensaverConfig::glitchChaosScatterLengthChanged);
@@ -143,10 +147,18 @@ void ScreensaverConfig::connectSignals() {
 
     // Tap interaction
     connect(m_config, &Config::chargingMatrixTapBurstChanged,            this, &ScreensaverConfig::tapBurstChanged);
+    connect(m_config, &Config::chargingMatrixTapBurstCountChanged,     this, &ScreensaverConfig::tapBurstCountChanged);
+    connect(m_config, &Config::chargingMatrixTapBurstLengthChanged,    this, &ScreensaverConfig::tapBurstLengthChanged);
     connect(m_config, &Config::chargingMatrixTapFlashChanged,            this, &ScreensaverConfig::tapFlashChanged);
     connect(m_config, &Config::chargingMatrixTapScrambleChanged,         this, &ScreensaverConfig::tapScrambleChanged);
     connect(m_config, &Config::chargingMatrixTapSpawnChanged,            this, &ScreensaverConfig::tapSpawnChanged);
+    connect(m_config, &Config::chargingMatrixTapSpawnCountChanged,     this, &ScreensaverConfig::tapSpawnCountChanged);
+    connect(m_config, &Config::chargingMatrixTapSpawnLengthChanged,    this, &ScreensaverConfig::tapSpawnLengthChanged);
     connect(m_config, &Config::chargingMatrixTapMessageChanged,          this, &ScreensaverConfig::tapMessageChanged);
+    connect(m_config, &Config::chargingMatrixTapSquareBurstChanged,       this, &ScreensaverConfig::tapSquareBurstChanged);
+    connect(m_config, &Config::chargingMatrixTapSquareBurstSizeChanged,   this, &ScreensaverConfig::tapSquareBurstSizeChanged);
+    connect(m_config, &Config::chargingMatrixTapRippleChanged,           this, &ScreensaverConfig::tapRippleChanged);
+    connect(m_config, &Config::chargingMatrixTapWipeChanged,             this, &ScreensaverConfig::tapWipeChanged);
     connect(m_config, &Config::chargingMatrixTapRandomizeChanged,        this, &ScreensaverConfig::tapRandomizeChanged);
     connect(m_config, &Config::chargingMatrixTapRandomizeChanceChanged,  this, &ScreensaverConfig::tapRandomizeChanceChanged);
 
@@ -156,6 +168,7 @@ void ScreensaverConfig::connectSignals() {
     connect(m_config, &Config::chargingIdleEnabledChanged,   this, &ScreensaverConfig::idleEnabledChanged);
     connect(m_config, &Config::chargingIdleTimeoutChanged,   this, &ScreensaverConfig::idleTimeoutChanged);
     connect(m_config, &Config::chargingMatrixDpadEnabledChanged,    this, &ScreensaverConfig::dpadEnabledChanged);
+    connect(m_config, &Config::chargingMatrixTapDirectionChanged,  this, &ScreensaverConfig::tapDirectionChanged);
     connect(m_config, &Config::chargingMatrixLastDirectionChanged,  this, &ScreensaverConfig::lastDirectionChanged);
 }
 
