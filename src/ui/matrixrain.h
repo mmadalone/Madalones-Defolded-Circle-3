@@ -24,16 +24,35 @@ namespace uc { class ScreensaverConfig; }
 class MatrixRainItem : public QQuickItem {
     Q_OBJECT
 
+    /// @name Core appearance (atlas-affecting: color, colorMode, fontSize, charset, fadeRate)
+    /// @{
     Q_PROPERTY(QColor   color       READ color       WRITE setColor       NOTIFY colorChanged)
     Q_PROPERTY(QString  colorMode   READ colorMode   WRITE setColorMode   NOTIFY colorModeChanged)
+    Q_PROPERTY(int      fontSize    READ fontSize    WRITE setFontSize    NOTIFY fontSizeChanged)
+    Q_PROPERTY(QString  charset     READ charset     WRITE setCharset     NOTIFY charsetChanged)
+    Q_PROPERTY(qreal    fadeRate     READ fadeRate     WRITE setFadeRate     NOTIFY fadeRateChanged)
+    /// @}
+
+    /// @name Core appearance (simulation: speed, density, trail, glow, direction, invert)
+    /// @{
     Q_PROPERTY(qreal    speed       READ speed       WRITE setSpeed       NOTIFY speedChanged)
     Q_PROPERTY(qreal    density     READ density     WRITE setDensity     NOTIFY densityChanged)
     Q_PROPERTY(int      trailLength READ trailLength WRITE setTrailLength NOTIFY trailLengthChanged)
-    Q_PROPERTY(int      fontSize    READ fontSize    WRITE setFontSize    NOTIFY fontSizeChanged)
-    Q_PROPERTY(QString  charset     READ charset     WRITE setCharset     NOTIFY charsetChanged)
     Q_PROPERTY(bool     glow        READ glow        WRITE setGlow        NOTIFY glowChanged)
-    Q_PROPERTY(bool     running     READ running     WRITE setRunning     NOTIFY runningChanged)
-    Q_PROPERTY(bool     displayOff  READ displayOff  WRITE setDisplayOff  NOTIFY displayOffChanged)
+    Q_PROPERTY(QString  direction    READ direction    WRITE setDirection    NOTIFY directionChanged)
+    Q_PROPERTY(bool     invertTrail  READ invertTrail  WRITE setInvertTrail  NOTIFY invertTrailChanged)
+    /// @}
+
+    /// @name Gravity / auto-rotation
+    /// @{
+    Q_PROPERTY(bool     gravityMode      READ gravityMode      WRITE setGravityMode      NOTIFY gravityModeChanged)
+    Q_PROPERTY(bool     gravityAvailable READ gravityAvailable CONSTANT)
+    Q_PROPERTY(int      autoRotateSpeed  READ autoRotateSpeed  WRITE setAutoRotateSpeed  NOTIFY autoRotateSpeedChanged)
+    Q_PROPERTY(int      autoRotateBend   READ autoRotateBend   WRITE setAutoRotateBend   NOTIFY autoRotateBendChanged)
+    /// @}
+
+    /// @name Glitch micro-effects (per-stream: flash, stutter, reverse, direction trails)
+    /// @{
     Q_PROPERTY(bool     glitch      READ glitch      WRITE setGlitch      NOTIFY glitchChanged)
     Q_PROPERTY(int      glitchRate  READ glitchRate  WRITE setGlitchRate  NOTIFY glitchRateChanged)
     Q_PROPERTY(bool     glitchFlash   READ glitchFlash   WRITE setGlitchFlash   NOTIFY glitchFlashChanged)
@@ -44,29 +63,38 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(int      glitchDirMask  READ glitchDirMask  WRITE setGlitchDirMask  NOTIFY glitchDirMaskChanged)
     Q_PROPERTY(int      glitchDirFade  READ glitchDirFade  WRITE setGlitchDirFade  NOTIFY glitchDirFadeChanged)
     Q_PROPERTY(int      glitchDirSpeed READ glitchDirSpeed WRITE setGlitchDirSpeed NOTIFY glitchDirSpeedChanged)
-    Q_PROPERTY(bool     glitchRandomColor READ glitchRandomColor WRITE setGlitchRandomColor NOTIFY glitchRandomColorChanged)
     Q_PROPERTY(int      glitchDirLength   READ glitchDirLength   WRITE setGlitchDirLength   NOTIFY glitchDirLengthChanged)
+    Q_PROPERTY(bool     glitchRandomColor READ glitchRandomColor WRITE setGlitchRandomColor NOTIFY glitchRandomColorChanged)
+    /// @}
+
+    /// @name Chaos macro-effects (periodic bursts: surge, scramble, freeze, scatter, square burst, ripple, wipe)
+    /// @{
     Q_PROPERTY(bool     glitchChaos          READ glitchChaos          WRITE setGlitchChaos          NOTIFY glitchChaosChanged)
     Q_PROPERTY(int      glitchChaosFrequency READ glitchChaosFrequency WRITE setGlitchChaosFrequency NOTIFY glitchChaosFrequencyChanged)
+    Q_PROPERTY(int      glitchChaosIntensity    READ glitchChaosIntensity    WRITE setGlitchChaosIntensity    NOTIFY glitchChaosIntensityChanged)
     Q_PROPERTY(bool     glitchChaosSurge     READ glitchChaosSurge     WRITE setGlitchChaosSurge     NOTIFY glitchChaosSurgeChanged)
     Q_PROPERTY(bool     glitchChaosScramble  READ glitchChaosScramble  WRITE setGlitchChaosScramble  NOTIFY glitchChaosScrambleChanged)
     Q_PROPERTY(bool     glitchChaosFreeze    READ glitchChaosFreeze    WRITE setGlitchChaosFreeze    NOTIFY glitchChaosFreezeChanged)
-    Q_PROPERTY(bool     glitchChaosScatter      READ glitchChaosScatter      WRITE setGlitchChaosScatter      NOTIFY glitchChaosScatterChanged)
     Q_PROPERTY(bool     glitchChaosSquareBurst     READ glitchChaosSquareBurst     WRITE setGlitchChaosSquareBurst     NOTIFY glitchChaosSquareBurstChanged)
     Q_PROPERTY(int      glitchChaosSquareBurstSize READ glitchChaosSquareBurstSize WRITE setGlitchChaosSquareBurstSize NOTIFY glitchChaosSquareBurstSizeChanged)
     Q_PROPERTY(bool     glitchChaosRipple          READ glitchChaosRipple          WRITE setGlitchChaosRipple          NOTIFY glitchChaosRippleChanged)
     Q_PROPERTY(bool     glitchChaosWipe            READ glitchChaosWipe            WRITE setGlitchChaosWipe            NOTIFY glitchChaosWipeChanged)
-    Q_PROPERTY(int      tapSquareBurstSize         READ tapSquareBurstSize         WRITE setTapSquareBurstSize         NOTIFY tapSquareBurstSizeChanged)
+    Q_PROPERTY(bool     glitchChaosScatter      READ glitchChaosScatter      WRITE setGlitchChaosScatter      NOTIFY glitchChaosScatterChanged)
+    Q_PROPERTY(int      glitchChaosScatterRate   READ glitchChaosScatterRate   WRITE setGlitchChaosScatterRate   NOTIFY glitchChaosScatterRateChanged)
+    Q_PROPERTY(int      glitchChaosScatterLength READ glitchChaosScatterLength WRITE setGlitchChaosScatterLength NOTIFY glitchChaosScatterLengthChanged)
+    /// @}
+
+    /// @name Tap effects (burst, flash, scramble, spawn, message, square burst, ripple, wipe)
+    /// @{
     Q_PROPERTY(int      tapBurstCount              READ tapBurstCount              WRITE setTapBurstCount              NOTIFY tapBurstCountChanged)
     Q_PROPERTY(int      tapBurstLength             READ tapBurstLength             WRITE setTapBurstLength             NOTIFY tapBurstLengthChanged)
     Q_PROPERTY(int      tapSpawnCount              READ tapSpawnCount              WRITE setTapSpawnCount              NOTIFY tapSpawnCountChanged)
     Q_PROPERTY(int      tapSpawnLength             READ tapSpawnLength             WRITE setTapSpawnLength             NOTIFY tapSpawnLengthChanged)
-    Q_PROPERTY(int      glitchChaosIntensity    READ glitchChaosIntensity    WRITE setGlitchChaosIntensity    NOTIFY glitchChaosIntensityChanged)
-    Q_PROPERTY(int      glitchChaosScatterRate   READ glitchChaosScatterRate   WRITE setGlitchChaosScatterRate   NOTIFY glitchChaosScatterRateChanged)
-    Q_PROPERTY(int      glitchChaosScatterLength READ glitchChaosScatterLength WRITE setGlitchChaosScatterLength NOTIFY glitchChaosScatterLengthChanged)
-    Q_PROPERTY(qreal    fadeRate     READ fadeRate     WRITE setFadeRate     NOTIFY fadeRateChanged)
-    Q_PROPERTY(QString  direction    READ direction    WRITE setDirection    NOTIFY directionChanged)
-    Q_PROPERTY(bool     invertTrail  READ invertTrail  WRITE setInvertTrail  NOTIFY invertTrailChanged)
+    Q_PROPERTY(int      tapSquareBurstSize         READ tapSquareBurstSize         WRITE setTapSquareBurstSize         NOTIFY tapSquareBurstSizeChanged)
+    /// @}
+
+    /// @name Messages / subliminal
+    /// @{
     Q_PROPERTY(QString  messages        READ messages        WRITE setMessages        NOTIFY messagesChanged)
     Q_PROPERTY(int      messageInterval READ messageInterval WRITE setMessageInterval NOTIFY messageIntervalChanged)
     Q_PROPERTY(bool     messageRandom   READ messageRandom   WRITE setMessageRandom   NOTIFY messageRandomChanged)
@@ -79,8 +107,12 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(bool     subliminalStream    READ subliminalStream    WRITE setSubliminalStream    NOTIFY subliminalStreamChanged)
     Q_PROPERTY(bool     subliminalOverlay   READ subliminalOverlay   WRITE setSubliminalOverlay   NOTIFY subliminalOverlayChanged)
     Q_PROPERTY(bool     subliminalFlash     READ subliminalFlash     WRITE setSubliminalFlash     NOTIFY subliminalFlashChanged)
-    Q_PROPERTY(bool     gravityMode      READ gravityMode      WRITE setGravityMode      NOTIFY gravityModeChanged)
-    Q_PROPERTY(bool     gravityAvailable READ gravityAvailable CONSTANT)
+    /// @}
+
+    /// @name Runtime state
+    /// @{
+    Q_PROPERTY(bool     running     READ running     WRITE setRunning     NOTIFY runningChanged)
+    Q_PROPERTY(bool     displayOff  READ displayOff  WRITE setDisplayOff  NOTIFY displayOffChanged)
     Q_PROPERTY(int      autoRotateSpeed  READ autoRotateSpeed  WRITE setAutoRotateSpeed  NOTIFY autoRotateSpeedChanged)
     Q_PROPERTY(int      autoRotateBend   READ autoRotateBend   WRITE setAutoRotateBend   NOTIFY autoRotateBendChanged)
 
@@ -390,7 +422,21 @@ public:
     bool   m_autoRotateWasActive{false}; // was auto-rotate running before interactive override
     bool   m_slowOverride{false};        // speed slowed down by enter hold
 
-    // Enter button state machine (ported from QML timers)
+    // Enter button state machine (ported from QML timers).
+    // Called from ChargingScreen.qml DPAD_MIDDLE handler → enterPressed()/enterReleased().
+    //
+    // State diagram:
+    //   EnterIdle ──press──► EnterPressed (start 300ms + 500ms timers)
+    //     EnterPressed ──press again (< 300ms)──► emit "restore", → EnterIdle
+    //     EnterPressed ──500ms elapsed──► EnterHeld, emit "slow:hold"
+    //     EnterPressed ──300ms elapsed──► emit "enter", → EnterIdle
+    //     EnterHeld ──release──► emit "slow:release", → EnterIdle
+    //
+    // Signals emitted via enterAction(QString):
+    //   "enter"        → chaos burst (if glitch+chaos) or flash-all
+    //   "restore"      → revert DPAD direction override, restore auto-rotate
+    //   "slow:hold"    → reduce tick rate to 25%
+    //   "slow:release" → restore normal tick rate
     enum EnterState { EnterIdle, EnterPressed, EnterHeld };
     EnterState m_enterState{EnterIdle};
     QTimer m_enterDoubleTapTimer;  // 300ms — single vs double tap detection

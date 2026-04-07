@@ -418,7 +418,7 @@ void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, qui
             if (m_cellDrawn[cellIdx]) continue;
             m_cellDrawn[cellIdx] = true;
 
-            int dist = simInvertTrail ? s.trailLength - 1 - d : d;
+            int dist = SimContext::trailDist(d, s.trailLength, simInvertTrail);
             int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
             if (dist == 0 && simGlow) bright = 0;
 

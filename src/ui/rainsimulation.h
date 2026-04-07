@@ -77,6 +77,11 @@ class RainSimulation {
  public:
     RainSimulation();
 
+    /// @brief Valid direction strings for setDirection() and QML direction pickers.
+    static QStringList validDirections() {
+        return {"down", "up", "right", "left", "down-right", "down-left", "up-right", "up-left"};
+    }
+
     /// @brief Initialize or reinitialize the stream pool and grids for the given screen dimensions.
     /// Call after screen resize or atlas rebuild. Allocates streams based on density and grid size.
     void initStreams(qreal screenWidth, qreal screenHeight, const GlyphAtlas &atlas);

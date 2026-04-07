@@ -357,10 +357,17 @@ bool RainSimulation::setGravityMode(bool g) {
         // Clear m_direction so setDirection() won't short-circuit on restore
         m_direction.clear();
     } else {
-        // Restore saved manual direction
+        // Restore saved manual direction and snap all streams to it
         if (!m_savedDirection.isEmpty()) {
             setDirection(m_savedDirection);
             m_savedDirection.clear();
+        }
+        // Reset per-stream directions to avoid residual lerp drift
+        for (auto &s : m_streams) {
+            s.dxF = m_dxF;
+            s.dyF = m_dyF;
+            s.dx = m_dx;
+            s.dy = m_dy;
         }
     }
     return true;

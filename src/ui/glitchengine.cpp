@@ -215,7 +215,7 @@ void GlitchEngine::precomputeBrightness(const QVector<StreamState> &streams,
             int c, r;
             s.trailPos(d, c, r);
             if (c < 0 || c >= ctx.gridCols || r < 0 || r >= ctx.gridRows) continue;
-            int dist = invertTrail ? (s.trailLength - 1 - d) : d;
+            int dist = SimContext::trailDist(d, s.trailLength, invertTrail);
             int gridIdx = c * ctx.gridRows + r;
             if (gridIdx < 0 || gridIdx >= m_glitchBright.size()) continue;
             if (m_glitchReverse && dist > 2 && static_cast<int>(ctx.rng() % 100) < m_glitchRate / 4) {

@@ -19,4 +19,9 @@ struct SimContext {
         : charGrid(grid), gridCols(cols), gridRows(rows), rng(gen) {}
     SimContext(const SimContext &) = delete;
     SimContext &operator=(const SimContext &) = delete;
+
+    /// @brief Compute trail brightness distance accounting for invert-trail mode.
+    static inline int trailDist(int d, int trailLength, bool invertTrail) {
+        return invertTrail ? (trailLength - 1 - d) : d;
+    }
 };

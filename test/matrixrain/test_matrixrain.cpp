@@ -1101,7 +1101,7 @@ class MatrixRainTest : public QObject {
         int burstFired = 0, N = 200;
         for (int i = 0; i < N; ++i) {
             int before = item.m_sim.m_glitch.m_glitchTrails.size();
-            item.interactiveInput("tap:240,400,1,0,0,0,1,R50");  // burst + message + R50
+            item.interactiveInput("tap:240,400,1,0,0,0,1,0,0,0,R50");  // burst + message + R50
             if (item.m_sim.m_glitch.m_glitchTrails.size() > before)
                 burstFired++;
             item.m_sim.m_glitch.m_glitchTrails.clear();
@@ -1126,7 +1126,7 @@ class MatrixRainTest : public QObject {
             int overlayBefore = item.m_sim.m_message.m_messageOverlay.size();
             auto gridSnap = item.m_sim.m_charGrid;
 
-            item.interactiveInput("tap:240,400,1,0,1,0,1,R10");  // burst + scramble + message
+            item.interactiveInput("tap:240,400,1,0,1,0,1,0,0,0,R10");  // burst + scramble + message
 
             bool burst = item.m_sim.m_glitch.m_glitchTrails.size() > trailsBefore;
             bool overlay = item.m_sim.m_message.m_messageOverlay.size() > overlayBefore;
@@ -1148,7 +1148,7 @@ class MatrixRainTest : public QObject {
             for (int i = 0; i < 100; ++i) {
                 int t0 = item.m_sim.m_glitch.m_glitchTrails.size();
                 int m0 = item.m_sim.m_message.m_messageOverlay.size();
-                item.interactiveInput(QString("tap:240,400,1,0,0,0,1,%1").arg(rflag));
+                item.interactiveInput(QString("tap:240,400,1,0,0,0,1,0,0,0,%1").arg(rflag));
                 if (item.m_sim.m_glitch.m_glitchTrails.size() > t0) total++;
                 if (item.m_sim.m_message.m_messageOverlay.size() > m0) total++;
                 item.m_sim.m_glitch.m_glitchTrails.clear();
@@ -1654,7 +1654,7 @@ class MatrixRainTest : public QObject {
         int overlayBefore = item.m_sim.m_message.m_messageOverlay.size();
         auto gridSnap = item.m_sim.m_charGrid;
 
-        item.interactiveInput("tap:240,400,1,1,1,1,1");
+        item.interactiveInput("tap:240,400,1,1,1,1,1,0,0,0");
 
         // Burst: glitch trails increased
         QVERIFY2(item.m_sim.m_glitch.m_glitchTrails.size() > trailsBefore + 15,
@@ -1693,7 +1693,7 @@ class MatrixRainTest : public QObject {
         setupItem(item, 480, 800, "down");
         item.setMessages("AB");
 
-        item.interactiveInput("tap:240,400,0,0,1,0,1");  // scramble + message only
+        item.interactiveInput("tap:240,400,0,0,1,0,1,0,0,0");  // scramble + message only
 
         int gridCols = item.m_sim.m_gridCols;
         int gridRows = item.m_sim.m_gridRows;
