@@ -1072,22 +1072,22 @@ Climate fan</extracomment>
 <context>
     <name>DirectionGlitchSection</name>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="32"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="41"/>
         <source>Direction change</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="56"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="65"/>
         <source>Frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="79"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="88"/>
         <source>Trail length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="102"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="111"/>
         <source>Glitch directions</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1503,6 +1503,7 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="117"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="178"/>
         <source>Remember direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1513,16 +1514,16 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="165"/>
-        <source>Tap screen zones to change direction. Triple-tap to close.</source>
+        <source>Tap screen zones to change direction. Triple-tap center to close.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="181"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="207"/>
         <source>Idle screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="206"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="233"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2227,26 +2228,41 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="93"/>
+        <source>3D depth</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="117"/>
+        <source>Intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="142"/>
+        <source>Overlay mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="168"/>
         <source>Glitch effect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="118"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="193"/>
         <source>Glitch intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="143"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="218"/>
         <source>Column flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="166"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="241"/>
         <source>Column stutter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="189"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="264"/>
         <source>Reverse glow</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2490,32 +2506,32 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="181"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="182"/>
         <source>Hidden messages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="208"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="230"/>
         <source>Message interval</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="236"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="258"/>
         <source>Random order</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="261"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="283"/>
         <source>Message direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="307"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="329"/>
         <source>Surrounding flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="330"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="352"/>
         <source>Brightness pulse</source>
         <translation type="unfinished"></translation>
     </message>

@@ -19,6 +19,15 @@ ColumnLayout {
     property Item navUpTarget
     property Item navDownTarget
 
+    // Helper to toggle a bit in the mask with minimum-1 guard
+    function toggleDirBit(bit) {
+        var newMask = Config.chargingMatrixGlitchDirMask ^ (1 << bit);
+        if (newMask > 0) {
+            Config.chargingMatrixGlitchDirMask = newMask;
+            Haptic.play(Haptic.Click);
+        }
+    }
+
     spacing: 20
 
     // 12e. DIRECTION CHANGE
@@ -62,7 +71,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 80; stepSize: 5
             value: Config.chargingMatrixGlitchDirRate; live: true
-            onValueChanged: Config.chargingMatrixGlitchDirRate = value
+            onMoved: Config.chargingMatrixGlitchDirRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Frequency " + value
@@ -84,7 +93,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 3; to: 30; stepSize: 1; live: true
             value: Config.chargingMatrixGlitchDirLength
-            onValueChanged: Config.chargingMatrixGlitchDirLength = value
+            onMoved: Config.chargingMatrixGlitchDirLength = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail length " + value
@@ -100,15 +109,6 @@ ColumnLayout {
         spacing: 10
 
         Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Glitch directions"); font: fonts.primaryFont(24) }
-
-        // Helper to toggle a bit in the mask with minimum-1 guard
-        function toggleDirBit(bit) {
-            var newMask = Config.chargingMatrixGlitchDirMask ^ (1 << bit);
-            if (newMask > 0) {
-                Config.chargingMatrixGlitchDirMask = newMask;
-                Haptic.play(Haptic.Click);
-            }
-        }
 
         // Cardinal directions (bits 0-3: down, up, left, right)
         RowLayout {
@@ -137,7 +137,7 @@ ColumnLayout {
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: parent.parent.parent.toggleDirBit(modelData.bit)
+                        onClicked: root.toggleDirBit(modelData.bit)
                     }
                 }
             }
@@ -170,7 +170,7 @@ ColumnLayout {
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: parent.parent.parent.toggleDirBit(modelData.bit)
+                        onClicked: root.toggleDirBit(modelData.bit)
                     }
                 }
             }
@@ -191,7 +191,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 0; to: 100; stepSize: 5; live: true
             value: Config.chargingMatrixGlitchDirFade
-            onValueChanged: Config.chargingMatrixGlitchDirFade = value
+            onMoved: Config.chargingMatrixGlitchDirFade = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail fade " + value
@@ -213,7 +213,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5; live: true
             value: Config.chargingMatrixGlitchDirSpeed
-            onValueChanged: Config.chargingMatrixGlitchDirSpeed = value
+            onMoved: Config.chargingMatrixGlitchDirSpeed = value
             onUserInteractionEnded: Config.chargingMatrixGlitchDirSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail speed " + value

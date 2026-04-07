@@ -248,7 +248,7 @@ void MessageEngine::advanceInjection(const GlyphAtlas &atlas,
                                       qreal screenW, qreal screenH, const QString &charset,
                                       int dx, int dy, int timerMs) {
     // Message injection: trigger at configured interval
-    if (!m_messageList.isEmpty()) {
+    if (m_messagesEnabled && !m_messageList.isEmpty()) {
         m_messageTickCounter++;
         int ticksPerMsg = qMax(1, m_messageInterval * 1000 / timerMs);
         if (m_messageTickCounter >= ticksPerMsg) {
@@ -312,6 +312,12 @@ void MessageEngine::advanceDecay(const GlyphAtlas &atlas, SimContext &ctx) {
 }
 
 // --- Property setters with side effects ---
+
+bool MessageEngine::setMessagesEnabled(bool v) {
+    if (m_messagesEnabled == v) return false;
+    m_messagesEnabled = v;
+    return true;
+}
 
 bool MessageEngine::setMessages(const QString &m) {
     if (m_messages == m) return false;

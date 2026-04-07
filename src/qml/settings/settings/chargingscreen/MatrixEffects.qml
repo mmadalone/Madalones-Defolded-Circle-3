@@ -74,7 +74,82 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixGlow = !Config.chargingMatrixGlow; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Head glow"
-                KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: glitchSwitch
+                KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: depthEnabledSwitch
+            }
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // 3D DEPTH PARALLAX
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("3D depth"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: depthEnabledSwitch
+                objectName: "depthEnabledSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDepthEnabled
+                trigger: function() { Config.chargingMatrixDepthEnabled = !Config.chargingMatrixDepthEnabled; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "3D depth"
+                KeyNavigation.up: glowSwitch; KeyNavigation.down: depthIntensitySlider
+            }
+        }
+    }
+
+    // 3D DEPTH INTENSITY (visible when depth is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixDepthEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text {
+            Layout.fillWidth: true; color: colors.light
+            text: qsTr("Intensity"); font: fonts.primaryFont(26)
+        }
+        Components.Slider {
+            id: depthIntensitySlider
+            objectName: "depthIntensitySlider"
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            height: 60; Layout.fillWidth: true
+            from: 10; to: 100; stepSize: 5
+            value: Config.chargingMatrixDepthIntensity; live: true
+            onMoved: Config.chargingMatrixDepthIntensity = value
+            onUserInteractionEnded: Config.chargingMatrixDepthIntensity = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Depth intensity " + value
+            KeyNavigation.up: depthEnabledSwitch; KeyNavigation.down: depthOverlaySwitch
+        }
+    }
+
+    // 3D DEPTH OVERLAY MODE (visible when depth is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixDepthEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Overlay mode"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: depthOverlaySwitch
+                objectName: "depthOverlaySwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDepthOverlay
+                trigger: function() { Config.chargingMatrixDepthOverlay = !Config.chargingMatrixDepthOverlay; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Depth overlay mode"
+                KeyNavigation.up: depthIntensitySlider; KeyNavigation.down: glitchSwitch
             }
         }
     }
@@ -101,7 +176,7 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixGlitch = !Config.chargingMatrixGlitch; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Glitch effect"
-                KeyNavigation.up: glowSwitch; KeyNavigation.down: glitchRateSlider
+                KeyNavigation.up: depthOverlaySwitch; KeyNavigation.down: glitchRateSlider
             }
         }
     }
@@ -124,7 +199,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 80; stepSize: 5
             value: Config.chargingMatrixGlitchRate; live: true
-            onValueChanged: Config.chargingMatrixGlitchRate = value
+            onMoved: Config.chargingMatrixGlitchRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Glitch intensity " + value
@@ -205,6 +280,7 @@ ColumnLayout {
 
     DirectionGlitchSection {
         id: directionGlitchSection
+        visible: Config.chargingMatrixGlitch
         settingsPage: root.settingsPage
         Layout.fillWidth: true
         navUpTarget: glitchReverseSwitch
@@ -213,6 +289,7 @@ ColumnLayout {
 
     ChaosSection {
         id: chaosSection
+        visible: Config.chargingMatrixGlitch
         settingsPage: root.settingsPage
         Layout.fillWidth: true
         navUpTarget: directionGlitchSection.lastFocusItem

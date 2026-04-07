@@ -155,15 +155,41 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Touch directions"
                 KeyNavigation.up: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : dpadEnabledSwitch
-                KeyNavigation.down: idleEnabledSwitch
+                KeyNavigation.down: Config.chargingMatrixTapDirection ? tapDirPersistSwitch : idleEnabledSwitch
             }
         }
         Text {
             visible: Config.chargingMatrixTapDirection
             Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
             color: colors.medium; wrapMode: Text.WordWrap
-            text: qsTr("Tap screen zones to change direction. Triple-tap to close.")
-            font: fonts.primaryFont(20)
+            text: qsTr("Tap screen zones to change direction. Triple-tap center to close.")
+            font: fonts.primaryFont(26)
+        }
+    }
+
+    // 15e. REMEMBER DIRECTION (visible when touch directions is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixTapDirection
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Remember direction"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: tapDirPersistSwitch
+                objectName: "tapDirPersistSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDpadPersist
+                trigger: function() {
+                    Config.chargingMatrixDpadPersist = !Config.chargingMatrixDpadPersist;
+                    if (!Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = "";
+                }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Remember direction"
+                KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: idleEnabledSwitch
+            }
         }
     }
 
@@ -189,7 +215,8 @@ ColumnLayout {
                 trigger: function() { Config.chargingIdleEnabled = !Config.chargingIdleEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Idle screensaver"
-                KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: idleTimeoutSlider
+                KeyNavigation.up: Config.chargingMatrixTapDirection ? tapDirPersistSwitch : tapDirectionSwitch
+                KeyNavigation.down: idleTimeoutSlider
             }
         }
     }
@@ -213,7 +240,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 15; to: 55; stepSize: 5
             value: Config.chargingIdleTimeout; live: true
-            onValueChanged: Config.chargingIdleTimeout = value
+            onMoved: Config.chargingIdleTimeout = value
             onUserInteractionEnded: Config.chargingIdleTimeout = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Idle timeout " + value

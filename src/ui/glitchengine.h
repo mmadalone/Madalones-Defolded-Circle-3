@@ -139,18 +139,30 @@ class GlitchEngine {
         v = qBound(3, v, 40); if (m_glitchChaosScatterLength == v) { return false; } m_glitchChaosScatterLength = v; return true;
     }
 
-    // --- Runtime state (public for test access and RainSimulation forwarding) ---
+    // --- Tap/chaos mutation methods ---
+    bool appendTrail(const GlitchTrail &trail, int cap = 300) {
+        if (m_glitchTrails.size() >= cap) return false;
+        m_glitchTrails.append(trail);
+        return true;
+    }
+    bool appendPulse(const PulseOverlay &pulse, int cap = 10) {
+        if (m_pulses.size() >= cap) return false;
+        m_pulses.append(pulse);
+        return true;
+    }
+    int trailCount() const { return m_glitchTrails.size(); }
+    int pulseCount() const { return m_pulses.size(); }
+
+ private:
+    // Runtime state
     QVector<GlitchTrail> m_glitchTrails;   // active overlay trails from direction glitch
     QVector<PulseOverlay> m_pulses;        // active expanding pulse overlays (square + circle)
     QVector<int> m_glitchBright;           // per-cell glitch brightness override (-1 = no override)
-
-    // Chaos state
     int m_chaosTickCounter{0};
     int m_chaosScatterTickCounter{0};
     int m_chaosActiveFrames{0};
     int m_chaosActiveType{0};
 
- private:
     // Config properties
     bool    m_glitch{true};
     int     m_glitchRate{30};

@@ -176,6 +176,10 @@ class Config : public QObject {
     Q_PROPERTY(bool chargingMatrixDpadPersist READ getChargingMatrixDpadPersist WRITE setChargingMatrixDpadPersist NOTIFY chargingMatrixDpadPersistChanged)
     Q_PROPERTY(bool chargingMatrixTapDirection READ getChargingMatrixTapDirection WRITE setChargingMatrixTapDirection NOTIFY chargingMatrixTapDirectionChanged)
     Q_PROPERTY(QString chargingMatrixLastDirection READ getChargingMatrixLastDirection WRITE setChargingMatrixLastDirection NOTIFY chargingMatrixLastDirectionChanged)
+    Q_PROPERTY(bool chargingMatrixDepthEnabled READ getChargingMatrixDepthEnabled WRITE setChargingMatrixDepthEnabled NOTIFY chargingMatrixDepthEnabledChanged)
+    Q_PROPERTY(int chargingMatrixDepthIntensity READ getChargingMatrixDepthIntensity WRITE setChargingMatrixDepthIntensity NOTIFY chargingMatrixDepthIntensityChanged)
+    Q_PROPERTY(bool chargingMatrixDepthOverlay READ getChargingMatrixDepthOverlay WRITE setChargingMatrixDepthOverlay NOTIFY chargingMatrixDepthOverlayChanged)
+    Q_PROPERTY(bool chargingMatrixMessagesEnabled READ getChargingMatrixMessagesEnabled WRITE setChargingMatrixMessagesEnabled NOTIFY chargingMatrixMessagesEnabledChanged)
 
  public:
     explicit Config(core::Api* core, QObject* parent = nullptr);
@@ -329,6 +333,7 @@ class Config : public QObject {
     CFG_INT(ChargingMatrixAutoRotateBend,       "charging/matrixAutoRotateBend",    50,               chargingMatrixAutoRotateBendChanged)
     CFG_BOOL(ChargingMatrixInvertTrail,         "charging/matrixInvertTrail",       false,            chargingMatrixInvertTrailChanged)
     CFG_STRING(ChargingMatrixMessages,          "charging/matrixMessages",          "",               chargingMatrixMessagesChanged)
+    CFG_BOOL(ChargingMatrixMessagesEnabled,     "charging/matrixMessagesEnabled",   true,             chargingMatrixMessagesEnabledChanged)
     CFG_INT(ChargingMatrixMessageInterval,      "charging/matrixMessageInterval",   10,               chargingMatrixMessageIntervalChanged)
     CFG_BOOL(ChargingMatrixMessageRandom,       "charging/matrixMessageRandom",     true,             chargingMatrixMessageRandomChanged)
     CFG_STRING(ChargingMatrixMessageDirection,  "charging/matrixMessageDirection",  "horizontal-lr",  chargingMatrixMessageDirectionChanged)
@@ -364,6 +369,9 @@ class Config : public QObject {
     CFG_BOOL(ChargingMatrixDpadPersist,         "charging/matrixDpadPersist",       true,             chargingMatrixDpadPersistChanged)
     CFG_BOOL(ChargingMatrixTapDirection,        "charging/matrixTapDirection",      false,            chargingMatrixTapDirectionChanged)
     CFG_STRING(ChargingMatrixLastDirection,      "charging/matrixLastDirection",     "",               chargingMatrixLastDirectionChanged)
+    CFG_BOOL(ChargingMatrixDepthEnabled,        "charging/matrixDepthEnabled",      false,            chargingMatrixDepthEnabledChanged)
+    CFG_INT(ChargingMatrixDepthIntensity,       "charging/matrixDepthIntensity",    50,               chargingMatrixDepthIntensityChanged)
+    CFG_BOOL(ChargingMatrixDepthOverlay,        "charging/matrixDepthOverlay",      false,            chargingMatrixDepthOverlayChanged)
     enum WakeupSensitivities { off = 0, low = 1, medium = 2, high = 3 };
     Q_ENUM(WakeupSensitivities)
 
@@ -534,6 +542,7 @@ class Config : public QObject {
     void chargingMatrixAutoRotateBendChanged();
     void chargingMatrixInvertTrailChanged();
     void chargingMatrixMessagesChanged();
+    void chargingMatrixMessagesEnabledChanged();
     void chargingMatrixMessageIntervalChanged();
     void chargingMatrixMessageRandomChanged();
     void chargingMatrixMessageDirectionChanged();
@@ -569,6 +578,9 @@ class Config : public QObject {
     void chargingMatrixDpadPersistChanged();
     void chargingMatrixTapDirectionChanged();
     void chargingMatrixLastDirectionChanged();
+    void chargingMatrixDepthEnabledChanged();
+    void chargingMatrixDepthIntensityChanged();
+    void chargingMatrixDepthOverlayChanged();
 
  public slots:
     void onCoreConnected();

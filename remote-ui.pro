@@ -32,6 +32,10 @@ macx {
     # Strip AGL from any places Qt might add it.
     QMAKE_MAC_FRAMEWORKS -= AGL
     LIBS -= -framework AGL
+
+    # Fix C++ stdlib headers not found with -isysroot (Homebrew Qt 5.15 + newer Xcode CLT).
+    # The SDK has the headers but Qt's mkspec doesn't add the include path.
+    QMAKE_CXXFLAGS += -isystem $$system(xcrun --show-sdk-path)/usr/include/c++/v1
 }
 
 #DEFINES += "TEST_MODE"
@@ -61,8 +65,8 @@ isEmpty(UC_BUILD_VERSION) {
 REMOTE_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += APP_VERSION=\\\"$$REMOTE_VERSION\\\"
 
-# TODO map REMOTE_VERSION to VERSION if format is X.Y.Z
-VERSION = 0.1.0
+# Custom firmware version — keep in sync with deploy/release.json
+VERSION = 1.1.3
 
 # build timestamp
 BUILDDATE=$$system(date +"%Y-%m-%dT%H:%M:%S")
@@ -78,6 +82,7 @@ QMAKE_SUBSTITUTES += version.txt.in
 
 HEADERS += \
     src/config/config.h \
+    src/config/config_macros.h \
     src/core/core.h \
     src/core/enums.h \
     src/core/structs.h \
@@ -136,6 +141,7 @@ HEADERS += \
     src/ui/profile/profile.h \
     src/ui/profile/profiles.h \
     src/ui/resources.h \
+    src/ui/simcontext.h \
     src/ui/soundEffects.h \
     src/ui/uiController.h \
     src/ui/matrixrain.h \

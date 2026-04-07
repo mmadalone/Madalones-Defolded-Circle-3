@@ -67,7 +67,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 50; stepSize: 5; live: true
             value: Config.chargingMatrixTapBurstCount
-            onValueChanged: Config.chargingMatrixTapBurstCount = value
+            onMoved: Config.chargingMatrixTapBurstCount = value
             onUserInteractionEnded: Config.chargingMatrixTapBurstCount = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail count " + value
@@ -88,7 +88,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 2; to: 15; stepSize: 1; live: true
             value: Config.chargingMatrixTapBurstLength
-            onValueChanged: Config.chargingMatrixTapBurstLength = value
+            onMoved: Config.chargingMatrixTapBurstLength = value
             onUserInteractionEnded: Config.chargingMatrixTapBurstLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail length " + value
@@ -167,7 +167,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 2; to: 12; stepSize: 1; live: true
             value: Config.chargingMatrixTapSpawnCount
-            onValueChanged: Config.chargingMatrixTapSpawnCount = value
+            onMoved: Config.chargingMatrixTapSpawnCount = value
             onUserInteractionEnded: Config.chargingMatrixTapSpawnCount = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Spawn count " + value
@@ -188,7 +188,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 3; to: 20; stepSize: 1; live: true
             value: Config.chargingMatrixTapSpawnLength
-            onValueChanged: Config.chargingMatrixTapSpawnLength = value
+            onMoved: Config.chargingMatrixTapSpawnLength = value
             onUserInteractionEnded: Config.chargingMatrixTapSpawnLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Spawn length " + value
@@ -251,7 +251,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 2; to: 10; stepSize: 1; live: true
             value: Config.chargingMatrixTapSquareBurstSize
-            onValueChanged: Config.chargingMatrixTapSquareBurstSize = value
+            onMoved: Config.chargingMatrixTapSquareBurstSize = value
             onUserInteractionEnded: Config.chargingMatrixTapSquareBurstSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Square size " + value
@@ -336,7 +336,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 90; stepSize: 5; live: true
             value: Config.chargingMatrixTapRandomizeChance
-            onValueChanged: Config.chargingMatrixTapRandomizeChance = value
+            onMoved: Config.chargingMatrixTapRandomizeChance = value
             onUserInteractionEnded: Config.chargingMatrixTapRandomizeChance = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Chance " + value + "%"

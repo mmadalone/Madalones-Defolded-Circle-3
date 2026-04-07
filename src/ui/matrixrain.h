@@ -95,6 +95,7 @@ class MatrixRainItem : public QQuickItem {
 
     /// @name Messages / subliminal
     /// @{
+    Q_PROPERTY(bool     messagesEnabled READ messagesEnabled WRITE setMessagesEnabled NOTIFY messagesEnabledChanged)
     Q_PROPERTY(QString  messages        READ messages        WRITE setMessages        NOTIFY messagesChanged)
     Q_PROPERTY(int      messageInterval READ messageInterval WRITE setMessageInterval NOTIFY messageIntervalChanged)
     Q_PROPERTY(bool     messageRandom   READ messageRandom   WRITE setMessageRandom   NOTIFY messageRandomChanged)
@@ -109,12 +110,17 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(bool     subliminalFlash     READ subliminalFlash     WRITE setSubliminalFlash     NOTIFY subliminalFlashChanged)
     /// @}
 
+    /// @name 3D depth parallax
+    /// @{
+    Q_PROPERTY(bool depthEnabled   READ depthEnabled   WRITE setDepthEnabled   NOTIFY depthEnabledChanged)
+    Q_PROPERTY(int  depthIntensity READ depthIntensity WRITE setDepthIntensity NOTIFY depthIntensityChanged)
+    Q_PROPERTY(bool depthOverlay   READ depthOverlay   WRITE setDepthOverlay   NOTIFY depthOverlayChanged)
+    /// @}
+
     /// @name Runtime state
     /// @{
     Q_PROPERTY(bool     running     READ running     WRITE setRunning     NOTIFY runningChanged)
     Q_PROPERTY(bool     displayOff  READ displayOff  WRITE setDisplayOff  NOTIFY displayOffChanged)
-    Q_PROPERTY(int      autoRotateSpeed  READ autoRotateSpeed  WRITE setAutoRotateSpeed  NOTIFY autoRotateSpeedChanged)
-    Q_PROPERTY(int      autoRotateBend   READ autoRotateBend   WRITE setAutoRotateBend   NOTIFY autoRotateBendChanged)
 
  public:
     explicit MatrixRainItem(QQuickItem *parent = nullptr);
@@ -164,6 +170,7 @@ class MatrixRainItem : public QQuickItem {
     int     glitchChaosScatterLength() const { return m_sim.glitchChaosScatterLength(); }
     QString direction()     const { return m_sim.direction(); }
     bool    invertTrail()   const { return m_sim.invertTrail(); }
+    bool    messagesEnabled()   const { return m_sim.messagesEnabled(); }
     QString messages()        const { return m_sim.messages(); }
     int     messageInterval() const { return m_sim.messageInterval(); }
     bool    messageRandom()   const { return m_sim.messageRandom(); }
@@ -176,6 +183,9 @@ class MatrixRainItem : public QQuickItem {
     bool    subliminalStream()   const { return m_sim.subliminalStream(); }
     bool    subliminalOverlay()  const { return m_sim.subliminalOverlay(); }
     bool    subliminalFlash()    const { return m_sim.subliminalFlash(); }
+    bool    depthEnabled()   const { return m_sim.depthEnabled(); }
+    int     depthIntensity() const { return m_sim.depthIntensity(); }
+    bool    depthOverlay()   const { return m_sim.depthOverlay(); }
     bool    gravityMode()      const { return m_sim.gravityMode(); }
     bool    gravityAvailable() const;
     int     autoRotateSpeed()  const { return m_autoRotateSpeed; }
@@ -189,7 +199,7 @@ class MatrixRainItem : public QQuickItem {
     bool isDiagonal() const { return m_sim.isDiagonal(); }
 
     /// @name Atlas-affecting setters
-    /// Changing these triggers a full glyph atlas rebuild (deferred to render thread).
+    /// Changing these triggers a full glyph atlas rebuild (deferred to next polish on main thread).
     /// @{
     void setColor(const QColor &c);
     void setColorMode(const QString &m);
@@ -240,7 +250,7 @@ public:
     /// @}
 
     // Trivial simulation-forwarding setters (inline — guard + emit)
-    void setTrailLength(int t)  { if (m_sim.setTrailLength(t)) emit trailLengthChanged(); }
+    void setTrailLength(int t)  { if (m_sim.setTrailLength(t)) { update(); emit trailLengthChanged(); } }
     void setGlow(bool g)        { if (m_sim.setGlow(g)) { update(); emit glowChanged(); } }
     void setInvertTrail(bool v) { if (m_sim.setInvertTrail(v)) { update(); emit invertTrailChanged(); } }
     void setGlitch(bool g)      { if (m_sim.setGlitch(g)) emit glitchChanged(); }
@@ -273,6 +283,7 @@ public:
     void setGlitchChaosIntensity(int v) { if (m_sim.setGlitchChaosIntensity(v)) emit glitchChaosIntensityChanged(); }
     void setGlitchChaosScatterRate(int v)   { if (m_sim.setGlitchChaosScatterRate(v)) emit glitchChaosScatterRateChanged(); }
     void setGlitchChaosScatterLength(int v) { if (m_sim.setGlitchChaosScatterLength(v)) emit glitchChaosScatterLengthChanged(); }
+    void setMessagesEnabled(bool v) { if (m_sim.setMessagesEnabled(v)) emit messagesEnabledChanged(); }
     void setMessages(const QString &m)      { if (m_sim.setMessages(m)) emit messagesChanged(); }
     void setMessageInterval(int v)    { if (m_sim.setMessageInterval(v)) emit messageIntervalChanged(); }
     void setMessageRandom(bool v)     { if (m_sim.setMessageRandom(v)) emit messageRandomChanged(); }
@@ -285,6 +296,9 @@ public:
     void setSubliminalStream(bool v)  { if (m_sim.setSubliminalStream(v)) emit subliminalStreamChanged(); }
     void setSubliminalOverlay(bool v) { if (m_sim.setSubliminalOverlay(v)) emit subliminalOverlayChanged(); }
     void setSubliminalFlash(bool v)   { if (m_sim.setSubliminalFlash(v)) emit subliminalFlashChanged(); }
+    void setDepthEnabled(bool v)   { if (m_sim.setDepthEnabled(v)) { m_needsReinit = true; update(); emit depthEnabledChanged(); } }
+    void setDepthIntensity(int v)  { if (m_sim.setDepthIntensity(v)) { m_needsReinit = true; update(); emit depthIntensityChanged(); } }
+    void setDepthOverlay(bool v)   { if (m_sim.setDepthOverlay(v)) { m_needsReinit = true; update(); emit depthOverlayChanged(); } }
 
  signals:
     void colorChanged();
@@ -330,6 +344,7 @@ public:
     void fadeRateChanged();
     void directionChanged();
     void invertTrailChanged();
+    void messagesEnabledChanged();
     void messagesChanged();
     void messageIntervalChanged();
     void messageRandomChanged();
@@ -345,9 +360,13 @@ public:
     void gravityModeChanged();
     void autoRotateSpeedChanged();
     void autoRotateBendChanged();
+    void depthEnabledChanged();
+    void depthIntensityChanged();
+    void depthOverlayChanged();
 
  protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
+    void     updatePolish() override;
     void     componentComplete() override;
     void     geometryChanged(const QRectF &newGeometry, const QRectF &oldGeometry) override;
 
@@ -356,10 +375,11 @@ public:
 
  private:
     // THREAD SAFETY: advanceSimulation() runs on the main thread via QTimer.
+    // updatePolish() runs on the main thread during Qt's polish phase (before sync).
     // updatePaintNode() runs on the render thread while the main thread is BLOCKED
     // at Qt's sync point (QQuickItem contract). This guarantees exclusive access —
-    // no mutex needed. Do NOT add async work that accesses these members outside
-    // the timer->tick->advanceSimulation path or the updatePaintNode path.
+    // no mutex needed. Atlas build (QPainter/QImage) happens in updatePolish();
+    // updatePaintNode only uploads the QImage as a GPU texture and renders geometry.
 
     // Simulation (owns all rain state + config properties)
     RainSimulation m_sim;
@@ -393,6 +413,8 @@ public:
                             float colSp, float rowSp, float gw, float gh) const;
     void renderMessageOverlay(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
                               float gw, float gh) const;
+    void renderResidualCells(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+                             float colSp, float rowSp, float gw, float gh) const;
 
     // interactiveInput handlers
     void handleDirectionInput(const QString &action);
@@ -415,7 +437,7 @@ public:
     // State
     QVector<bool> m_cellDrawn;  // per-cell dedup for stream trail rendering (reused, not per-frame alloc)
     QTimer m_timer;
-    bool   m_needsAtlasRebuild{true};  // atlas needs full rebuild (deferred to render thread)
+    bool   m_needsAtlasRebuild{true};  // atlas needs full rebuild (deferred to main thread polish)
     bool   m_atlasDirty{false};        // atlas QImage ready, needs GPU upload
     bool   m_needsReinit{true};
     bool   m_interactiveOverride{false}; // gravity mode enabled transiently by DPAD input

@@ -1,7 +1,9 @@
 // Copyright (c) 2024 madalone. Starfield warp charging screen theme.
+// Implements BaseTheme interface — see BaseTheme.qml for contract
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
+import ScreensaverConfig 1.0
 
 import "qrc:/components/overlays" as Overlays
 
@@ -9,11 +11,17 @@ Item {
     id: root
     anchors.fill: parent
 
+    // Runtime state (set by ChargingScreen, not config)
+    property bool isClosing: false
+    property bool displayOff: false
+
     // Configurable properties
     property int starCount: 200
     property real speed: 1.0
-    property bool showClock: true
-    property bool showBattery: true
+
+    // No-op stub — Starfield has no interactive input, but ChargingScreen
+    // calls this unconditionally on all themes.
+    function interactiveInput(action) {}
 
     Rectangle {
         anchors.fill: parent
@@ -105,14 +113,14 @@ Item {
     Timer {
         id: animTimer
         interval: 55
-        running: root.visible
+        running: root.visible && !root.isClosing && !root.displayOff
         repeat: true
         onTriggered: canvas.requestPaint()
     }
 
     // Clock overlay
     Overlays.ClockOverlay {
-        visible: root.showClock
+        visible: ScreensaverConfig.showClock
         anchors {
             top: parent.top
             topMargin: parent.height * 0.15
@@ -122,7 +130,7 @@ Item {
 
     // Battery overlay
     Overlays.BatteryOverlay {
-        visible: root.showBattery
+        visible: ScreensaverConfig.showBattery
         anchors {
             bottom: parent.bottom
             bottomMargin: 40

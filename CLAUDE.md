@@ -31,6 +31,14 @@ Upstream base: `v0.71.1`. All custom work lives on `main`. To pull upstream upda
 ### Mod 1: Screensaver System ✅ Complete
 GPU-accelerated screensaver replacing UC's stock analog clock. Matrix rain renderer, Starfield, Minimal themes, clock/battery overlays, full settings UI with 5 sub-pages. Zero HA dependency.
 
+**Recent changes (2026-04-07):**
+- **Per-cell residual glow** — Rezmason-inspired (3.7k stars) per-cell age tracking. Cells retain brightness independently after stream head passes, decaying via the same brightness map. Eliminates dark gaps between active trails, especially visible in horizontal directions.
+- **3D depth parallax** — per-stream depth factor (0.6–1.4) scales quad size and brightness. Far streams render smaller and dimmer (atmospheric perspective). Two modes: Full (all streams scaled) and Overlay (70% normal + 30% depth-shifted). Settings: depth toggle, intensity slider (10–100%), overlay mode toggle.
+- **Coprime gravity spawn** — `coprimeGoldenStep()` enforces `gcd(step, n) == 1`, guaranteeing all rows/columns visited during gravity mode. Previously `gcd(40,65)=5` left 80% of rows empty.
+- **Full-screen grid** — grid covers entire screen at native glyph spacing. Density slider controls stream count (multiplier), not grid spacing.
+- **Docker visual preview** — `test/matrixrain_preview/` with Dockerfile, TigerVNC on port 5909. Builds x86_64 native with Mesa software OpenGL.
+- **Keyboard:** Arrow keys = direction, Enter = chaos, R = restore, G = toggle gravity, D = toggle depth.
+
 **Design doc:** `SCREENSAVER-IMPLEMENTATION.md`
 
 ### Mod 2: Avatar System 🔧 In Progress
@@ -43,15 +51,50 @@ TBD. New mods follow the established mod anatomy pattern (see `STYLE_GUIDE.md`).
 
 ---
 
-## Build & Run
+## Build, Preview & Deploy
 
-### Desktop (macOS)
+### Dev Workflow (MANDATORY)
+
+1. **Edit** C++ / QML source
+2. **Preview in Docker** — visually verify via VNC before deploying
+3. **Cross-compile and deploy** to UC3
+
+### Screensaver Preview (Docker — visual)
+Linux x86_64 container with Mesa software OpenGL + TigerVNC. Renders the actual `QSGGeometryNode` scene graph.
+```bash
+cd "/Users/madalone/_Claude Projects/UC-Remote-UI/test/matrixrain_preview"
+docker-compose up --build -d    # First time or after source edits
+docker-compose down && docker-compose up --build -d  # Rebuild
+docker-compose logs --tail 10   # Check for errors
+```
+**VNC:** Connect to `localhost:5909` (no password). Press any key to start rendering.
+**Keyboard:** Arrow keys = direction, Enter = chaos, R = restore, G = toggle gravity.
+**macOS native build:** Compiles but renders black (Qt 5.15 OpenGL 2.1 macOS limitation). Use Docker for visual testing.
+
+### Full App (macOS — requires Core Simulator)
 ```bash
 cd "/Users/madalone/_Claude Projects/UC-Remote-UI"
 qmake && make
-# Run with Core Simulator:
 UC_MODEL=DEV ./binaries/osx-*/release/Remote\ UI
 ```
+Needs UC's [core-simulator](https://github.com/unfoldedcircle/core-simulator) Docker container running to get past the loading screen. Only needed for testing non-screensaver mods (settings pages, entity bridge, etc.).
+
+### Cross-compile for UC3 (ARM64)
+```bash
+cd "/Users/madalone/_Claude Projects/UC-Remote-UI"
+docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
+    unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest
+```
+Output: `binaries/linux-arm64/release/remote-ui`
+
+### Deploy to UC3
+```bash
+cp binaries/linux-arm64/release/remote-ui deploy/bin/remote-ui
+cd deploy && tar czf /tmp/remote-ui-deploy.tar.gz release.json bin/ config/
+curl --location "http://192.168.2.204/api/system/install/ui?void_warranty=yes" \
+    --form "file=@/tmp/remote-ui-deploy.tar.gz" -u 'web-configurator:6984'
+```
+Restarts the UI on the device (~10s). Revert to stock: `curl -X PUT "http://192.168.2.204/api/system/install/ui?enable=false" -u 'web-configurator:6984'`
 
 ### QML Prototyping
 ```bash
@@ -59,9 +102,6 @@ qmlscene test_braille.qml          # Avatar ambient life prototype
 qmlscene test_braille_mapper.qml   # Face region mapper
 qmlscene test_themes.qml           # Theme testing
 ```
-
-### Cross-compile for UC3 (ARM64)
-Docker-based cross-compilation targeting the UC3's Buildroot environment. Deploy via SCP to device.
 
 ### Font Subsetting
 ```bash

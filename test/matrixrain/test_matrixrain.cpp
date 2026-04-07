@@ -1848,6 +1848,64 @@ class MatrixRainTest : public QObject {
         // so we just verify the method is callable and doesn't throw
         QVERIFY(true);  // reached without crash
     }
+
+    // ─────────────────────────────────────────
+    // updatePolish — atlas build on main thread
+    // ─────────────────────────────────────────
+    void updatePolish_buildsAtlas() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        // Reset flags to simulate a pending atlas rebuild
+        item.m_needsAtlasRebuild = true;
+        item.m_atlasDirty = false;
+        item.updatePolish();
+        QVERIFY(item.m_atlas.isBuilt());
+        QVERIFY(item.m_atlasDirty);
+        QVERIFY(!item.m_needsAtlasRebuild);
+        QVERIFY(item.m_needsReinit);
+    }
+
+    void updatePolish_skipsWhenNotNeeded() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_needsAtlasRebuild = false;
+        item.m_atlasDirty = false;
+        item.updatePolish();
+        QVERIFY(!item.m_atlasDirty);  // no build triggered
+    }
+
+    void updatePolish_skipsZeroGeometry() {
+        MatrixRainItem item;
+        // width/height are 0 by default — atlas build should be skipped
+        item.m_needsAtlasRebuild = true;
+        item.updatePolish();
+        QVERIFY(!item.m_atlas.isBuilt());
+        QVERIFY(item.m_needsAtlasRebuild);  // flag NOT consumed
+    }
+
+    // ─────────────────────────────────────────
+    // countVisibleQuads — overlay UV bounds guard
+    // ─────────────────────────────────────────
+    void countExcludesStaleOverlay() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+
+        // Baseline count with no overlay
+        int baseCount = item.countVisibleQuads();
+
+        // Add a valid overlay entry (glyphIdx 0 is always valid)
+        MessageCell valid{100.0f, 200.0f, 0, 10, 0};
+        item.m_sim.m_message.m_messageOverlay.append(valid);
+        int validCount = item.countVisibleQuads();
+        QCOMPARE(validCount, baseCount + 1);  // valid entry counted
+
+        // Replace with a stale overlay entry (glyphIdx 99999 → out of bounds)
+        item.m_sim.m_message.m_messageOverlay.clear();
+        MessageCell stale{100.0f, 200.0f, 99999, 10, 0};
+        item.m_sim.m_message.m_messageOverlay.append(stale);
+        int staleCount = item.countVisibleQuads();
+        QCOMPARE(staleCount, baseCount);  // stale entry excluded
+    }
 };
 
 int main(int argc, char *argv[]) {

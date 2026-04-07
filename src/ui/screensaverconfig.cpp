@@ -50,7 +50,7 @@ qreal ScreensaverConfig::fadeRate() const {
 }
 
 int ScreensaverConfig::trailLength() const {
-    int v = qBound(10, m_config->getChargingMatrixTrail(), 100);
+    int v = qBound(5, m_config->getChargingMatrixTrail(), 100);
     return qMax(5, qRound(5.0 + 175.0 * (v - 10) / 90.0));
 }
 
@@ -131,6 +131,7 @@ void ScreensaverConfig::connectSignals() {
 
     // Messages
     connect(m_config, &Config::chargingMatrixMessagesChanged,         this, &ScreensaverConfig::messagesChanged);
+    connect(m_config, &Config::chargingMatrixMessagesEnabledChanged,  this, &ScreensaverConfig::messagesEnabledChanged);
     connect(m_config, &Config::chargingMatrixMessageIntervalChanged,  this, &ScreensaverConfig::messageIntervalChanged);
     connect(m_config, &Config::chargingMatrixMessageRandomChanged,    this, &ScreensaverConfig::messageRandomChanged);
     connect(m_config, &Config::chargingMatrixMessageDirectionChanged, this, &ScreensaverConfig::messageDirectionChanged);
@@ -170,6 +171,11 @@ void ScreensaverConfig::connectSignals() {
     connect(m_config, &Config::chargingMatrixDpadEnabledChanged,    this, &ScreensaverConfig::dpadEnabledChanged);
     connect(m_config, &Config::chargingMatrixTapDirectionChanged,  this, &ScreensaverConfig::tapDirectionChanged);
     connect(m_config, &Config::chargingMatrixLastDirectionChanged,  this, &ScreensaverConfig::lastDirectionChanged);
+
+    // 3D depth parallax
+    connect(m_config, &Config::chargingMatrixDepthEnabledChanged,   this, &ScreensaverConfig::depthEnabledChanged);
+    connect(m_config, &Config::chargingMatrixDepthIntensityChanged, this, &ScreensaverConfig::depthIntensityChanged);
+    connect(m_config, &Config::chargingMatrixDepthOverlayChanged,   this, &ScreensaverConfig::depthOverlayChanged);
 }
 
 }  // namespace uc

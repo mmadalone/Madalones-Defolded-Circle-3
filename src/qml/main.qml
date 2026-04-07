@@ -527,7 +527,7 @@ ApplicationWindow {
             id: chargingScreenLoader
             anchors.fill: parent
             asynchronous: true
-            active: false
+            active: HwInfo.modelNumber === "DEV"  // Auto-open screensaver in DEV mode
             source: "qrc:/components/ChargingScreen.qml"
 
             onStatusChanged: {

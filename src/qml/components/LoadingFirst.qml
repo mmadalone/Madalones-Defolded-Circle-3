@@ -4,6 +4,8 @@
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 
+import HwInfo 1.0
+
 Rectangle {
     id: loadingFirstRoot
     parent: Overlay.overlay
@@ -26,6 +28,12 @@ Rectangle {
     }
 
     Component.onCompleted: {
+        if (HwInfo.modelNumber === "DEV") {
+            // Skip loading splash in DEV mode so screensaver is visible without Core backend
+            loadingFirstRoot.opacity = 0;
+            loadingFirstRoot.visible = false;
+            return;
+        }
         startAnimation.start();
         ui.inputController.blockInput(true);
     }

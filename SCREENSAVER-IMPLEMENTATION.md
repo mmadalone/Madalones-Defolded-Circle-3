@@ -1206,3 +1206,83 @@ Fix: `reversed = false` hardcoded in the "stream" direction branch. Messages alw
 - **`precomputeBrightness` clears `m_glitchBright.fill(-1)`.** Any brightness written before this call is wiped. Pulse advancement must run AFTER precompute, not before.
 - **"Fix" that repeats the same math is a no-op.** Moving `int ci = reversed ? (len-1-i) : i` to `float posPx = reversed ? (start + (len-1-i) * step) : (start + i * step)` is the same computation. The real fix was removing `reversed` from the stream direction branch entirely.
 - **Touch gesture disambiguation is clean with movement threshold.** 30px threshold cleanly separates tap from swipe. Hold timer cancels on movement. No ambiguity between the three gesture types.
+- **Density-scaled grid breaks direction changes.** When grid dimensions are density-scaled per-axis, switching from vertical to horizontal rain produces sparse coverage because streams don't redistribute. Fix: full-screen grid on both axes, stream count = max(gridCols, gridRows), distribute streams across both axes at init.
+- **Texture upload order matters.** Delete old texture AFTER new one succeeds, not before. If `createTextureFromImage()` fails, the old texture stays on the material — no dangling pointer.
+- **macOS Qt 5.15 build fix.** Homebrew Qt + newer Xcode CLT = missing `<type_traits>`. One-line fix: `QMAKE_CXXFLAGS += -isystem $(xcrun --show-sdk-path)/usr/include/c++/v1` in the .pro file.
+
+### Session 12 Additional Fixes (parallel session)
+
+**Direction-agnostic grid:** Grid now always covers full screen on both axes (`screenSize / cellSize`, no density scaling). Stream count = `max(gridCols, gridRows)` — enough to fill either axis fully. Streams distributed across both columns AND rows at init via golden ratio, so any direction change via touch/DPAD/gravity has even coverage immediately. Density slider still controls vertical rain appearance via spawn rate and trail length.
+
+**Touch-zone "Remember direction" toggle:** Added under Touch Directions section in GeneralBehavior.qml. Reuses existing `dpadPersist` config property. `restoreDirection()` now checks both `dpadEnabled` and `tapDirection`.
+
+**Texture dangling pointer fix:** `updatePaintNode` now creates new texture first, then deletes old texture only on success. Previously deleted old texture before `createTextureFromImage()` — if that failed, `mat->texture()` was a dangling pointer.
+
+**macOS desktop build restored:** Added `-isystem` flag for C++ stdlib headers in `remote-ui.pro`. `UC_MODEL=DEV "./binaries/osx-x86_64/release/Remote UI.app/Contents/MacOS/Remote UI"` now works for interactive visual preview without deploying to device.
+
+**Audit remediation (post-Session 12):**
+- Property grouping: 86+ Q_PROPERTYs organized into 7 `@name` sections
+- Enter state machine: full state diagram documented in matrixrain.h
+- Brightness helper: `SimContext::trailDist()` extracted (DRY)
+- Direction list: `RainSimulation::validDirections()` static method (dedup)
+- Gravity lerp reset: streams snap to cardinal direction on gravity mode off
+- Test tap flags: updated from 7-field to 10-field format
+
+**Audit score: 8.2/10** (up from 7.5/10 pre-remediation).
+
+## Session 13 — Code Audit Remediation, Architecture Fixes, New Features (2026-04-07)
+
+Full codebase audit by industry pro dev criteria. Grade improved from C+ to B+. Major architecture fixes and new features.
+
+### Audit Remediation (P0–P2)
+
+| Fix | Description | Files |
+|-----|-------------|-------|
+| .gitignore | Added `*_qml.cpp`, `qmlcache_loader.cpp` rules (200+ cache files) | .gitignore |
+| StarfieldTheme fixes | Added `displayOff`, `isClosing`, `interactiveInput()`, bound showClock/showBattery to ScreensaverConfig | StarfieldTheme.qml |
+| MinimalTheme fixes | Same treatment as StarfieldTheme | MinimalTheme.qml |
+| Dead 3D depth UI | Removed dead settings controls referencing nonexistent Config properties | MatrixEffects.qml |
+| Phantom docs | Removed 3 undocumented features from CLAUDE.md | CLAUDE.md |
+| Slider signals | 27 sliders `onValueChanged` → `onMoved` (eliminates redundant QSettings writes on page load) | 7 settings QML files |
+| Config change guards | CFG_BOOL/INT/STRING macros skip write + signal when value unchanged | config_macros.h |
+| BaseTheme contract | Created BaseTheme.qml documenting theme interface, registered in qrc | BaseTheme.qml, main.qrc |
+| Version unification | remote-ui.pro VERSION synced to 1.1.3 matching deploy/release.json | remote-ui.pro |
+| Atlas thread fix | `m_atlas.build()` moved from `updatePaintNode()` to `updatePolish()` (Qt's official main-thread hook for CPU-heavy prep work before render sync) | matrixrain.h/cpp |
+| Duplicate Q_PROPERTY | Removed duplicate `autoRotateSpeed`/`autoRotateBend` declarations | matrixrain.h |
+| Quad count desync | Overlay UV bounds check added to `countVisibleQuads()`. Degenerate triangle padding after render as safety net. | matrixrain.cpp |
+| Encapsulation | GlitchEngine, MessageEngine, RainSimulation: all runtime state moved to private, mutation methods added. Zero direct member access from outside each class. | glitchengine.h, messageengine.h/cpp, rainsimulation.h/cpp |
+| clearSubliminals bug | `clearSubliminalCells()` now clears both `m_subliminalCells` AND `m_subliminalSet` (previously leaked stale lookup entries) | rainsimulation.h |
+| Dead code | Deleted MatrixTheme_canvas_backup.qml (196 lines), removed redundant Qt.binding in ChargingScreen | Multiple |
+| Missing HEADERS | Added simcontext.h + config_macros.h to remote-ui.pro | remote-ui.pro |
+| parent.parent.parent | Replaced with root.id reference in DirectionGlitchSection | DirectionGlitchSection.qml |
+| ChaosSection lastFocusItem | Fixed dead conditional (both branches returned same item) | ChaosSection.qml |
+| Glitch sub-section visibility | DirectionGlitchSection + ChaosSection collapse when glitch toggle is off | MatrixEffects.qml |
+
+### New Features
+
+**1. Per-cell residual glow (Rezmason-inspired)** — `m_cellAge` per-cell age tracking. Cells retain brightness independently after stream head passes, decaying via brightness map. Eliminates dark gaps between active trails, especially in horizontal directions. Based on Rezmason/matrix (3.7k stars) continuous per-cell brightness model.
+
+**2. Full-screen grid** — Grid covers entire screen at native glyph spacing (no density scaling on grid dimensions). Characters visually touch. Density slider now controls stream count multiplier instead of grid spacing.
+
+**3. Coprime gravity spawn** — `coprimeGoldenStep()` function enforces `gcd(step, n) == 1` using `std::gcd` (C++17). Guarantees all rows/columns visited during gravity mode. Previously `gcd(40,65)=5` left 80% of rows empty.
+
+**4. 3D depth parallax** — Per-stream `depthFactor` (0.6–1.4) assigned at spawn. Modulates quad size (centered on cell) + brightness (atmospheric perspective dimming) + movement speed (far streams slower). Three Config properties: `depthEnabled`, `depthIntensity` (10–100), `depthOverlay` (70% normal / 30% depth-varied). Settings UI with toggle, intensity slider, overlay mode toggle. **Note: visual effect is subtle on the 480px display — needs redesign for small-screen depth in a future session.**
+
+**5. Hidden messages toggle** — `chargingMatrixMessagesEnabled` master toggle for periodic hidden message injection, independent of subliminal toggle. Text input hides when toggle is off. Message text preserved in Config.
+
+**6. Trail length immediate apply** — `setTrailLength()` now updates all active streams immediately (randomized within `[max(4, t/2), t]` range). Previously required stream respawn (~2-4 seconds per stream).
+
+### Architecture Changes
+
+- **updatePolish() pattern**: Atlas build (QPainter font rasterization) runs in Qt's polish phase on the main thread. `updatePaintNode()` only does GPU texture upload + geometry rendering. Follows Qt 5.15 Scene Graph best practices (confirmed via Qt docs, KDAB articles, QtAV renderer pattern).
+- **Single-pass stream rendering**: Removed multi-pass overlay experiment. All streams render on the same grid with `m_cellDrawn` dedup. Depth conveyed by per-stream size + brightness + async speed.
+- **3 new unit tests**: `updatePolish_buildsAtlas`, `updatePolish_skipsWhenNotNeeded`, `updatePolish_skipsZeroGeometry`, `countExcludesStaleOverlay`.
+
+### Known Issues (deferred)
+
+- **3D depth visual technique**: Size + brightness scaling is too subtle on 480×850 IPS LCD at 13px glyph size. Needs research into small-display depth techniques (possible approaches: multi-layer rendering with separate tick rates, opacity-based depth, or color temperature shift). The per-stream infrastructure is solid — just the visual technique needs redesign.
+- **Overlay mode**: The "overlay" toggle currently just controls which streams get depth factors (70/30 split). The intended "between the rain" layered effect needs a fundamentally different rendering approach for the small display.
+
+### Audit Score
+
+**Post-session: B+** (up from C+). Zero critical issues remaining. Architecture, threading, config, and QML layers all clean.

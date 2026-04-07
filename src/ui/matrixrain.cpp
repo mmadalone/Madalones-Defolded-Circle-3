@@ -81,11 +81,11 @@ void MatrixRainItem::componentComplete() {
     // In tests, no ScreensaverConfig exists — properties are set directly via Q_PROPERTY.
     bindToScreensaverConfig();
 
-    // Atlas + streams built on first updatePaintNode (render thread),
-    // after config binding has set all properties. This avoids blocking
-    // the main thread and prevents double-builds with default->actual settings.
+    // Schedule atlas build for the next polish phase (main thread).
+    // If geometry isn't ready yet, updatePolish() skips and the recovery timer handles it.
     m_needsAtlasRebuild = true;
     m_needsReinit = true;
+    polish();
     update();
 
     // Safety net: if the first updatePaintNode failed (e.g., zero geometry at startup),
@@ -95,6 +95,7 @@ void MatrixRainItem::componentComplete() {
             qCInfo(lcScreensaver) << "Deferred init recovery — animation timer not started after 2s, retrying";
             m_needsAtlasRebuild = true;
             m_needsReinit = true;
+            polish();
             update();
         }
     });
@@ -155,6 +156,7 @@ void MatrixRainItem::bindToScreensaverConfig() {
         setGlitchChaosIntensity(sc->glitchChaosIntensity());
         setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
         setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
+        setMessagesEnabled(sc->messagesEnabled());
         setMessages(sc->messages());
         setMessageInterval(sc->messageInterval());
         setMessageRandom(sc->messageRandom());
@@ -167,6 +169,9 @@ void MatrixRainItem::bindToScreensaverConfig() {
         setSubliminalStream(sc->subliminalStream());
         setSubliminalOverlay(sc->subliminalOverlay());
         setSubliminalFlash(sc->subliminalFlash());
+        setDepthEnabled(sc->depthEnabled());
+        setDepthIntensity(sc->depthIntensity());
+        setDepthOverlay(sc->depthOverlay());
     }
     // QSignalBlocker scope ended — signals unblocked
 
@@ -224,6 +229,7 @@ void MatrixRainItem::bindToScreensaverConfig() {
     connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged, this, [this, sc]() { setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
 
     // Messages
+    connect(sc, &uc::ScreensaverConfig::messagesEnabledChanged,  this, [this, sc]() { setMessagesEnabled(sc->messagesEnabled()); });
     connect(sc, &uc::ScreensaverConfig::messagesChanged,         this, [this, sc]() { setMessages(sc->messages()); });
     connect(sc, &uc::ScreensaverConfig::messageIntervalChanged,  this, [this, sc]() { setMessageInterval(sc->messageInterval()); });
     connect(sc, &uc::ScreensaverConfig::messageRandomChanged,    this, [this, sc]() { setMessageRandom(sc->messageRandom()); });
@@ -239,6 +245,11 @@ void MatrixRainItem::bindToScreensaverConfig() {
     connect(sc, &uc::ScreensaverConfig::subliminalOverlayChanged,   this, [this, sc]() { setSubliminalOverlay(sc->subliminalOverlay()); });
     connect(sc, &uc::ScreensaverConfig::subliminalFlashChanged,     this, [this, sc]() { setSubliminalFlash(sc->subliminalFlash()); });
 
+    // 3D depth parallax
+    connect(sc, &uc::ScreensaverConfig::depthEnabledChanged,   this, [this, sc]() { setDepthEnabled(sc->depthEnabled()); });
+    connect(sc, &uc::ScreensaverConfig::depthIntensityChanged,  this, [this, sc]() { setDepthIntensity(sc->depthIntensity()); });
+    connect(sc, &uc::ScreensaverConfig::depthOverlayChanged,    this, [this, sc]() { setDepthOverlay(sc->depthOverlay()); });
+
     qCDebug(lcScreensaver) << "Bound to ScreensaverConfig — live config updates enabled";
 #endif  // !MATRIX_RAIN_TESTING
 }
@@ -253,15 +264,21 @@ void MatrixRainItem::tick() {
     update();
 }
 
-QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
-    // Deferred atlas build: runs on render thread, avoids blocking main thread.
-    // Must come BEFORE the glyphCount guard — glyphCount is 0 until atlas is built.
+void MatrixRainItem::updatePolish() {
+    // Atlas build: QPainter font rasterization on the main thread.
+    // Runs during Qt's polish phase, before the render thread sync.
     if (m_needsAtlasRebuild && width() > 0 && height() > 0) {
         m_atlas.build(m_color, m_colorMode, m_fontSize, m_sim.charset(), m_fadeRate);
         m_atlasDirty = true;
         m_needsAtlasRebuild = false;
         m_needsReinit = true;
+        update();  // ensure updatePaintNode runs this frame for GPU upload
     }
+}
+
+QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
+    // Atlas build happens in updatePolish() (main thread).
+    // initStreams stays here — lightweight grid math, safe at sync point.
     if (m_needsReinit && m_atlas.glyphW() > 0) {
         m_sim.initStreams(width(), height(), m_atlas);
         m_needsReinit = false;
@@ -339,9 +356,16 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     m_cellDrawn.fill(false);  // reset for rendering pass
 
     renderStreamTrails(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
+    renderResidualCells(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
     renderGlitchTrails(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
     renderMessageFlash(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
     renderMessageOverlay(verts, ixBuf, vi, ii, gw, gh);
+
+    // Safety net: pad any unused geometry slots with degenerate triangles.
+    // If count and render are in sync, these loops run zero iterations.
+    // Indices (0,0,0) form a zero-area triangle at vertex 0 — culled by GPU rasterizer.
+    for (int i = ii; i < quadCount * 6; ++i) ixBuf[i] = 0;
+    for (int i = vi; i < quadCount * 4; ++i) verts[i].set(0, 0, 0, 0);
 
     node->setGeometry(geo);
     node->markDirty(QSGNode::DirtyGeometry);
@@ -392,7 +416,21 @@ int MatrixRainItem::countVisibleQuads() {
     for (int i = 0; i < messageBright.size(); ++i) {
         if (messageBright[i] > 0) quadCount++;
     }
-    quadCount += m_sim.messageOverlay().size();
+    const auto &overlay = m_sim.messageOverlay();
+    for (const auto &mc : overlay) {
+        int uvIdx = mc.glyphIdx * m_atlas.brightnessLevels() * m_atlas.colorVariants()
+                  + qMin(mc.colorVariant, qMax(0, m_atlas.colorVariants() - 1)) * m_atlas.brightnessLevels();
+        if (uvIdx >= 0 && uvIdx < m_atlas.glyphUVs().size())
+            quadCount++;
+    }
+    // Residual glow: cells not in any trail but recently visited by a stream head.
+    // m_cellDrawn was populated by the stream trail pass above.
+    const auto &cellAge = m_sim.cellAge();
+    int bmapSize = m_atlas.brightnessMap().size();
+    for (int i = 0; i < cellAge.size(); ++i) {
+        if (!m_cellDrawn[i] && cellAge[i] < bmapSize)
+            quadCount++;
+    }
     return quadCount;
 }
 
@@ -408,6 +446,8 @@ void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, qui
     const auto &bmap = m_atlas.brightnessMap();
     int bmapSize = bmap.size(), blevels = m_atlas.brightnessLevels();
 
+    // Single-pass render: all streams on the normal grid with cellDrawn dedup.
+    // Depth is conveyed by per-stream size + brightness scaling + async speed.
     for (const auto &s : streams) {
         if (!s.active) continue;
         for (int d = 0; d < s.trailLength; ++d) {
@@ -436,6 +476,20 @@ void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, qui
                     ? qMin(2, blevels - 1) : 0;
             }
 
+            // 3D depth parallax: scale quad size + dim brightness for far streams.
+            // Size + brightness + async speed create visual depth on the same grid.
+            float dw = gw, dh = gh;
+            float cx = c * colSp, cy = r * rowSp;
+            if (s.depthFactor != 1.0f) {
+                dw = gw * s.depthFactor;
+                dh = gh * s.depthFactor;
+                cx += (gw - dw) * 0.5f;  // center scaled quad on grid cell
+                cy += (gh - dh) * 0.5f;
+                // Atmospheric perspective: far streams dimmer
+                int depthShift = qMax(0, static_cast<int>((1.0f - s.depthFactor) * blevels * 0.5f));
+                bright = qMin(bright + depthShift, blevels - 1);
+            }
+
             if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
             int glyphIdx = charGrid[gridIdx];
             int cv = qMin(s.colorVariant, qMax(0, m_atlas.colorVariants() - 1));
@@ -444,10 +498,43 @@ void MatrixRainItem::renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, qui
 
             const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
             emitQuad(verts, ixBuf, vi, ii,
-                     c * colSp, r * rowSp, gw, gh,
+                     cx, cy, dw, dh,
                      static_cast<float>(uv.x()), static_cast<float>(uv.y()),
                      static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()));
         }
+    }
+}
+
+void MatrixRainItem::renderResidualCells(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf,
+                                         int &vi, int &ii,
+                                         float colSp, float rowSp, float gw, float gh) const {
+    // Rezmason-inspired residual glow: cells not in any active trail but recently
+    // visited by a stream head continue to glow at their decay brightness.
+    // Uses the same brightness map as trail rendering for consistent fade curve.
+    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
+    const auto &charGrid = m_sim.charGrid();
+    const auto &cellAge = m_sim.cellAge();
+    const auto &bmap = m_atlas.brightnessMap();
+    int bmapSize = bmap.size(), blevels = m_atlas.brightnessLevels();
+
+    for (int idx = 0; idx < cellAge.size(); ++idx) {
+        if (m_cellDrawn[idx]) continue;  // already rendered by stream trail
+        int age = cellAge[idx];
+        if (age >= bmapSize) continue;   // too old — fully dark
+
+        int c = idx / gridRows, r = idx % gridRows;
+        if (c >= gridCols) continue;
+
+        int glyphIdx = charGrid[idx];
+        int bright = bmap[age];  // same decay curve as trail distance
+        int uvIdx = glyphIdx * blevels * m_atlas.colorVariants() + bright;
+        if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
+
+        const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
+        emitQuad(verts, ixBuf, vi, ii,
+                 c * colSp, r * rowSp, gw, gh,
+                 static_cast<float>(uv.x()), static_cast<float>(uv.y()),
+                 static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()));
     }
 }
 
@@ -536,20 +623,20 @@ void MatrixRainItem::renderMessageOverlay(QSGGeometry::TexturedPoint2D *verts, q
 
 // Atlas-affecting setters (stay on MatrixRainItem)
 void MatrixRainItem::setColor(const QColor &c) {
-    if (m_color != c) { m_color = c; m_needsAtlasRebuild = true; update(); emit colorChanged(); }
+    if (m_color != c) { m_color = c; m_needsAtlasRebuild = true; polish(); update(); emit colorChanged(); }
 }
 void MatrixRainItem::setColorMode(const QString &m) {
-    if (m_colorMode != m) { m_colorMode = m; m_needsAtlasRebuild = true; m_needsReinit = true; update(); emit colorModeChanged(); }
+    if (m_colorMode != m) { m_colorMode = m; m_needsAtlasRebuild = true; m_needsReinit = true; polish(); update(); emit colorModeChanged(); }
 }
 void MatrixRainItem::setFontSize(int s) {
-    if (m_fontSize != s) { m_fontSize = qBound(8, s, 60); m_needsAtlasRebuild = true; m_needsReinit = true; update(); emit fontSizeChanged(); }
+    if (m_fontSize != s) { m_fontSize = qBound(8, s, 60); m_needsAtlasRebuild = true; m_needsReinit = true; polish(); update(); emit fontSizeChanged(); }
 }
 void MatrixRainItem::setFadeRate(qreal r) {
     r = qBound(FADE_MIN, r, FADE_MAX);
-    if (!qFuzzyCompare(m_fadeRate, r)) { m_fadeRate = r; m_needsAtlasRebuild = true; m_needsReinit = true; update(); emit fadeRateChanged(); }
+    if (!qFuzzyCompare(m_fadeRate, r)) { m_fadeRate = r; m_needsAtlasRebuild = true; m_needsReinit = true; polish(); update(); emit fadeRateChanged(); }
 }
 void MatrixRainItem::setCharset(const QString &c) {
-    if (m_sim.setCharset(c)) { m_needsAtlasRebuild = true; m_needsReinit = true; update(); emit charsetChanged(); }
+    if (m_sim.setCharset(c)) { m_needsAtlasRebuild = true; m_needsReinit = true; polish(); update(); emit charsetChanged(); }
 }
 
 // Complex simulation-forwarding setters (trivial ones are inline in header)

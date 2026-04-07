@@ -114,6 +114,7 @@ class ScreensaverConfig : public QObject {
 
     // --- Messages ---
     SC_STRING(messages,         getChargingMatrixMessages)
+    SC_BOOL(messagesEnabled,    getChargingMatrixMessagesEnabled)
     SC_INT(messageInterval,     getChargingMatrixMessageInterval)
     SC_BOOL(messageRandom,      getChargingMatrixMessageRandom)
     SC_STRING(messageDirection,  getChargingMatrixMessageDirection)
@@ -153,6 +154,11 @@ class ScreensaverConfig : public QObject {
     SC_BOOL(dpadEnabled,    getChargingMatrixDpadEnabled)
     SC_BOOL(tapDirection,   getChargingMatrixTapDirection)
     SC_STRING(lastDirection, getChargingMatrixLastDirection)
+
+    // --- 3D depth parallax ---
+    SC_BOOL(depthEnabled,   getChargingMatrixDepthEnabled)
+    SC_INT(depthIntensity,  getChargingMatrixDepthIntensity)
+    SC_BOOL(depthOverlay,   getChargingMatrixDepthOverlay)
 
     // ---- Manually declared properties (custom getters with transforms) ----
 

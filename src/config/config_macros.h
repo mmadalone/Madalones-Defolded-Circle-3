@@ -9,12 +9,18 @@
 
 #define CFG_BOOL(Func, key, def, sig)                                       \
     bool get##Func() { return m_settings->value(key, def).toBool(); }       \
-    void set##Func(bool value) { m_settings->setValue(key, value); emit sig(); }
+    void set##Func(bool value) { \
+        if (m_settings->value(key, def).toBool() == value) return; \
+        m_settings->setValue(key, value); emit sig(); }
 
 #define CFG_INT(Func, key, def, sig)                                        \
     int get##Func() { return m_settings->value(key, def).toInt(); }         \
-    void set##Func(int value) { m_settings->setValue(key, value); emit sig(); }
+    void set##Func(int value) { \
+        if (m_settings->value(key, def).toInt() == value) return; \
+        m_settings->setValue(key, value); emit sig(); }
 
 #define CFG_STRING(Func, key, def, sig)                                     \
     QString get##Func() { return m_settings->value(key, def).toString(); }  \
-    void set##Func(const QString &value) { m_settings->setValue(key, value); emit sig(); }
+    void set##Func(const QString &value) { \
+        if (m_settings->value(key, def).toString() == value) return; \
+        m_settings->setValue(key, value); emit sig(); }

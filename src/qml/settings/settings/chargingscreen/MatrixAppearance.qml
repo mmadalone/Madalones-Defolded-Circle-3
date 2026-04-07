@@ -220,7 +220,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 60; stepSize: 1
             value: Config.chargingMatrixFontSize; live: true; showLiveValue: true
-            onValueChanged: Config.chargingMatrixFontSize = value
+            onMoved: Config.chargingMatrixFontSize = value
             onUserInteractionEnded: Config.chargingMatrixFontSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Font size " + value
@@ -247,7 +247,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5
             value: Config.chargingMatrixSpeed; live: true
-            onValueChanged: Config.chargingMatrixSpeed = value
+            onMoved: Config.chargingMatrixSpeed = value
             onUserInteractionEnded: Config.chargingMatrixSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Animation speed " + value
@@ -274,7 +274,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 20; to: 500; stepSize: 5
             value: Config.chargingMatrixDensity; live: true
-            onValueChanged: Config.chargingMatrixDensity = value
+            onMoved: Config.chargingMatrixDensity = value
             onUserInteractionEnded: Config.chargingMatrixDensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Column density " + value
@@ -299,9 +299,9 @@ ColumnLayout {
             objectName: "trailSlider"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
-            from: 10; to: 100; stepSize: 5
+            from: 5; to: 100; stepSize: 5
             value: Config.chargingMatrixTrail; live: true
-            onValueChanged: Config.chargingMatrixTrail = value
+            onMoved: Config.chargingMatrixTrail = value
             onUserInteractionEnded: Config.chargingMatrixTrail = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail length " + value
@@ -328,7 +328,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 20; to: 100; stepSize: 5
             value: Config.chargingMatrixFade; live: true
-            onValueChanged: Config.chargingMatrixFade = value
+            onMoved: Config.chargingMatrixFade = value
             onUserInteractionEnded: Config.chargingMatrixFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail fade " + value
@@ -383,7 +383,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5
             value: Config.chargingMatrixAutoRotateSpeed; live: true
-            onValueChanged: Config.chargingMatrixAutoRotateSpeed = value
+            onMoved: Config.chargingMatrixAutoRotateSpeed = value
             onUserInteractionEnded: Config.chargingMatrixAutoRotateSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Rotation speed " + value
@@ -410,7 +410,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5
             value: Config.chargingMatrixAutoRotateBend; live: true
-            onValueChanged: Config.chargingMatrixAutoRotateBend = value
+            onMoved: Config.chargingMatrixAutoRotateBend = value
             onUserInteractionEnded: Config.chargingMatrixAutoRotateBend = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail bend " + value

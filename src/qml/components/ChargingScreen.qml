@@ -29,11 +29,11 @@ Popup {
     onIsClosingChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = isClosing;
     onDisplayOffChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = displayOff;
 
-    // Persist DPAD direction between sessions (gated by dpadPersist setting)
+    // Persist direction between sessions (gated by dpadPersist setting, works for both DPAD and touch)
     function saveDirection(dir) { if (Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = dir; }
     function restoreDirection() {
         if (!Config.chargingMatrixDpadPersist) return;
-        if (!ScreensaverConfig.dpadEnabled) return;
+        if (!ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection) return;
         var dir = ScreensaverConfig.lastDirection;
         if (dir !== "" && themeLoader.item && themeLoader.item.interactiveInput)
             themeLoader.item.interactiveInput(dir);
@@ -393,18 +393,5 @@ Popup {
         }
     }
 
-    // Theme switch when config changes
-    Connections {
-        target: ScreensaverConfig
-        function onThemeChanged() {
-            themeLoader.source = Qt.binding(function() {
-                switch (ScreensaverConfig.theme) {
-                    case "matrix": return "qrc:/components/themes/MatrixTheme.qml";
-                    case "starfield": return "qrc:/components/themes/StarfieldTheme.qml";
-                    case "minimal": return "qrc:/components/themes/MinimalTheme.qml";
-                    default: return "qrc:/components/themes/MatrixTheme.qml";
-                }
-            });
-        }
-    }
+
 }

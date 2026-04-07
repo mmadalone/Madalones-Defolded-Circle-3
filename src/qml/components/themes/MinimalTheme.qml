@@ -1,9 +1,11 @@
 // Copyright (c) 2024 madalone. Minimal clock charging screen theme.
+// Implements BaseTheme interface — see BaseTheme.qml for contract
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
 
 import Config 1.0
+import ScreensaverConfig 1.0
 
 import "qrc:/components/overlays" as Overlays
 
@@ -11,7 +13,14 @@ Item {
     id: root
     anchors.fill: parent
 
-    property bool showBattery: true
+    // Runtime state (set by ChargingScreen, not config)
+    property bool displayOff: false
+    property bool isClosing: false
+
+    property bool showBattery: ScreensaverConfig.showBattery
+    property bool showClock: ScreensaverConfig.showClock
+
+    function interactiveInput(action) {}
 
     Rectangle {
         anchors.fill: parent
@@ -21,6 +30,7 @@ Item {
     // Large centered digital clock
     Text {
         id: timeText
+        visible: root.showClock
         anchors.centerIn: parent
         anchors.verticalCenterOffset: -40
         color: colors.offwhite
@@ -43,7 +53,7 @@ Item {
 
     // AM/PM indicator for 12h mode
     Text {
-        visible: !Config.clock24h
+        visible: root.showClock && !Config.clock24h
         anchors {
             top: timeText.bottom
             topMargin: 8
@@ -56,6 +66,7 @@ Item {
 
     // Date
     Text {
+        visible: root.showClock
         anchors {
             bottom: timeText.top
             bottomMargin: 12

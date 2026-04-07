@@ -33,6 +33,7 @@ struct StreamState {
     int  pauseTicks;    // countdown before restarting
     int  stutterFrames; // > 0 = stream paused (stutter glitch)
     int  flashFrames;   // > 0 = stream at full brightness (flash glitch)
+    float depthFactor{1.0f};  // 3D depth parallax: 0.6 (far/small) to 1.4 (near/large)
 
     // Position history ring buffer — stores past head positions for curved trail rendering
     std::array<int, MAX_TRAIL_HISTORY> histCol{};
@@ -117,12 +118,14 @@ class RainSimulation {
                     int messageStepW, int messageGlyphOffset, int glyphW,
                     float screenWidth, const QString &charset);
     /// @brief Clear subliminal cells (called on screensaver close).
-    void clearSubliminalCells() { m_message.m_subliminalCells.clear(); }
+    void clearSubliminalCells() { m_message.clearSubliminals(); }
 
     // Direction helpers
     bool isDiagonal() const { return m_dx != 0 && m_dy != 0; }
     int dx() const { return m_dx; }
     int dy() const { return m_dy; }
+    float dxF() const { return m_dxF; }
+    float dyF() const { return m_dyF; }
     bool gravityMode() const { return m_gravityMode; }
     bool setGravityMode(bool g);
     /// @brief Set the target gravity direction vector. Streams lerp toward this over time.
@@ -156,6 +159,7 @@ class RainSimulation {
     const QVector<int>& messageBright() const { return m_message.messageBright(); }
     const QVector<int>& messageColor() const { return m_message.messageColor(); }
     const QVector<MessageCell>& messageOverlay() const { return m_message.messageOverlay(); }
+    const QVector<int>& cellAge() const { return m_cellAge; }
     int gridCols() const { return m_gridCols; }
     int gridRows() const { return m_gridRows; }
 
@@ -194,10 +198,14 @@ class RainSimulation {
     int     glitchChaosIntensity()    const { return m_glitch.glitchChaosIntensity(); }
     int     glitchChaosScatterRate()   const { return m_glitch.glitchChaosScatterRate(); }
     int     glitchChaosScatterLength() const { return m_glitch.glitchChaosScatterLength(); }
+    bool    depthEnabled() const { return m_depthEnabled; }
+    int     depthIntensity() const { return m_depthIntensity; }
+    bool    depthOverlay() const { return m_depthOverlay; }
     bool    invertTrail()   const { return m_invertTrail; }
     QString charset()       const { return m_charset; }
     QString direction()     const { return m_direction; }
     // Message/subliminal getters — forwarded to MessageEngine
+    bool    messagesEnabled() const { return m_message.messagesEnabled(); }
     QString messages()        const { return m_message.messages(); }
     int     messageInterval() const { return m_message.messageInterval(); }
     bool    messageRandom()   const { return m_message.messageRandom(); }
@@ -256,10 +264,14 @@ class RainSimulation {
     bool setGlitchChaosIntensity(int v) { return m_glitch.setGlitchChaosIntensity(v); }
     bool setGlitchChaosScatterRate(int v)   { return m_glitch.setGlitchChaosScatterRate(v); }
     bool setGlitchChaosScatterLength(int v) { return m_glitch.setGlitchChaosScatterLength(v); }
+    bool setDepthEnabled(bool v);
+    bool setDepthIntensity(int v);
+    bool setDepthOverlay(bool v);
     bool setInvertTrail(bool v) { if (m_invertTrail == v) { return false; } m_invertTrail = v; return true; }
     bool setCharset(const QString &c) { if (m_charset == c) { return false; } m_charset = c; return true; }
     bool setDirection(const QString &d);
     // Message/subliminal setters — forwarded to MessageEngine
+    bool setMessagesEnabled(bool v)              { return m_message.setMessagesEnabled(v); }
     bool setMessages(const QString &m)           { return m_message.setMessages(m); }
     bool setMessageInterval(int v)               { return m_message.setMessageInterval(v); }
     bool setMessageRandom(bool v)                { return m_message.setMessageRandom(v); }
@@ -273,22 +285,17 @@ class RainSimulation {
     bool setSubliminalOverlay(bool v)            { return m_message.setSubliminalOverlay(v); }
     bool setSubliminalFlash(bool v)              { return m_message.setSubliminalFlash(v); }
 
-    // --- Runtime state (public for grid/stream access) ---
+ private:
     QVector<StreamState> m_streams;
     QVector<int> m_charGrid;  // [col * gridRows + row] = glyph index
+    QVector<int> m_cellAge;   // per-cell ticks since last stream head visit (Rezmason-inspired residual glow)
     int m_gridCols = 0;       // physical horizontal grid positions
     int m_gridRows = 0;       // physical vertical grid positions
     qreal m_screenW = 0;      // stored from initStreams for message spacing
     qreal m_screenH = 0;
     std::mt19937 m_rng;
-
-    // Glitch engine (owns all glitch/chaos state and config)
     GlitchEngine m_glitch;
-
-    // Message engine (owns all message/subliminal state and config)
     MessageEngine m_message;
-
-    // Global direction vector (set from direction string or gravity)
     int m_dx = 0;
     int m_dy = 1;  // default: down
     float m_dxF = 0.0f;
@@ -298,13 +305,15 @@ class RainSimulation {
     int m_gravitySpawnRow = 0;  // golden ratio counter for even horizontal row distribution
     QString m_savedDirection;  // saved manual direction when entering gravity mode
 
- private:
     // Config properties
     qreal   m_speed{1.0};
     qreal   m_density{0.7};
     int     m_trailLength{25};
     bool    m_glow{true};
     QString m_charset{"ascii"};
+    bool    m_depthEnabled{false};
+    int     m_depthIntensity{50};
+    bool    m_depthOverlay{false};
     bool    m_invertTrail{false};
     int     m_tapBurstCount{25};
     int     m_tapBurstLength{6};

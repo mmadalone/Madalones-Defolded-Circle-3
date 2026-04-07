@@ -71,6 +71,7 @@ class MessageEngine {
     const QVector<MessageCell>& messageOverlay() const { return m_messageOverlay; }
 
     // --- Config property getters ---
+    bool    messagesEnabled() const { return m_messagesEnabled; }
     QString messages()        const { return m_messages; }
     int     messageInterval() const { return m_messageInterval; }
     bool    messageRandom()   const { return m_messageRandom; }
@@ -85,6 +86,7 @@ class MessageEngine {
     bool    subliminalFlash()     const { return m_subliminalFlash; }
 
     // --- Config property setters (return true if value changed) ---
+    bool setMessagesEnabled(bool v);
     bool setMessages(const QString &m);
     bool setMessageInterval(int v);
     bool setMessageRandom(bool v) { if (m_messageRandom == v) return false; m_messageRandom = v; return true; }
@@ -98,7 +100,27 @@ class MessageEngine {
     bool setSubliminalOverlay(bool v)  { if (m_subliminalOverlay == v) return false; m_subliminalOverlay = v; return true; }
     bool setSubliminalFlash(bool v)    { if (m_subliminalFlash == v) return false; m_subliminalFlash = v; return true; }
 
-    // --- Runtime state (public for grid/stream access and RainSimulation forwarding) ---
+    // --- Tap/sim mutation methods ---
+    int messageBrightAt(int idx) const {
+        return (idx >= 0 && idx < m_messageBright.size()) ? m_messageBright[idx] : 0;
+    }
+    void setMessageBrightAt(int idx, int value) {
+        if (idx >= 0 && idx < m_messageBright.size()) m_messageBright[idx] = value;
+    }
+    QVector<int> &messageBrightMut() { return m_messageBright; }
+    bool appendOverlayCell(const MessageCell &cell, int cap = 500) {
+        if (m_messageOverlay.size() >= cap) return false;
+        m_messageOverlay.append(cell);
+        return true;
+    }
+    int overlayCount() const { return m_messageOverlay.size(); }
+    const QStringList &messageList() const { return m_messageList; }
+    const QVector<SubliminalCell> &subliminalCells() const { return m_subliminalCells; }
+    const QSet<int> &subliminalSet() const { return m_subliminalSet; }
+    void clearSubliminals() { m_subliminalCells.clear(); m_subliminalSet.clear(); }
+
+ private:
+    // Runtime state (encapsulated — access via mutation/query methods above)
     QVector<int> m_messageBright;  // per-cell brightness countdown (!=0 = protected from overwrite)
                                   // positive = flash glow cell, negative = overlay-rendered char cell
     QVector<MessageCell> m_messageOverlay;  // pixel-positioned message chars (tight spacing)
@@ -106,13 +128,13 @@ class MessageEngine {
     QSet<int> m_subliminalSet;                  // gridIdx set for O(1) lookup
     QStringList m_messageList;
 
- private:
     // Internal state (not accessed externally)
     QVector<int> m_messageColor;  // per-cell color variant for message rendering
     int     m_messageTickCounter{0};
     int     m_nextMessageIndex{0};
     int     m_subliminalTickCounter{0};
     // Config properties
+    bool    m_messagesEnabled{true};
     QString m_messages;
     int     m_messageInterval{10};
     bool    m_messageRandom{true};

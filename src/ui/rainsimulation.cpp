@@ -5,6 +5,7 @@
 #include "rainsimulation.h"
 
 #include <cmath>
+#include <numeric>  // std::gcd (C++17)
 #include <QtMath>
 
 #include "glyphatlas.h"
@@ -20,6 +21,16 @@ static constexpr int    PAUSE_MIN             = 2;     // min ticks between trai
 static constexpr float  PAUSE_SCALE           = 15.0f; // pause range scaling factor (PAUSE_SCALE / speed)
 static constexpr int    INIT_STAGGER_MULT     = 2;     // head spread multiplier for init
 static constexpr double GOLDEN_RATIO          = 0.618033988749895;  // maximally spread distribution
+static constexpr int    CELL_AGE_MAX          = 9999;  // per-cell age sentinel: fully dark, no residual glow
+
+// Golden ratio step enforced coprime to n — guarantees all n positions are visited.
+// Starts from floor(n * phi), nudges up until gcd(step, n) == 1.
+static int coprimeGoldenStep(int n) {
+    if (n <= 1) return 1;
+    int step = qMax(1, static_cast<int>(n * GOLDEN_RATIO));
+    while (std::gcd(step, n) != 1) ++step;
+    return step;
+}
 
 // Direction vector table — indexed by direction string
 struct DirVec { int dx; int dy; };
@@ -47,6 +58,20 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
 
     std::uniform_int_distribution<int> lenDist(qMax(4, m_trailLength / 2), m_trailLength);
     s.trailLength = lenDist(m_rng);
+
+    // 3D depth parallax: per-stream depth factor for size/brightness scaling
+    if (m_depthEnabled) {
+        float range = m_depthIntensity / 100.0f * 0.4f;
+        if (m_depthOverlay && (m_rng() % 100) >= 30) {
+            s.depthFactor = 1.0f;  // overlay mode: 70% normal
+        } else {
+            std::uniform_real_distribution<float> depthDist(1.0f - range, 1.0f + range);
+            s.depthFactor = depthDist(m_rng);
+        }
+    } else {
+        s.depthFactor = 1.0f;
+    }
+
     // colorVariant assigned by initStreams() with golden ratio distribution — preserve on respawn
 
     if (!isDiagonal()) {
@@ -64,19 +89,15 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
         else if (m_dy < 0) s.headRow = m_gridRows - 1 + offset;   // up: below bottom
         else if (m_dx > 0) s.headCol = -offset;                   // right: left of screen
         else               s.headCol = m_gridCols - 1 + offset;   // left: right of screen
-        // In gravity mode, direction may differ from init — spread perpendicular axis.
+        // In gravity mode, direction changes without reinit — spread BOTH axes
+        // using coprime golden ratio step so every row and column is visited.
         if (m_gravityMode) {
-            if (m_dy != 0) {
-                s.headCol = m_rng() % qMax(1, m_gridCols);
-            } else {
-                // Golden ratio distribution: maximally even row spacing, zero collisions.
-                // Random rows cause birthday-problem clustering (25 streams / 61 rows ≈ 8 collisions),
-                // producing visible multi-color stacking in per-stream rendering.
-                int rows = qMax(1, m_gridRows);
-                int step = qMax(1, static_cast<int>(rows * GOLDEN_RATIO));
-                s.headRow = m_gravitySpawnRow % rows;
-                m_gravitySpawnRow = (m_gravitySpawnRow + step) % rows;
-            }
+            int cols = qMax(1, m_gridCols);
+            int rows = qMax(1, m_gridRows);
+            int step = coprimeGoldenStep(cols * rows);
+            s.headCol = m_gravitySpawnRow % cols;
+            s.headRow = (m_gravitySpawnRow / cols) % rows;
+            m_gravitySpawnRow = (m_gravitySpawnRow + step) % (cols * rows);
         }
     } else {
         // Diagonal: select entry position FIRST, then compute offset from on-screen travel.
@@ -139,21 +160,11 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
 
     bool diag = isDiagonal();
 
-    // Grid dimensions: density inflates the spread dimension for cardinal;
-    // for diagonal, both dims are inflated. Gravity mode uses current m_dx/m_dy
-    // for sizing (gravity only affects lerp behavior, not grid density).
-    if (diag) {
-        m_gridCols = qMax(1, static_cast<int>(screenWidth * m_density / cellW));
-        m_gridRows = qMax(1, static_cast<int>(screenHeight * m_density / cellH));
-    } else if (m_dx == 0) {
-        // Vertical (down/up): density inflates columns
-        m_gridCols = qMax(1, static_cast<int>(screenWidth * m_density / cellW));
-        m_gridRows = qMax(1, static_cast<int>(screenHeight / cellH));
-    } else {
-        // Horizontal (left/right): density inflates rows
-        m_gridCols = qMax(1, static_cast<int>(screenWidth / cellW));
-        m_gridRows = qMax(1, static_cast<int>(screenHeight * m_density / cellH));
-    }
+    // Full-screen grid: characters visually touch at native glyph spacing.
+    // Inspired by Rezmason/matrix (3.7k stars) — no gaps between cells.
+    // Density controls stream count via the density property, not grid spacing.
+    m_gridCols = qMax(1, static_cast<int>(screenWidth / cellW));
+    m_gridRows = qMax(1, static_cast<int>(screenHeight / cellH));
 
     // Cap to prevent quint16 index overflow
     if (m_gridCols * m_gridRows > MAX_QUADS) {
@@ -163,21 +174,23 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
             m_gridRows = qMax(1, MAX_QUADS / m_gridCols);
     }
 
-    // Stream count — based on current direction, not gravity mode.
-    // Diagonal: one stream per entry-edge cell (col + row), not density-scaled.
-    int numStreams;
+    // Stream count: max(cols, rows) ensures full coverage for ANY direction,
+    // including gravity mode transitions where direction changes without reinit.
+    // Density slider scales stream count (0.3 = sparse, 1.0 = base, 2.0 = packed).
+    int baseStreams;
     if (diag)
-        numStreams = m_gridCols + m_gridRows;
-    else if (m_dx == 0)
-        numStreams = m_gridCols;  // one per column
+        baseStreams = m_gridCols + m_gridRows;
     else
-        numStreams = m_gridRows;  // one per row
+        baseStreams = qMax(m_gridCols, m_gridRows);
+    int numStreams = qMax(1, static_cast<int>(baseStreams * m_density));
 
     // Cap stream count to prevent excessive CPU at extreme density
     numStreams = qMin(numStreams, qMax(m_gridCols, m_gridRows) * 3);
 
     m_streams.resize(numStreams);
     m_charGrid.resize(m_gridCols * m_gridRows);
+    m_cellAge.resize(m_gridCols * m_gridRows);
+    m_cellAge.fill(CELL_AGE_MAX);  // all cells start dark (no residual glow)
     m_message.resize(m_gridCols, m_gridRows);
     m_glitch.resize(m_gridCols, m_gridRows);
 
@@ -196,11 +209,11 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
         else
             s.colorVariant = 0;
 
-        // For cardinal, assign fixed spread position before spawning
-        if (m_dx == 0)
-            s.headCol = i;  // vertical: unique column
-        else if (m_dy == 0)
-            s.headRow = i;  // horizontal: unique row
+        // Spread streams across BOTH axes so any direction (including gravity
+        // transitions) has full coverage. Sequential modulo guarantees every
+        // row and column gets at least one stream.
+        s.headCol = i % qMax(1, m_gridCols);
+        s.headRow = i % qMax(1, m_gridRows);
 
         spawnStream(s, true);  // stagger for variety
     }
@@ -261,8 +274,11 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
         }
 
         // Head advances along float direction vector
-        s.headColF += s.dxF;
-        s.headRowF += s.dyF;
+        // Depth streams move at scaled speed: far (0.6) = 60% speed, near (1.4) = 140%.
+        // Creates asynchronous movement — depth rain drifts independently of normal rain.
+        float speedScale = s.depthFactor;
+        s.headColF += s.dxF * speedScale;
+        s.headRowF += s.dyF * speedScale;
         s.headCol = qRound(s.headColF);
         s.headRow = qRound(s.headRowF);
         s.pushHistory();
@@ -272,9 +288,11 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
         if (s.headCol >= 0 && s.headCol < m_gridCols &&
             s.headRow >= 0 && s.headRow < m_gridRows) {
             int headIdx = s.headCol * m_gridRows + s.headRow;
-            if (m_message.m_messageBright[headIdx] == 0 &&
-                !m_message.isSubliminalCell(s.headCol, s.headRow, m_gridRows))
+            if (m_message.messageBrightAt(headIdx) == 0 &&
+                !m_message.isSubliminalCell(s.headCol, s.headRow, m_gridRows)) {
                 m_charGrid[headIdx] = charDist(m_rng);
+                m_cellAge[headIdx] = 0;  // reset age — cell just visited by stream head
+            }
         }
 
         // Glitch effect: character mutations in the trail
@@ -286,7 +304,7 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
                     s.trailPos(offset, fc, fr);
                     if (fc >= 0 && fc < m_gridCols && fr >= 0 && fr < m_gridRows) {
                         int glitchIdx = fc * m_gridRows + fr;
-                        if (m_message.m_messageBright[glitchIdx] == 0 &&
+                        if (m_message.messageBrightAt(glitchIdx) == 0 &&
                             !m_message.isSubliminalCell(fc, fr, m_gridRows))
                             m_charGrid[glitchIdx] = charDist(m_rng);
                     }
@@ -304,7 +322,7 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
     m_glitch.advanceTrails(ctx, atlas.glyphCount());
     m_glitch.precomputeBrightness(m_streams, atlas.brightnessMap(), atlas.brightnessLevels(),
                                   ctx, m_invertTrail);
-    m_glitch.advancePulses(ctx, m_message.m_messageBright, atlas.glyphCount());
+    m_glitch.advancePulses(ctx, m_message.messageBrightMut(), atlas.glyphCount());
 
     // Message and subliminal injection (delegated to MessageEngine)
     int timerMs = qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_speed), TICK_MAX_MS);
@@ -313,6 +331,13 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
 
     // Decay message brightness, subliminal cells, and message overlay (delegated to MessageEngine)
     m_message.advanceDecay(atlas, ctx);
+
+    // Per-cell age decay (Rezmason-inspired residual glow).
+    // Cells recently visited by a stream head have age 0 (brightest residual).
+    // Age increments each tick; cells past CELL_AGE_MAX are fully dark.
+    for (int i = 0; i < m_cellAge.size(); ++i) {
+        if (m_cellAge[i] < CELL_AGE_MAX) ++m_cellAge[i];
+    }
 }
 
 // --- Property setters with side effects ---
@@ -334,6 +359,10 @@ bool RainSimulation::setTrailLength(int t) {
     t = qBound(4, t, 180);
     if (m_trailLength == t) return false;
     m_trailLength = t;
+    // Apply to all active streams immediately so the change is visible at once
+    std::uniform_int_distribution<int> lenDist(qMax(4, t / 2), t);
+    for (auto &s : m_streams)
+        s.trailLength = lenDist(m_rng);
     return true;
 }
 
@@ -345,6 +374,23 @@ bool RainSimulation::setDirection(const QString &d) {
     m_dy = it.value().dy;
     m_dxF = static_cast<float>(m_dx);
     m_dyF = static_cast<float>(m_dy);
+    return true;
+}
+
+bool RainSimulation::setDepthEnabled(bool v) {
+    if (m_depthEnabled == v) return false;
+    m_depthEnabled = v;
+    return true;
+}
+bool RainSimulation::setDepthIntensity(int v) {
+    v = qBound(10, v, 100);
+    if (m_depthIntensity == v) return false;
+    m_depthIntensity = v;
+    return true;
+}
+bool RainSimulation::setDepthOverlay(bool v) {
+    if (m_depthOverlay == v) return false;
+    m_depthOverlay = v;
     return true;
 }
 
@@ -406,7 +452,7 @@ void RainSimulation::tapBurst(int col, int row, int colorVariants) {
     int count = qBound(10, m_tapBurstCount, 50);
     int len = qBound(2, m_tapBurstLength, 15);
     int trailCount = count - count / 4 + randomInt(count / 2 + 1);
-    for (int i = 0; i < trailCount && m_glitch.m_glitchTrails.size() < 300; ++i) {
+    for (int i = 0; i < trailCount && m_glitch.trailCount() < 300; ++i) {
         GlitchTrail gt;
         const auto &d = s_tapDirs[randomInt(8)];
         gt.dx = d.dx; gt.dy = d.dy;
@@ -414,12 +460,12 @@ void RainSimulation::tapBurst(int col, int row, int colorVariants) {
         gt.length = qMax(2, len / 2) + randomInt(len);
         gt.framesLeft = gt.length + 6;
         gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
-        m_glitch.m_glitchTrails.append(gt);
+        m_glitch.appendTrail(gt);
     }
 }
 
 void RainSimulation::tapSquareBurst(int col, int row, int colorVariants) {
-    if (m_glitch.m_pulses.size() >= 10) return;
+    if (m_glitch.pulseCount() >= 10) return;
     int maxSz = qBound(2, m_tapSquareBurstSize, 10);
     PulseOverlay p;
     p.centerCol = col;
@@ -428,11 +474,11 @@ void RainSimulation::tapSquareBurst(int col, int row, int colorVariants) {
     p.maxSize = maxSz + randomInt(qMax(1, maxSz));
     p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
     p.circular = false;
-    m_glitch.m_pulses.append(p);
+    m_glitch.appendPulse(p);
 }
 
 void RainSimulation::tapRipple(int col, int row, int colorVariants) {
-    if (m_glitch.m_pulses.size() >= 10) return;
+    if (m_glitch.pulseCount() >= 10) return;
     PulseOverlay p;
     p.centerCol = col;
     p.centerRow = row;
@@ -440,7 +486,7 @@ void RainSimulation::tapRipple(int col, int row, int colorVariants) {
     p.maxSize = 6 + randomInt(8);  // radius 6-13
     p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
     p.circular = true;
-    m_glitch.m_pulses.append(p);
+    m_glitch.appendPulse(p);
 }
 
 void RainSimulation::tapWipe(int col, int row, int colorVariants) {
@@ -449,7 +495,7 @@ void RainSimulation::tapWipe(int col, int row, int colorVariants) {
     int dir = (col < m_gridCols / 2) ? 1 : -1;
     int height = qMin(m_gridRows, 40);
     int startRow = qMax(0, (m_gridRows - height) / 2);
-    for (int r = startRow; r < startRow + height && m_glitch.m_glitchTrails.size() < 300; ++r) {
+    for (int r = startRow; r < startRow + height && m_glitch.trailCount() < 300; ++r) {
         if (randomInt(4) == 0) continue;  // skip ~25% for organic look
         GlitchTrail gt;
         gt.col = col;
@@ -458,7 +504,7 @@ void RainSimulation::tapWipe(int col, int row, int colorVariants) {
         gt.length = 3 + randomInt(5);
         gt.framesLeft = gt.length + 6;
         gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
-        m_glitch.m_glitchTrails.append(gt);
+        m_glitch.appendTrail(gt);
     }
 }
 
@@ -514,8 +560,8 @@ void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
 void RainSimulation::tapMessage(int col, int row, int colorVariants, float colSp, float rowSp,
                                 int messageStepW, int messageGlyphOffset, int glyphW,
                                 float screenWidth, const QString &charset) {
-    if (m_message.m_messageList.isEmpty()) return;
-    const QString &msg = m_message.m_messageList[randomInt(m_message.m_messageList.size())];
+    if (m_message.messageList().isEmpty()) return;
+    const QString &msg = m_message.messageList()[randomInt(m_message.messageList().size())];
     int msgColor = (colorVariants > 1) ? randomInt(colorVariants) : 0;
     float stepW = static_cast<float>(messageStepW);
     float tapPxX = col * colSp;
@@ -538,16 +584,15 @@ void RainSimulation::tapMessage(int col, int row, int colorVariants, float colSp
         float gwF = static_cast<float>(glyphW);
         if (charPx < -gwF || charPx >= screenWidth + gwF) continue;
 
-        if (m_message.m_messageOverlay.size() >= 500) break;
-        m_message.m_messageOverlay.append({charPx, tapPxY, gi, 40, msgColor});
+        if (m_message.overlayCount() >= 500) break;
+        m_message.appendOverlayCell({charPx, tapPxY, gi, 40, msgColor});
 
         int c = qBound(0, static_cast<int>(charPx / colSp), m_gridCols - 1);
         if (row >= 0 && row < m_gridRows) {
             int idx = c * m_gridRows + row;
             if (idx >= 0 && idx < m_charGrid.size()) {
                 m_charGrid[idx] = gi;
-                if (idx < m_message.m_messageBright.size())
-                    m_message.m_messageBright[idx] = -40;
+                m_message.setMessageBrightAt(idx, -40);
             }
         }
     }

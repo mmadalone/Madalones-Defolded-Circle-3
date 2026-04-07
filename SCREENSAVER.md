@@ -31,10 +31,11 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Head glow toggle
 
 **Direction & Movement:**
-- 8-way direction control (cardinal + diagonal) via settings or DPAD
+- 8-way direction control (cardinal + diagonal) via settings, DPAD, or touch zones
 - Auto-rotate — continuous 360-degree direction sweep with smooth curved trails
 - Configurable rotation speed and trail bend (curve tightness)
 - Per-stream lerp produces visible curves during direction changes
+- Direction-agnostic grid — streams fill the screen evenly in any direction
 
 **Glitch Effects (individually toggleable):**
 - Character swap — trail characters randomly change
@@ -59,6 +60,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 **Hidden Messages:**
 - Configurable message text (comma-separated)
 - 5 message directions — horizontal L/R, vertical T/B, stream-aligned
+- Messages always read naturally regardless of rain direction (no mirroring)
 - Surrounding flash and brightness pulse toggles
 - Adjustable message interval and random ordering
 
@@ -86,6 +88,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Center zone: tap 1-2 = glitch + effects, tap 3 = restore direction, tap 4 = close
 - Edge zones: every tap fires direction + effects
 - Mutually exclusive with DPAD interactive
+- Remember direction toggle — persists last touch direction between sessions
 
 **Swipe & Hold Gestures:**
 - Swipe up/down — adjust rain speed (persists to settings)
@@ -130,7 +133,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance |
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse |
-| Behavior | Double-tap to close, Close on wake, DPAD interactive, Remember direction, Touch directions, Idle screensaver, Idle timeout |
+| Behavior | Double-tap to close, Close on wake, DPAD interactive, Remember direction, Touch directions (+ remember direction), Idle screensaver, Idle timeout |
 
 ## Installation
 
@@ -156,6 +159,16 @@ curl --location "http://<remote-ip>/api/system/install/ui?void_warranty=yes" \
 ```
 
 The UI restarts automatically after installation.
+
+### Desktop Preview (macOS)
+
+```bash
+# Build natively (requires Homebrew Qt 5.15)
+qmake && make -j$(sysctl -n hw.ncpu)
+
+# Run with dev model flag
+UC_MODEL=DEV "./binaries/osx-x86_64/release/Remote UI.app/Contents/MacOS/Remote UI"
+```
 
 ### Revert to Stock
 

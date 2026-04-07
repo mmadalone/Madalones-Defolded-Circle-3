@@ -134,7 +134,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 1; to: 30; stepSize: 1; live: true
             value: Config.chargingMatrixSubliminalInterval
-            onValueChanged: Config.chargingMatrixSubliminalInterval = value
+            onMoved: Config.chargingMatrixSubliminalInterval = value
             onUserInteractionEnded: Config.chargingMatrixSubliminalInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Interval " + value + "s"
@@ -156,7 +156,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 2; to: 40; stepSize: 1; live: true
             value: Config.chargingMatrixSubliminalDuration
-            onValueChanged: Config.chargingMatrixSubliminalDuration = value
+            onMoved: Config.chargingMatrixSubliminalDuration = value
             onUserInteractionEnded: Config.chargingMatrixSubliminalDuration = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Duration " + value
@@ -170,16 +170,38 @@ ColumnLayout {
 
     Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
 
-    // 13. MESSAGES TEXT
+    // HIDDEN MESSAGES MASTER TOGGLE
     ColumnLayout {
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
-
-        Text {
-            Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Hidden messages"); font: fonts.primaryFont(30)
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("Hidden messages"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: messagesEnabledSwitch
+                objectName: "messagesEnabledSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixMessagesEnabled
+                trigger: function() { Config.chargingMatrixMessagesEnabled = !Config.chargingMatrixMessagesEnabled; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Hidden messages"
+                KeyNavigation.up: (Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal) ? subliminalDurationSlider : subliminalSwitch
+                KeyNavigation.down: Config.chargingMatrixMessagesEnabled ? messagesInput : root.navDownTarget
+            }
         }
+    }
+
+    // 13. MESSAGES TEXT (visible when toggle is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixMessagesEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
 
         Components.InputField {
             id: messagesInput
@@ -190,7 +212,7 @@ ColumnLayout {
             inputField.onTextChanged: Config.chargingMatrixMessages = inputField.text
             Accessible.name: "Hidden messages"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: (Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal) ? subliminalDurationSlider : root.navUpTarget
+            KeyNavigation.up: messagesEnabledSwitch
             KeyNavigation.down: messageIntervalSlider
         }
 
@@ -198,7 +220,7 @@ ColumnLayout {
 
     // 13b. MESSAGE INTERVAL
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -215,7 +237,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 60; stepSize: 5
             value: Config.chargingMatrixMessageInterval; live: true
-            onValueChanged: Config.chargingMatrixMessageInterval = value
+            onMoved: Config.chargingMatrixMessageInterval = value
             onUserInteractionEnded: Config.chargingMatrixMessageInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Message interval " + value + "s"
@@ -225,7 +247,7 @@ ColumnLayout {
 
     // 13c. RANDOM ORDER
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -251,7 +273,7 @@ ColumnLayout {
 
     // 13d. MESSAGE DIRECTION
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -298,7 +320,7 @@ ColumnLayout {
 
     // 13e. SURROUNDING FLASH (visible when messages set)
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -321,7 +343,7 @@ ColumnLayout {
 
     // 13f. BRIGHTNESS PULSE (visible when messages set)
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10

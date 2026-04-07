@@ -17,7 +17,7 @@ ColumnLayout {
     property alias firstFocusItem: glitchChaosSwitch
     property Item lastFocusItem: {
         if (Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosScatter) return chaosScatterLengthSlider;
-        return chaosScatterLengthSlider;  // fallback — KeyNav handles visibility
+        return chaosWipeSwitch;  // fallback — last always-visible toggle when scatter is off
     }
     property Item navUpTarget
     property Item navDownTarget
@@ -61,7 +61,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
             value: Config.chargingMatrixGlitchChaosFrequency
-            onValueChanged: Config.chargingMatrixGlitchChaosFrequency = value
+            onMoved: Config.chargingMatrixGlitchChaosFrequency = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosFrequency = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Frequency " + value
@@ -83,7 +83,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
             value: Config.chargingMatrixGlitchChaosIntensity
-            onValueChanged: Config.chargingMatrixGlitchChaosIntensity = value
+            onMoved: Config.chargingMatrixGlitchChaosIntensity = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosIntensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Intensity " + value
@@ -175,7 +175,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 2; to: 10; stepSize: 1; live: true
             value: Config.chargingMatrixGlitchChaosSquareBurstSize
-            onValueChanged: Config.chargingMatrixGlitchChaosSquareBurstSize = value
+            onMoved: Config.chargingMatrixGlitchChaosSquareBurstSize = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosSquareBurstSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Square size " + value
@@ -268,7 +268,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
             value: Config.chargingMatrixGlitchChaosScatterRate
-            onValueChanged: Config.chargingMatrixGlitchChaosScatterRate = value
+            onMoved: Config.chargingMatrixGlitchChaosScatterRate = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Scatter frequency " + value
@@ -290,7 +290,7 @@ ColumnLayout {
             height: 60; Layout.fillWidth: true
             from: 3; to: 40; stepSize: 1; live: true
             value: Config.chargingMatrixGlitchChaosScatterLength
-            onValueChanged: Config.chargingMatrixGlitchChaosScatterLength = value
+            onMoved: Config.chargingMatrixGlitchChaosScatterLength = value
             onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Scatter trail length " + value
