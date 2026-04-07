@@ -290,17 +290,17 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     // Upload atlas texture to GPU if dirty
     auto *mat = static_cast<QSGTextureMaterial *>(node->material());
     if (m_atlasDirty) {
-        QSGTexture *oldTex = mat->texture();
-        if (oldTex) delete oldTex;
         auto *tex = window()->createTextureFromImage(m_atlas.atlasImage(), QQuickWindow::TextureHasAlphaChannel);
         if (!tex) {
             qCWarning(lcScreensaver) << "GPU texture creation failed — screensaver will show blank";
             m_atlas.clearAtlasImage();
             m_atlasDirty = false;
-            return node;
+            return node;  // old texture stays on material — no dangling pointer
         }
+        QSGTexture *oldTex = mat->texture();
         tex->setFiltering(QSGTexture::Nearest);
         mat->setTexture(tex);
+        if (oldTex) delete oldTex;  // delete AFTER new texture is set
         m_atlasDirty = false;
         m_atlas.clearAtlasImage();
         node->markDirty(QSGNode::DirtyMaterial);
