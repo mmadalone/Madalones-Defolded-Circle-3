@@ -22,6 +22,7 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(bool clockShowDate READ clockShowDate WRITE setClockShowDate NOTIFY clockShowDateChanged)
     Q_PROPERTY(bool showBatteryEnabled READ showBatteryEnabled WRITE setShowBatteryEnabled NOTIFY showBatteryEnabledChanged)
     Q_PROPERTY(bool batteryDockedOnly READ batteryDockedOnly WRITE setBatteryDockedOnly NOTIFY batteryDockedOnlyChanged)
+    Q_PROPERTY(int batteryTextSize READ batteryTextSize WRITE setBatteryTextSize NOTIFY batteryTextSizeChanged)
     Q_PROPERTY(QString matrixColor READ matrixColor WRITE setMatrixColor NOTIFY matrixColorChanged)
     Q_PROPERTY(int matrixSpeed READ matrixSpeed WRITE setMatrixSpeed NOTIFY matrixSpeedChanged)
     Q_PROPERTY(int matrixDensity READ matrixDensity WRITE setMatrixDensity NOTIFY matrixDensityChanged)
@@ -146,6 +147,8 @@ class MockScreensaverConfig : public QObject {
     void setShowBatteryEnabled(bool v) { if (m_showBatteryEnabled == v) return; m_showBatteryEnabled = v; emit showBatteryEnabledChanged(); }
     bool batteryDockedOnly() const { return m_batteryDockedOnly; }
     void setBatteryDockedOnly(bool v) { if (m_batteryDockedOnly == v) return; m_batteryDockedOnly = v; emit batteryDockedOnlyChanged(); }
+    int batteryTextSize() const { return m_batteryTextSize; }
+    void setBatteryTextSize(int v) { if (m_batteryTextSize == v) return; m_batteryTextSize = v; emit batteryTextSizeChanged(); }
     QString matrixColor() const { return m_matrixColor; }
     void setMatrixColor(QString v) { if (m_matrixColor == v) return; m_matrixColor = v; emit matrixColorChanged(); }
     int matrixSpeed() const { return m_matrixSpeed; }
@@ -350,6 +353,7 @@ class MockScreensaverConfig : public QObject {
         setClockShowDate(false);
         setShowBatteryEnabled(true);
         setBatteryDockedOnly(true);
+        setBatteryTextSize(24);
         setMatrixColor("#00ff41");
         setMatrixSpeed(50);
         setMatrixDensity(70);
@@ -456,6 +460,7 @@ class MockScreensaverConfig : public QObject {
     void clockShowDateChanged();
     void showBatteryEnabledChanged();
     void batteryDockedOnlyChanged();
+    void batteryTextSizeChanged();
     void matrixColorChanged();
     void matrixSpeedChanged();
     void matrixDensityChanged();
@@ -567,6 +572,7 @@ class MockScreensaverConfig : public QObject {
     bool m_clockShowDate{false};
     bool m_showBatteryEnabled{true};
     bool m_batteryDockedOnly{true};
+    int m_batteryTextSize{24};
     QString m_matrixColor{"#00ff41"};
     int m_matrixSpeed{50};
     int m_matrixDensity{70};

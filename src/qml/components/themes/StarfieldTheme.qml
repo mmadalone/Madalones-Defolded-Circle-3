@@ -38,6 +38,12 @@ Item {
         property var stars: []
         property bool initialized: false
 
+        // Reset when star count changes so the array is rebuilt on next paint
+        Connections {
+            target: root
+            function onStarCountChanged() { canvas.initialized = false; }
+        }
+
         readonly property real cx: width / 2
         readonly property real cy: height / 2
 

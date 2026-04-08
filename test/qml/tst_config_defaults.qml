@@ -1,5 +1,5 @@
-// Copyright (c) 2024 madalone. Tests for Config default values and reset.
-// Validates that MockConfig defaults match the QSettings defaults in config.cpp.
+// Copyright (c) 2024 madalone. Tests for ScreensaverConfig default values and reset.
+// Validates that MockScreensaverConfig defaults match the QSettings defaults in screensaverconfig.h.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

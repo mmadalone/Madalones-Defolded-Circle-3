@@ -128,7 +128,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 ### Overlays
 
 - **Clock** — digital time display with configurable font, size, color (7 solid + 3 rainbow gradients), 24h/12h toggle, optional date line with own size slider, "charging only" visibility
-- **Battery** — color-coded by charge level (green → yellow → orange → red), shows "Fully charged" at 100%, "charging only" visibility option
+- **Battery** — color-coded by charge level (green → yellow → orange → red), shows "Fully charged" at 100%, configurable text size, "charging only" visibility option
 
 ### General Behavior
 
@@ -146,7 +146,7 @@ All settings are in **Settings > Screensaver** on the remote.
 |---------|----------|--------|
 | Theme | Matrix / Starfield / Minimal | All |
 | Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size), Show battery (+ charging only) | Matrix/Starfield |
-| Overlays | Show battery (+ charging only) | Minimal/Analog |
+| Overlays | Show battery (+ charging only, text size) | Minimal/Analog |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
 | Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker | Matrix |
 | Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) | Matrix |

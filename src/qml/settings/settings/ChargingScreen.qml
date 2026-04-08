@@ -72,7 +72,7 @@ Settings.Page {
                 navUpTarget: commonToggles.lastFocusItem
                 navDownTarget: matrixAppearance.visible ? matrixAppearance.firstFocusItem
                              : starfieldSettings.visible ? starfieldSpeedSlider
-                             : minimalSettings.visible ? minimalClockSlider
+                             : minimalSettings.visible ? minimalClock24hSwitch
                              : generalBehavior.firstFocusItem
             }
 
