@@ -206,19 +206,21 @@ Base portrait (full grid — mood-specific)
 
 **C++ renderer — new QQuickItem, NOT a fork of MatrixRainItem:**
 
-AvatarGridItem is a separate renderer that shares only GlyphAtlas with the screensaver. It does NOT inherit from, extend, or modify MatrixRainItem. The two renderers are independent and composed via QML z-stacking.
+AvatarGridItem is a separate renderer that shares only GlyphAtlas (class, not instance) with the screensaver. It does NOT inherit from, extend, or modify MatrixRainItem. The two renderers are independent and composed via QML z-stacking.
 
 | File | Purpose | Est. lines |
 |---|---|---|
-| `src/ui/avatargrid.h` | `AvatarGridItem` — QQuickItem subclass. Owns grid model (`m_gridChar[]`, `m_gridBright[]`), animation timer, portrait compositing, region variant swapping. | ~150 |
-| `src/ui/avatargrid.cpp` | Portrait loading, per-cell animation (breathing, glow, particles, blink/talk), QSG vertex buffer rendering via atlas texture. | ~400 |
+| `src/ui/avatargrid.h` | `AvatarGridItem` — QQuickItem subclass. Owns grid model (`m_gridChar[]`, `m_gridBright[]`, per-vertex RGBA), animation timer, portrait compositing, region variant swapping. | ~180 |
+| `src/ui/avatargrid.cpp` | Portrait loading, per-cell animation (breathing, glow, particles, blink/talk), QSG vertex buffer rendering via custom shader + white atlas. | ~450 |
 
 **What's copied from MatrixRainItem (pattern, not code sharing):**
-- `MatrixRainNode` destructor pattern (GPU texture cleanup on render thread) — ~10 lines
-- Atlas texture upload in `updatePaintNode()` (`matrixrain.cpp:115-131`) — ~20 lines
-- Quad vertex/index buffer construction (`matrixrain.cpp:266-273`) — ~10 lines
-- Timer/tick/displayOff pattern — ~15 lines
-- `componentComplete()` deferred init pattern — ~20 lines
+- `MatrixRainNode` destructor pattern (GPU texture cleanup on render thread, `matrixrain.cpp:32-41`) — ~10 lines
+- Atlas texture upload in `updatePaintNode()` (`matrixrain.cpp:274-289`) — ~20 lines
+- `MatrixRainVertex` struct (20-byte: x, y, tx, ty, r, g, b, a) + `MatrixRainShader` custom GLSL (texture × per-vertex RGBA) — ~40 lines. **Key reuse:** enables per-cell mood color without atlas rebuilds. Avatar builds a white braille atlas once; all color comes from per-vertex RGBA at render time.
+- Quad vertex/index buffer construction (`matrixrain.cpp:334-346`) using `MatrixRainVertex` — ~15 lines
+- Timer/tick/displayOff pattern (TICK_BASE_MS = 50ms) — ~15 lines
+- `componentComplete()` deferred init + 2-second safety retry pattern (`matrixrain.cpp:93-100`) — ~20 lines
+- Per-cell age tracking algorithm from `RainSimulation::m_cellAge` — used for ambient glow decay around portrait (proven pattern, different grid model)
 
 **What's NOT copied — written from scratch:**
 - Grid cell iteration (simpler than stream trail walk — just iterate all non-empty cells)
@@ -226,8 +228,9 @@ AvatarGridItem is a separate renderer that shares only GlyphAtlas with the scree
 - Region variant compositing (overlay eye/mouth patches onto base portrait)
 - All per-cell animation (breathing sine, glow distance, particle pulses, blink timer, talk cycle)
 - Manifest JSON loader
+- Per-vertex mood color packing (uses `packColor()` pattern but with mood-specific color logic)
 
-**Honest reuse estimate: ~60% copied patterns, ~40% new code.**
+**Honest reuse estimate: ~65% copied patterns, ~35% new code.** (Up from 60/40 — custom shader + white atlas pattern + per-cell age tracking from completed screensaver increase reuse.)
 
 **Modified from Matrix screensaver (minor):**
 
@@ -330,10 +333,18 @@ Renders portrait + ambient cells. Background is transparent — non-portrait cel
 **Grid model:**
 ```cpp
 int m_gridCols, m_gridRows;  // ~68 x 67 at 14px font on 480x850
+                              // Uses charStepW/charStepH for tight spacing (same as MatrixRain full-screen grid)
 
 // Per-cell state (only portrait + ambient cells are populated)
 QVector<int>   m_gridChar;    // Braille character index (into atlas). -1 = empty/transparent.
 QVector<int>   m_gridBright;  // brightness level (0 = brightest, blevels-1 = dimmest). Ignored if char is -1.
+QVector<int>   m_cellAge;     // Per-cell age counter for ambient glow decay (same pattern as RainSimulation::m_cellAge).
+                              // 0 = just activated, increments each tick, CELL_AGE_MAX = fully dark.
+
+// Per-vertex color (mood tinting via custom shader — NO atlas rebuilds on mood change)
+quint32 m_moodVertexColor;    // Packed RGBA for portrait cells. Set from moodColor property.
+quint32 m_glowVertexColor;    // Packed RGBA for ambient glow cells (dimmer variant of mood color).
+// White atlas + per-vertex RGBA = instant mood color transitions. Same pattern as MatrixRain depth layers.
 
 // Portrait placement (centered in grid)
 int m_portraitOffsetRow, m_portraitOffsetCol;
@@ -375,11 +386,13 @@ void AvatarGridItem::tick() {
 ```
 
 **Rendering (`updatePaintNode`):**
-- Copies atlas texture upload and `MatrixRainNode` cleanup pattern from `matrixrain.cpp:105-131`
+- Copies atlas texture upload and `MatrixRainNode` cleanup pattern from `matrixrain.cpp:274-289` / `matrixrain.cpp:32-41`
+- Uses `MatrixRainShader` (custom GLSL: `texture2D(atlas) × vertColor`) + `MatrixRainVertex` (20-byte: x, y, tx, ty, r, g, b, a) — same shader class as MatrixRain, reused directly
+- **White atlas mode:** GlyphAtlas builds braille glyphs in pure white. All color comes from per-vertex RGBA (`m_moodVertexColor` for portrait cells, `m_glowVertexColor` for ambient). Mood color changes = update packed RGBA value, zero atlas rebuild cost.
 - Iterates all cells, skips where `m_gridChar[i] == -1` (transparent)
-- Per-cell: atlas UV lookup from `(glyphIdx, brightLevel)`, quad vertex construction
-- Copies quad vertex/index pattern from `matrixrain.cpp:266-273`
-- Single `QSGGeometryNode` draw call with `QSGTextureMaterial` (alpha blending enabled for transparency)
+- Per-cell: atlas UV lookup from `(glyphIdx, brightLevel)`, quad vertex construction with per-vertex color
+- Copies quad vertex/index pattern from `matrixrain.cpp:334-346`
+- Single `QSGGeometryNode` draw call with `MatrixRainShader` material (alpha blending enabled for transparency)
 
 **Key Q_PROPERTYs:**
 ```cpp
@@ -404,7 +417,9 @@ Q_PROPERTY(QString transitionStyle READ transitionStyle WRITE setTransitionStyle
 Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
 ```
 
-**Font handling:** GlyphAtlas loads bundled `BrailleFont.otf` from `deploy/config/` at startup (same `loadCJKFont()` pattern). All 256 Braille characters pre-rendered into atlas texture. After build, font is no longer needed — pure GPU texture. Font problem resolved.
+**Font handling:** GlyphAtlas loads bundled `BrailleFont.otf` from `deploy/config/` at startup (same `loadCJKFont()` pattern). All 256 Braille characters pre-rendered into atlas texture **in pure white** (same white atlas mode used by MatrixRain's depth layers). After build, font is no longer needed — pure GPU texture. Mood color applied entirely through per-vertex RGBA via `MatrixRainShader`. Font problem resolved.
+
+**Mood color transitions:** Zero-cost. No atlas rebuild needed. When `moodColor` property changes, `m_moodVertexColor` = `packColor(newColor)` and `m_glowVertexColor` = `packColor(dimmed)`. Next frame renders with new color. Compare: atlas rebuild = 50-150ms on ARM. Per-vertex color swap = one integer assignment. This is the key architectural win from the screensaver's custom shader system.
 
 **displayOff:** Timer stops when `m_displayOff` is true. Zero CPU/GPU when screen is off. Same pattern as MatrixRainItem.
 
@@ -414,10 +429,11 @@ Q_PROPERTY(int fontSize READ fontSize WRITE setFontSize NOTIFY fontSizeChanged)
 
 MatrixRainItem, StarfieldTheme, MinimalTheme — all used as-is. No modifications to theme code. The avatar overlay sits on top via QML z-stacking. When `Config.avatarShowOnScreensaver` is false, screensaver runs exactly as before. When true, the avatar overlay loads on top and optionally drives mood-reactive properties on the theme (see 1.4.3).
 
-**Completed screensaver architecture (confirmed):**
-- MatrixTheme.qml wraps MatrixRain (C++ QQuickItem) + ClockOverlay + BatteryOverlay
+**Completed screensaver architecture (confirmed, 2026-04-08):**
+- **BaseTheme.qml** — Interface contract (not inheritance). Defines: `displayOff`, `isClosing`, `showClock`, `showBattery`, `interactiveInput(action)`. All themes implement this contract independently. Avatar screensaver overlay should check for `interactiveInput` via this contract pattern, not `hasOwnProperty` guards.
+- MatrixTheme.qml wraps MatrixRain (C++ QQuickItem) + ClockOverlay + BatteryOverlay. Exposes `matrixRainItem` alias (line 19) for access to the C++ item.
+- **MatrixRain uses custom shader** — `MatrixRainShader` (GLSL: texture × per-vertex RGBA) + `MatrixRainVertex` (20-byte). White atlas mode for depth layers. Per-cell residual glow via `m_cellAge` tracking. Per-stream `depthFactor` (0.6–1.4) for 3D depth. Multi-layer system (LAYER_COUNT=3). ~5200 lines total C++ across 7 files.
 - MatrixRain binds all visual properties in C++ via `bindToScreensaverConfig()` in `componentComplete()`
-- MatrixTheme exposes `matrixRainItem` alias (line 19) for access to the C++ item
 - StarfieldTheme uses Canvas-based 2D rendering (no C++ item, no property interface for mood)
 - MinimalTheme is pure QML Text (clock/date display, no mood interface)
 - ChargingScreen routes interactive input (DPAD + tap effects) to themes via `interactiveInput()` function
@@ -1222,26 +1238,26 @@ Item {
 - All new Config properties default to off/safe values
 - Blueprints gain an optional input that defaults to false
 
-**Binary size impact:** ~150-200KB (AvatarGridItem C++ ~550 lines compiled + QML files + Braille art text files + BrailleFont.otf ~30-50KB subset). Negligible relative to existing binary (MatrixRainItem alone is ~1800 lines across 7 files: matrixrain, rainsimulation, glitchengine, messageengine, gravitydirection, glyphatlas, screensaverconfig).
+**Binary size impact:** ~100-150KB (AvatarGridItem C++ ~630 lines compiled + QML files + Braille art text files + BrailleFont.otf ~30-50KB subset). Smaller than originally estimated because `MatrixRainShader` and `MatrixRainVertex` are reused directly (not duplicated). Negligible relative to existing binary (screensaver alone is ~5200 lines across 8 files: matrixrain, rainsimulation, glitchengine, messageengine, gravitydirection, glyphatlas, screensaverconfig, simcontext).
 
 ---
 
 ## Implementation Order
 
-**Phase A — Renderer foundation (C++, testable on desktop):**
-1. **Braille font subset** — `pyftsubset` DejaVu Sans Mono for U+2800-U+28FF. Add to `deploy/config/`. Add `loadBrailleFont()` + `"braille"` charset to GlyphAtlas.
-2. **AvatarGridItem scaffold** — New QQuickItem: grid model, QSG renderer (copy atlas upload + quad vertex patterns from MatrixRainItem). Register in `main.cpp`. Static display only — hardcoded test grid.
-3. **Portrait loader** — Art manifest JSON parser. Load base portrait from qrc text file into grid cells. Verify portrait renders centered on screen.
+**Phase A — Renderer foundation (C++, testable on desktop/Docker):**
+1. **Braille font subset** — `pyftsubset` DejaVu Sans Mono for U+2800-U+28FF. Add to `deploy/config/`. Add `loadBrailleFont()` + `CHARS_BRAILLE` + `"braille"` charset to GlyphAtlas.
+2. **AvatarGridItem scaffold** — New QQuickItem: grid model (`m_gridChar`, `m_gridBright`, `m_cellAge`), QSG renderer using `MatrixRainShader` + `MatrixRainVertex` (reuse from matrixrain.h, not duplicate), white atlas build, atlas texture upload + `MatrixRainNode` destructor pattern. Register in `main.cpp`. Static display only — hardcoded test grid with per-vertex mood color.
+3. **Portrait loader** — Art manifest JSON parser. Load base portrait from qrc text file into grid cells. Verify portrait renders centered on screen with mood color tinting.
 4. **Region variant compositing** — Load eye/mouth patches. Overlay onto base portrait at mapped coordinates. Verify swap works.
-5. **Per-cell animation** — Breathing, glow, particles, mood flash in tick(). Timer + displayOff pattern.
+5. **Per-cell animation** — Breathing (brightness sine wave), ambient glow (per-cell age tracking, adapted from `RainSimulation::m_cellAge` pattern), floating particles, mood flash in tick(). Timer + displayOff + 2-second safety retry pattern.
 6. **Facial animation** — Blink timer, talk cycle. Driven by `eyeState`/`mouthState` properties.
 7. **Response text** — Render text as characters in grid rows below portrait. Truncate/scroll/paginate modes.
 
 **Phase B — QML integration (connecting renderer to UI):**
-8. **Config properties** — ~20 avatar Q_PROPERTYs in config.h/.cpp (CFG macros).
+8. **Config properties** — ~20 avatar Q_PROPERTYs in config.h/.cpp (CFG macros with change guards).
 9. **AvatarDisplay.qml** — Thin wrapper around AvatarGridItem. Translates QML signals to C++ properties.
 10. **MoodEngine.qml** — Mood state resolver with local fallback.
-11. **AvatarScreensaverOverlay.qml** — Optional avatar layer on any screensaver theme. Mood-to-screensaver bindings (Matrix gets full reactions, others get color tinting). Wire into ChargingScreen.qml Loader.
+11. **AvatarScreensaverOverlay.qml** — Optional avatar layer on any screensaver theme. Mood-to-rain via ScreensaverConfig override properties (§1.4.3). Q_INVOKABLE calls (triggerChaosBurst) via `themeItem.matrixRainItem` alias. Wire into ChargingScreen.qml Loader alongside existing themeLoader.
 12. **AvatarOverlay.qml** — Unified popup: voice mode + push mode.
 13. **VoiceOverlay integration** — Conditional delegation when avatar enabled.
 14. **TouchHandler** — Charging theme interaction.
@@ -1296,7 +1312,7 @@ None. All decisions resolved.
 
 **(Theatrical transition)** All three styles implemented and configurable via `Config.avatarTransitionStyle`: `flash` (mood flash covers swap), `crossfade` (progressive cell morph over ~300ms), `slide` (portrait slides out, new slides in). AvatarGridItem C++ property `transitionStyle`.
 
-**(ARM performance)** RESOLVED — with caveat. AvatarGridItem alone uses the same GPU texture atlas pattern proven at 40fps on ARM. When composited with MatrixRainItem (screensaver), that's two draw calls and two textures. Expected to be fine — the avatar grid has far fewer quads than the rain (only portrait + ambient cells emit quads, not the full 4,556 cell grid). But must verify on device that two concurrent renderers don't exceed frame budget. Degradation path if needed: reduce rain density when avatar is active.
+**(ARM performance)** RESOLVED — with caveat. AvatarGridItem uses the same `MatrixRainShader` + `MatrixRainVertex` + GlyphAtlas pipeline proven at 40fps on ARM (now with 3 depth layers, per-cell residual glow, and ~5200 lines of C++). When composited with MatrixRainItem (screensaver), that's two draw calls and two textures. Expected to be fine — the avatar grid has far fewer quads than the rain (only portrait + ambient cells emit quads, not the full grid), and the screensaver already handles multi-layer rendering. Additionally, the white atlas + per-vertex color approach means avatar mood transitions are zero-cost (no atlas rebuilds). But must verify on device that two concurrent renderers don't exceed frame budget. Degradation path if needed: reduce rain density when avatar is active via ScreensaverConfig overrides (§1.4.3).
 
 **(Portrait art volume)** Rick only to start. 1 base portrait (neutral) + eyes-closed patch + talk-A/B mouth patches. Minimum viable set for blinks + talking animation. Mood conveyed through per-cell color/brightness. More base portraits and region variants added incrementally as art is created.
 
@@ -1356,7 +1372,7 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 
 ---
 
-## Architecture Review Findings (2026-04-03 — 2026-04-04, updated 2026-04-04 post-screensaver completion)
+## Architecture Review Findings (2026-04-03 — 2026-04-04, updated 2026-04-08 post-screensaver completion)
 
 ### UC3 Hardware (researched)
 - CPU: Quad-core ARM64, 1.8 GHz (exact SoC undisclosed)
@@ -1374,12 +1390,14 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 
 ### Codebase Reuse Assessment (verified by reading actual source)
 
-**GlyphAtlas (~90% reusable):**
+**GlyphAtlas (~95% reusable):**
 - Add `"braille"` charset to `charsetString()` (1 line + string constant). Existing charsets: katakana (51 glyphs), ascii (36), binary (2), digits (10).
+- Add `CHARS_BRAILLE` constant (U+2800-U+28FF, 256 glyphs) alongside existing `CHARS_KATAKANA`/`CHARS_ASCII`/etc (lines 27-37).
 - Add `loadBrailleFont()` alongside `loadCJKFont()` (same pattern, ~15 lines). Font loaded from `deploy/config/BrailleFont.otf`.
-- Atlas build, UV lookup, brightness map, font loading — all work as-is
-- Atlas rebuild is ~50-150ms on ARM — fine for mood transitions, not per-frame color fading
-- **Per-renderer instance:** Each renderer owns its own `m_atlas` member. AvatarGridItem gets a separate GlyphAtlas instance with braille charset + agent mood color. Two GPU textures total when both active (screensaver surface). Avatar atlas is smaller: 256 Braille glyphs × 16 mono brightness levels vs. 51+ katakana × variable brightness × color variants for rainbow/neon modes.
+- Atlas build, UV lookup, brightness map, font loading — all work as-is.
+- **White atlas mode** (new since last review): When depth is enabled, GlyphAtlas renders glyphs in pure white and color comes from per-vertex RGBA via `MatrixRainShader`. **AvatarGridItem uses this same pattern** — build white braille atlas once at startup, apply mood color through per-vertex RGBA. Mood transitions = zero atlas rebuild cost (was 50-150ms on ARM per mood change).
+- **Per-renderer instance:** Each renderer owns its own `m_atlas` member. AvatarGridItem gets a separate GlyphAtlas instance with braille charset in white. Two GPU textures total when both active (screensaver surface). Avatar atlas is smaller: 256 Braille glyphs × 16 mono brightness levels vs. 51+ katakana × variable brightness × depth color variants.
+- New helper methods available: `buildMetricsOnly()` (cache-hit path), `remapUVs()` (multi-atlas compositing), `hasDepthVariants()`, `depthVariantBase()`. Avatar doesn't need these but they're there if multi-mood atlas variants are explored later.
 
 **ScreensaverConfig (new since original plan — confirmed):**
 - Singleton at `src/ui/screensaverconfig.h/.cpp`, registered in `main.cpp` line 106
@@ -1387,11 +1405,14 @@ Contour's `RenderBuffer` decouples simulation from rendering with double-bufferi
 - MatrixRain binds to ScreensaverConfig in C++ via `bindToScreensaverConfig()` in `componentComplete()`
 - **Impact on avatar:** Mood-to-rain overrides must go through ScreensaverConfig override properties, not direct QML property sets. See §1.4.3 for the override approach.
 
-**MatrixRainItem (pattern reuse, ~60%):**
-- Copy verbatim: `MatrixRainNode` destructor (`matrixrain.cpp:32-41`), atlas texture upload (`matrixrain.cpp:274-289`), quad vertex construction (`matrixrain.cpp:334-346`), timer/tick/displayOff, `componentComplete()` deferred init with 2-second safety retry (`matrixrain.cpp:93-100`)
-- NOT reusable: stream rendering loop (iterates streams via `renderStreamTrails()`, not cells), `RainSimulation`, `GlitchEngine`, `MessageEngine` (all stream-scoped)
-- AvatarGridItem iterates all non-empty cells directly — simpler loop than stream trail walking
+**MatrixRainItem (pattern reuse, ~65%):**
+- Copy verbatim: `MatrixRainNode` destructor (`matrixrain.cpp:32-41`), atlas texture upload (`matrixrain.cpp:274-289`), quad vertex construction with `MatrixRainVertex` (`matrixrain.cpp:334-346`), timer/tick/displayOff, `componentComplete()` deferred init with 2-second safety retry (`matrixrain.cpp:93-100`)
+- **Reuse directly (not copy):** `MatrixRainShader` (custom GLSL: `texture2D × vertColor`) and `MatrixRainVertex` struct (20-byte: x, y, tx, ty, r, g, b, a). These are defined in `matrixrain.h` — AvatarGridItem includes the header and uses the same shader class. No duplication.
+- **Reuse pattern:** `packColor()` utility for QColor→packed RGBA. Per-cell age tracking algorithm from `RainSimulation::m_cellAge` (adapted for ambient glow decay — same increment/decay logic, different grid model). `SimContext` struct pattern if avatar sub-engines are needed later.
+- NOT reusable: stream rendering loop (iterates streams via `renderStreamTrails()`, not cells), `RainSimulation`, `GlitchEngine`, `MessageEngine` (all stream-scoped). Depth layers (`LAYER_COUNT`, `depthFactor`, `depthColor()`), multi-layer atlas compositing — avatar doesn't need parallax.
+- AvatarGridItem iterates all non-empty cells directly — simpler loop than stream trail walking.
 - Timer: TICK_BASE_MS = 50ms (20fps). Avatar uses same pattern at 20fps.
+- **CFG macros** now include change guards (`if (value == current) return`). Avatar config properties get this for free.
 
 **Why "extend MatrixRainItem" was rejected:**
 - Render loop iterates STREAMS not cells — portrait cells with no stream never render

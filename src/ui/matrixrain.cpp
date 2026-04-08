@@ -504,8 +504,27 @@ void MatrixRainItem::updatePolish() {
         if (m_layersEnabled) {
             buildCombinedAtlas();
         } else {
-            m_atlas.build(m_color, m_colorMode, m_fontSize, m_sim.charset(), m_fadeRate,
-                          m_sim.depthEnabled(), m_sim.depthIntensity());
+            // Single-layer in-memory cache (same pattern as buildCombinedAtlas)
+            static QByteArray s_singleCacheKey;
+            static GlyphAtlas s_singleCacheAtlas;
+
+            QCryptographicHash h(QCryptographicHash::Sha1);
+            h.addData(m_color.name(QColor::HexArgb).toUtf8());
+            h.addData(m_colorMode.toUtf8());
+            h.addData(QByteArray::number(m_fontSize));
+            h.addData(m_sim.charset().toUtf8());
+            h.addData(QByteArray::number(static_cast<double>(m_fadeRate), 'g', 10));
+            h.addData(QByteArray::number(static_cast<int>(m_sim.depthEnabled())));
+            QByteArray cacheKey = h.result();
+
+            if (cacheKey == s_singleCacheKey && s_singleCacheAtlas.isBuilt()) {
+                m_atlas = s_singleCacheAtlas;
+            } else {
+                m_atlas.build(m_color, m_colorMode, m_fontSize, m_sim.charset(), m_fadeRate,
+                              m_sim.depthEnabled(), m_sim.depthIntensity());
+                s_singleCacheKey = cacheKey;
+                s_singleCacheAtlas = m_atlas;
+            }
         }
         m_atlasDirty = true;
         m_needsAtlasRebuild = false;
