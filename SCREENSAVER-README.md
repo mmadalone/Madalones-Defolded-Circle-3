@@ -33,7 +33,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 ### Themes
 
 - **Matrix Rain** — GPU-accelerated falling character rain with full customization (see below)
-- **Starfield** — animated star field with configurable speed and density
+- **Starfield** — animated star field with configurable speed, density, star size, trail length, and color (7 solid + 3 rainbow gradients). Touchbar adjusts density, swipe adjusts speed.
 - **Minimal Clock** — clean digital clock with date, configurable font (Poppins / Space Mono), size, and independent time/date color pickers with rainbow gradient support (battery overlay optional)
 - **Analog Clock** — UC's stock analog clock face with hour dots and second/minute/hour hands (battery overlay optional)
 
@@ -137,6 +137,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - **Any physical button dismisses** — all remote buttons close the screensaver unconditionally
 - **Idle screensaver** — activate screensaver after configurable idle timeout (15-55s) when undocked
 - **Display power gating** — animation pauses when display is off, resumes on wake
+- **Touchbar isolation** — volume, seek, brightness, and position sliders are suppressed while the screensaver is active. Touchbar is used for screensaver controls (Matrix: speed, Starfield: density).
 
 ## Settings Reference
 
@@ -145,7 +146,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Section | Settings | Themes |
 |---------|----------|--------|
 | Theme | Matrix / Starfield / Minimal | All |
-| Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size), Show battery (+ charging only) | Matrix/Starfield |
+| Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size, position: top/center/bottom), Show battery (+ charging only, text size) | Matrix/Starfield |
 | Overlays | Show battery (+ charging only, text size) | Minimal/Analog |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
 | Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker | Matrix |
@@ -156,7 +157,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance | Matrix |
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration | Matrix |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
-| Starfield | Animation speed, Star density | Starfield |
+| Starfield | Animation speed, Star density, Star size, Trail length, Star color (7 solid + 3 rainbow) | Starfield |
 | Minimal | Font (Poppins / Space Mono), Clock size, Date size | Minimal |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |

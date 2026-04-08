@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Mock ScreensaverConfig singleton for QML tests.
+// Copyright (c) 2026 madalone. Mock ScreensaverConfig singleton for QML tests.
 // Auto-generated from screensaverconfig.h SCRN_* macros.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -20,6 +20,7 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(bool clockClock24h READ clockClock24h WRITE setClockClock24h NOTIFY clockClock24hChanged)
     Q_PROPERTY(int clockDateSize READ clockDateSize WRITE setClockDateSize NOTIFY clockDateSizeChanged)
     Q_PROPERTY(bool clockShowDate READ clockShowDate WRITE setClockShowDate NOTIFY clockShowDateChanged)
+    Q_PROPERTY(QString clockPosition READ clockPosition WRITE setClockPosition NOTIFY clockPositionChanged)
     Q_PROPERTY(bool showBatteryEnabled READ showBatteryEnabled WRITE setShowBatteryEnabled NOTIFY showBatteryEnabledChanged)
     Q_PROPERTY(bool batteryDockedOnly READ batteryDockedOnly WRITE setBatteryDockedOnly NOTIFY batteryDockedOnlyChanged)
     Q_PROPERTY(int batteryTextSize READ batteryTextSize WRITE setBatteryTextSize NOTIFY batteryTextSizeChanged)
@@ -115,6 +116,9 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(QString minimalDateColor READ minimalDateColor WRITE setMinimalDateColor NOTIFY minimalDateColorChanged)
     Q_PROPERTY(int starfieldSpeed READ starfieldSpeed WRITE setStarfieldSpeed NOTIFY starfieldSpeedChanged)
     Q_PROPERTY(int starfieldDensity READ starfieldDensity WRITE setStarfieldDensity NOTIFY starfieldDensityChanged)
+    Q_PROPERTY(QString starfieldColor READ starfieldColor WRITE setStarfieldColor NOTIFY starfieldColorChanged)
+    Q_PROPERTY(int starfieldStarSize READ starfieldStarSize WRITE setStarfieldStarSize NOTIFY starfieldStarSizeChanged)
+    Q_PROPERTY(int starfieldTrailLength READ starfieldTrailLength WRITE setStarfieldTrailLength NOTIFY starfieldTrailLengthChanged)
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged)
     Q_PROPERTY(qreal speed READ speed NOTIFY speedChanged)
     Q_PROPERTY(qreal density READ density NOTIFY densityChanged)
@@ -143,6 +147,8 @@ class MockScreensaverConfig : public QObject {
     void setClockDateSize(int v) { if (m_clockDateSize == v) return; m_clockDateSize = v; emit clockDateSizeChanged(); }
     bool clockShowDate() const { return m_clockShowDate; }
     void setClockShowDate(bool v) { if (m_clockShowDate == v) return; m_clockShowDate = v; emit clockShowDateChanged(); }
+    QString clockPosition() const { return m_clockPosition; }
+    void setClockPosition(QString v) { if (m_clockPosition == v) return; m_clockPosition = v; emit clockPositionChanged(); }
     bool showBatteryEnabled() const { return m_showBatteryEnabled; }
     void setShowBatteryEnabled(bool v) { if (m_showBatteryEnabled == v) return; m_showBatteryEnabled = v; emit showBatteryEnabledChanged(); }
     bool batteryDockedOnly() const { return m_batteryDockedOnly; }
@@ -333,6 +339,12 @@ class MockScreensaverConfig : public QObject {
     void setStarfieldSpeed(int v) { if (m_starfieldSpeed == v) return; m_starfieldSpeed = v; emit starfieldSpeedChanged(); }
     int starfieldDensity() const { return m_starfieldDensity; }
     void setStarfieldDensity(int v) { if (m_starfieldDensity == v) return; m_starfieldDensity = v; emit starfieldDensityChanged(); }
+    QString starfieldColor() const { return m_starfieldColor; }
+    void setStarfieldColor(QString v) { if (m_starfieldColor == v) return; m_starfieldColor = v; emit starfieldColorChanged(); }
+    int starfieldStarSize() const { return m_starfieldStarSize; }
+    void setStarfieldStarSize(int v) { if (m_starfieldStarSize == v) return; m_starfieldStarSize = v; emit starfieldStarSizeChanged(); }
+    int starfieldTrailLength() const { return m_starfieldTrailLength; }
+    void setStarfieldTrailLength(int v) { if (m_starfieldTrailLength == v) return; m_starfieldTrailLength = v; emit starfieldTrailLengthChanged(); }
 
     QColor color() const { return m_color; }
     qreal speed() const { return m_speed; }
@@ -351,6 +363,7 @@ class MockScreensaverConfig : public QObject {
         setClockClock24h(true);
         setClockDateSize(20);
         setClockShowDate(false);
+        setClockPosition("top");
         setShowBatteryEnabled(true);
         setBatteryDockedOnly(true);
         setBatteryTextSize(24);
@@ -446,6 +459,9 @@ class MockScreensaverConfig : public QObject {
         setMinimalDateColor("#666666");
         setStarfieldSpeed(50);
         setStarfieldDensity(50);
+        setStarfieldColor("#ffffff");
+        setStarfieldStarSize(50);
+        setStarfieldTrailLength(50);
     }
 
  signals:
@@ -458,6 +474,7 @@ class MockScreensaverConfig : public QObject {
     void clockClock24hChanged();
     void clockDateSizeChanged();
     void clockShowDateChanged();
+    void clockPositionChanged();
     void showBatteryEnabledChanged();
     void batteryDockedOnlyChanged();
     void batteryTextSizeChanged();
@@ -553,6 +570,9 @@ class MockScreensaverConfig : public QObject {
     void minimalDateColorChanged();
     void starfieldSpeedChanged();
     void starfieldDensityChanged();
+    void starfieldColorChanged();
+    void starfieldStarSizeChanged();
+    void starfieldTrailLengthChanged();
     void colorChanged();
     void speedChanged();
     void densityChanged();
@@ -570,6 +590,7 @@ class MockScreensaverConfig : public QObject {
     bool m_clockClock24h{true};
     int m_clockDateSize{20};
     bool m_clockShowDate{false};
+    QString m_clockPosition{"top"};
     bool m_showBatteryEnabled{true};
     bool m_batteryDockedOnly{true};
     int m_batteryTextSize{24};
@@ -665,6 +686,9 @@ class MockScreensaverConfig : public QObject {
     QString m_minimalDateColor{"#666666"};
     int m_starfieldSpeed{50};
     int m_starfieldDensity{50};
+    QString m_starfieldColor{"#ffffff"};
+    int m_starfieldStarSize{50};
+    int m_starfieldTrailLength{50};
     QColor m_color{QColor("#00ff41")};
     qreal m_speed{1.0};
     qreal m_density{0.7};

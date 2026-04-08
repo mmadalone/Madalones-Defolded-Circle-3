@@ -167,7 +167,7 @@ Settings.Page {
                     id: starfieldColorSolidRow
                     spacing: 6; focus: true
                     onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
-                    KeyNavigation.up: starfieldDensitySlider; KeyNavigation.down: starfieldColorGradientRow
+                    KeyNavigation.up: starfieldTrailSlider; KeyNavigation.down: starfieldColorGradientRow
                     Keys.onLeftPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.starfieldColor, function(v){ ScreensaverConfig.starfieldColor = v }, -1) }
                     Keys.onRightPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.starfieldColor, function(v){ ScreensaverConfig.starfieldColor = v }, 1) }
                     Repeater {

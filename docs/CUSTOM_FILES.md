@@ -21,8 +21,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Modification |
 |------|-------------|
 | `src/main.cpp` | Added `#include` for MatrixRain, ScreensaverConfig. `qmlRegisterType<MatrixRainItem>`. Instantiated `ScreensaverConfig` singleton. |
-| `src/config/config.h` | Added screensaver Q_PROPERTY declarations (charging*) via CFG macros at end of property list. |
-| `src/config/config.cpp` | Added screensaver CFG_BOOL/CFG_INT/CFG_STRING implementations. |
+| `src/config/config.h` | Screensaver properties removed (moved to ScreensaverConfig). Only a redirect comment remains. |
 | `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas). |
 | `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages. |
 
@@ -76,6 +75,12 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/components/ChargingScreen.qml` | Replaced stock analog clock with theme Loader system. Added ButtonNavigation for interactive screensaver controls. Added displayOff propagation. |
 | `src/qml/settings/settings/ChargingScreen.qml` | Replaced stock charging settings with full screensaver configuration (theme selector + sub-pages). |
 | `src/qml/settings/Settings.qml` | Added "Screensaver" menu entry. |
+| `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle. |
+| `src/qml/components/TouchSliderVolume.qml` | Added `applicationWindow.screensaverActive` guard to suppress during screensaver. |
+| `src/qml/components/TouchSliderSeek.qml` | Same screensaverActive guard. |
+| `src/qml/components/TouchSliderBrightness.qml` | Same screensaverActive guard. |
+| `src/qml/components/TouchSliderPosition.qml` | Same screensaverActive guard. |
+| `src/qml/main.qml` | Added `screensaverActive` property, idle timer DEV mode bypass, ScreensaverConfig import. |
 
 ---
 
