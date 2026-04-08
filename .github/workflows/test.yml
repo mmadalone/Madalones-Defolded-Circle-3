@@ -35,14 +35,15 @@ jobs:
       - name: Build unit tests
         working-directory: test/matrixrain
         run: |
-          qmake matrixrain_test.pro
+          qmake matrixrain_test.pro "QMAKE_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer" "QMAKE_LFLAGS += -fsanitize=address"
           make -j$(nproc)
 
       - name: Run unit tests
         working-directory: test/matrixrain
-        run: ./test_matrixrain -o results.xml,xunitxml
+        run: ./test_matrixrain -v2 -o results.xml,xunitxml
         env:
           QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
 
       - name: Upload test results
         if: always()
@@ -73,14 +74,15 @@ jobs:
       - name: Build integration tests
         working-directory: test/integration
         run: |
-          qmake matrixrain_integration_test.pro
+          qmake matrixrain_integration_test.pro "QMAKE_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer" "QMAKE_LFLAGS += -fsanitize=address"
           make -j$(nproc)
 
       - name: Run integration tests
         working-directory: test/integration
-        run: xvfb-run --auto-servernum ./test_integration -o results.xml,xunitxml
+        run: xvfb-run --auto-servernum ./test_integration -v2 -o results.xml,xunitxml
         env:
           QT_QUICK_BACKEND: software
+          ASAN_OPTIONS: detect_leaks=0
 
       - name: Upload test results
         if: always()
