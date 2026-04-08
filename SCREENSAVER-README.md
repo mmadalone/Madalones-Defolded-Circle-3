@@ -1,6 +1,6 @@
 # Custom Screensaver for Unfolded Circle Remote 3
 
-A fully configurable screensaver system replacing the UC Remote 3's stock analog clock. GPU-accelerated Matrix rain, Starfield, and Minimal clock themes — all controllable from the remote's Settings menu and DPAD.
+A fully configurable screensaver system for the UC Remote 3. Four themes — GPU-accelerated Matrix rain, Starfield warp, Minimal digital clock, and Analog clock — all controllable from the remote's Settings menu, DPAD, touchbar, and touch gestures.
 
 ## Screenshots
 
@@ -145,7 +145,7 @@ All settings are in **Settings > Screensaver** on the remote.
 
 | Section | Settings | Themes |
 |---------|----------|--------|
-| Theme | Matrix / Starfield / Minimal | All |
+| Theme | Matrix / Starfield / Minimal / Analog | All |
 | Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size, position: top/center/bottom), Show battery (+ charging only, text size) | Matrix/Starfield |
 | Overlays | Show battery (+ charging only, text size) | Minimal/Analog |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
@@ -158,7 +158,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration | Matrix |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
 | Starfield | Animation speed, Star density, Star size, Trail length, Star color (7 solid + 3 rainbow) | Starfield |
-| Minimal | Font (Poppins / Space Mono), Clock size, Date size | Minimal |
+| Minimal | 24-hour clock, Font (Poppins / Space Mono), Time color (7 solid + 3 rainbow), Date color (7 solid + 3 rainbow), Clock size, Date size | Minimal |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 

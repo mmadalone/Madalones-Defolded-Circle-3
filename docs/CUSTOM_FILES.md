@@ -42,7 +42,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/messageengine.cpp` | Text layout, character placement | ~150 |
 | `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate | ~80 |
 | `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math | ~200 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, 109 properties | ~200 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, 114 properties (108 SCRN + 6 transformed) | ~220 |
 | `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | ~100 |
 | `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | ~50 |
 

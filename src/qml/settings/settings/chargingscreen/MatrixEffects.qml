@@ -7,7 +7,6 @@ import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 import Haptic 1.0
-import Config 1.0
 
 import "qrc:/components" as Components
 import ScreensaverConfig 1.0

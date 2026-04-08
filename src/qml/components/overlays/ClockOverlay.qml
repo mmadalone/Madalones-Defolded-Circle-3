@@ -4,7 +4,6 @@
 
 import QtQuick 2.15
 
-import Config 1.0
 import ScreensaverConfig 1.0
 
 Item {
@@ -53,7 +52,6 @@ Item {
         text: {
             var h = ui.time.getHours();
             var m = ui.time.getMinutes();
-            var suffix = "";
 
             if (!ScreensaverConfig.clockClock24h) {
                 h = h % 12;
