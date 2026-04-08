@@ -360,7 +360,7 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Auto-rotate"
                 KeyNavigation.up: fadeSlider
-                KeyNavigation.down: autoRotateSpeedSlider
+                KeyNavigation.down: ScreensaverConfig.gravityMode ? autoRotateSpeedSlider : dirCardinalRow
             }
         }
     }
@@ -441,7 +441,7 @@ ColumnLayout {
             enabled: !ScreensaverConfig.gravityMode
             Accessible.name: "Cardinal direction selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: autoRotateSmoothnessSlider
+            KeyNavigation.up: ScreensaverConfig.gravityMode ? autoRotateSmoothnessSlider : gravitySwitch
             KeyNavigation.down: dirDiagRow
             Keys.onLeftPressed: root.settingsPage.cycleOption(["down","up","left","right"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, -1)
             Keys.onRightPressed: root.settingsPage.cycleOption(["down","up","left","right"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, 1)

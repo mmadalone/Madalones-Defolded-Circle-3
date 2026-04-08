@@ -4,7 +4,6 @@
 
 import QtQuick 2.15
 
-import Config 1.0
 import ScreensaverConfig 1.0
 
 import "qrc:/components/overlays" as Overlays
@@ -48,7 +47,7 @@ Item {
             var h = ui.time.getHours();
             var m = ui.time.getMinutes();
 
-            if (!Config.clock24h) {
+            if (!ScreensaverConfig.minimalClock24h) {
                 h = h % 12;
                 if (h === 0) h = 12;
             }
@@ -61,7 +60,7 @@ Item {
 
     // AM/PM indicator for 12h mode
     Text {
-        visible: root.showClock && !Config.clock24h
+        visible: root.showClock && !ScreensaverConfig.minimalClock24h
         anchors {
             top: timeText.bottom
             topMargin: 8
@@ -83,7 +82,10 @@ Item {
         color: Qt.rgba(1, 1, 1, 0.4)
         font: root.themeFont(ScreensaverConfig.minimalDateSize)
         text: {
-            var d = ui.time;
+            // ui.time is QTime (no date). Use JS Date() for the date portion.
+            // Binding re-evaluates when ui.time changes (every minute).
+            void(ui.time);  // trigger rebinding on time change
+            var d = new Date();
             var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
             var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
             return days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate();

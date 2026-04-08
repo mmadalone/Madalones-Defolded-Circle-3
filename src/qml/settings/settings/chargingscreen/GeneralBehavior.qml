@@ -266,7 +266,7 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Idle screensaver"
                 KeyNavigation.up: ScreensaverConfig.theme === "matrix"
-                    ? (ScreensaverConfig.tapDirection ? tapDirPersistSwitch : tapDirectionSwitch)
+                    ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
                     : motionToCloseSwitch
                 KeyNavigation.down: idleTimeoutSlider
             }

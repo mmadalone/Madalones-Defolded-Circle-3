@@ -176,7 +176,8 @@ ColumnLayout {
                 trigger: function() { ScreensaverConfig.layersEnabled = !ScreensaverConfig.layersEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Rain layers"
-                KeyNavigation.up: glowSwitch; KeyNavigation.down: depthEnabledSwitch
+                KeyNavigation.up: ScreensaverConfig.depthGlow ? depthGlowMinSlider : depthGlowSwitch
+                KeyNavigation.down: depthEnabledSwitch
             }
         }
     }
@@ -203,7 +204,7 @@ ColumnLayout {
                 trigger: function() { ScreensaverConfig.depthEnabled = !ScreensaverConfig.depthEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Color layers"
-                KeyNavigation.up: glowSwitch; KeyNavigation.down: depthIntensitySlider
+                KeyNavigation.up: layersEnabledSwitch; KeyNavigation.down: depthIntensitySlider
             }
         }
     }

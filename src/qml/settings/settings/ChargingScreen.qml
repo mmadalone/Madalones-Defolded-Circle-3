@@ -145,6 +145,24 @@ Settings.Page {
                 Layout.leftMargin: 10; Layout.rightMargin: 10
                 spacing: 20
 
+                RowLayout {
+                    spacing: 10
+                    Text {
+                        Layout.fillWidth: true; color: colors.offwhite
+                        text: qsTr("24-hour clock"); font: fonts.primaryFont(30)
+                    }
+                    Components.Switch {
+                        id: minimalClock24hSwitch
+                        icon: "uc:check"
+                        onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                        checked: ScreensaverConfig.minimalClock24h
+                        trigger: function() { ScreensaverConfig.minimalClock24h = !ScreensaverConfig.minimalClock24h; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: themeSelector.lastFocusItem
+                        KeyNavigation.down: minimalFontRow
+                    }
+                }
+
                 Text {
                     Layout.fillWidth: true; color: colors.offwhite
                     text: qsTr("Font"); font: fonts.primaryFont(30)
@@ -153,7 +171,7 @@ Settings.Page {
                     id: minimalFontRow
                     spacing: 10
                     onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
-                    KeyNavigation.up: themeSelector.lastFocusItem
+                    KeyNavigation.up: minimalClock24hSwitch
                     KeyNavigation.down: minimalClockSlider
                     Keys.onLeftPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, -1)
                     Keys.onRightPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, 1)

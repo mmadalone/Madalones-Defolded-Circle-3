@@ -15,7 +15,7 @@ ColumnLayout {
 
     required property Item settingsPage
 
-    property alias firstFocusItem: subliminalSwitch
+    property Item firstFocusItem: ScreensaverConfig.messages !== "" ? subliminalSwitch : messagesEnabledSwitch
     property alias lastFocusItem: messagePulseSwitch
     property Item navUpTarget
     property Item navDownTarget

@@ -17,7 +17,7 @@ ColumnLayout {
     required property Item settingsPage
 
     property Item firstFocusItem: ScreensaverConfig.theme === "minimal" ? showBatterySwitch : showClockSwitch
-    property alias lastFocusItem: batteryDockedSwitch
+    property Item lastFocusItem: ScreensaverConfig.showBatteryEnabled ? batteryDockedSwitch : showBatterySwitch
     property Item navUpTarget
     property Item navDownTarget
 

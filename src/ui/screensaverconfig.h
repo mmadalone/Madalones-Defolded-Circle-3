@@ -142,6 +142,7 @@ class ScreensaverConfig : public QObject {
     SCRN_INT(minimalClockSize,     "charging/minimalClockSize",       96)
     SCRN_INT(minimalDateSize,      "charging/minimalDateSize",        28)
     SCRN_STRING(minimalFont,       "charging/minimalFont",            "primary")
+    SCRN_BOOL(minimalClock24h,     "charging/minimalClock24h",        true)
 
     // === Starfield theme ===
     SCRN_INT(starfieldSpeed,       "charging/starfieldSpeed",         50)
