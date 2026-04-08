@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. ScreensaverConfig property macros for QSettings-backed properties.
+// Copyright (c) 2026 madalone. ScreensaverConfig property macros for QSettings-backed properties.
 // Generates Q_PROPERTY + inline getter/setter + signal — one declaration per property.
 // Modeled on config_macros.h CFG_* pattern but for ScreensaverConfig's own m_settings.
 // SPDX-License-Identifier: GPL-3.0-or-later

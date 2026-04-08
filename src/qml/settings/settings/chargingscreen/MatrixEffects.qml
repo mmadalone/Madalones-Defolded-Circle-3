@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Matrix effects settings — visual toggles + glitch core.
+// Copyright (c) 2026 madalone. Matrix effects settings — visual toggles + glitch core.
 // Sub-sections: DirectionGlitchSection, ChaosSection, TapSection, MessageSection.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

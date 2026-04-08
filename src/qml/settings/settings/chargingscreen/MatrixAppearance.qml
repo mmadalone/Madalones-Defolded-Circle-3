@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Matrix appearance settings component.
+// Copyright (c) 2026 madalone. Matrix appearance settings component.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

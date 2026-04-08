@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Custom charging screen clock overlay.
+// Copyright (c) 2026 madalone. Custom charging screen clock overlay.
 // Supports solid color and rainbow gradient via GradientText component.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

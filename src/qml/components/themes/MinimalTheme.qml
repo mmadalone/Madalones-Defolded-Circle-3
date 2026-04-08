@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Minimal clock charging screen theme.
+// Copyright (c) 2026 madalone. Minimal clock charging screen theme.
 // Implements BaseTheme interface — see BaseTheme.qml for contract
 // SPDX-License-Identifier: GPL-3.0-or-later
 

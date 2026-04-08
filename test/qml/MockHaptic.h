@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Mock Haptic singleton for QML tests.
+// Copyright (c) 2026 madalone. Mock Haptic singleton for QML tests.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once

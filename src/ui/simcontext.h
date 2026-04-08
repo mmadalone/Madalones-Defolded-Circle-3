@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Simulation context for Matrix rain screensaver.
+// Copyright (c) 2026 madalone. Simulation context for Matrix rain screensaver.
 // Groups grid state + RNG passed to every engine method per frame.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

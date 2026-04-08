@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Auto-rotation direction mapper for Matrix rain.
+// Copyright (c) 2026 madalone. Auto-rotation direction mapper for Matrix rain.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once

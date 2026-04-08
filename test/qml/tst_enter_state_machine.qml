@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. QML tests for ChargingScreen enter button state machine.
+// Copyright (c) 2026 madalone. QML tests for ChargingScreen enter button state machine.
 // Tests state transitions: idle→pressed→held, idle→pressed→idle, double-tap detection.
 // State machine logic extracted from src/qml/components/ChargingScreen.qml lines 61-157.
 // SPDX-License-Identifier: GPL-3.0-or-later

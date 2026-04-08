@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Glitch/chaos engine for Matrix rain screensaver.
+// Copyright (c) 2026 madalone. Glitch/chaos engine for Matrix rain screensaver.
 // Pure C++ class — no Qt object system. Extracted from RainSimulation.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

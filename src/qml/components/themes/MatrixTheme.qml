@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Matrix rain charging screen theme.
+// Copyright (c) 2026 madalone. Matrix rain charging screen theme.
 // Implements BaseTheme interface — see BaseTheme.qml for contract
 // Uses C++ QQuickItem (MatrixRainItem) for GPU-accelerated rendering.
 // Config binding handled in C++ via ScreensaverConfig → MatrixRainItem::bindToScreensaverConfig().

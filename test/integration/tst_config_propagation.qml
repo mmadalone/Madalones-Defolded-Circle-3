@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Integration tests for config → renderer property propagation.
+// Copyright (c) 2026 madalone. Integration tests for config → renderer property propagation.
 // Verifies that MatrixRainItem Q_PROPERTY setters accept transformed values correctly,
 // matching the transforms that ScreensaverConfig applies in production.
 // SPDX-License-Identifier: GPL-3.0-or-later

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Tests for ScreensaverConfig default values and reset.
+// Copyright (c) 2026 madalone. Tests for ScreensaverConfig default values and reset.
 // Validates that MockScreensaverConfig defaults match the QSettings defaults in screensaverconfig.h.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

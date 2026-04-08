@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Integration tests for settings page keyboard navigation.
+// Copyright (c) 2026 madalone. Integration tests for settings page keyboard navigation.
 // Verifies focus chain flows correctly through settings sub-components.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

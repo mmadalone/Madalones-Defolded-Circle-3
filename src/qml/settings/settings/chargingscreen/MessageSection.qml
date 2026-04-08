@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Subliminal and hidden message settings. SPDX-License-Identifier: GPL-3.0-or-later
+// Copyright (c) 2026 madalone. Subliminal and hidden message settings. SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15

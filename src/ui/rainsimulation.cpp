@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Rain simulation logic for Matrix rain screensaver.
+// Copyright (c) 2026 madalone. Rain simulation logic for Matrix rain screensaver.
 // Pure C++ class — owns all simulation state and config properties.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

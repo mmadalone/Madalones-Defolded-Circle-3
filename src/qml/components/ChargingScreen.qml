@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2024 madalone. Configurable screensaver with theme support.
+// Copyright (c) 2026 madalone. Configurable screensaver with theme support.
 // Config propagation handled in C++ via ScreensaverConfig singleton.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

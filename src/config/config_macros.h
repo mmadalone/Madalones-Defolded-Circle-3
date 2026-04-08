@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Config property macros for QSettings-backed properties.
+// Copyright (c) 2026 madalone. Config property macros for QSettings-backed properties.
 // Generates inline getter (reads from QSettings) + setter (writes to QSettings + emits signal).
 // SPDX-License-Identifier: GPL-3.0-or-later
 

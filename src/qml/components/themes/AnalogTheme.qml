@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2024 madalone. Extracted from stock ChargingScreen as a theme option.
+// Copyright (c) 2026 madalone. Extracted from stock ChargingScreen as a theme option.
 // Implements BaseTheme interface — see BaseTheme.qml for contract.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

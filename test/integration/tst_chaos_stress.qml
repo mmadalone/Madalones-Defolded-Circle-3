@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Chaos stress test for MatrixRainItem.
+// Copyright (c) 2026 madalone. Chaos stress test for MatrixRainItem.
 // Exercises all chaos/glitch features at maximum intensity with the real renderer.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

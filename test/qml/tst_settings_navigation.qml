@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Tests for DPAD navigation chain integrity.
+// Copyright (c) 2026 madalone. Tests for DPAD navigation chain integrity.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // These tests verify the KeyNavigation.down chain defined within each

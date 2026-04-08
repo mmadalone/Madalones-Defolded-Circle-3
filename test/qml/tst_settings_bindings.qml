@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Tests for Config property bindings (read + write).
+// Copyright (c) 2026 madalone. Tests for Config property bindings (read + write).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

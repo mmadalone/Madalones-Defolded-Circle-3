@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Integration tests for MatrixRainItem lifecycle.
+// Copyright (c) 2026 madalone. Integration tests for MatrixRainItem lifecycle.
 // Tests the real renderer in a QQuickWindow with OpenGL — no mocks.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

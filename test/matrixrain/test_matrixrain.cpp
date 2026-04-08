@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Unit tests for MatrixRainItem (2D movement model).
+// Copyright (c) 2026 madalone. Unit tests for MatrixRainItem (2D movement model).
 // Pure C++ logic tests — no GL context or QML engine needed.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

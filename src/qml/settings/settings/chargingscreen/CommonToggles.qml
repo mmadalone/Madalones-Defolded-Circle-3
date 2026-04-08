@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Common toggles component (clock, battery).
+// Copyright (c) 2026 madalone. Common toggles component (clock, battery).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Theme selector component.
+// Copyright (c) 2026 madalone. Theme selector component.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

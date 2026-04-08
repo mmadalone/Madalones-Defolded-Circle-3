@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. QML test harness for charging screen settings.
+// Copyright (c) 2026 madalone. QML test harness for charging screen settings.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 // testdir.h MUST be included before <QtQuickTest> — the quicktest.h header

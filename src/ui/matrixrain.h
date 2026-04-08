@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. GPU-accelerated Matrix rain via QSGGeometryNode.
+// Copyright (c) 2026 madalone. GPU-accelerated Matrix rain via QSGGeometryNode.
 // 2D movement model: per-stream (headCol, headRow, dx, dy) supports all 8 directions.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

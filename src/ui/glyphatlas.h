@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Glyph texture atlas for Matrix rain screensaver.
+// Copyright (c) 2026 madalone. Glyph texture atlas for Matrix rain screensaver.
 // Renders charset glyphs at multiple brightness/color levels into a single texture.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -36,6 +36,9 @@ class GlyphAtlas {
 
     /// @brief Load bundled CJK font (NotoSansMonoCJKjp subset) for katakana charset. Call once at startup.
     static void loadCJKFont();
+
+    /// @brief Load bundled Braille font (FreeMono subset, U+2800-28FF) for avatar charset. Call once at startup.
+    static void loadBrailleFont();
 
     // Resolve charset name to character string
     static QString charsetString(const QString &charset);

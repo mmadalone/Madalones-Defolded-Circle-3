@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Integration test harness for MatrixRainItem.
+// Copyright (c) 2026 madalone. Integration test harness for MatrixRainItem.
 // Tests the real renderer in a QQuickWindow with OpenGL context — no mocks.
 // SPDX-License-Identifier: GPL-3.0-or-later
 

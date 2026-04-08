@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Reusable text element supporting solid color or rainbow gradient.
+// Copyright (c) 2026 madalone. Reusable text element supporting solid color or rainbow gradient.
 // colorValue accepts a hex string ("#ffffff") or a gradient mode ("rainbow", "rainbow_gradient", "neon").
 // SPDX-License-Identifier: GPL-3.0-or-later
 

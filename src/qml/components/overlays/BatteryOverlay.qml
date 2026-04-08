@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. Custom charging screen overlay.
+// Copyright (c) 2026 madalone. Custom charging screen overlay.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15

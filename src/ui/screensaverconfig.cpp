@@ -1,4 +1,4 @@
-// Copyright (c) 2024 madalone. ScreensaverConfig — owns all screensaver QSettings storage.
+// Copyright (c) 2026 madalone. ScreensaverConfig — owns all screensaver QSettings storage.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "screensaverconfig.h"
