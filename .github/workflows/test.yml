@@ -55,6 +55,8 @@ jobs:
   qml-tests:
     name: "QML settings tests"
     runs-on: ubuntu-latest
+    # QML tests import QtGraphicalEffects (GradientText) which needs a GL context.
+    # xvfb + Mesa provides software-rendered GL on headless CI.
 
     steps:
       - name: Checkout
@@ -66,6 +68,9 @@ jobs:
           version: ${{ env.QT_VERSION }}
           modules: ""
 
+      - name: Install Mesa for software OpenGL
+        run: sudo apt-get update && sudo apt-get install -y xvfb mesa-utils libgl1-mesa-dri
+
       - name: Build QML tests
         working-directory: test/qml
         run: |
@@ -74,9 +79,9 @@ jobs:
 
       - name: Run QML tests
         working-directory: test/qml
-        run: ./test_qml -v2 -o results.xml,xunitxml
+        run: xvfb-run --auto-servernum ./test_qml -v2 -o results.xml,xunitxml
         env:
-          QT_QPA_PLATFORM: offscreen
+          QT_QUICK_BACKEND: software
 
       - name: Upload test results
         if: always()
