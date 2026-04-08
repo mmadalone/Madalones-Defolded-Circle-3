@@ -33,6 +33,10 @@ Item {
         id: button
         implicitHeight: buttonContainer.height; implicitWidth: buttonContainer.width
 
+        // DPAD center button sends Key_Return — forward to click handler
+        Keys.onReturnPressed: clicked()
+        Keys.onEnterPressed: clicked()
+
         onClicked: {
             Haptic.play(Haptic.Click);
             button.toggle();

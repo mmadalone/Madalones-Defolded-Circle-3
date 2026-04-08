@@ -3,6 +3,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
+import Battery 1.0
 import ScreensaverConfig 1.0
 
 import "qrc:/components/overlays" as Overlays
@@ -120,7 +121,7 @@ Item {
 
     // Clock overlay
     Overlays.ClockOverlay {
-        visible: ScreensaverConfig.showClock
+        visible: ScreensaverConfig.showClock && (!ScreensaverConfig.clockDockedOnly || Battery.powerSupply)
         anchors {
             top: parent.top
             topMargin: parent.height * 0.15

@@ -172,7 +172,7 @@ Settings.Page {
                     spacing: 10
                     onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
                     KeyNavigation.up: minimalClock24hSwitch
-                    KeyNavigation.down: minimalClockSlider
+                    KeyNavigation.down: minimalTimeColorSolidRow
                     Keys.onLeftPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, -1)
                     Keys.onRightPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, 1)
                     Repeater {
@@ -197,6 +197,96 @@ Settings.Page {
                     }
                 }
 
+                // Time color
+                Text { Layout.fillWidth: true; color: colors.offwhite; text: qsTr("Time color"); font: fonts.primaryFont(30) }
+                RowLayout {
+                    id: minimalTimeColorSolidRow
+                    spacing: 6; focus: true
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalFontRow; KeyNavigation.down: minimalTimeGradientRow
+                    Keys.onLeftPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.minimalTimeColor, function(v){ ScreensaverConfig.minimalTimeColor = v }, -1) }
+                    Keys.onRightPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.minimalTimeColor, function(v){ ScreensaverConfig.minimalTimeColor = v }, 1) }
+                    Repeater {
+                        model: [{ color: "#ffffff" },{ color: "#00ff41" },{ color: "#00b4d8" },{ color: "#ff0040" },{ color: "#ffbf00" },{ color: "#bf00ff" },{ color: "#d0d0d0" }]
+                        Rectangle {
+                            Layout.fillWidth: true; height: 36; radius: 6; color: modelData.color
+                            border { color: ScreensaverConfig.minimalTimeColor === modelData.color ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalTimeColor === modelData.color ? 3 : 1 }
+                            Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalTimeColor = modelData.color }
+                        }
+                    }
+                }
+                RowLayout {
+                    id: minimalTimeGradientRow
+                    spacing: 6; focus: true
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalTimeColorSolidRow; KeyNavigation.down: minimalDateColorSolidRow
+                    Keys.onLeftPressed: chargingScreenPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.minimalTimeColor, function(v){ ScreensaverConfig.minimalTimeColor = v }, -1)
+                    Keys.onRightPressed: chargingScreenPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.minimalTimeColor, function(v){ ScreensaverConfig.minimalTimeColor = v }, 1)
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalTimeColor === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalTimeColor === "rainbow" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff0000" } GradientStop { position: 0.25; color: "#ffbf00" } GradientStop { position: 0.5; color: "#00ff41" } GradientStop { position: 0.75; color: "#0000ff" } GradientStop { position: 1.0; color: "#ff0000" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalTimeColor = "rainbow" }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalTimeColor === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalTimeColor === "rainbow_gradient" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff0000" } GradientStop { position: 0.2; color: "#ffff00" } GradientStop { position: 0.4; color: "#00ff80" } GradientStop { position: 0.6; color: "#0080ff" } GradientStop { position: 0.8; color: "#8000ff" } GradientStop { position: 1.0; color: "#ff0000" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalTimeColor = "rainbow_gradient" }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalTimeColor === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalTimeColor === "neon" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff8080" } GradientStop { position: 0.2; color: "#ffff80" } GradientStop { position: 0.4; color: "#80ffd0" } GradientStop { position: 0.6; color: "#80d0ff" } GradientStop { position: 0.8; color: "#d080ff" } GradientStop { position: 1.0; color: "#ff8080" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalTimeColor = "neon" }
+                    }
+                }
+
+                // Date color
+                Text { Layout.fillWidth: true; color: colors.offwhite; text: qsTr("Date color"); font: fonts.primaryFont(30) }
+                RowLayout {
+                    id: minimalDateColorSolidRow
+                    spacing: 6; focus: true
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalTimeGradientRow; KeyNavigation.down: minimalDateGradientRow
+                    Keys.onLeftPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#666666"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.minimalDateColor, function(v){ ScreensaverConfig.minimalDateColor = v }, -1) }
+                    Keys.onRightPressed: { var c = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#666666"]; chargingScreenPage.cycleOption(c, ScreensaverConfig.minimalDateColor, function(v){ ScreensaverConfig.minimalDateColor = v }, 1) }
+                    Repeater {
+                        model: [{ color: "#ffffff" },{ color: "#00ff41" },{ color: "#00b4d8" },{ color: "#ff0040" },{ color: "#ffbf00" },{ color: "#bf00ff" },{ color: "#666666" }]
+                        Rectangle {
+                            Layout.fillWidth: true; height: 36; radius: 6; color: modelData.color
+                            border { color: ScreensaverConfig.minimalDateColor === modelData.color ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalDateColor === modelData.color ? 3 : 1 }
+                            Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalDateColor = modelData.color }
+                        }
+                    }
+                }
+                RowLayout {
+                    id: minimalDateGradientRow
+                    spacing: 6; focus: true
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalDateColorSolidRow; KeyNavigation.down: minimalClockSlider
+                    Keys.onLeftPressed: chargingScreenPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.minimalDateColor, function(v){ ScreensaverConfig.minimalDateColor = v }, -1)
+                    Keys.onRightPressed: chargingScreenPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.minimalDateColor, function(v){ ScreensaverConfig.minimalDateColor = v }, 1)
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalDateColor === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalDateColor === "rainbow" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff0000" } GradientStop { position: 0.25; color: "#ffbf00" } GradientStop { position: 0.5; color: "#00ff41" } GradientStop { position: 0.75; color: "#0000ff" } GradientStop { position: 1.0; color: "#ff0000" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalDateColor = "rainbow" }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalDateColor === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalDateColor === "rainbow_gradient" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff0000" } GradientStop { position: 0.2; color: "#ffff00" } GradientStop { position: 0.4; color: "#00ff80" } GradientStop { position: 0.6; color: "#0080ff" } GradientStop { position: 0.8; color: "#8000ff" } GradientStop { position: 1.0; color: "#ff0000" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalDateColor = "rainbow_gradient" }
+                    }
+                    Rectangle {
+                        Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                        border { color: ScreensaverConfig.minimalDateColor === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.minimalDateColor === "neon" ? 3 : 1 }
+                        Rectangle { anchors.fill: parent; anchors.margins: 1; radius: 5; gradient: Gradient { orientation: Gradient.Horizontal; GradientStop { position: 0.0; color: "#ff8080" } GradientStop { position: 0.2; color: "#ffff80" } GradientStop { position: 0.4; color: "#80ffd0" } GradientStop { position: 0.6; color: "#80d0ff" } GradientStop { position: 0.8; color: "#d080ff" } GradientStop { position: 1.0; color: "#ff8080" } } }
+                        Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.minimalDateColor = "neon" }
+                    }
+                }
+
                 Text {
                     Layout.fillWidth: true; color: colors.offwhite
                     text: qsTr("Clock size"); font: fonts.primaryFont(30)
@@ -210,7 +300,7 @@ Settings.Page {
                     onUserInteractionEnded: ScreensaverConfig.minimalClockSize = value
                     highlight: activeFocus && ui.keyNavigationEnabled
                     onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
-                    KeyNavigation.up: minimalFontRow
+                    KeyNavigation.up: minimalDateGradientRow
                     KeyNavigation.down: minimalDateSlider
                 }
 

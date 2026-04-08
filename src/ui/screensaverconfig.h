@@ -31,6 +31,13 @@ class ScreensaverConfig : public QObject {
     // === Theme + overlays (shared across all themes) ===
     SCRN_STRING(theme,             "charging/theme",                  "matrix")
     SCRN_BOOL(showClock,           "charging/showClock",              false)
+    SCRN_BOOL(clockDockedOnly,     "charging/clockDockedOnly",        false)
+    SCRN_INT(clockSize,            "charging/clockSize",              48)
+    SCRN_STRING(clockFont,         "charging/clockFont",              "primary")
+    SCRN_STRING(clockColor,        "charging/clockColor",             "#ffffff")
+    SCRN_BOOL(clockClock24h,       "charging/clockClock24h",          true)
+    SCRN_INT(clockDateSize,        "charging/clockDateSize",          20)
+    SCRN_BOOL(clockShowDate,       "charging/clockShowDate",          false)
     SCRN_BOOL(showBatteryEnabled,  "charging/showBattery",            true)
     SCRN_BOOL(batteryDockedOnly,   "charging/batteryDockedOnly",      true)
 
@@ -143,6 +150,8 @@ class ScreensaverConfig : public QObject {
     SCRN_INT(minimalDateSize,      "charging/minimalDateSize",        28)
     SCRN_STRING(minimalFont,       "charging/minimalFont",            "primary")
     SCRN_BOOL(minimalClock24h,     "charging/minimalClock24h",        true)
+    SCRN_STRING(minimalTimeColor,  "charging/minimalTimeColor",       "#d0d0d0")
+    SCRN_STRING(minimalDateColor,  "charging/minimalDateColor",       "#666666")
 
     // === Starfield theme ===
     SCRN_INT(starfieldSpeed,       "charging/starfieldSpeed",         50)

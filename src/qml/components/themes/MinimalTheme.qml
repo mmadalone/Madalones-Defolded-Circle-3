@@ -18,7 +18,6 @@ Item {
 
     property bool showBattery: ScreensaverConfig.showBattery
     // Clock is always visible in Minimal theme — it's the entire theme.
-    // The global showClock toggle only affects overlays on Matrix/Starfield.
     property bool showClock: true
 
     function interactiveInput(action) {}
@@ -29,18 +28,22 @@ Item {
             ? fonts.secondaryFont(size) : fonts.primaryFont(size);
     }
 
+    function isGradient(v) {
+        return v === "rainbow" || v === "rainbow_gradient" || v === "neon";
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "black"
     }
 
     // Large centered digital clock
-    Text {
+    Overlays.GradientText {
         id: timeText
         visible: root.showClock
         anchors.centerIn: parent
         anchors.verticalCenterOffset: -40
-        color: colors.offwhite
+        colorValue: ScreensaverConfig.minimalTimeColor
         font: root.themeFont(ScreensaverConfig.minimalClockSize)
 
         text: {
@@ -66,24 +69,28 @@ Item {
             topMargin: 8
             horizontalCenter: parent.horizontalCenter
         }
-        color: Qt.rgba(1, 1, 1, 0.5)
+        // For gradient modes, use white at 50% opacity; for solid, use the time color at 50%
+        color: root.isGradient(ScreensaverConfig.minimalTimeColor)
+            ? Qt.rgba(1, 1, 1, 0.5)
+            : Qt.rgba(Qt.lighter(ScreensaverConfig.minimalTimeColor, 1.0).r,
+                       Qt.lighter(ScreensaverConfig.minimalTimeColor, 1.0).g,
+                       Qt.lighter(ScreensaverConfig.minimalTimeColor, 1.0).b, 0.5)
         font: root.themeFont(Math.round(ScreensaverConfig.minimalClockSize * 0.25))
         text: ui.time.getHours() >= 12 ? "PM" : "AM"
     }
 
     // Date
-    Text {
+    Overlays.GradientText {
         visible: root.showClock
         anchors {
             bottom: timeText.top
             bottomMargin: 12
             horizontalCenter: parent.horizontalCenter
         }
-        color: Qt.rgba(1, 1, 1, 0.4)
+        colorValue: ScreensaverConfig.minimalDateColor
         font: root.themeFont(ScreensaverConfig.minimalDateSize)
         text: {
             // ui.time is QTime (no date). Use JS Date() for the date portion.
-            // Binding re-evaluates when ui.time changes (every minute).
             void(ui.time);  // trigger rebinding on time change
             var d = new Date();
             var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

@@ -440,6 +440,7 @@ Popup {
                 case "matrix": return "qrc:/components/themes/MatrixTheme.qml";
                 case "starfield": return "qrc:/components/themes/StarfieldTheme.qml";
                 case "minimal": return "qrc:/components/themes/MinimalTheme.qml";
+                case "analog": return "qrc:/components/themes/AnalogTheme.qml";
                 default: return "qrc:/components/themes/MatrixTheme.qml";
             }
         }

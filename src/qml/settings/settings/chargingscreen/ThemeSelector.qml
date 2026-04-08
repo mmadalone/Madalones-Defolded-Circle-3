@@ -38,13 +38,14 @@ ColumnLayout {
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: root.navUpTarget
         KeyNavigation.down: root.navDownTarget
-        Keys.onLeftPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, -1)
-        Keys.onRightPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, 1)
+        Keys.onLeftPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal","analog"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, -1)
+        Keys.onRightPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal","analog"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, 1)
         Repeater {
             model: [
                 { name: "matrix", label: "Matrix" },
                 { name: "starfield", label: "Starfield" },
-                { name: "minimal", label: "Minimal" }
+                { name: "minimal", label: "Minimal" },
+                { name: "analog", label: "Analog" }
             ]
             Rectangle {
                 Layout.fillWidth: true; height: 50; radius: 8

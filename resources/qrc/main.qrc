@@ -35,8 +35,12 @@
         <file alias="components/themes/MatrixTheme.qml">../../src/qml/components/themes/MatrixTheme.qml</file>
         <file alias="components/themes/StarfieldTheme.qml">../../src/qml/components/themes/StarfieldTheme.qml</file>
         <file alias="components/themes/MinimalTheme.qml">../../src/qml/components/themes/MinimalTheme.qml</file>
+        <file alias="components/themes/AnalogTheme.qml">../../src/qml/components/themes/AnalogTheme.qml</file>
         <file alias="components/overlays/ClockOverlay.qml">../../src/qml/components/overlays/ClockOverlay.qml</file>
+        <file alias="components/overlays/GradientText.qml">../../src/qml/components/overlays/GradientText.qml</file>
         <file alias="components/overlays/BatteryOverlay.qml">../../src/qml/components/overlays/BatteryOverlay.qml</file>
+        <file alias="components/avatar/art/manifest.json">../../src/qml/components/avatar/art/manifest.json</file>
+        <file alias="components/avatar/art/rick_neutral.txt">../../src/qml/components/avatar/art/rick_neutral.txt</file>
         <file alias="components/RemoteOpen.qml">../../src/qml/components/RemoteOpen.qml</file>
         <file alias="components/PopupMenu.qml">../../src/qml/components/PopupMenu.qml</file>
         <file alias="components/PopupList.qml">../../src/qml/components/PopupList.qml</file>
