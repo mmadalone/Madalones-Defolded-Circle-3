@@ -2,6 +2,10 @@
 
 A fully configurable screensaver system for the UC Remote 3. Four themes — GPU-accelerated Matrix rain, Starfield warp, Minimal digital clock, and Analog clock — all controllable from the remote's Settings menu, DPAD, touchbar, and touch gestures.
 
+## Demo
+
+[![Screensaver Demo](https://img.youtube.com/vi/jFoOmoNNWwU/0.jpg)](https://youtube.com/shorts/jFoOmoNNWwU)
+
 ## Screenshots
 
 ### Themes
