@@ -13,6 +13,13 @@ class MockScreensaverConfig : public QObject {
 
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
     Q_PROPERTY(bool showClock READ showClock WRITE setShowClock NOTIFY showClockChanged)
+    Q_PROPERTY(bool clockDockedOnly READ clockDockedOnly WRITE setClockDockedOnly NOTIFY clockDockedOnlyChanged)
+    Q_PROPERTY(int clockSize READ clockSize WRITE setClockSize NOTIFY clockSizeChanged)
+    Q_PROPERTY(QString clockFont READ clockFont WRITE setClockFont NOTIFY clockFontChanged)
+    Q_PROPERTY(QString clockColor READ clockColor WRITE setClockColor NOTIFY clockColorChanged)
+    Q_PROPERTY(bool clockClock24h READ clockClock24h WRITE setClockClock24h NOTIFY clockClock24hChanged)
+    Q_PROPERTY(int clockDateSize READ clockDateSize WRITE setClockDateSize NOTIFY clockDateSizeChanged)
+    Q_PROPERTY(bool clockShowDate READ clockShowDate WRITE setClockShowDate NOTIFY clockShowDateChanged)
     Q_PROPERTY(bool showBatteryEnabled READ showBatteryEnabled WRITE setShowBatteryEnabled NOTIFY showBatteryEnabledChanged)
     Q_PROPERTY(bool batteryDockedOnly READ batteryDockedOnly WRITE setBatteryDockedOnly NOTIFY batteryDockedOnlyChanged)
     Q_PROPERTY(QString matrixColor READ matrixColor WRITE setMatrixColor NOTIFY matrixColorChanged)
@@ -102,6 +109,9 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(int minimalClockSize READ minimalClockSize WRITE setMinimalClockSize NOTIFY minimalClockSizeChanged)
     Q_PROPERTY(int minimalDateSize READ minimalDateSize WRITE setMinimalDateSize NOTIFY minimalDateSizeChanged)
     Q_PROPERTY(QString minimalFont READ minimalFont WRITE setMinimalFont NOTIFY minimalFontChanged)
+    Q_PROPERTY(bool minimalClock24h READ minimalClock24h WRITE setMinimalClock24h NOTIFY minimalClock24hChanged)
+    Q_PROPERTY(QString minimalTimeColor READ minimalTimeColor WRITE setMinimalTimeColor NOTIFY minimalTimeColorChanged)
+    Q_PROPERTY(QString minimalDateColor READ minimalDateColor WRITE setMinimalDateColor NOTIFY minimalDateColorChanged)
     Q_PROPERTY(int starfieldSpeed READ starfieldSpeed WRITE setStarfieldSpeed NOTIFY starfieldSpeedChanged)
     Q_PROPERTY(int starfieldDensity READ starfieldDensity WRITE setStarfieldDensity NOTIFY starfieldDensityChanged)
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged)
@@ -118,6 +128,20 @@ class MockScreensaverConfig : public QObject {
     void setTheme(QString v) { if (m_theme == v) return; m_theme = v; emit themeChanged(); }
     bool showClock() const { return m_showClock; }
     void setShowClock(bool v) { if (m_showClock == v) return; m_showClock = v; emit showClockChanged(); }
+    bool clockDockedOnly() const { return m_clockDockedOnly; }
+    void setClockDockedOnly(bool v) { if (m_clockDockedOnly == v) return; m_clockDockedOnly = v; emit clockDockedOnlyChanged(); }
+    int clockSize() const { return m_clockSize; }
+    void setClockSize(int v) { if (m_clockSize == v) return; m_clockSize = v; emit clockSizeChanged(); }
+    QString clockFont() const { return m_clockFont; }
+    void setClockFont(QString v) { if (m_clockFont == v) return; m_clockFont = v; emit clockFontChanged(); }
+    QString clockColor() const { return m_clockColor; }
+    void setClockColor(QString v) { if (m_clockColor == v) return; m_clockColor = v; emit clockColorChanged(); }
+    bool clockClock24h() const { return m_clockClock24h; }
+    void setClockClock24h(bool v) { if (m_clockClock24h == v) return; m_clockClock24h = v; emit clockClock24hChanged(); }
+    int clockDateSize() const { return m_clockDateSize; }
+    void setClockDateSize(int v) { if (m_clockDateSize == v) return; m_clockDateSize = v; emit clockDateSizeChanged(); }
+    bool clockShowDate() const { return m_clockShowDate; }
+    void setClockShowDate(bool v) { if (m_clockShowDate == v) return; m_clockShowDate = v; emit clockShowDateChanged(); }
     bool showBatteryEnabled() const { return m_showBatteryEnabled; }
     void setShowBatteryEnabled(bool v) { if (m_showBatteryEnabled == v) return; m_showBatteryEnabled = v; emit showBatteryEnabledChanged(); }
     bool batteryDockedOnly() const { return m_batteryDockedOnly; }
@@ -296,6 +320,12 @@ class MockScreensaverConfig : public QObject {
     void setMinimalDateSize(int v) { if (m_minimalDateSize == v) return; m_minimalDateSize = v; emit minimalDateSizeChanged(); }
     QString minimalFont() const { return m_minimalFont; }
     void setMinimalFont(QString v) { if (m_minimalFont == v) return; m_minimalFont = v; emit minimalFontChanged(); }
+    bool minimalClock24h() const { return m_minimalClock24h; }
+    void setMinimalClock24h(bool v) { if (m_minimalClock24h == v) return; m_minimalClock24h = v; emit minimalClock24hChanged(); }
+    QString minimalTimeColor() const { return m_minimalTimeColor; }
+    void setMinimalTimeColor(QString v) { if (m_minimalTimeColor == v) return; m_minimalTimeColor = v; emit minimalTimeColorChanged(); }
+    QString minimalDateColor() const { return m_minimalDateColor; }
+    void setMinimalDateColor(QString v) { if (m_minimalDateColor == v) return; m_minimalDateColor = v; emit minimalDateColorChanged(); }
     int starfieldSpeed() const { return m_starfieldSpeed; }
     void setStarfieldSpeed(int v) { if (m_starfieldSpeed == v) return; m_starfieldSpeed = v; emit starfieldSpeedChanged(); }
     int starfieldDensity() const { return m_starfieldDensity; }
@@ -311,6 +341,13 @@ class MockScreensaverConfig : public QObject {
     Q_INVOKABLE void resetDefaults() {
         setTheme("matrix");
         setShowClock(false);
+        setClockDockedOnly(false);
+        setClockSize(48);
+        setClockFont("primary");
+        setClockColor("#ffffff");
+        setClockClock24h(true);
+        setClockDateSize(20);
+        setClockShowDate(false);
         setShowBatteryEnabled(true);
         setBatteryDockedOnly(true);
         setMatrixColor("#00ff41");
@@ -400,6 +437,9 @@ class MockScreensaverConfig : public QObject {
         setMinimalClockSize(96);
         setMinimalDateSize(28);
         setMinimalFont("primary");
+        setMinimalClock24h(true);
+        setMinimalTimeColor("#d0d0d0");
+        setMinimalDateColor("#666666");
         setStarfieldSpeed(50);
         setStarfieldDensity(50);
     }
@@ -407,6 +447,13 @@ class MockScreensaverConfig : public QObject {
  signals:
     void themeChanged();
     void showClockChanged();
+    void clockDockedOnlyChanged();
+    void clockSizeChanged();
+    void clockFontChanged();
+    void clockColorChanged();
+    void clockClock24hChanged();
+    void clockDateSizeChanged();
+    void clockShowDateChanged();
     void showBatteryEnabledChanged();
     void batteryDockedOnlyChanged();
     void matrixColorChanged();
@@ -496,6 +543,9 @@ class MockScreensaverConfig : public QObject {
     void minimalClockSizeChanged();
     void minimalDateSizeChanged();
     void minimalFontChanged();
+    void minimalClock24hChanged();
+    void minimalTimeColorChanged();
+    void minimalDateColorChanged();
     void starfieldSpeedChanged();
     void starfieldDensityChanged();
     void colorChanged();
@@ -508,6 +558,13 @@ class MockScreensaverConfig : public QObject {
  private:
     QString m_theme{"matrix"};
     bool m_showClock{false};
+    bool m_clockDockedOnly{false};
+    int m_clockSize{48};
+    QString m_clockFont{"primary"};
+    QString m_clockColor{"#ffffff"};
+    bool m_clockClock24h{true};
+    int m_clockDateSize{20};
+    bool m_clockShowDate{false};
     bool m_showBatteryEnabled{true};
     bool m_batteryDockedOnly{true};
     QString m_matrixColor{"#00ff41"};
@@ -597,6 +654,9 @@ class MockScreensaverConfig : public QObject {
     int m_minimalClockSize{96};
     int m_minimalDateSize{28};
     QString m_minimalFont{"primary"};
+    bool m_minimalClock24h{true};
+    QString m_minimalTimeColor{"#d0d0d0"};
+    QString m_minimalDateColor{"#666666"};
     int m_starfieldSpeed{50};
     int m_starfieldDensity{50};
     QColor m_color{QColor("#00ff41")};

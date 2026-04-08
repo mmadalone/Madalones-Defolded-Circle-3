@@ -34,7 +34,8 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 - **Matrix Rain** — GPU-accelerated falling character rain with full customization (see below)
 - **Starfield** — animated star field with configurable speed and density
-- **Minimal Clock** — clean digital clock with date, configurable font (Poppins / Space Mono) and size (battery overlay optional)
+- **Minimal Clock** — clean digital clock with date, configurable font (Poppins / Space Mono), size, and independent time/date color pickers with rainbow gradient support (battery overlay optional)
+- **Analog Clock** — UC's stock analog clock face with hour dots and second/minute/hour hands (battery overlay optional)
 
 ### Matrix Rain
 
@@ -126,9 +127,8 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 ### Overlays
 
-- **Clock** — digital time display, centered upper third
-- **Battery** — color-coded by charge level (green → yellow → orange → red), shows "Fully charged" at 100%
-- "Charging only" sub-option — show battery only when docked
+- **Clock** — digital time display with configurable font, size, color (7 solid + 3 rainbow gradients), 24h/12h toggle, optional date line with own size slider, "charging only" visibility
+- **Battery** — color-coded by charge level (green → yellow → orange → red), shows "Fully charged" at 100%, "charging only" visibility option
 
 ### General Behavior
 
@@ -145,7 +145,8 @@ All settings are in **Settings > Screensaver** on the remote.
 | Section | Settings | Themes |
 |---------|----------|--------|
 | Theme | Matrix / Starfield / Minimal | All |
-| Overlays | Show clock, Show battery, Charging only | All |
+| Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size), Show battery (+ charging only) | Matrix/Starfield |
+| Overlays | Show battery (+ charging only) | Minimal/Analog |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
 | Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker | Matrix |
 | Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) | Matrix |
@@ -206,7 +207,8 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 
 - **Renderer:** C++ QQuickItem with custom `MatrixRainShader` (texture × per-vertex RGBA) — single GPU draw call per frame
 - **Simulation:** Pure C++ (no Qt object system) — deterministic, cache-friendly
-- **Config bridge:** ScreensaverConfig C++ singleton — transforms + forwards Config signals
+- **Config bridge:** ScreensaverConfig C++ singleton — owns its own QSettings instance (zero custom lines in upstream config.h), SCRN_* macros for single-declaration properties
+- **GradientText:** Reusable QML component for solid or rainbow gradient text via QtGraphicalEffects LinearGradient (zero GPU overhead when solid)
 - **Atlas caching:** Static in-memory cache of the combined multi-layer glyph atlas (~3.7 MB). Survives dock/undock cycles (process stays alive, only QML is recreated). First dock builds the atlas (~8s on ARM64); repeat docks skip rasterization entirely (~5s — remaining time is QML lifecycle). Cache key: SHA-1 of color, colorMode, fontSize, charset, fadeRate, depthEnabled. Invalidates automatically on settings change.
 - **Tests:** 133 total (92 C++ unit + 41 QML integration), CI green
 - **Display power gating:** Zero CPU/GPU when screen is off

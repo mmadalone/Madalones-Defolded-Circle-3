@@ -26,7 +26,6 @@ Item {
         visible: !root.isGradient(root.colorValue)
         color: root.isGradient(root.colorValue) ? "#ffffff" : root.colorValue
         layer.enabled: root.isGradient(root.colorValue)
-        layer.smooth: true
     }
 
     // Rainbow gradient (5 stops)

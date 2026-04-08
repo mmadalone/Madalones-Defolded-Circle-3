@@ -46,7 +46,7 @@ Item {
     // Time
     GradientText {
         id: timeText
-        anchors.centerIn: parent
+        anchors.horizontalCenter: parent.horizontalCenter
         colorValue: ScreensaverConfig.clockColor
         font: root.clockFont(ScreensaverConfig.clockSize)
 
@@ -56,14 +56,13 @@ Item {
             var suffix = "";
 
             if (!ScreensaverConfig.clockClock24h) {
-                suffix = h >= 12 ? " PM" : " AM";
                 h = h % 12;
                 if (h === 0) h = 12;
             }
 
             var hStr = h < 10 ? "0" + h : "" + h;
             var mStr = m < 10 ? "0" + m : "" + m;
-            return hStr + ":" + mStr + (ScreensaverConfig.clockClock24h ? "" : suffix);
+            return hStr + ":" + mStr;
         }
     }
 

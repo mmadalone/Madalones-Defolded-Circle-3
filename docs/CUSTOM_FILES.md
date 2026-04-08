@@ -43,17 +43,20 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/messageengine.cpp` | Text layout, character placement | ~150 |
 | `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate | ~80 |
 | `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math | ~200 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — config bridge with transforms | ~120 |
-| `src/ui/screensaverconfig.cpp` | Signal forwarding, value transforms, conditional logic | ~150 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, 109 properties | ~200 |
+| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | ~100 |
+| `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | ~50 |
 
 ### Custom QML Files
 | File | Purpose |
 |------|---------|
 | `src/qml/components/themes/MatrixTheme.qml` | Matrix rain screensaver theme |
 | `src/qml/components/themes/StarfieldTheme.qml` | Starfield screensaver theme |
-| `src/qml/components/themes/MinimalTheme.qml` | Minimal screensaver theme |
+| `src/qml/components/themes/MinimalTheme.qml` | Minimal digital clock theme with GradientText |
+| `src/qml/components/themes/AnalogTheme.qml` | UC stock analog clock extracted as theme option |
 | `src/qml/components/themes/MatrixTheme_canvas_backup.qml` | Archived Canvas-based prototype (not used) |
-| `src/qml/components/overlays/ClockOverlay.qml` | Clock overlay for screensaver |
+| `src/qml/components/overlays/GradientText.qml` | Reusable solid/rainbow gradient text component |
+| `src/qml/components/overlays/ClockOverlay.qml` | Clock overlay with GradientText, date, 24h, color |
 | `src/qml/components/overlays/BatteryOverlay.qml` | Battery overlay for screensaver |
 | `src/qml/settings/settings/chargingscreen/ThemeSelector.qml` | Theme picker sub-page |
 | `src/qml/settings/settings/chargingscreen/CommonToggles.qml` | Clock/battery/tap-to-close toggles |
@@ -76,15 +79,15 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 
 ---
 
-## Mod 2: Avatar System (Planned — not yet implemented)
+## Mod 2: Avatar System (In Progress — Phase A)
 
-Files listed here will be created during implementation. See `AVATAR_PLAN.md` for full specification.
+See `AVATAR_PLAN.md` for full specification.
 
-### Planned Custom C++ Files
-| File | Purpose |
-|------|---------|
-| `src/ui/avatargrid.h` | `AvatarGridItem` QQuickItem — Braille character grid renderer |
-| `src/ui/avatargrid.cpp` | Portrait loading, per-cell animation, QSG rendering |
+### Custom C++ Files
+| File | Purpose | ~Lines |
+|------|---------|--------|
+| `src/ui/avatargrid.h` | `AvatarGridItem` QQuickItem — Braille character grid renderer | ~140 |
+| `src/ui/avatargrid.cpp` | Portrait loading, per-cell animation, QSG rendering | ~340 |
 
 ### Planned Custom QML Files
 | File | Purpose |
@@ -105,21 +108,25 @@ Files listed here will be created during implementation. See `AVATAR_PLAN.md` fo
 | `src/qml/components/VoiceOverlay.qml` | Conditional delegation to AvatarOverlay when avatar enabled |
 | `src/qml/main.qml` | AvatarOverlay Loader for push mode |
 
-### Planned Shared Infrastructure Modifications
+### Completed Shared Infrastructure Modifications
 | File | Modification |
 |------|-------------|
-| `src/ui/glyphatlas.h/.cpp` | Add `"braille"` charset + `loadBrailleFont()` |
-| `src/main.cpp` | Register `AvatarGridItem`, load braille font |
+| `src/ui/glyphatlas.h/.cpp` | Added `"braille"` charset, `CHARS_BRAILLE` (256 chars), `loadBrailleFont()`, Braille font selection + step ratios in build()/buildMetricsOnly() |
+| `src/main.cpp` | Added `#include "ui/avatargrid.h"`, `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` |
+| `remote-ui.pro` | Added `avatargrid.h/.cpp` to HEADERS/SOURCES |
+
+### Planned Shared Infrastructure Modifications (remaining)
+| File | Modification |
+|------|-------------|
 | `src/config/config.h/.cpp` | Add ~20 avatar Q_PROPERTYs |
-| `remote-ui.pro` | Add avatargrid.h/.cpp |
 | `resources/qrc/main.qrc` | Register avatar QML + art files |
 | `src/qml/components/ChargingScreen.qml` | Add AvatarScreensaverOverlay Loader at z:1 |
 | `src/qml/settings/Settings.qml` | Add "Avatar" menu entry |
 
-### Planned Custom Assets
+### Custom Assets
 | File | Purpose |
 |------|---------|
-| `deploy/config/BrailleFont.otf` | Braille Unicode block font subset (~30-50KB) |
+| `deploy/config/BrailleFont.ttf` | FreeMono Braille subset (U+2800-28FF), 24KB, TTF for FreeType hinting on ARM |
 
 ---
 

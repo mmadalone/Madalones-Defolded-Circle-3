@@ -47,7 +47,7 @@ ColumnLayout {
                 trigger: function() { ScreensaverConfig.showClock = !ScreensaverConfig.showClock; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Show clock"
-                Component.onCompleted: showClockSwitch.forceActiveFocus()
+                Component.onCompleted: if (visible) showClockSwitch.forceActiveFocus()
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: ScreensaverConfig.showClock ? clockDockedSwitch : showBatterySwitch
             }
