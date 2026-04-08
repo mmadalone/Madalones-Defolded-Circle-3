@@ -72,6 +72,7 @@ Settings.Page {
                 navUpTarget: commonToggles.lastFocusItem
                 navDownTarget: matrixAppearance.visible ? matrixAppearance.firstFocusItem
                              : starfieldSettings.visible ? starfieldSpeedSlider
+                             : minimalSettings.visible ? minimalClockSlider
                              : generalBehavior.firstFocusItem
             }
 
@@ -136,12 +137,90 @@ Settings.Page {
                 }
             }
 
+            // --- Minimal settings (clock + date size) ---
+            ColumnLayout {
+                id: minimalSettings
+                visible: ScreensaverConfig.theme === "minimal"
+                Layout.fillWidth: true
+                Layout.leftMargin: 10; Layout.rightMargin: 10
+                spacing: 20
+
+                Text {
+                    Layout.fillWidth: true; color: colors.offwhite
+                    text: qsTr("Font"); font: fonts.primaryFont(30)
+                }
+                RowLayout {
+                    id: minimalFontRow
+                    spacing: 10
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: themeSelector.lastFocusItem
+                    KeyNavigation.down: minimalClockSlider
+                    Keys.onLeftPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, -1)
+                    Keys.onRightPressed: chargingScreenPage.cycleOption(["primary","secondary"], ScreensaverConfig.minimalFont, function(v){ ScreensaverConfig.minimalFont = v }, 1)
+                    Repeater {
+                        model: [
+                            { name: "primary", label: "Poppins" },
+                            { name: "secondary", label: "Space Mono" }
+                        ]
+                        Rectangle {
+                            Layout.fillWidth: true; height: 50; radius: 8
+                            color: ScreensaverConfig.minimalFont === modelData.name ? colors.offwhite : colors.dark
+                            border { color: colors.medium; width: 1 }
+                            Text {
+                                anchors.centerIn: parent; text: modelData.label
+                                color: ScreensaverConfig.minimalFont === modelData.name ? colors.black : colors.offwhite
+                                font: fonts.primaryFont(24)
+                            }
+                            Components.HapticMouseArea {
+                                anchors.fill: parent
+                                onClicked: ScreensaverConfig.minimalFont = modelData.name
+                            }
+                        }
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true; color: colors.offwhite
+                    text: qsTr("Clock size"); font: fonts.primaryFont(30)
+                }
+                Components.Slider {
+                    id: minimalClockSlider
+                    height: 60; Layout.fillWidth: true
+                    from: 48; to: 144; stepSize: 4
+                    value: ScreensaverConfig.minimalClockSize; live: true
+                    onMoved: ScreensaverConfig.minimalClockSize = value
+                    onUserInteractionEnded: ScreensaverConfig.minimalClockSize = value
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalFontRow
+                    KeyNavigation.down: minimalDateSlider
+                }
+
+                Text {
+                    Layout.fillWidth: true; color: colors.offwhite
+                    text: qsTr("Date size"); font: fonts.primaryFont(30)
+                }
+                Components.Slider {
+                    id: minimalDateSlider
+                    height: 60; Layout.fillWidth: true
+                    from: 16; to: 48; stepSize: 2
+                    value: ScreensaverConfig.minimalDateSize; live: true
+                    onMoved: ScreensaverConfig.minimalDateSize = value
+                    onUserInteractionEnded: ScreensaverConfig.minimalDateSize = value
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: minimalClockSlider
+                    KeyNavigation.down: generalBehavior.firstFocusItem
+                }
+            }
+
             ChargingScreenComponents.GeneralBehavior {
                 id: generalBehavior
                 settingsPage: chargingScreenPage
                 Layout.fillWidth: true
                 navUpTarget: matrixEffects.visible ? matrixEffects.lastFocusItem
                            : starfieldSettings.visible ? starfieldDensitySlider
+                           : minimalSettings.visible ? minimalDateSlider
                            : themeSelector.lastFocusItem
             }
 

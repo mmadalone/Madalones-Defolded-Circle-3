@@ -138,6 +138,11 @@ class ScreensaverConfig : public QObject {
     // === Rain layers (multi-grid depth) ===
     SCRN_BOOL(layersEnabled,       "charging/matrixLayersEnabled",    false)
 
+    // === Minimal theme ===
+    SCRN_INT(minimalClockSize,     "charging/minimalClockSize",       96)
+    SCRN_INT(minimalDateSize,      "charging/minimalDateSize",        28)
+    SCRN_STRING(minimalFont,       "charging/minimalFont",            "primary")
+
     // === Starfield theme ===
     SCRN_INT(starfieldSpeed,       "charging/starfieldSpeed",         50)
     SCRN_INT(starfieldDensity,     "charging/starfieldDensity",       50)

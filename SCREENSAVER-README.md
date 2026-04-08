@@ -24,9 +24,9 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 |:-----------:|:-------------------:|:------------:|
 | ![Tap](docs/screenshots/menu-09.png) | ![Messages](docs/screenshots/menu-11.png) | ![DPAD](docs/screenshots/menu-12.png) |
 
-| Starfield Settings | Minimal Settings |
-|:------------------:|:----------------:|
-| ![Starfield](docs/screenshots/starfield-settings.png) | ![Minimal](docs/screenshots/minimal-settings.png) |
+| Starfield Settings | Minimal Settings | Minimal Settings (cont.) |
+|:------------------:|:----------------:|:------------------------:|
+| ![Starfield](docs/screenshots/starfield-settings.png) | ![Minimal](docs/screenshots/minimal-settings-01.png) | ![Minimal2](docs/screenshots/minimal-settings-02.png) |
 
 ## Features
 
@@ -34,7 +34,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 - **Matrix Rain** — GPU-accelerated falling character rain with full customization (see below)
 - **Starfield** — animated star field with configurable speed and density
-- **Minimal Clock** — clean digital clock with date, always visible (battery overlay optional)
+- **Minimal Clock** — clean digital clock with date, configurable font (Poppins / Space Mono) and size (battery overlay optional)
 
 ### Matrix Rain
 
@@ -156,6 +156,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration | Matrix |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
 | Starfield | Animation speed, Star density | Starfield |
+| Minimal | Font (Poppins / Space Mono), Clock size, Date size | Minimal |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 

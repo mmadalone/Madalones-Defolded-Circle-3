@@ -24,6 +24,12 @@ Item {
 
     function interactiveInput(action) {}
 
+    // Font selector: "primary" = Poppins (sans), "secondary" = Space Mono (mono)
+    function themeFont(size) {
+        return ScreensaverConfig.minimalFont === "secondary"
+            ? fonts.secondaryFont(size) : fonts.primaryFont(size);
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "black"
@@ -36,7 +42,7 @@ Item {
         anchors.centerIn: parent
         anchors.verticalCenterOffset: -40
         color: colors.offwhite
-        font: fonts.primaryFont(96)
+        font: root.themeFont(ScreensaverConfig.minimalClockSize)
 
         text: {
             var h = ui.time.getHours();
@@ -62,7 +68,7 @@ Item {
             horizontalCenter: parent.horizontalCenter
         }
         color: Qt.rgba(1, 1, 1, 0.5)
-        font: fonts.primaryFont(24)
+        font: root.themeFont(Math.round(ScreensaverConfig.minimalClockSize * 0.25))
         text: ui.time.getHours() >= 12 ? "PM" : "AM"
     }
 
@@ -75,7 +81,7 @@ Item {
             horizontalCenter: parent.horizontalCenter
         }
         color: Qt.rgba(1, 1, 1, 0.4)
-        font: fonts.primaryFont(20)
+        font: root.themeFont(ScreensaverConfig.minimalDateSize)
         text: {
             var d = ui.time;
             var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];

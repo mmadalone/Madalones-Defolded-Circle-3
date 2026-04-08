@@ -16,7 +16,7 @@ ColumnLayout {
 
     required property Item settingsPage
 
-    property alias firstFocusItem: showClockSwitch
+    property Item firstFocusItem: ScreensaverConfig.theme === "minimal" ? showBatterySwitch : showClockSwitch
     property alias lastFocusItem: batteryDockedSwitch
     property Item navUpTarget
     property Item navDownTarget
@@ -26,8 +26,9 @@ ColumnLayout {
     // Leading separator
     Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
 
-    // 2. SHOW CLOCK
+    // 2. SHOW CLOCK (hidden for Minimal — clock is always on)
     ColumnLayout {
+        visible: ScreensaverConfig.theme !== "minimal"
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -53,7 +54,7 @@ ColumnLayout {
         }
     }
 
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    Rectangle { visible: ScreensaverConfig.theme !== "minimal"; Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
 
     // 3. SHOW BATTERY
     ColumnLayout {
@@ -75,7 +76,7 @@ ColumnLayout {
                 trigger: function() { ScreensaverConfig.showBatteryEnabled = !ScreensaverConfig.showBatteryEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Show battery"
-                KeyNavigation.up: showClockSwitch
+                KeyNavigation.up: ScreensaverConfig.theme !== "minimal" ? showClockSwitch : root.navUpTarget
                 KeyNavigation.down: batteryDockedSwitch
             }
         }
