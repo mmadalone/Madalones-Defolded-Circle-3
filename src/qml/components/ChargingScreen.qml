@@ -366,12 +366,12 @@ Popup {
 
     // --- Mutual exclusion: tapDirection ON → dpadEnabled OFF ---
     Connections {
-        target: Config
-        function onChargingMatrixTapDirectionChanged() {
+        target: ScreensaverConfig
+        function onTapDirectionChanged() {
             if (ScreensaverConfig.tapDirection && ScreensaverConfig.dpadEnabled)
                 ScreensaverConfig.dpadEnabled = false;
         }
-        function onChargingMatrixDpadEnabledChanged() {
+        function onDpadEnabledChanged() {
             if (ScreensaverConfig.dpadEnabled && ScreensaverConfig.tapDirection)
                 ScreensaverConfig.tapDirection = false;
         }

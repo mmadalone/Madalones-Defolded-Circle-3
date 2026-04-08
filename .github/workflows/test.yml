@@ -52,6 +52,39 @@ jobs:
           name: unit-test-results
           path: test/matrixrain/results.xml
 
+  qml-tests:
+    name: "QML settings tests"
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: ""
+
+      - name: Build QML tests
+        working-directory: test/qml
+        run: |
+          qmake matrixrain_qml_test.pro
+          make -j$(nproc)
+
+      - name: Run QML tests
+        working-directory: test/qml
+        run: ./test_qml -v2 -o results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: qml-test-results
+          path: test/qml/results.xml
+
   integration-tests:
     name: "Integration tests (QML)"
     runs-on: ubuntu-latest
