@@ -106,3 +106,5 @@ test/integration/testdir.h
 qmlcache_loader.cpp
 /.claude
 CLAUDE.md
+CLAUDE.md
+.claude/settings.local.json
