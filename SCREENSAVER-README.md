@@ -10,23 +10,37 @@ A fully configurable screensaver system for the UC Remote 3. Four themes — GPU
 |:------------------:|:-------------------:|:---------:|:-------------:|
 | ![Neon](docs/screenshots/matrix-color-01.jpeg) | ![Green](docs/screenshots/matrix-color-02.jpeg) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) |
 
-### Settings
+### Settings — Matrix
 
-| Theme & Overlays | Appearance | Direction & Visual |
-|:----------------:|:----------:|:------------------:|
-| ![Theme](docs/screenshots/menu-02.png) | ![Appearance](docs/screenshots/menu-04.png) | ![Direction](docs/screenshots/menu-05.png) |
+| Theme & Overlays | Appearance | Direction & Effects |
+|:----------------:|:----------:|:-------------------:|
+| ![Theme](docs/screenshots/matrix-config-01.png) | ![Appearance](docs/screenshots/matrix-config-02.png) | ![Direction](docs/screenshots/matrix-config-03.png) |
 
-| Glitch Effects | Direction Glitch | Chaos & Tap |
-|:--------------:|:----------------:|:-----------:|
-| ![Glitch](docs/screenshots/menu-06.png) | ![DirGlitch](docs/screenshots/menu-07.png) | ![Chaos](docs/screenshots/menu-08.png) |
+| Glitch & Chaos | Tap Effects | Messages & Behavior |
+|:--------------:|:-----------:|:-------------------:|
+| ![Glitch](docs/screenshots/matrix-config-04.png) | ![Tap](docs/screenshots/matrix-config-05.png) | ![Messages](docs/screenshots/matrix-config-06.png) |
 
-| Tap Effects | Messages & Behavior | DPAD & Touch |
-|:-----------:|:-------------------:|:------------:|
-| ![Tap](docs/screenshots/menu-09.png) | ![Messages](docs/screenshots/menu-11.png) | ![DPAD](docs/screenshots/menu-12.png) |
+| DPAD & Touch |
+|:------------:|
+| ![DPAD](docs/screenshots/matrix-config-07.png) |
 
-| Starfield Settings | Minimal Settings | Minimal Settings (cont.) |
-|:------------------:|:----------------:|:------------------------:|
-| ![Starfield](docs/screenshots/starfield-settings.png) | ![Minimal](docs/screenshots/minimal-settings-01.png) | ![Minimal2](docs/screenshots/minimal-settings-02.png) |
+### Settings — Starfield
+
+| Speed & Density | Star Size & Trail | Star Color |
+|:---------------:|:-----------------:|:----------:|
+| ![Speed](docs/screenshots/starfield-settings-01.png) | ![Size](docs/screenshots/starfield-settings-02.png) | ![Color](docs/screenshots/starfield-settings-03.png) |
+
+### Settings — Minimal
+
+| Font & Time Color | Date Color & Size | Clock & Date Size |
+|:-----------------:|:-----------------:|:-----------------:|
+| ![Font](docs/screenshots/minimal-settings-01.png) | ![Date](docs/screenshots/minimal-settings-02.png) | ![Size](docs/screenshots/minimal-settings-03.png) |
+
+### Settings — Analog
+
+| Analog Settings |
+|:---------------:|
+| ![Analog](docs/screenshots/analog-settings-01.png) |
 
 ## Features
 
