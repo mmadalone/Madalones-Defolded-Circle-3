@@ -37,7 +37,7 @@ TestCase {
     function test_default_matrixGlitchReverse() { compare(ScreensaverConfig.glitchReverse, true); }
     function test_default_matrixGlitchDirection() { compare(ScreensaverConfig.glitchDirection, true); }
     function test_default_matrixGlitchDirRate() { compare(ScreensaverConfig.glitchDirRate, 30); }
-    function test_default_matrixGlitchDirCardinal() { compare(ScreensaverConfig.glitchDirCardinal, false); }
+    function test_default_matrixGlitchDirMask() { compare(ScreensaverConfig.glitchDirMask, 255); }
     function test_default_matrixGlitchChaos() { compare(ScreensaverConfig.glitchChaos, false); }
     function test_default_matrixGlitchChaosFrequency() { compare(ScreensaverConfig.glitchChaosFrequency, 50); }
     function test_default_matrixGlitchChaosSurge() { compare(ScreensaverConfig.glitchChaosSurge, true); }

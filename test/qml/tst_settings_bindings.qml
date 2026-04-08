@@ -12,27 +12,27 @@ TestCase {
     when: windowShown
 
     // Signal spy wiring — one spy per major property group
-    SignalSpy { id: themeSpy;       target: Config; signalName: "chargingThemeChanged" }
-    SignalSpy { id: clockSpy;       target: Config; signalName: "chargingShowClockChanged" }
-    SignalSpy { id: batterySpy;     target: Config; signalName: "chargingShowBatteryChanged" }
-    SignalSpy { id: colorModeSpy;   target: Config; signalName: "chargingMatrixColorModeChanged" }
-    SignalSpy { id: charsetSpy;     target: Config; signalName: "chargingMatrixCharsetChanged" }
-    SignalSpy { id: speedSpy;       target: Config; signalName: "chargingMatrixSpeedChanged" }
-    SignalSpy { id: densitySpy;     target: Config; signalName: "chargingMatrixDensityChanged" }
-    SignalSpy { id: trailSpy;       target: Config; signalName: "chargingMatrixTrailChanged" }
-    SignalSpy { id: fadeSpy;        target: Config; signalName: "chargingMatrixFadeChanged" }
-    SignalSpy { id: fontSizeSpy;    target: Config; signalName: "chargingMatrixFontSizeChanged" }
-    SignalSpy { id: directionSpy;   target: Config; signalName: "chargingMatrixDirectionChanged" }
-    SignalSpy { id: glowSpy;        target: Config; signalName: "chargingMatrixGlowChanged" }
-    SignalSpy { id: glitchSpy;      target: Config; signalName: "chargingMatrixGlitchChanged" }
-    SignalSpy { id: glitchRateSpy;  target: Config; signalName: "chargingMatrixGlitchRateChanged" }
-    SignalSpy { id: invertTrailSpy; target: Config; signalName: "chargingMatrixInvertTrailChanged" }
-    SignalSpy { id: messagesSpy;    target: Config; signalName: "chargingMatrixMessagesChanged" }
-    SignalSpy { id: idleEnabledSpy; target: Config; signalName: "chargingIdleEnabledChanged" }
-    SignalSpy { id: idleTimeoutSpy; target: Config; signalName: "chargingIdleTimeoutChanged" }
-    SignalSpy { id: tapCloseSpy;    target: Config; signalName: "chargingTapToCloseChanged" }
-    SignalSpy { id: motionCloseSpy; target: Config; signalName: "chargingMotionToCloseChanged" }
-    SignalSpy { id: chaosSpy;       target: Config; signalName: "chargingMatrixGlitchChaosChanged" }
+    SignalSpy { id: themeSpy;       target: ScreensaverConfig; signalName: "themeChanged" }
+    SignalSpy { id: clockSpy;       target: ScreensaverConfig; signalName: "showClockChanged" }
+    SignalSpy { id: batterySpy;     target: ScreensaverConfig; signalName: "showBatteryEnabledChanged" }
+    SignalSpy { id: colorModeSpy;   target: ScreensaverConfig; signalName: "colorModeChanged" }
+    SignalSpy { id: charsetSpy;     target: ScreensaverConfig; signalName: "charsetChanged" }
+    SignalSpy { id: speedSpy;       target: ScreensaverConfig; signalName: "matrixSpeedChanged" }
+    SignalSpy { id: densitySpy;     target: ScreensaverConfig; signalName: "matrixDensityChanged" }
+    SignalSpy { id: trailSpy;       target: ScreensaverConfig; signalName: "matrixTrailChanged" }
+    SignalSpy { id: fadeSpy;        target: ScreensaverConfig; signalName: "matrixFadeChanged" }
+    SignalSpy { id: fontSizeSpy;    target: ScreensaverConfig; signalName: "fontSizeChanged" }
+    SignalSpy { id: directionSpy;   target: ScreensaverConfig; signalName: "directionChanged" }
+    SignalSpy { id: glowSpy;        target: ScreensaverConfig; signalName: "glowChanged" }
+    SignalSpy { id: glitchSpy;      target: ScreensaverConfig; signalName: "glitchChanged" }
+    SignalSpy { id: glitchRateSpy;  target: ScreensaverConfig; signalName: "glitchRateChanged" }
+    SignalSpy { id: invertTrailSpy; target: ScreensaverConfig; signalName: "invertTrailChanged" }
+    SignalSpy { id: messagesSpy;    target: ScreensaverConfig; signalName: "messagesChanged" }
+    SignalSpy { id: idleEnabledSpy; target: ScreensaverConfig; signalName: "idleEnabledChanged" }
+    SignalSpy { id: idleTimeoutSpy; target: ScreensaverConfig; signalName: "idleTimeoutChanged" }
+    SignalSpy { id: tapCloseSpy;    target: ScreensaverConfig; signalName: "tapToCloseChanged" }
+    SignalSpy { id: motionCloseSpy; target: ScreensaverConfig; signalName: "motionToCloseChanged" }
+    SignalSpy { id: chaosSpy;       target: ScreensaverConfig; signalName: "glitchChaosChanged" }
 
     // ── init / cleanup ────────────────────────────────────────
     function init() {
