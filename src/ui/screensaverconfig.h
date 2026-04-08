@@ -40,6 +40,7 @@ class ScreensaverConfig : public QObject {
     SCRN_BOOL(clockShowDate,       "charging/clockShowDate",          false)
     SCRN_BOOL(showBatteryEnabled,  "charging/showBattery",            true)
     SCRN_BOOL(batteryDockedOnly,   "charging/batteryDockedOnly",      true)
+    SCRN_INT(batteryTextSize,      "charging/batteryTextSize",        24)
 
     // === Core appearance — raw ints for settings page sliders ===
     SCRN_STRING(matrixColor,       "charging/matrixColor",            "#00ff41")

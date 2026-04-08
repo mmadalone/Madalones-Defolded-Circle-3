@@ -17,7 +17,7 @@ ColumnLayout {
     required property Item settingsPage
 
     property Item firstFocusItem: (ScreensaverConfig.theme === "minimal" || ScreensaverConfig.theme === "analog") ? showBatterySwitch : showClockSwitch
-    property Item lastFocusItem: ScreensaverConfig.showBatteryEnabled ? batteryDockedSwitch : showBatterySwitch
+    property Item lastFocusItem: ScreensaverConfig.showBatteryEnabled ? batteryTextSizeSlider : showBatterySwitch
     property Item navUpTarget
     property Item navDownTarget
 
@@ -365,8 +365,28 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Charging only"
                 KeyNavigation.up: showBatterySwitch
-                KeyNavigation.down: root.navDownTarget
+                KeyNavigation.down: batteryTextSizeSlider
             }
+        }
+    }
+
+    // 3c. BATTERY TEXT SIZE (visible when Show battery is on)
+    ColumnLayout {
+        visible: ScreensaverConfig.showBatteryEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Text size"); font: fonts.primaryFont(26) }
+        Components.Slider {
+            id: batteryTextSizeSlider
+            height: 60; Layout.fillWidth: true
+            from: 16; to: 48; stepSize: 2
+            value: ScreensaverConfig.batteryTextSize; live: true
+            onMoved: ScreensaverConfig.batteryTextSize = value
+            onUserInteractionEnded: ScreensaverConfig.batteryTextSize = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            KeyNavigation.up: batteryDockedSwitch; KeyNavigation.down: root.navDownTarget
         }
     }
 }

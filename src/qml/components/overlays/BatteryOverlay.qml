@@ -4,6 +4,7 @@
 import QtQuick 2.15
 
 import Battery 1.0
+import ScreensaverConfig 1.0
 
 import "qrc:/components" as Components
 
@@ -27,7 +28,7 @@ Item {
         icon: "uc:bolt"
         color: root.batteryColor
         anchors { left: parent.left; leftMargin: -10 }
-        size: 60
+        size: ScreensaverConfig.batteryTextSize * 2.5
     }
 
     Text {
@@ -38,6 +39,6 @@ Item {
             return Battery.level + "%" + (Battery.isCharging ? qsTr(" - Charging") : "");
         }
         anchors { left: icon.right; leftMargin: 10; verticalCenter: icon.verticalCenter }
-        font: fonts.primaryFont(24)
+        font: fonts.primaryFont(ScreensaverConfig.batteryTextSize)
     }
 }
