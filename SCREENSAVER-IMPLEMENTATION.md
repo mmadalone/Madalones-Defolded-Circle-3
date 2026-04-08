@@ -1450,6 +1450,122 @@ False positives confirmed NOT bugs: `static_cast` in `updatePaintNode` (correct 
 
 ---
 
+## Session 2026-04-08: Config Decoupling, Themes, Community Release
+
+### Config Architecture Refactor
+
+Decoupled all screensaver config from upstream `config.h`. ScreensaverConfig now owns its own `QSettings` instance reading the same `config.ini` file with non-overlapping `charging/*` keys.
+
+**Before:** 90 Q_PROPERTYs + 90 CFG_* macros + 90 signals in config.h, 87 connect() calls in screensaverconfig.cpp, triple-declaration tax per property.
+
+**After:** Zero custom lines in config.h. SCRN_* macros (one declaration per property). 108 SCRN properties + 6 transformed = 114 total. ~7 connect() calls (5 transform forwarding + 2 Battery).
+
+New file: `screensaverconfig_macros.h` — SCRN_BOOL/INT/STRING read-write macros generating Q_PROPERTY + getter + setter + signal inline.
+
+539 QML references renamed (`Config.chargingXxx` → `ScreensaverConfig.xxx`) across 18 files.
+
+### New Themes
+
+**Analog Clock** — UC's stock analog clock extracted as a 4th theme option. Pure QML (hour dots, second/minute/hour hands). No custom settings — battery overlay only.
+
+### Theme Feature Additions
+
+**Starfield overhaul:**
+- Star color picker (7 solid + 3 rainbow gradients, per-star hue in rainbow mode via JS HSL)
+- Star size slider (scales stroke width + round lineCap)
+- Trail length slider (amplifies previous-position offset)
+- Seamless star/trail rendering (removed separate circle, round lineCap IS the star head)
+- Higher max speed (10x) and density (1100 stars)
+- Touchbar adjusts density (always active on Starfield)
+- Swipe adjusts Starfield speed (writes to starfieldSpeed, not matrixSpeed)
+- Density slider now has runtime effect (initialized flag resets on starCount change)
+
+**Minimal theme:**
+- Font selector (Poppins / Space Mono)
+- 24-hour clock toggle (independent from system setting)
+- Time color picker (7 solid + 3 rainbow gradients via GradientText)
+- Date color picker (independent from time)
+- Clock size and date size sliders
+- Date bug fix: `ui.time` is QTime (no date) — use `new Date()` with `void(ui.time)` rebinding
+
+**Clock overlay (Matrix/Starfield):**
+- Font picker (Poppins / Space Mono)
+- Color picker (7 solid + 3 rainbow gradients via GradientText)
+- Size slider
+- 24-hour clock toggle
+- Show date toggle with date size slider
+- Position picker (Top / Center / Bottom)
+- "Charging only" visibility toggle
+
+**Battery overlay (all themes):**
+- Text size slider (icon scales proportionally)
+
+### New Components
+
+**GradientText.qml** — Reusable QML component for solid or rainbow gradient text. Accepts hex color or gradient mode name ("rainbow"/"rainbow_gradient"/"neon"). Uses QtGraphicalEffects LinearGradient with `layer.enabled` gated by mode — zero GPU overhead for solid colors. Three gradient presets with stops matching MatrixAppearance.qml.
+
+### Touch Input Isolation
+
+- `isInteractiveTheme` (matrix only): swipe speed, direction zones, hold-to-slow, tap effects
+- `isSwipeableTheme` (matrix + starfield): swipe-to-adjust-speed
+- Minimal/Analog: only double-tap-to-close
+- Touchbar suppression: `applicationWindow.screensaverActive` property gates all 4 upstream TouchSlider variants + base TouchSlider.startSetup()
+
+### Settings UX
+
+- Theme selector moved to top of settings page
+- Show clock sub-settings expand when enabled (font, color, gradient, size, 24h, date, position)
+- Show battery sub-settings expand when enabled (docked only, text size)
+- Matrix-only sections (DPAD, touch directions) hidden for other themes
+- Show clock toggle hidden for Minimal/Analog (clock is always on)
+- Switch component: Enter/Return key now toggles (was mouse-only)
+- DPAD navigation chains verified for all 4 themes
+
+### CI Fixes
+
+- ASAN + verbose output diagnosed original SEGV in countVisibleQuads (m_cellDrawn uninitialized)
+- QML tests switched from offscreen to xvfb+Mesa (QtGraphicalEffects needs GL)
+- Integration tests use StubScreensaverConfig (avoids Battery → Core → QWebSocket chain)
+- SignalSpy migration (Config → ScreensaverConfig signal names)
+- Multiple chaos test fixes (default sub-type selection)
+- Avatar art removed from main.qrc
+- QML test job added to CI (3 jobs total: unit, QML, integration)
+
+### Avatar Branch Separation
+
+Avatar (Mod 2) moved to `feature/avatar` branch. Main branch ships zero avatar code:
+- Commented out in remote-ui.pro and main.cpp
+- Excluded from main.qrc
+- All avatar files gitignored on main
+- AVATAR_PLAN.md untracked from main
+
+### Documentation
+
+- SCREENSAVER-README.md: all 4 themes, screenshots per-theme, YouTube demo, settings reference table, vibecoding section, roadmap
+- CUSTOM_FILES.md: all new files listed, upstream modifications tracked (Switch, TouchSlider*, main.qml)
+- Copyright updated to 2026 across 49 files
+
+### Community Release
+
+- Repo made public on GitHub
+- Posted to AVS Forum UC Remote 3 thread
+- Core-simulator dev environment set up on Mac for screenshots
+
+### Files Changed (summary)
+
+| Category | Files |
+|----------|-------|
+| New C++ | screensaverconfig_macros.h |
+| New QML | GradientText.qml, AnalogTheme.qml |
+| Rewritten C++ | screensaverconfig.h (SCRN_* macros), screensaverconfig.cpp (own QSettings) |
+| Cleaned C++ | config.h (90 Q_PROPERTYs removed) |
+| Modified QML | ChargingScreen.qml, all 4 themes, ClockOverlay, BatteryOverlay, all 10 settings files, Switch, 5x TouchSlider, main.qml |
+| Modified build | remote-ui.pro, main.qrc, .gitignore |
+| Tests | MockScreensaverConfig.h (regenerated), tst_settings_bindings.qml (SignalSpy migration), tst_config_defaults.qml, tst_integration_main.cpp (stub config), test.yml (3 jobs) |
+| Docs | SCREENSAVER-README.md, CUSTOM_FILES.md, SCREENSAVER-IMPLEMENTATION.md |
+
+---
+
 ## Planned: GPU-Accelerated Starfield (StarfieldItem)
 
 ### Problem
