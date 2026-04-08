@@ -285,6 +285,11 @@ class RainSimulation {
     bool setSubliminalOverlay(bool v)            { return m_message.setSubliminalOverlay(v); }
     bool setSubliminalFlash(bool v)              { return m_message.setSubliminalFlash(v); }
 
+    /// @brief Assign colorVariant based on depthFactor for depth-aware rendering.
+    /// Monochrome+depth: maps depthFactor to 3-band variant (far=0, normal=1, near=2).
+    /// Rainbow/neon: biases hue index toward cool (far) or warm (near).
+    void assignDepthColorVariant(StreamState &s, const GlyphAtlas &atlas);
+
  private:
     QVector<StreamState> m_streams;
     QVector<int> m_charGrid;  // [col * gridRows + row] = glyph index
@@ -314,6 +319,7 @@ class RainSimulation {
     bool    m_depthEnabled{false};
     int     m_depthIntensity{50};
     bool    m_depthOverlay{false};
+    int     m_depthVariantBase{0};  // atlas depthVariantBase (1 when depth active, else 0)
     bool    m_invertTrail{false};
     int     m_tapBurstCount{25};
     int     m_tapBurstLength{6};

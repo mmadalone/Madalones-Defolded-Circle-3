@@ -6,6 +6,7 @@
 #include "../config/config.h"
 #include "../hardware/battery.h"
 
+#include <QTimer>
 #include <QtMath>
 
 namespace uc {
@@ -77,10 +78,21 @@ void ScreensaverConfig::connectSignals() {
     // showBattery depends on 3 sources
     connect(m_config, &Config::chargingShowBatteryChanged,     this, &ScreensaverConfig::showBatteryChanged);
     connect(m_config, &Config::chargingBatteryDockedOnlyChanged, this, &ScreensaverConfig::showBatteryChanged);
-    // Battery may not exist yet at construction; connect when it appears
+    // Battery may not exist yet at construction; connect when it appears.
+    // Use a deferred single-shot to retry the connection after the event loop settles.
     auto *batt = hw::Battery::instance();
     if (batt) {
         connect(batt, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
+        connect(batt, &hw::Battery::isChargingChanged, this, &ScreensaverConfig::showBatteryChanged);
+    } else {
+        QTimer::singleShot(500, this, [this]() {
+            auto *b = hw::Battery::instance();
+            if (b) {
+                connect(b, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
+                connect(b, &hw::Battery::isChargingChanged, this, &ScreensaverConfig::showBatteryChanged);
+                emit showBatteryChanged();  // re-evaluate now that battery is available
+            }
+        });
     }
 
     // Theme + overlays
@@ -94,6 +106,9 @@ void ScreensaverConfig::connectSignals() {
 
     // Visual effects
     connect(m_config, &Config::chargingMatrixGlowChanged,      this, &ScreensaverConfig::glowChanged);
+    connect(m_config, &Config::chargingMatrixGlowFadeChanged,  this, &ScreensaverConfig::glowFadeChanged);
+    connect(m_config, &Config::chargingMatrixDepthGlowChanged, this, &ScreensaverConfig::depthGlowChanged);
+    connect(m_config, &Config::chargingMatrixDepthGlowMinChanged, this, &ScreensaverConfig::depthGlowMinChanged);
     connect(m_config, &Config::chargingMatrixInvertTrailChanged, this, &ScreensaverConfig::invertTrailChanged);
 
     // Glitch
@@ -172,10 +187,13 @@ void ScreensaverConfig::connectSignals() {
     connect(m_config, &Config::chargingMatrixTapDirectionChanged,  this, &ScreensaverConfig::tapDirectionChanged);
     connect(m_config, &Config::chargingMatrixLastDirectionChanged,  this, &ScreensaverConfig::lastDirectionChanged);
 
-    // 3D depth parallax
+    // Color layers (per-vertex depth tinting)
     connect(m_config, &Config::chargingMatrixDepthEnabledChanged,   this, &ScreensaverConfig::depthEnabledChanged);
     connect(m_config, &Config::chargingMatrixDepthIntensityChanged, this, &ScreensaverConfig::depthIntensityChanged);
     connect(m_config, &Config::chargingMatrixDepthOverlayChanged,   this, &ScreensaverConfig::depthOverlayChanged);
+
+    // Rain layers (multi-grid depth)
+    connect(m_config, &Config::chargingMatrixLayersEnabledChanged,  this, &ScreensaverConfig::layersEnabledChanged);
 }
 
 }  // namespace uc

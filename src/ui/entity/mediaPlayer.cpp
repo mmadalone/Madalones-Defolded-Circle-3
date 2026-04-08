@@ -655,7 +655,8 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
         case MediaPlayerAttributes::Media_image_url: {
             QString newImageUrl = data.toString();
 
-            if (m_mediaImageUrl != newImageUrl) {
+            // Re-download if URL changed OR if we have a URL but the image data is missing
+            if (m_mediaImageUrl != newImageUrl || (!newImageUrl.isEmpty() && m_mediaImage.isEmpty())) {
                 m_mediaImageUrl = newImageUrl;
                 ok = true;
                 emit mediaImageUrlChanged();

@@ -1,0 +1,11 @@
+services:
+  preview:
+    build: .
+    ports:
+      - "5909:5900"
+    volumes:
+      - /Users/madalone/_Claude Projects/UC-Remote-UI:/app/sources
+    environment:
+      - QT_QPA_PLATFORM=xcb
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - DISPLAY=:99

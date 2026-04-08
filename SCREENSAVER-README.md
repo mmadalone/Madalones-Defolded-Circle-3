@@ -29,6 +29,12 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Adjustable font size, animation speed, column density, trail length, trail fade
 - Invert trail direction (bright tail instead of bright head)
 - Head glow toggle
+- Glow fade slider — controls how long residual glow persists (0 = none, 100 = maximum). Prevents screen fill-up in rainbow modes.
+
+**Visual Effects:**
+- **Rain layers** — 3 independent rain grids at different font sizes (far=small/slow, mid=normal, near=large/fast). Creates depth through physical size difference. Toggle in settings.
+- **Color layers** — per-stream atmospheric color tinting via custom GPU shader (texture × per-vertex RGBA). Continuous gradient from dim teal (slow streams) to bright chartreuse (fast streams). Toggle + intensity slider + overlay mode.
+- **Depth glow** — residual glow cells shrink with age, creating a depth illusion where fading characters appear to recede. Toggle + min size slider.
 
 **Direction & Movement:**
 - 8-way direction control (cardinal + diagonal) via settings, DPAD, or touch zones
@@ -91,8 +97,8 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Remember direction toggle — persists last touch direction between sessions
 
 **Swipe & Hold Gestures:**
-- Swipe up/down — adjust rain speed (persists to settings)
-- Hold — staged slowdown: 500ms = slow to 25%, 1500ms = pause. Release restores.
+- Swipe up/down — adjust rain speed when touch direction mode is on (toggleable)
+- Hold — staged slowdown: 500ms = 3× slow, 1500ms = pause. Release resumes.
 
 **DPAD Interaction:**
 - Arrow keys change rain direction in real-time
@@ -100,6 +106,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 - Enter: single tap = chaos burst, double-tap = restore direction, hold = slow motion
 - DPAD interactive toggle (enable/disable all DPAD controls)
 - Direction persistence — remembers last DPAD direction between sessions (toggleable)
+- Touchbar speed — swipe the touchbar to adjust animation speed (toggleable, visible when DPAD is on)
 - When DPAD interactive is OFF, all DPAD buttons dismiss the screensaver
 
 ### Overlays
@@ -126,14 +133,14 @@ All settings are in **Settings > Screensaver** on the remote.
 | Overlays | Show clock, Show battery, Charging only |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade |
 | Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker |
-| Visual | Invert trail, Head glow |
+| Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) |
 | Glitch | Master toggle, Intensity, Column flash/stutter, Reverse glow |
 | Direction Glitch | Toggle, Frequency, Length, 8 direction toggles, Fade, Speed, Random color |
 | Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe/Scatter (+ freq + length) |
 | Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance |
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse |
-| Behavior | Double-tap to close, Close on wake, DPAD interactive, Remember direction, Touch directions (+ remember direction), Idle screensaver, Idle timeout |
+| Behavior | Double-tap to close, Close on wake, DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed), Idle screensaver, Idle timeout |
 
 ## Installation
 
@@ -179,9 +186,10 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 
 ## Technical Details
 
-- **Renderer:** C++ QQuickItem with QSGGeometryNode texture atlas — single GPU draw call per frame
+- **Renderer:** C++ QQuickItem with custom `MatrixRainShader` (texture × per-vertex RGBA) — single GPU draw call per frame
 - **Simulation:** Pure C++ (no Qt object system) — deterministic, cache-friendly
 - **Config bridge:** ScreensaverConfig C++ singleton — transforms + forwards Config signals
+- **Atlas caching:** Static in-memory cache of the combined multi-layer glyph atlas (~3.7 MB). Survives dock/undock cycles (process stays alive, only QML is recreated). First dock builds the atlas (~8s on ARM64); repeat docks skip rasterization entirely (~5s — remaining time is QML lifecycle). Cache key: SHA-1 of color, colorMode, fontSize, charset, fadeRate, depthEnabled. Invalidates automatically on settings change.
 - **Tests:** 133 total (92 C++ unit + 41 QML integration), CI green
 - **Display power gating:** Zero CPU/GPU when screen is off
 - **Font:** Bundled 23KB Noto Sans Mono CJK JP subset (katakana + digits)

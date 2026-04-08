@@ -127,7 +127,30 @@ ColumnLayout {
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Remember direction"
-                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: tapDirectionSwitch
+                KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: touchbarSpeedSwitch
+            }
+        }
+    }
+
+    // 15d. TOUCHBAR SPEED (visible when DPAD is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixDpadEnabled
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Touchbar speed"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: touchbarSpeedSwitch
+                objectName: "touchbarSpeedSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDpadTouchbarSpeed
+                trigger: function() { Config.chargingMatrixDpadTouchbarSpeed = !Config.chargingMatrixDpadTouchbarSpeed; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Touchbar speed control"
+                KeyNavigation.up: dpadPersistSwitch; KeyNavigation.down: tapDirectionSwitch
             }
         }
     }
@@ -154,7 +177,7 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixTapDirection = !Config.chargingMatrixTapDirection; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Touch directions"
-                KeyNavigation.up: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : dpadEnabledSwitch
+                KeyNavigation.up: Config.chargingMatrixDpadEnabled ? touchbarSpeedSwitch : dpadEnabledSwitch
                 KeyNavigation.down: Config.chargingMatrixTapDirection ? tapDirPersistSwitch : idleEnabledSwitch
             }
         }
@@ -188,7 +211,30 @@ ColumnLayout {
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Remember direction"
-                KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: idleEnabledSwitch
+                KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: swipeSpeedSwitch
+            }
+        }
+    }
+
+    // 15f. SWIPE SPEED (visible when touch directions is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixTapDirection
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Swipe speed"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: swipeSpeedSwitch
+                objectName: "swipeSpeedSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixTapSwipeSpeed
+                trigger: function() { Config.chargingMatrixTapSwipeSpeed = !Config.chargingMatrixTapSwipeSpeed; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Swipe to adjust speed"
+                KeyNavigation.up: tapDirPersistSwitch; KeyNavigation.down: idleEnabledSwitch
             }
         }
     }

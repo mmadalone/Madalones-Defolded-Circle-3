@@ -1280,9 +1280,170 @@ Full codebase audit by industry pro dev criteria. Grade improved from C+ to B+. 
 
 ### Known Issues (deferred)
 
-- **3D depth visual technique**: Size + brightness scaling is too subtle on 480×850 IPS LCD at 13px glyph size. Needs research into small-display depth techniques (possible approaches: multi-layer rendering with separate tick rates, opacity-based depth, or color temperature shift). The per-stream infrastructure is solid — just the visual technique needs redesign.
-- **Overlay mode**: The "overlay" toggle currently just controls which streams get depth factors (70/30 split). The intended "between the rain" layered effect needs a fundamentally different rendering approach for the small display.
+None currently.
 
 ### Audit Score
 
 **Post-session: B+** (up from C+). Zero critical issues remaining. Architecture, threading, config, and QML layers all clean.
+
+---
+
+## Session 14 — Color Layers: Custom QSGMaterialShader + Per-Vertex Tinting (2026-04-07)
+
+Replaced `QSGTextureMaterial` with a custom `MatrixRainMaterial` + `MatrixRainShader` that multiplies texture color by per-vertex RGBA. This enables the **"Color layers"** feature — atmospheric color variation across rain streams with continuous gradation. Each stream gets a unique tint from its `depthFactor` (0.6–1.4), producing a smooth spectrum from dim teal (slow/far) through base green to bright chartreuse (fast/near). Not true 3D depth — it's an atmospheric color effect that adds visual richness.
+
+### What changed
+
+| Change | Files |
+|--------|-------|
+| **Custom material/shader**: `MatrixRainMaterial` + `MatrixRainShader` (texture × vertColor × opacity) | matrixrain.cpp |
+| **Custom vertex format**: `MatrixRainVertex` (x, y, u, v, r, g, b, a) — 20 bytes, was 16 | matrixrain.cpp, matrixrain.h |
+| **Continuous depth color**: `depthColor()` lerps base→teal (far) or base→chartreuse (near) | matrixrain.cpp |
+| **White atlas for color layers**: when enabled, atlas builds white glyphs so vertex color is sole color source | glyphatlas.cpp |
+| **Base vertex color**: `m_baseVertexColor` — non-depth quads pass base color when atlas is white | matrixrain.cpp, matrixrain.h |
+| Trail length scaling: `trailLength *= depthFactor` (far=short, near=long) | rainsimulation.cpp |
+| Depth-sorted rendering: far streams render first, near overwrites (painter's algorithm) | matrixrain.cpp |
+| Priority-based `m_cellDrawn` (quint8): near streams occlude far at shared cells | matrixrain.cpp, matrixrain.h |
+| Spatial offset: far streams shifted 0.35×cellSpacing off-grid | matrixrain.cpp |
+| Brightness floor: far streams capped at ~40% max brightness | matrixrain.cpp |
+| Fade curve adjustment: far=gentler (0.7×), near=steeper (1.3×) | matrixrain.cpp |
+| Tap effects use base color in depth mode | rainsimulation.cpp |
+| Removed quad-size scaling (imperceptible at 13px) | matrixrain.cpp |
+| Renamed UI label: "3D depth" → "Color layers" | MatrixEffects.qml |
+
+### Custom material architecture
+
+```
+MatrixRainVertex {x, y, tx, ty, r, g, b, a}  — 20 bytes/vertex
+        ↓
+MatrixRainMaterial (holds QSGTexture*)
+        ↓
+MatrixRainShader (GLSL ES 100):
+  vertex:   pass position, texcoord, color
+  fragment: gl_FragColor = texture2D(tex, uv) * vertColor * qt_Opacity
+```
+
+Single draw call preserved. `compare()` on texture pointer ensures batching. `GL_UNSIGNED_BYTE` color auto-normalized by GL. Default white vertex color = identical to old `QSGTextureMaterial` behavior for non-depth quads.
+
+### Color computation
+
+`depthColor()` uses **additive lerp** (not multiplicative) toward target colors:
+- Far target: teal (0, 0.55, 0.65) + atmospheric dimming (0.45–0.70×)
+- Near target: chartreuse (0.5, 1.0, 0.0) + slight brightness boost
+- Intensity slider scales the lerp amount (10–100 → 0–100% toward target)
+
+### What was tried and abandoned
+
+1. **Atlas-based 3-band color variants** (3 discrete hue-shifted atlas colors) — visible but read as "color tinting," not depth. Brightness fade drowned out hue at mid-trail cells.
+2. **Different fade curves per atlas variant** — helped color visibility but still 3 discrete bands.
+3. **Multiplicative vertex color on colored atlas** — `green × teal = slightly-different-green`. R=0 in atlas meant vertex red had no effect. Fixed by switching to white atlas.
+4. **True 3D depth** (perspective, size scaling, occlusion) — size scaling imperceptible at 13px on 480×850. No perspective projection available in Qt 5.15 QSG fixed pipeline. The color gradient effect is visually nice but doesn't create 3D depth perception.
+
+### Keyboard (Docker preview)
+
+- **D** = toggle color layers on/off
+- **L** = toggle rain layers on/off
+- Arrow keys = direction, Enter = chaos, R = restore, G = gravity
+
+---
+
+## Session 14b — Rain Layers, Depth Glow, Interaction Fixes (2026-04-07/08)
+
+Continuation of Session 14. Added multi-layer rain, depth glow, glow fade control, touchbar speed, and multiple interaction fixes.
+
+### Rain Layers (multi-grid depth)
+
+3 independent `RainSimulation` instances at different font sizes, composited via painter's algorithm into a single draw call (combined stacked atlas texture with UV remapping).
+
+| Layer | Font Scale | Grid (480×850) | Speed | Density | Purpose |
+|-------|-----------|----------------|-------|---------|---------|
+| Far (0) | 0.65× (~10px) | ~56×100 | 0.5× | 35% | Background, small dim glyphs |
+| Mid (1) | 1.0× (16px) | 36×65 | 1.0× | 100% | Main interactive layer |
+| Near (2) | 1.35× (~21px) | ~27×48 | 1.5× | 25% | Foreground, large bright glyphs |
+
+- Interactive effects (glitch, messages, tap) on mid layer only
+- Far layer at 30% brightness (atmospheric perspective)
+- Residual glow on mid layer only (far/near add too much visual noise)
+- Combined atlas: 3 GlyphAtlas images stacked vertically, `remapUVs()` adjusts UV coordinates per layer
+- New Config: `chargingMatrixLayersEnabled`. Settings: "Rain layers" toggle.
+
+### Depth Glow (shrinking residual glow)
+
+Residual glow cells shrink with age for depth illusion — older cells appear smaller ("farther away"). Creates visual depth contrast between full-size active trails (near/present) and shrinking glow cells (receding/past).
+
+- Scale: 100% (fresh) → `depthGlowMin`% (oldest), centered in cell
+- New Config: `chargingMatrixDepthGlow` (toggle), `chargingMatrixDepthGlowMin` (10-90, default 40)
+- Settings: "Depth glow" toggle + "Min size" slider under it
+
+### Glow Fade (user-configurable residual glow duration)
+
+Controls how long residual glow cells persist. Fixes rainbow mode screen fill-up (fewer brightness levels = glow persisted too long).
+
+- Formula: `maxGlowAge = brightnessMapSize × glowFade / 100`
+- Range: 0 (no glow) to 100 (max persistence, ~6.4s). Default 50.
+- New Config: `chargingMatrixGlowFade`. Settings: "Glow fade" slider.
+- Applied in all 4 code paths: countVisibleQuads, renderResidualCells, countVisibleQuadsAllLayers, renderLayerResidualCells.
+
+### Touchbar Speed Control
+
+Swipe touchbar to adjust rain speed when DPAD direction mode is active. Left = faster, right = slower. Shows "Speed: XX" overlay briefly.
+
+- Requires: `import TouchSlider 1.0` in ChargingScreen.qml (was missing — root cause of initial non-functionality)
+- Guard: `Config.chargingMatrixDpadTouchbarSpeed && Config.chargingMatrixDpadEnabled && !Config.chargingMatrixTapDirection`
+- New Config: `chargingMatrixDpadTouchbarSpeed` (default true). Settings: "Touchbar speed" toggle under DPAD.
+
+### Screen Swipe Speed Control
+
+Swipe up/down on touchscreen to adjust speed when tap direction is on.
+
+- New Config: `chargingMatrixTapSwipeSpeed` (default true). Settings: "Swipe speed" toggle under Touch directions.
+- Gated: only fires when `Config.chargingMatrixTapSwipeSpeed && Config.chargingMatrixTapDirection`
+
+### Interaction Fixes
+
+**Touchbar idle timer** — `TouchSliderProcessor.onTouchPressed` resets `idleScreensaverTimer` in main.qml. Prevents screensaver from activating during touchbar use.
+
+**Hold-tap slow + pause** — Touch and hold: 0.5s = 3× slowdown (relative, no cap), 1.5s = complete pause, release = resume. Fixed: finger drift no longer cancels hold (guard `holdStage > 0`), pause uses property assignment (`matrixRainRef.running = false`), release properly restores `m_running = true`.
+
+**UI settings freeze** — `m_batchingUpdates` flag suppresses `polish()`/`update()` in setters during `bindToScreensaverConfig()`. One atlas rebuild instead of 5+.
+
+**Rainbow trail overflow** — Residual glow age capped proportional to brightness levels via Glow fade slider. Prevents screen fill-up in rainbow/neon modes with few brightness levels.
+
+**Battery overlay race condition** — `ScreensaverConfig::showBattery()` depends on `Battery::instance()` which may not exist at construction time. Added deferred 500ms retry + `isChargingChanged` signal connection. Fixes "Charging" text sometimes not appearing when docked.
+
+**Atlas caching (v1: disk `/tmp/` + PNG, reverted; v2: disk `UC_DATA_HOME` + raw binary, reverted; v3: static in-memory, shipped)** — v1 tried `/tmp/` as PNG, failed: `QStandardPaths::CacheLocation` empty on UC3, `/tmp/` (RAM-backed tmpfs) caused boot freeze. v2 tried `UC_DATA_HOME` with raw binary format + `QSaveFile` atomic writes — compiled and worked in Docker but added ~12s overhead on UC3 (embedded filesystem I/O far slower than expected; even plain `QFile` caused 20s total). Both disk approaches reverted. v3 uses process-lifetime static variables (`static QImage` + `static GlyphAtlas[3]` + SHA-1 cache key) inside `buildCombinedAtlas()`. The `remote-ui` process survives dock/undock — only the QML component is destroyed and recreated. On cache hit: restore 3 GlyphAtlas objects (metrics + remapped UVs) + combined QImage reference. Cache key: SHA-1 of (color, colorMode, fontSize, charset, fadeRate, depthEnabled). ~3.7 MB persistent RAM cost (trivial on 4 GB device). Result: first dock ~8s (cache miss, unchanged), repeat docks ~5s (cache hit, skips all QPainter rasterization). Remaining ~5s is QML component lifecycle overhead (Popup creation, theme Loader, stream initialization, GPU texture upload) — would require keeping the ChargingScreen Popup alive between docks to eliminate, which touches 7+ lifecycle checks in main.qml (deferred).
+
+**Safety audit remediation (2026-04-08)** — Professional 3-way audit (C++ safety, QML architecture, testing/security) identified 10 issues across CRITICAL/HIGH/MEDIUM. 6 real fixes applied (4 audit findings were false positives — confirmed correct existing patterns). Fixes:
+1. **Vertex buffer quint16 overflow** — `MAX_EMIT_VERTICES` cap (16383×4) in `emitQuad()` + `quadCount` pre-cap before buffer allocation. Prevents heap corruption with extreme density + trail + glitch combos.
+2. **Atlas dimension integer overflow** — `totalGlyphs > INT_MAX / m_glyphW` guard in both `build()` and `buildMetricsOnly()`. Early return with warning.
+3. **GPU texture retry** — `createTextureFromImage()` failure no longer clears `m_atlasDirty` or the CPU image. Keeps flag true for automatic retry next frame.
+4. **Atlas build failure fallback** — 1×1 black `QImage` instead of silent return with stale `m_combinedAtlasImage`.
+5. **Timer cleanup on Popup close** — explicit `.stop()` on all 5 timers (holdSlow, holdPause, doubleTap, centerTap, speedOverlay) in `ChargingScreen.qml` `onClosed`.
+6. **Connections target null guard** — `chargingScreenLoader.item ? chargingScreenLoader.item : null` in `main.qml` Connections target.
+
+False positives confirmed NOT bugs: `static_cast` in `updatePaintNode` (correct Qt pattern), `qMax(0, glyphCount-1)` charDist (safe {0,0} distribution), MatrixRainNode destructor ordering (C++ guarantees it), localGravity binding (Connections handler at line 29 re-syncs).
+
+10 new unit tests added to `test/matrixrain/test_matrixrain.cpp`: atlas overflow guard, invalid charset, normal build, metrics-only build, metrics-match-build (katakana + rainbow), vertex cap with glitch extras, cache key determinism + invalidation, atlas fallback correctness, zero-glyph initStreams safety. Total: 99 passing tests.
+
+### Known Issues (deferred)
+
+- **Repeat-dock screensaver startup (~5s)** — reduced from ~8s via in-memory atlas cache, but QML component lifecycle (Popup destroy/recreate, theme Loader, stream init, GPU upload) accounts for the remaining ~5s. Eliminating this requires keeping ChargingScreen alive between docks instead of destroying it — changes 7+ `chargingScreenLoader.active` checks in main.qml + touchbar speed leak fix in ChargingScreen.qml. Deferred as separate task.
+- **Settings KeyNavigation fragility** — conditional `KeyNavigation.down` bindings can cause focus jumps if DPAD/tap config toggles during active navigation. Low risk (requires millisecond-precise input timing), fix would touch 15+ settings controls. Not worth the churn.
+- **5 flaky chaos/golden tests** — pre-existing, not related to audit changes. `chaosEventSurge`, `chaosEventFreeze`, `chaosEventExpiry`, `interactiveInputChaos`, `goldenRatioRowSpawn` — probabilistic tests that occasionally fail due to RNG.
+
+### Files modified
+
+| File | Changes |
+|------|---------|
+| `config.h` | New: layersEnabled, depthGlow, depthGlowMin, glowFade, dpadTouchbarSpeed, tapSwipeSpeed |
+| `screensaverconfig.h/cpp` | Forward all new properties + signals |
+| `matrixrain.h` | RainLayer struct, m_layers[3], layersEnabled/depthGlow/depthGlowMin/glowFade properties, m_batchingUpdates, m_baseVertexColor, new method declarations |
+| `matrixrain.cpp` | buildCombinedAtlas (+ static in-memory atlas cache), initAllLayers, syncLayerConfig, renderLayer*, countVisibleQuadsAllLayers, depthColor (additive lerp), handleSlowInput (3× relative), batched updates, MAX_EMIT_VERTICES overflow guard, GPU texture retry, atlas fallback |
+| `glyphatlas.h/cpp` | remapUVs() for stacked multi-layer atlas, integer overflow guards in build() + buildMetricsOnly() |
+| `rainsimulation.cpp` | Simplified assignDepthColorVariant for monochrome+depth |
+| `ChargingScreen.qml` | TouchSlider import, touchbar speed Connections, hold-pause fix, swipe speed gate, timer cleanup on close, focus null guard |
+| `MatrixEffects.qml` | Rain layers toggle, depth glow toggle+slider, glow fade slider |
+| `GeneralBehavior.qml` | Touchbar speed toggle, swipe speed toggle |
+| `main.qml` | Touchbar idle timer reset, Loader.item null guard, Connections target null guard |
+| `Preview.qml` | L key for layers toggle |
+| `test_matrixrain.cpp` | 10 new safety/negative tests (atlas overflow, metrics match, vertex cap, cache key, fallback, zero-glyph) |

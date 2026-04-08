@@ -39,6 +39,9 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(qreal    density     READ density     WRITE setDensity     NOTIFY densityChanged)
     Q_PROPERTY(int      trailLength READ trailLength WRITE setTrailLength NOTIFY trailLengthChanged)
     Q_PROPERTY(bool     glow        READ glow        WRITE setGlow        NOTIFY glowChanged)
+    Q_PROPERTY(int      glowFade    READ glowFade    WRITE setGlowFade    NOTIFY glowFadeChanged)
+    Q_PROPERTY(bool     depthGlow   READ depthGlow   WRITE setDepthGlow   NOTIFY depthGlowChanged)
+    Q_PROPERTY(int      depthGlowMin READ depthGlowMin WRITE setDepthGlowMin NOTIFY depthGlowMinChanged)
     Q_PROPERTY(QString  direction    READ direction    WRITE setDirection    NOTIFY directionChanged)
     Q_PROPERTY(bool     invertTrail  READ invertTrail  WRITE setInvertTrail  NOTIFY invertTrailChanged)
     /// @}
@@ -110,11 +113,16 @@ class MatrixRainItem : public QQuickItem {
     Q_PROPERTY(bool     subliminalFlash     READ subliminalFlash     WRITE setSubliminalFlash     NOTIFY subliminalFlashChanged)
     /// @}
 
-    /// @name 3D depth parallax
+    /// @name Color layers (per-vertex depth tinting)
     /// @{
     Q_PROPERTY(bool depthEnabled   READ depthEnabled   WRITE setDepthEnabled   NOTIFY depthEnabledChanged)
     Q_PROPERTY(int  depthIntensity READ depthIntensity WRITE setDepthIntensity NOTIFY depthIntensityChanged)
     Q_PROPERTY(bool depthOverlay   READ depthOverlay   WRITE setDepthOverlay   NOTIFY depthOverlayChanged)
+    /// @}
+
+    /// @name Rain layers (multi-grid depth)
+    /// @{
+    Q_PROPERTY(bool layersEnabled READ layersEnabled WRITE setLayersEnabled NOTIFY layersEnabledChanged)
     /// @}
 
     /// @name Runtime state
@@ -138,6 +146,9 @@ class MatrixRainItem : public QQuickItem {
     int     trailLength() const { return m_sim.trailLength(); }
     QString charset()     const { return m_sim.charset(); }
     bool    glow()        const { return m_sim.glow(); }
+    int     glowFade()    const { return m_glowFade; }
+    bool    depthGlow()   const { return m_depthGlow; }
+    int     depthGlowMin() const { return m_depthGlowMin; }
     bool    glitch()      const { return m_sim.glitch(); }
     int     glitchRate()  const { return m_sim.glitchRate(); }
     bool    glitchFlash()   const { return m_sim.glitchFlash(); }
@@ -184,6 +195,7 @@ class MatrixRainItem : public QQuickItem {
     bool    subliminalOverlay()  const { return m_sim.subliminalOverlay(); }
     bool    subliminalFlash()    const { return m_sim.subliminalFlash(); }
     bool    depthEnabled()   const { return m_sim.depthEnabled(); }
+    bool    layersEnabled()  const { return m_layersEnabled; }
     int     depthIntensity() const { return m_sim.depthIntensity(); }
     bool    depthOverlay()   const { return m_sim.depthOverlay(); }
     bool    gravityMode()      const { return m_sim.gravityMode(); }
@@ -252,6 +264,9 @@ public:
     // Trivial simulation-forwarding setters (inline — guard + emit)
     void setTrailLength(int t)  { if (m_sim.setTrailLength(t)) { update(); emit trailLengthChanged(); } }
     void setGlow(bool g)        { if (m_sim.setGlow(g)) { update(); emit glowChanged(); } }
+    void setGlowFade(int v)     { v = qBound(0, v, 100); if (m_glowFade != v) { m_glowFade = v; update(); emit glowFadeChanged(); } }
+    void setDepthGlow(bool v)   { if (m_depthGlow != v) { m_depthGlow = v; update(); emit depthGlowChanged(); } }
+    void setDepthGlowMin(int v) { v = qBound(10, v, 90); if (m_depthGlowMin != v) { m_depthGlowMin = v; update(); emit depthGlowMinChanged(); } }
     void setInvertTrail(bool v) { if (m_sim.setInvertTrail(v)) { update(); emit invertTrailChanged(); } }
     void setGlitch(bool g)      { if (m_sim.setGlitch(g)) emit glitchChanged(); }
     void setGlitchRate(int r)   { if (m_sim.setGlitchRate(r)) emit glitchRateChanged(); }
@@ -296,8 +311,8 @@ public:
     void setSubliminalStream(bool v)  { if (m_sim.setSubliminalStream(v)) emit subliminalStreamChanged(); }
     void setSubliminalOverlay(bool v) { if (m_sim.setSubliminalOverlay(v)) emit subliminalOverlayChanged(); }
     void setSubliminalFlash(bool v)   { if (m_sim.setSubliminalFlash(v)) emit subliminalFlashChanged(); }
-    void setDepthEnabled(bool v)   { if (m_sim.setDepthEnabled(v)) { m_needsReinit = true; update(); emit depthEnabledChanged(); } }
-    void setDepthIntensity(int v)  { if (m_sim.setDepthIntensity(v)) { m_needsReinit = true; update(); emit depthIntensityChanged(); } }
+    void setDepthEnabled(bool v)   { if (m_sim.setDepthEnabled(v)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit depthEnabledChanged(); } }
+    void setDepthIntensity(int v)  { if (m_sim.setDepthIntensity(v)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit depthIntensityChanged(); } }
     void setDepthOverlay(bool v)   { if (m_sim.setDepthOverlay(v)) { m_needsReinit = true; update(); emit depthOverlayChanged(); } }
 
  signals:
@@ -309,6 +324,9 @@ public:
     void fontSizeChanged();
     void charsetChanged();
     void glowChanged();
+    void glowFadeChanged();
+    void depthGlowChanged();
+    void depthGlowMinChanged();
     void runningChanged();
     void displayOffChanged();
     void glitchChanged();
@@ -361,6 +379,7 @@ public:
     void autoRotateSpeedChanged();
     void autoRotateBendChanged();
     void depthEnabledChanged();
+    void layersEnabledChanged();
     void depthIntensityChanged();
     void depthOverlayChanged();
 
@@ -405,15 +424,15 @@ public:
     // updatePaintNode helpers (render thread)
     void uploadAtlasTexture(QSGNode *node);
     int  countVisibleQuads();
-    void renderStreamTrails(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+    void renderStreamTrails(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
                             float colSp, float rowSp, float gw, float gh);
-    void renderGlitchTrails(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+    void renderGlitchTrails(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
                             float colSp, float rowSp, float gw, float gh) const;
-    void renderMessageFlash(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+    void renderMessageFlash(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
                             float colSp, float rowSp, float gw, float gh) const;
-    void renderMessageOverlay(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+    void renderMessageOverlay(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
                               float gw, float gh) const;
-    void renderResidualCells(QSGGeometry::TexturedPoint2D *verts, quint16 *ixBuf, int &vi, int &ii,
+    void renderResidualCells(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
                              float colSp, float rowSp, float gw, float gh) const;
 
     // interactiveInput handlers
@@ -435,8 +454,42 @@ public:
                     int colorVariants, float colSp, float rowSp);
 
     // State
-    QVector<bool> m_cellDrawn;  // per-cell dedup for stream trail rendering (reused, not per-frame alloc)
+    QVector<quint8> m_cellDrawn;  // per-cell depth priority (0=undrawn, 1=far, 2=normal, 3=near)
+    quint32 m_baseVertexColor{0xFFFFFFFF};  // packed RGBA for non-depth quads (white when depth off, base color when on)
+
+    // Multi-layer rain (3 independent simulations at different font sizes)
+    static constexpr int LAYER_COUNT = 3;
+    struct RainLayer {
+        RainSimulation sim;
+        GlyphAtlas     atlas;
+        QVector<quint8> cellDrawn;
+        float fontScale{1.0f};
+        float speedScale{1.0f};
+        float densityScale{1.0f};
+        int   trailPct{100};         // percentage of base trailLength
+        float brightnessMul{1.0f};   // atmospheric perspective (far=0.5, near=1.0)
+        bool  isInteractive{false};  // only mid layer gets glitch/message/tap
+    };
+    RainLayer m_layers[LAYER_COUNT];
+    bool  m_layersEnabled{false};
+    bool  m_layersNeedRebuild{false};
+    QImage m_combinedAtlasImage;
+
+    void setLayersEnabled(bool v);
+    void buildCombinedAtlas();
+    void initAllLayers();
+    int  countVisibleQuadsAllLayers();
+    void renderLayerStreamTrails(int layerIdx, struct MatrixRainVertex *verts, quint16 *ixBuf,
+                                 int &vi, int &ii);
+    void renderLayerResidualCells(int layerIdx, struct MatrixRainVertex *verts, quint16 *ixBuf,
+                                  int &vi, int &ii);
+    void syncLayerConfig();
+
     QTimer m_timer;
+    int    m_glowFade{50};             // residual glow duration (0=none, 100=max persistence)
+    bool   m_depthGlow{false};        // glow cells shrink with age for depth illusion
+    int    m_depthGlowMin{40};        // minimum size % at oldest age (10-90)
+    bool   m_batchingUpdates{false};   // suppress polish()/update() during bulk config sync
     bool   m_needsAtlasRebuild{true};  // atlas needs full rebuild (deferred to main thread polish)
     bool   m_atlasDirty{false};        // atlas QImage ready, needs GPU upload
     bool   m_needsReinit{true};

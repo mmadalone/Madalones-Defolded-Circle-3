@@ -77,7 +77,8 @@ QString GlyphAtlas::charsetString(const QString &charset) {
 }
 
 void GlyphAtlas::build(const QColor &color, const QString &colorMode,
-                       int fontSize, const QString &charset, qreal fadeRate) {
+                       int fontSize, const QString &charset, qreal fadeRate,
+                       bool depthEnabled, int depthIntensity) {
     QString chars = charsetString(charset);
     m_glyphCount = chars.length();
 
@@ -135,9 +136,21 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
             colors.append(QColor::fromHslF(h, 1.0, l));
         }
     } else {
-        m_colorVariants = 1;
         m_brightnessLevels = SINGLE_BRIGHTNESS;
-        colors = { resolveColor(colorMode, color) };
+        QColor base = resolveColor(colorMode, color);
+
+        m_colorVariants = 1;
+        m_hasDepthVariants = depthEnabled;
+        m_depthVariantBase = 0;
+        Q_UNUSED(depthIntensity);
+        if (depthEnabled) {
+            // White atlas: per-vertex color provides all tinting (depth + base hue).
+            // texture(white) × vertColor = vertColor.  This allows the custom shader
+            // to produce any color, not just attenuated versions of the base.
+            colors = { Qt::white };
+        } else {
+            colors = { base };
+        }
     }
 
     // Message charset: append ASCII glyphs for non-ASCII charsets so messages are always readable
@@ -150,8 +163,19 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
     }
     int totalGlyphs = m_glyphCount + msgGlyphCount;
 
+    // Integer overflow guard: dimensions must fit in int and produce a viable QImage
+    int rows = m_colorVariants * m_brightnessLevels;
+    if (totalGlyphs <= 0 || m_glyphW <= 0 || m_glyphH <= 0 || rows <= 0
+        || totalGlyphs > INT_MAX / m_glyphW || rows > INT_MAX / m_glyphH) {
+        qCWarning(lcScreensaver) << "Atlas dimension overflow:" << totalGlyphs << "glyphs"
+                                 << m_glyphW << "x" << m_glyphH << "px," << rows << "rows";
+        return;
+    }
+
     int atlasW = totalGlyphs * m_glyphW;
-    int atlasH = m_colorVariants * m_brightnessLevels * m_glyphH;
+    int atlasH = rows * m_glyphH;
+    m_atlasW = atlasW;
+    m_atlasH = atlasH;
 
     m_atlasImage = QImage(atlasW, atlasH, QImage::Format_ARGB32_Premultiplied);
     if (m_atlasImage.isNull()) {
@@ -209,5 +233,109 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
         int level = qBound(0, static_cast<int>((1.0f - brightness) * (m_brightnessLevels - 1) + 0.5f),
                            m_brightnessLevels - 1);
         m_brightnessMap[d] = level;
+    }
+}
+
+void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
+                                  int fontSize, const QString &charset, qreal fadeRate,
+                                  bool depthEnabled, int depthIntensity) {
+    // Same as build() but skips QImage allocation + QPainter rasterization.
+    // Computes: glyph metrics, color variant count, UV coordinates, brightness map.
+    // Used when the combined atlas image is loaded from disk cache.
+    QString chars = charsetString(charset);
+    m_glyphCount = chars.length();
+
+    QFont font;
+    if (charset == "katakana" && s_cjkFontLoaded) {
+        font.setFamily("Noto Sans Mono CJK JP");
+    } else {
+        font.setFamily("monospace");
+        font.setStyleHint(QFont::Monospace);
+    }
+    font.setPixelSize(fontSize);
+
+    QFontMetrics fm(font);
+    m_glyphH = qMax(fm.height(), fontSize);
+    m_glyphW = m_glyphH;
+    static constexpr float GRID_STEP_RATIO    = 0.85f;
+    static constexpr float MESSAGE_STEP_RATIO = 0.55f;
+    m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
+    m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
+    m_messageStepW = qMax(1, static_cast<int>(fontSize * MESSAGE_STEP_RATIO));
+
+    // Color variants — same logic as build()
+    if (colorMode == "rainbow") {
+        m_colorVariants = RAINBOW_HUES; m_brightnessLevels = RAINBOW_BRIGHTNESS;
+    } else if (colorMode == "rainbow_gradient") {
+        m_colorVariants = RAINBOW_PLUS_HUES; m_brightnessLevels = RAINBOW_PLUS_BRIGHTNESS;
+    } else if (colorMode == "neon") {
+        m_colorVariants = RAINBOW_PLUS_HUES; m_brightnessLevels = RAINBOW_PLUS_BRIGHTNESS;
+    } else {
+        m_brightnessLevels = SINGLE_BRIGHTNESS;
+        m_colorVariants = 1;
+        m_hasDepthVariants = depthEnabled;
+        m_depthVariantBase = 0;
+    }
+    Q_UNUSED(color); Q_UNUSED(depthIntensity);
+
+    int msgGlyphCount = 0;
+    if (charset != "ascii") {
+        m_messageGlyphOffset = m_glyphCount;
+        msgGlyphCount = 37;  // CHARS_MESSAGE length
+    } else {
+        m_messageGlyphOffset = 0;
+    }
+    int totalGlyphs = m_glyphCount + msgGlyphCount;
+
+    // Integer overflow guard (mirrors build())
+    int rows = m_colorVariants * m_brightnessLevels;
+    if (totalGlyphs <= 0 || m_glyphW <= 0 || m_glyphH <= 0 || rows <= 0
+        || totalGlyphs > INT_MAX / m_glyphW || rows > INT_MAX / m_glyphH) {
+        qCWarning(lcScreensaver) << "Atlas metrics overflow:" << totalGlyphs << "glyphs"
+                                 << m_glyphW << "x" << m_glyphH << "px," << rows << "rows";
+        return;
+    }
+
+    int atlasW = totalGlyphs * m_glyphW;
+    int atlasH = rows * m_glyphH;
+    m_atlasW = atlasW;
+    m_atlasH = atlasH;
+
+    // Compute UV coordinates (same formula as build, without actual rendering)
+    m_glyphUVs.resize(totalGlyphs * m_brightnessLevels * m_colorVariants);
+    for (int cv = 0; cv < m_colorVariants; ++cv) {
+        for (int b = 0; b < m_brightnessLevels; ++b) {
+            int row = cv * m_brightnessLevels + b;
+            for (int g = 0; g < totalGlyphs; ++g) {
+                int x = g * m_glyphW, y = row * m_glyphH;
+                int idx = g * m_brightnessLevels * m_colorVariants + cv * m_brightnessLevels + b;
+                m_glyphUVs[idx] = QRectF(
+                    qreal(x) / atlasW, qreal(y) / atlasH,
+                    qreal(m_glyphW) / atlasW, qreal(m_glyphH) / atlasH);
+            }
+        }
+    }
+
+    // Brightness map
+    m_brightnessMap.resize(BRIGHTNESS_MAP_SIZE);
+    for (int d = 0; d < BRIGHTNESS_MAP_SIZE; ++d) {
+        float brightness = std::pow(static_cast<float>(fadeRate), static_cast<float>(d));
+        int level = qBound(0, static_cast<int>((1.0f - brightness) * (m_brightnessLevels - 1) + 0.5f),
+                           m_brightnessLevels - 1);
+        m_brightnessMap[d] = level;
+    }
+
+    // No QImage created — atlasImage() will be null
+    m_atlasImage = QImage();
+}
+
+void GlyphAtlas::remapUVs(int yPixelOffset, int combinedWidth, int combinedHeight) {
+    if (combinedWidth <= 0 || combinedHeight <= 0) return;
+    qreal xScale = qreal(m_atlasW) / combinedWidth;
+    qreal yOff   = qreal(yPixelOffset) / combinedHeight;
+    qreal yScale = qreal(m_atlasH) / combinedHeight;
+    for (auto &uv : m_glyphUVs) {
+        uv = QRectF(uv.x() * xScale, yOff + uv.y() * yScale,
+                     uv.width() * xScale, uv.height() * yScale);
     }
 }

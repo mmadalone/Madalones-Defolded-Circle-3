@@ -136,6 +136,9 @@ class Config : public QObject {
     Q_PROPERTY(int chargingMatrixAutoRotateSpeed READ getChargingMatrixAutoRotateSpeed WRITE setChargingMatrixAutoRotateSpeed NOTIFY chargingMatrixAutoRotateSpeedChanged)
     Q_PROPERTY(int chargingMatrixAutoRotateBend READ getChargingMatrixAutoRotateBend WRITE setChargingMatrixAutoRotateBend NOTIFY chargingMatrixAutoRotateBendChanged)
     Q_PROPERTY(bool chargingMatrixInvertTrail READ getChargingMatrixInvertTrail WRITE setChargingMatrixInvertTrail NOTIFY chargingMatrixInvertTrailChanged)
+    Q_PROPERTY(int chargingMatrixGlowFade READ getChargingMatrixGlowFade WRITE setChargingMatrixGlowFade NOTIFY chargingMatrixGlowFadeChanged)
+    Q_PROPERTY(bool chargingMatrixDepthGlow READ getChargingMatrixDepthGlow WRITE setChargingMatrixDepthGlow NOTIFY chargingMatrixDepthGlowChanged)
+    Q_PROPERTY(int chargingMatrixDepthGlowMin READ getChargingMatrixDepthGlowMin WRITE setChargingMatrixDepthGlowMin NOTIFY chargingMatrixDepthGlowMinChanged)
     Q_PROPERTY(QString chargingMatrixMessages READ getChargingMatrixMessages WRITE setChargingMatrixMessages NOTIFY chargingMatrixMessagesChanged)
     Q_PROPERTY(int chargingMatrixMessageInterval READ getChargingMatrixMessageInterval WRITE setChargingMatrixMessageInterval NOTIFY chargingMatrixMessageIntervalChanged)
     Q_PROPERTY(bool chargingMatrixMessageRandom READ getChargingMatrixMessageRandom WRITE setChargingMatrixMessageRandom NOTIFY chargingMatrixMessageRandomChanged)
@@ -174,11 +177,14 @@ class Config : public QObject {
     Q_PROPERTY(bool chargingBatteryDockedOnly READ getChargingBatteryDockedOnly WRITE setChargingBatteryDockedOnly NOTIFY chargingBatteryDockedOnlyChanged)
     Q_PROPERTY(bool chargingMatrixDpadEnabled READ getChargingMatrixDpadEnabled WRITE setChargingMatrixDpadEnabled NOTIFY chargingMatrixDpadEnabledChanged)
     Q_PROPERTY(bool chargingMatrixDpadPersist READ getChargingMatrixDpadPersist WRITE setChargingMatrixDpadPersist NOTIFY chargingMatrixDpadPersistChanged)
+    Q_PROPERTY(bool chargingMatrixDpadTouchbarSpeed READ getChargingMatrixDpadTouchbarSpeed WRITE setChargingMatrixDpadTouchbarSpeed NOTIFY chargingMatrixDpadTouchbarSpeedChanged)
     Q_PROPERTY(bool chargingMatrixTapDirection READ getChargingMatrixTapDirection WRITE setChargingMatrixTapDirection NOTIFY chargingMatrixTapDirectionChanged)
+    Q_PROPERTY(bool chargingMatrixTapSwipeSpeed READ getChargingMatrixTapSwipeSpeed WRITE setChargingMatrixTapSwipeSpeed NOTIFY chargingMatrixTapSwipeSpeedChanged)
     Q_PROPERTY(QString chargingMatrixLastDirection READ getChargingMatrixLastDirection WRITE setChargingMatrixLastDirection NOTIFY chargingMatrixLastDirectionChanged)
     Q_PROPERTY(bool chargingMatrixDepthEnabled READ getChargingMatrixDepthEnabled WRITE setChargingMatrixDepthEnabled NOTIFY chargingMatrixDepthEnabledChanged)
     Q_PROPERTY(int chargingMatrixDepthIntensity READ getChargingMatrixDepthIntensity WRITE setChargingMatrixDepthIntensity NOTIFY chargingMatrixDepthIntensityChanged)
     Q_PROPERTY(bool chargingMatrixDepthOverlay READ getChargingMatrixDepthOverlay WRITE setChargingMatrixDepthOverlay NOTIFY chargingMatrixDepthOverlayChanged)
+    Q_PROPERTY(bool chargingMatrixLayersEnabled READ getChargingMatrixLayersEnabled WRITE setChargingMatrixLayersEnabled NOTIFY chargingMatrixLayersEnabledChanged)
     Q_PROPERTY(bool chargingMatrixMessagesEnabled READ getChargingMatrixMessagesEnabled WRITE setChargingMatrixMessagesEnabled NOTIFY chargingMatrixMessagesEnabledChanged)
 
  public:
@@ -367,11 +373,17 @@ class Config : public QObject {
     CFG_BOOL(ChargingBatteryDockedOnly,         "charging/batteryDockedOnly",       true,             chargingBatteryDockedOnlyChanged)
     CFG_BOOL(ChargingMatrixDpadEnabled,         "charging/matrixDpadEnabled",       true,             chargingMatrixDpadEnabledChanged)
     CFG_BOOL(ChargingMatrixDpadPersist,         "charging/matrixDpadPersist",       true,             chargingMatrixDpadPersistChanged)
+    CFG_BOOL(ChargingMatrixDpadTouchbarSpeed,   "charging/matrixDpadTouchbarSpeed", true,             chargingMatrixDpadTouchbarSpeedChanged)
     CFG_BOOL(ChargingMatrixTapDirection,        "charging/matrixTapDirection",      false,            chargingMatrixTapDirectionChanged)
+    CFG_BOOL(ChargingMatrixTapSwipeSpeed,       "charging/matrixTapSwipeSpeed",     true,             chargingMatrixTapSwipeSpeedChanged)
     CFG_STRING(ChargingMatrixLastDirection,      "charging/matrixLastDirection",     "",               chargingMatrixLastDirectionChanged)
+    CFG_INT(ChargingMatrixGlowFade,             "charging/matrixGlowFade",          50,               chargingMatrixGlowFadeChanged)
+    CFG_BOOL(ChargingMatrixDepthGlow,           "charging/matrixDepthGlow",         false,            chargingMatrixDepthGlowChanged)
+    CFG_INT(ChargingMatrixDepthGlowMin,         "charging/matrixDepthGlowMin",      40,               chargingMatrixDepthGlowMinChanged)
     CFG_BOOL(ChargingMatrixDepthEnabled,        "charging/matrixDepthEnabled",      false,            chargingMatrixDepthEnabledChanged)
     CFG_INT(ChargingMatrixDepthIntensity,       "charging/matrixDepthIntensity",    50,               chargingMatrixDepthIntensityChanged)
     CFG_BOOL(ChargingMatrixDepthOverlay,        "charging/matrixDepthOverlay",      false,            chargingMatrixDepthOverlayChanged)
+    CFG_BOOL(ChargingMatrixLayersEnabled,      "charging/matrixLayersEnabled",     false,            chargingMatrixLayersEnabledChanged)
     enum WakeupSensitivities { off = 0, low = 1, medium = 2, high = 3 };
     Q_ENUM(WakeupSensitivities)
 
@@ -576,11 +588,17 @@ class Config : public QObject {
     void chargingBatteryDockedOnlyChanged();
     void chargingMatrixDpadEnabledChanged();
     void chargingMatrixDpadPersistChanged();
+    void chargingMatrixDpadTouchbarSpeedChanged();
     void chargingMatrixTapDirectionChanged();
+    void chargingMatrixTapSwipeSpeedChanged();
     void chargingMatrixLastDirectionChanged();
+    void chargingMatrixGlowFadeChanged();
+    void chargingMatrixDepthGlowChanged();
+    void chargingMatrixDepthGlowMinChanged();
     void chargingMatrixDepthEnabledChanged();
     void chargingMatrixDepthIntensityChanged();
     void chargingMatrixDepthOverlayChanged();
+    void chargingMatrixLayersEnabledChanged();
 
  public slots:
     void onCoreConnected();

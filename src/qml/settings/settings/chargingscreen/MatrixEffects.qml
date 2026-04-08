@@ -74,14 +74,36 @@ ColumnLayout {
                 trigger: function() { Config.chargingMatrixGlow = !Config.chargingMatrixGlow; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Head glow"
-                KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: depthEnabledSwitch
+                KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: glowFadeSlider
             }
         }
     }
 
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    // GLOW FADE (residual glow duration)
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text {
+            Layout.fillWidth: true; color: colors.light
+            text: qsTr("Glow fade"); font: fonts.primaryFont(26)
+        }
+        Components.Slider {
+            id: glowFadeSlider
+            objectName: "glowFadeSlider"
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            height: 60; Layout.fillWidth: true
+            from: 0; to: 100; stepSize: 5
+            value: Config.chargingMatrixGlowFade; live: true
+            onMoved: Config.chargingMatrixGlowFade = value
+            onUserInteractionEnded: Config.chargingMatrixGlowFade = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Glow fade " + value
+            KeyNavigation.up: glowSwitch; KeyNavigation.down: depthGlowSwitch
+        }
+    }
 
-    // 3D DEPTH PARALLAX
+    // DEPTH GLOW (glow cells shrink with age for depth illusion)
     ColumnLayout {
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
@@ -90,7 +112,86 @@ ColumnLayout {
             spacing: 10
             Text {
                 Layout.fillWidth: true; color: colors.offwhite
-                text: qsTr("3D depth"); font: fonts.primaryFont(30)
+                text: qsTr("Depth glow"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: depthGlowSwitch
+                objectName: "depthGlowSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixDepthGlow
+                trigger: function() { Config.chargingMatrixDepthGlow = !Config.chargingMatrixDepthGlow; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Depth glow"
+                KeyNavigation.up: glowFadeSlider; KeyNavigation.down: depthGlowMinSlider
+            }
+        }
+    }
+
+    // DEPTH GLOW MIN SIZE (visible when depth glow is on)
+    ColumnLayout {
+        visible: Config.chargingMatrixDepthGlow
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text {
+            Layout.fillWidth: true; color: colors.light
+            text: qsTr("Min size"); font: fonts.primaryFont(26)
+        }
+        Components.Slider {
+            id: depthGlowMinSlider
+            objectName: "depthGlowMinSlider"
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            height: 60; Layout.fillWidth: true
+            from: 10; to: 90; stepSize: 5
+            value: Config.chargingMatrixDepthGlowMin; live: true
+            onMoved: Config.chargingMatrixDepthGlowMin = value
+            onUserInteractionEnded: Config.chargingMatrixDepthGlowMin = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Minimum glow size " + value + "%"
+            KeyNavigation.up: depthGlowSwitch; KeyNavigation.down: layersEnabledSwitch
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // RAIN LAYERS (multi-grid depth)
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("Rain layers"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: layersEnabledSwitch
+                objectName: "layersEnabledSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: Config.chargingMatrixLayersEnabled
+                trigger: function() { Config.chargingMatrixLayersEnabled = !Config.chargingMatrixLayersEnabled; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Rain layers"
+                KeyNavigation.up: glowSwitch; KeyNavigation.down: depthEnabledSwitch
+            }
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // COLOR LAYERS
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("Color layers"); font: fonts.primaryFont(30)
             }
             Components.Switch {
                 id: depthEnabledSwitch
@@ -100,13 +201,13 @@ ColumnLayout {
                 checked: Config.chargingMatrixDepthEnabled
                 trigger: function() { Config.chargingMatrixDepthEnabled = !Config.chargingMatrixDepthEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
-                Accessible.name: "3D depth"
+                Accessible.name: "Color layers"
                 KeyNavigation.up: glowSwitch; KeyNavigation.down: depthIntensitySlider
             }
         }
     }
 
-    // 3D DEPTH INTENSITY (visible when depth is on)
+    // COLOR LAYERS INTENSITY (visible when depth is on)
     ColumnLayout {
         visible: Config.chargingMatrixDepthEnabled
         Layout.alignment: Qt.AlignCenter
@@ -131,7 +232,7 @@ ColumnLayout {
         }
     }
 
-    // 3D DEPTH OVERLAY MODE (visible when depth is on)
+    // COLOR LAYERS OVERLAY MODE (visible when depth is on)
     ColumnLayout {
         visible: Config.chargingMatrixDepthEnabled
         Layout.alignment: Qt.AlignCenter

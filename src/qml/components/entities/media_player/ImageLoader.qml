@@ -35,7 +35,7 @@ Item {
         failed = false;
         retryCount = 0;
 
-        if (url == prevUrl) {
+        if (url == prevUrl && image2.source != "") {
             return;
         }
 

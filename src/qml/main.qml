@@ -492,6 +492,20 @@ ApplicationWindow {
             }
         }
 
+        // Touchbar (physical slider) resets idle timer.
+        // TouchSliderProcessor bypasses Qt's event system — its signals don't reach
+        // InputController.touchDetected(). Direct connection ensures slider interaction
+        // prevents screensaver from activating during use.
+        Connections {
+            target: TouchSliderProcessor
+            ignoreUnknownSignals: true
+            function onTouchPressed() {
+                if (idleScreensaverTimer.running) {
+                    idleScreensaverTimer.restart();
+                }
+            }
+        }
+
         // Idle screensaver timer — activates screensaver after N seconds of inactivity when undocked
         Timer {
             id: idleScreensaverTimer
@@ -546,7 +560,7 @@ ApplicationWindow {
                         chargingScreenLoader.active = true;
                         SoundEffects.play(SoundEffects.BatteryCharge);
                     } else {
-                        if (chargingScreenLoader.active) {
+                        if (chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
                         }
                         if (Config.chargingIdleEnabled) {
@@ -590,7 +604,7 @@ ApplicationWindow {
             }
 
             Connections {
-                target: chargingScreenLoader.item
+                target: chargingScreenLoader.item ? chargingScreenLoader.item : null
                 ignoreUnknownSignals: true
 
                 function onClosed() {

@@ -57,7 +57,7 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
     s.flashFrames = 0;
 
     std::uniform_int_distribution<int> lenDist(qMax(4, m_trailLength / 2), m_trailLength);
-    s.trailLength = lenDist(m_rng);
+    int baseLen = lenDist(m_rng);
 
     // 3D depth parallax: per-stream depth factor for size/brightness scaling
     if (m_depthEnabled) {
@@ -71,6 +71,12 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
     } else {
         s.depthFactor = 1.0f;
     }
+
+    // Depth trail scaling: far streams shorter/sparser, near streams longer/denser
+    if (m_depthEnabled) {
+        baseLen = qBound(4, static_cast<int>(baseLen * s.depthFactor), MAX_TRAIL_HISTORY - 1);
+    }
+    s.trailLength = baseLen;
 
     // colorVariant assigned by initStreams() with golden ratio distribution — preserve on respawn
 
@@ -193,6 +199,7 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
     m_cellAge.fill(CELL_AGE_MAX);  // all cells start dark (no residual glow)
     m_message.resize(m_gridCols, m_gridRows);
     m_glitch.resize(m_gridCols, m_gridRows);
+    m_depthVariantBase = atlas.hasDepthVariants() ? atlas.depthVariantBase() : 0;
 
     // Fill grid with random glyphs
     std::uniform_int_distribution<int> charDist(0, qMax(0, atlas.glyphCount() - 1));
@@ -203,11 +210,12 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
     for (int i = 0; i < numStreams; ++i) {
         auto &s = m_streams[i];
 
-        // Golden ratio color distribution: maximally spread hues across adjacent streams
-        if (atlas.colorVariants() > 1)
+        // Golden ratio color distribution: maximally spread hues across adjacent streams.
+        // When depth is enabled, colorVariant is reassigned by assignDepthColorVariant after spawn.
+        if (!m_depthEnabled && atlas.colorVariants() > 1)
             s.colorVariant = static_cast<int>(i * GOLDEN_RATIO * atlas.colorVariants()) % atlas.colorVariants();
         else
-            s.colorVariant = 0;
+            s.colorVariant = atlas.hasDepthVariants() ? atlas.depthVariantBase() : 0;
 
         // Spread streams across BOTH axes so any direction (including gravity
         // transitions) has full coverage. Sequential modulo guarantees every
@@ -216,6 +224,7 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
         s.headRow = i % qMax(1, m_gridRows);
 
         spawnStream(s, true);  // stagger for variety
+        assignDepthColorVariant(s, atlas);
     }
 
     qCInfo(lcScreensaver) << "initStreams:" << m_gridCols << "x" << m_gridRows
@@ -246,8 +255,8 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
             s.pauseTicks--;
             if (s.pauseTicks <= 0) {
                 // For cardinal, preserve fixed axis position; spawnStream handles offset
-                s.trailLength = lenDist(m_rng);
                 spawnStream(s, false);
+                assignDepthColorVariant(s, atlas);
             }
             continue;
         }
@@ -394,6 +403,23 @@ bool RainSimulation::setDepthOverlay(bool v) {
     return true;
 }
 
+void RainSimulation::assignDepthColorVariant(StreamState &s, const GlyphAtlas &atlas) {
+    if (!m_depthEnabled) return;
+
+    // Monochrome: single variant, depth tint is per-vertex in the renderer.
+    // Rainbow/neon: bias hue index by depth.
+    if (atlas.colorVariants() > 1) {
+        // Rainbow/neon: bias hue index by depth toward cool (far) or warm (near).
+        // Cool hues are in the upper half of the hue wheel, warm in the lower.
+        int cv = atlas.colorVariants();
+        int baseIdx = static_cast<int>(m_rng() % cv);
+        int maxBias = cv / 4;  // quarter of hue wheel
+        float depthNorm = (s.depthFactor - 1.0f) / 0.4f;  // approx [-1, +1]
+        int bias = static_cast<int>(depthNorm * maxBias);
+        s.colorVariant = ((baseIdx - bias) % cv + cv) % cv;
+    }
+}
+
 bool RainSimulation::setGravityMode(bool g) {
     if (m_gravityMode == g) return false;
     m_gravityMode = g;
@@ -451,6 +477,9 @@ static const struct { int dx; int dy; } s_tapDirs[] = {
 void RainSimulation::tapBurst(int col, int row, int colorVariants) {
     int count = qBound(10, m_tapBurstCount, 50);
     int len = qBound(2, m_tapBurstLength, 15);
+    // Depth mode: tap effects use normal/base color, not random depth variant
+    int tapCV = (m_depthVariantBase > 0) ? m_depthVariantBase
+              : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     int trailCount = count - count / 4 + randomInt(count / 2 + 1);
     for (int i = 0; i < trailCount && m_glitch.trailCount() < 300; ++i) {
         GlitchTrail gt;
@@ -459,7 +488,7 @@ void RainSimulation::tapBurst(int col, int row, int colorVariants) {
         gt.col = col; gt.row = row;
         gt.length = qMax(2, len / 2) + randomInt(len);
         gt.framesLeft = gt.length + 6;
-        gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+        gt.colorVariant = tapCV;
         m_glitch.appendTrail(gt);
     }
 }
@@ -472,7 +501,8 @@ void RainSimulation::tapSquareBurst(int col, int row, int colorVariants) {
     p.centerRow = row;
     p.currentSize = 0;
     p.maxSize = maxSz + randomInt(qMax(1, maxSz));
-    p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    p.colorVariant = (m_depthVariantBase > 0) ? m_depthVariantBase
+                   : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     p.circular = false;
     m_glitch.appendPulse(p);
 }
@@ -484,7 +514,8 @@ void RainSimulation::tapRipple(int col, int row, int colorVariants) {
     p.centerRow = row;
     p.currentSize = 0;
     p.maxSize = 6 + randomInt(8);  // radius 6-13
-    p.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    p.colorVariant = (m_depthVariantBase > 0) ? m_depthVariantBase
+                   : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     p.circular = true;
     m_glitch.appendPulse(p);
 }
@@ -493,6 +524,8 @@ void RainSimulation::tapWipe(int col, int row, int colorVariants) {
     Q_UNUSED(row);
     // Spawn a vertical column of short trails all traveling right (or left if tap is right of center)
     int dir = (col < m_gridCols / 2) ? 1 : -1;
+    int tapCV = (m_depthVariantBase > 0) ? m_depthVariantBase
+              : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     int height = qMin(m_gridRows, 40);
     int startRow = qMax(0, (m_gridRows - height) / 2);
     for (int r = startRow; r < startRow + height && m_glitch.trailCount() < 300; ++r) {
@@ -503,7 +536,7 @@ void RainSimulation::tapWipe(int col, int row, int colorVariants) {
         gt.dx = dir; gt.dy = 0;
         gt.length = 3 + randomInt(5);
         gt.framesLeft = gt.length + 6;
-        gt.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+        gt.colorVariant = tapCV;
         m_glitch.appendTrail(gt);
     }
 }
@@ -534,6 +567,8 @@ void RainSimulation::tapScramble(int col, int row, int radius, int glyphCount) {
 void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
     int count = qBound(2, m_tapSpawnCount, 12);
     int len = qBound(3, m_tapSpawnLength, 20);
+    int tapCV = (m_depthVariantBase > 0) ? m_depthVariantBase
+              : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     int spawnCount = count - count / 4 + randomInt(count / 2 + 1);
     for (int i = 0; i < spawnCount; ++i) {
         for (auto &s : m_streams) {
@@ -546,7 +581,7 @@ void RainSimulation::tapSpawn(int col, int row, int colorVariants) {
             s.dxF = static_cast<float>(d.dx);
             s.dyF = static_cast<float>(d.dy);
             s.trailLength = qMax(3, len / 2) + randomInt(len);
-            s.colorVariant = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+            s.colorVariant = tapCV;
             s.active = true;
             s.stutterFrames = 0;
             s.flashFrames = 3;
@@ -562,7 +597,8 @@ void RainSimulation::tapMessage(int col, int row, int colorVariants, float colSp
                                 float screenWidth, const QString &charset) {
     if (m_message.messageList().isEmpty()) return;
     const QString &msg = m_message.messageList()[randomInt(m_message.messageList().size())];
-    int msgColor = (colorVariants > 1) ? randomInt(colorVariants) : 0;
+    int msgColor = (m_depthVariantBase > 0) ? m_depthVariantBase
+                 : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     float stepW = static_cast<float>(messageStepW);
     float tapPxX = col * colSp;
     float tapPxY = row * rowSp;

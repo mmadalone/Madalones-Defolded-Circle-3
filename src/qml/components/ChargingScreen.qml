@@ -8,6 +8,7 @@ import QtQuick.Controls 2.15
 
 import Config 1.0
 import ScreensaverConfig 1.0
+import TouchSlider 1.0
 
 import "qrc:/components" as Components
 
@@ -78,7 +79,12 @@ Popup {
 
     onClosed: {
         isClosing = false;
-        buttonNavigation.releaseControl();
+        holdSlowTimer.stop();
+        holdPauseTimer.stop();
+        doubleTapTimer.stop();
+        centerTapTimer.stop();
+        speedOverlayTimer.stop();
+        if (buttonNavigation) buttonNavigation.releaseControl();
     }
 
     // --- Helper: send direction input to theme ---
@@ -202,17 +208,15 @@ Popup {
         }
 
         onPositionChanged: {
+            // Once in hold mode (slow/pause), ignore movement — user is committed to hold gesture
+            if (chargingScreenRoot.holdStage > 0) return;
+
             var dy = Math.abs(mouse.y - chargingScreenRoot.pressStartY);
             var dx = Math.abs(mouse.x - chargingScreenRoot.pressStartX);
             if (dy > chargingScreenRoot.swipeThreshold || dx > chargingScreenRoot.swipeThreshold) {
                 chargingScreenRoot.isDragging = true;
                 holdSlowTimer.stop();
                 holdPauseTimer.stop();
-                // If we were holding, release the hold effect
-                if (chargingScreenRoot.holdStage > 0) {
-                    chargingScreenRoot.holdStage = 0;
-                    if (matrixRainRef) matrixRainRef.interactiveInput("slow:release");
-                }
             }
         }
 
@@ -229,14 +233,17 @@ Popup {
             }
 
             if (chargingScreenRoot.isDragging) {
-                // --- Swipe gesture: adjust speed ---
-                var deltaY = mouse.y - chargingScreenRoot.pressStartY;
-                // Swipe up (negative deltaY) = faster, swipe down = slower
-                // Map swipe distance to speed change: 100px ≈ 10 speed units
-                var speedDelta = Math.round(-deltaY / 10);
-                if (speedDelta !== 0) {
-                    var newSpeed = Math.min(100, Math.max(10, Config.chargingMatrixSpeed + speedDelta));
-                    Config.chargingMatrixSpeed = newSpeed;
+                // --- Swipe gesture: adjust speed (when enabled + tap direction on) ---
+                if (Config.chargingMatrixTapSwipeSpeed && Config.chargingMatrixTapDirection) {
+                    var deltaY = mouse.y - chargingScreenRoot.pressStartY;
+                    var speedDelta = Math.round(-deltaY / 10);
+                    if (speedDelta !== 0) {
+                        var newSpeed = Math.min(100, Math.max(10, Config.chargingMatrixSpeed + speedDelta));
+                        Config.chargingMatrixSpeed = newSpeed;
+                        speedOverlay.text = "Speed: " + newSpeed;
+                        speedOverlayTimer.restart();
+                        speedOverlay.visible = true;
+                    }
                 }
                 chargingScreenRoot.isDragging = false;
                 return;
@@ -309,8 +316,7 @@ Popup {
         id: holdPauseTimer; interval: holdPauseMs - holdSlowMs
         onTriggered: {
             chargingScreenRoot.holdStage = 2;
-            // Pause by setting speed to near-zero temporarily (timer stops at TICK_MAX_MS)
-            if (matrixRainRef) matrixRainRef.setRunning(false);
+            if (matrixRainRef) matrixRainRef.running = false;
         }
     }
 
@@ -369,6 +375,61 @@ Popup {
             if (Config.chargingMatrixDpadEnabled && Config.chargingMatrixTapDirection)
                 Config.chargingMatrixTapDirection = false;
         }
+    }
+
+    // --- Touchbar speed control ---
+    // Active when DPAD direction is on + touchbar speed toggle is on.
+    // Swipe left = faster, swipe right = slower. Shows speed overlay briefly.
+    property real touchbarPrevX: -1
+    readonly property bool touchbarSpeedActive: Config.chargingMatrixDpadTouchbarSpeed
+                                                && Config.chargingMatrixDpadEnabled
+                                                && !Config.chargingMatrixTapDirection
+                                                && !chargingScreenRoot.isClosing
+    Connections {
+        target: TouchSliderProcessor
+        ignoreUnknownSignals: true
+
+        function onTouchPressed() {
+            if (!chargingScreenRoot.touchbarSpeedActive) return;
+            chargingScreenRoot.touchbarPrevX = TouchSliderProcessor.touchX;
+        }
+        function onTouchXChanged() {
+            if (!chargingScreenRoot.touchbarSpeedActive) return;
+            if (chargingScreenRoot.touchbarPrevX < 0) return;
+            var delta = TouchSliderProcessor.touchX - chargingScreenRoot.touchbarPrevX;
+            chargingScreenRoot.touchbarPrevX = TouchSliderProcessor.touchX;
+
+            if (Math.abs(delta) < 3) return;  // minimum 3px movement
+
+            var newSpeed = Math.round(Config.chargingMatrixSpeed - delta);
+            newSpeed = Math.max(10, Math.min(100, newSpeed));
+            if (newSpeed !== Config.chargingMatrixSpeed) {
+                Config.chargingMatrixSpeed = newSpeed;
+                speedOverlay.text = "Speed: " + newSpeed;
+                speedOverlayTimer.restart();
+                speedOverlay.visible = true;
+            }
+        }
+        function onTouchReleased() {
+            chargingScreenRoot.touchbarPrevX = -1;
+        }
+    }
+
+    // Speed overlay label (shown briefly on touchbar speed change)
+    Text {
+        id: speedOverlay
+        anchors.horizontalCenter: parent.horizontalCenter
+        y: parent.height - 60
+        color: "#ff3333"
+        font.pixelSize: 24
+        font.bold: true
+        visible: false
+        z: 9999
+    }
+    Timer {
+        id: speedOverlayTimer
+        interval: 1200
+        onTriggered: speedOverlay.visible = false;
     }
 
     Loader {

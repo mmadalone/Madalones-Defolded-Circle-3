@@ -77,6 +77,9 @@ class ScreensaverConfig : public QObject {
 
     // --- Visual effects ---
     SC_BOOL(glow,         getChargingMatrixGlow)
+    SC_INT(glowFade,      getChargingMatrixGlowFade)
+    SC_BOOL(depthGlow,    getChargingMatrixDepthGlow)
+    SC_INT(depthGlowMin,  getChargingMatrixDepthGlowMin)
     SC_BOOL(invertTrail,  getChargingMatrixInvertTrail)
 
     // --- Glitch ---
@@ -155,10 +158,13 @@ class ScreensaverConfig : public QObject {
     SC_BOOL(tapDirection,   getChargingMatrixTapDirection)
     SC_STRING(lastDirection, getChargingMatrixLastDirection)
 
-    // --- 3D depth parallax ---
+    // --- Color layers (per-vertex depth tinting) ---
     SC_BOOL(depthEnabled,   getChargingMatrixDepthEnabled)
     SC_INT(depthIntensity,  getChargingMatrixDepthIntensity)
     SC_BOOL(depthOverlay,   getChargingMatrixDepthOverlay)
+
+    // --- Rain layers (multi-grid depth) ---
+    SC_BOOL(layersEnabled,  getChargingMatrixLayersEnabled)
 
     // ---- Manually declared properties (custom getters with transforms) ----
 
