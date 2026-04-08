@@ -10,12 +10,20 @@
 #include <QQmlEngine>
 #include <QQmlContext>
 #include "ui/matrixrain.h"
+#include "ui/screensaverconfig.h"
+#include "hardware/battery.h"
+
+// Stub: Battery singleton not available in integration tests
+namespace uc { namespace hw { Battery *Battery::s_instance = nullptr; } }
+
+static uc::ScreensaverConfig *s_screensaverConfig = nullptr;
 
 class Setup : public QObject {
     Q_OBJECT
 public slots:
     void applicationAvailable() {
         qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
+        s_screensaverConfig = new uc::ScreensaverConfig(qApp);
     }
     void qmlEngineAvailable(QQmlEngine *engine) {
         Q_UNUSED(engine);
