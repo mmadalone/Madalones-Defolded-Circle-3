@@ -755,6 +755,9 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
 
 int MatrixRainItem::countVisibleQuads() {
     int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
+    int cellCount = gridCols * gridRows;
+    if (m_cellDrawn.size() != cellCount) m_cellDrawn.resize(cellCount);
+    m_cellDrawn.fill(0);
     const auto &streams = m_sim.streams();
     const auto &glitchTrails = m_sim.glitchTrails();
     const auto &messageBright = m_sim.messageBright();
