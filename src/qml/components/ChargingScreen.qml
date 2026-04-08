@@ -31,9 +31,9 @@ Popup {
     onDisplayOffChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = displayOff;
 
     // Persist direction between sessions (gated by dpadPersist setting, works for both DPAD and touch)
-    function saveDirection(dir) { if (Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = dir; }
+    function saveDirection(dir) { if (ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = dir; }
     function restoreDirection() {
-        if (!Config.chargingMatrixDpadPersist) return;
+        if (!ScreensaverConfig.dpadPersist) return;
         if (!ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection) return;
         var dir = ScreensaverConfig.lastDirection;
         if (dir !== "" && themeLoader.item && themeLoader.item.interactiveInput)
@@ -234,12 +234,12 @@ Popup {
 
             if (chargingScreenRoot.isDragging) {
                 // --- Swipe gesture: adjust speed (when enabled + tap direction on) ---
-                if (Config.chargingMatrixTapSwipeSpeed && Config.chargingMatrixTapDirection) {
+                if (ScreensaverConfig.tapSwipeSpeed && ScreensaverConfig.tapDirection) {
                     var deltaY = mouse.y - chargingScreenRoot.pressStartY;
                     var speedDelta = Math.round(-deltaY / 10);
                     if (speedDelta !== 0) {
-                        var newSpeed = Math.min(100, Math.max(10, Config.chargingMatrixSpeed + speedDelta));
-                        Config.chargingMatrixSpeed = newSpeed;
+                        var newSpeed = Math.min(100, Math.max(10, ScreensaverConfig.matrixSpeed + speedDelta));
+                        ScreensaverConfig.matrixSpeed = newSpeed;
                         speedOverlay.text = "Speed: " + newSpeed;
                         speedOverlayTimer.restart();
                         speedOverlay.visible = true;
@@ -281,7 +281,7 @@ Popup {
                         // Tap 3: restore direction
                         if (themeLoader.item && themeLoader.item.interactiveInput)
                             themeLoader.item.interactiveInput("restore");
-                        Config.chargingMatrixLastDirection = "";
+                        ScreensaverConfig.lastDirection = "";
                     } else if (chargingScreenRoot.centerTapCount >= 4) {
                         // Tap 4: close screensaver
                         centerTapTimer.stop();
@@ -327,7 +327,7 @@ Popup {
         target: matrixRainRef
         ignoreUnknownSignals: true
         function onEnterAction(action) {
-            if (action === "restore") Config.chargingMatrixLastDirection = "";
+            if (action === "restore") ScreensaverConfig.lastDirection = "";
             if (themeLoader.item && themeLoader.item.interactiveInput)
                 themeLoader.item.interactiveInput(action);
         }
@@ -368,12 +368,12 @@ Popup {
     Connections {
         target: Config
         function onChargingMatrixTapDirectionChanged() {
-            if (Config.chargingMatrixTapDirection && Config.chargingMatrixDpadEnabled)
-                Config.chargingMatrixDpadEnabled = false;
+            if (ScreensaverConfig.tapDirection && ScreensaverConfig.dpadEnabled)
+                ScreensaverConfig.dpadEnabled = false;
         }
         function onChargingMatrixDpadEnabledChanged() {
-            if (Config.chargingMatrixDpadEnabled && Config.chargingMatrixTapDirection)
-                Config.chargingMatrixTapDirection = false;
+            if (ScreensaverConfig.dpadEnabled && ScreensaverConfig.tapDirection)
+                ScreensaverConfig.tapDirection = false;
         }
     }
 
@@ -381,9 +381,9 @@ Popup {
     // Active when DPAD direction is on + touchbar speed toggle is on.
     // Swipe left = faster, swipe right = slower. Shows speed overlay briefly.
     property real touchbarPrevX: -1
-    readonly property bool touchbarSpeedActive: Config.chargingMatrixDpadTouchbarSpeed
-                                                && Config.chargingMatrixDpadEnabled
-                                                && !Config.chargingMatrixTapDirection
+    readonly property bool touchbarSpeedActive: ScreensaverConfig.dpadTouchbarSpeed
+                                                && ScreensaverConfig.dpadEnabled
+                                                && !ScreensaverConfig.tapDirection
                                                 && !chargingScreenRoot.isClosing
     Connections {
         target: TouchSliderProcessor
@@ -401,10 +401,10 @@ Popup {
 
             if (Math.abs(delta) < 3) return;  // minimum 3px movement
 
-            var newSpeed = Math.round(Config.chargingMatrixSpeed - delta);
+            var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - delta);
             newSpeed = Math.max(10, Math.min(100, newSpeed));
-            if (newSpeed !== Config.chargingMatrixSpeed) {
-                Config.chargingMatrixSpeed = newSpeed;
+            if (newSpeed !== ScreensaverConfig.matrixSpeed) {
+                ScreensaverConfig.matrixSpeed = newSpeed;
                 speedOverlay.text = "Speed: " + newSpeed;
                 speedOverlayTimer.restart();
                 speedOverlay.visible = true;

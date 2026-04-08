@@ -8,6 +8,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -25,11 +26,11 @@ ColumnLayout {
     // SUBLIMINAL MESSAGES
     // ─────────────────────────────────────────
 
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium; visible: Config.chargingMatrixMessages !== "" }
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium; visible: ScreensaverConfig.messages !== "" }
 
     // 12p. SUBLIMINAL MASTER TOGGLE
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== ""
+        visible: ScreensaverConfig.messages !== ""
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -41,19 +42,19 @@ ColumnLayout {
                 objectName: "subliminalSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixSubliminal
-                trigger: function() { Config.chargingMatrixSubliminal = !Config.chargingMatrixSubliminal; }
+                checked: ScreensaverConfig.subliminal
+                trigger: function() { ScreensaverConfig.subliminal = !ScreensaverConfig.subliminal; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Subliminal messages"
                 KeyNavigation.up: root.navUpTarget
-                KeyNavigation.down: Config.chargingMatrixSubliminal ? subliminalStreamSwitch : messagesInput
+                KeyNavigation.down: ScreensaverConfig.subliminal ? subliminalStreamSwitch : messagesInput
             }
         }
     }
 
     // 12q. IN-STREAM MODE
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -65,8 +66,8 @@ ColumnLayout {
                 objectName: "subliminalStreamSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixSubliminalStream
-                trigger: function() { Config.chargingMatrixSubliminalStream = !Config.chargingMatrixSubliminalStream; }
+                checked: ScreensaverConfig.subliminalStream
+                trigger: function() { ScreensaverConfig.subliminalStream = !ScreensaverConfig.subliminalStream; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "In-stream injection"
                 KeyNavigation.up: subliminalSwitch; KeyNavigation.down: subliminalOverlaySwitch
@@ -76,7 +77,7 @@ ColumnLayout {
 
     // 12r. OVERLAY SPANNING MODE
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -88,8 +89,8 @@ ColumnLayout {
                 objectName: "subliminalOverlaySwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixSubliminalOverlay
-                trigger: function() { Config.chargingMatrixSubliminalOverlay = !Config.chargingMatrixSubliminalOverlay; }
+                checked: ScreensaverConfig.subliminalOverlay
+                trigger: function() { ScreensaverConfig.subliminalOverlay = !ScreensaverConfig.subliminalOverlay; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Overlay spanning"
                 KeyNavigation.up: subliminalStreamSwitch; KeyNavigation.down: subliminalFlashSwitch
@@ -99,7 +100,7 @@ ColumnLayout {
 
     // 12s. FLASH MODE
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -111,8 +112,8 @@ ColumnLayout {
                 objectName: "subliminalFlashSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixSubliminalFlash
-                trigger: function() { Config.chargingMatrixSubliminalFlash = !Config.chargingMatrixSubliminalFlash; }
+                checked: ScreensaverConfig.subliminalFlash
+                trigger: function() { ScreensaverConfig.subliminalFlash = !ScreensaverConfig.subliminalFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Flash mode"
                 KeyNavigation.up: subliminalOverlaySwitch; KeyNavigation.down: subliminalIntervalSlider
@@ -122,20 +123,20 @@ ColumnLayout {
 
     // 12t. SUBLIMINAL INTERVAL
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Interval") + " (" + Config.chargingMatrixSubliminalInterval + "s)"; font: fonts.primaryFont(22) }
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Interval") + " (" + ScreensaverConfig.subliminalInterval + "s)"; font: fonts.primaryFont(22) }
         Components.Slider {
             id: subliminalIntervalSlider
             objectName: "subliminalIntervalSlider"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 1; to: 30; stepSize: 1; live: true
-            value: Config.chargingMatrixSubliminalInterval
-            onMoved: Config.chargingMatrixSubliminalInterval = value
-            onUserInteractionEnded: Config.chargingMatrixSubliminalInterval = value
+            value: ScreensaverConfig.subliminalInterval
+            onMoved: ScreensaverConfig.subliminalInterval = value
+            onUserInteractionEnded: ScreensaverConfig.subliminalInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Interval " + value + "s"
             KeyNavigation.up: subliminalFlashSwitch; KeyNavigation.down: subliminalDurationSlider
@@ -144,20 +145,20 @@ ColumnLayout {
 
     // 12u. SUBLIMINAL DURATION
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Duration") + " (" + Config.chargingMatrixSubliminalDuration + ")"; font: fonts.primaryFont(22) }
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Duration") + " (" + ScreensaverConfig.subliminalDuration + ")"; font: fonts.primaryFont(22) }
         Components.Slider {
             id: subliminalDurationSlider
             objectName: "subliminalDurationSlider"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 2; to: 40; stepSize: 1; live: true
-            value: Config.chargingMatrixSubliminalDuration
-            onMoved: Config.chargingMatrixSubliminalDuration = value
-            onUserInteractionEnded: Config.chargingMatrixSubliminalDuration = value
+            value: ScreensaverConfig.subliminalDuration
+            onMoved: ScreensaverConfig.subliminalDuration = value
+            onUserInteractionEnded: ScreensaverConfig.subliminalDuration = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Duration " + value
             KeyNavigation.up: subliminalIntervalSlider; KeyNavigation.down: messagesInput
@@ -186,19 +187,19 @@ ColumnLayout {
                 objectName: "messagesEnabledSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixMessagesEnabled
-                trigger: function() { Config.chargingMatrixMessagesEnabled = !Config.chargingMatrixMessagesEnabled; }
+                checked: ScreensaverConfig.messagesEnabled
+                trigger: function() { ScreensaverConfig.messagesEnabled = !ScreensaverConfig.messagesEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Hidden messages"
-                KeyNavigation.up: (Config.chargingMatrixMessages !== "" && Config.chargingMatrixSubliminal) ? subliminalDurationSlider : subliminalSwitch
-                KeyNavigation.down: Config.chargingMatrixMessagesEnabled ? messagesInput : root.navDownTarget
+                KeyNavigation.up: (ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal) ? subliminalDurationSlider : subliminalSwitch
+                KeyNavigation.down: ScreensaverConfig.messagesEnabled ? messagesInput : root.navDownTarget
             }
         }
     }
 
     // 13. MESSAGES TEXT (visible when toggle is on)
     ColumnLayout {
-        visible: Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -207,9 +208,9 @@ ColumnLayout {
             id: messagesInput
             objectName: "messagesInput"
             Layout.fillWidth: true
-            inputField.text: Config.chargingMatrixMessages
+            inputField.text: ScreensaverConfig.messages
             inputField.placeholderText: "HELLO, WORLD, WAKE UP"
-            inputField.onTextChanged: Config.chargingMatrixMessages = inputField.text
+            inputField.onTextChanged: ScreensaverConfig.messages = inputField.text
             Accessible.name: "Hidden messages"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: messagesEnabledSwitch
@@ -220,14 +221,14 @@ ColumnLayout {
 
     // 13b. MESSAGE INTERVAL
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Message interval") + " (" + Config.chargingMatrixMessageInterval + "s)"
+            text: qsTr("Message interval") + " (" + ScreensaverConfig.messageInterval + "s)"
             font: fonts.primaryFont(30)
         }
         Components.Slider {
@@ -236,9 +237,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 60; stepSize: 5
-            value: Config.chargingMatrixMessageInterval; live: true
-            onMoved: Config.chargingMatrixMessageInterval = value
-            onUserInteractionEnded: Config.chargingMatrixMessageInterval = value
+            value: ScreensaverConfig.messageInterval; live: true
+            onMoved: ScreensaverConfig.messageInterval = value
+            onUserInteractionEnded: ScreensaverConfig.messageInterval = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Message interval " + value + "s"
             KeyNavigation.up: messagesInput; KeyNavigation.down: messageRandomSwitch
@@ -247,7 +248,7 @@ ColumnLayout {
 
     // 13c. RANDOM ORDER
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -262,8 +263,8 @@ ColumnLayout {
                 objectName: "messageRandomSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixMessageRandom
-                trigger: function() { Config.chargingMatrixMessageRandom = !Config.chargingMatrixMessageRandom; }
+                checked: ScreensaverConfig.messageRandom
+                trigger: function() { ScreensaverConfig.messageRandom = !ScreensaverConfig.messageRandom; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Random order"
                 KeyNavigation.up: messageIntervalSlider; KeyNavigation.down: messageDirRow
@@ -273,7 +274,7 @@ ColumnLayout {
 
     // 13d. MESSAGE DIRECTION
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -290,8 +291,8 @@ ColumnLayout {
             Accessible.name: "Message direction"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: messageRandomSwitch; KeyNavigation.down: messageFlashSwitch
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["horizontal-lr","horizontal-rl","vertical-tb","vertical-bt","stream"], Config.chargingMatrixMessageDirection, function(v){ Config.chargingMatrixMessageDirection = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["horizontal-lr","horizontal-rl","vertical-tb","vertical-bt","stream"], Config.chargingMatrixMessageDirection, function(v){ Config.chargingMatrixMessageDirection = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["horizontal-lr","horizontal-rl","vertical-tb","vertical-bt","stream"], ScreensaverConfig.messageDirection, function(v){ ScreensaverConfig.messageDirection = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["horizontal-lr","horizontal-rl","vertical-tb","vertical-bt","stream"], ScreensaverConfig.messageDirection, function(v){ ScreensaverConfig.messageDirection = v }, 1)
             Repeater {
                 model: [
                     { name: "horizontal-lr", label: "H \u2192" },
@@ -302,16 +303,16 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    color: Config.chargingMatrixMessageDirection === modelData.name ? colors.offwhite : colors.dark
+                    color: ScreensaverConfig.messageDirection === modelData.name ? colors.offwhite : colors.dark
                     border { color: colors.medium; width: 1 }
                     Text {
                         anchors.centerIn: parent; text: modelData.label
-                        color: Config.chargingMatrixMessageDirection === modelData.name ? colors.black : colors.offwhite
+                        color: ScreensaverConfig.messageDirection === modelData.name ? colors.black : colors.offwhite
                         font: fonts.primaryFont(22)
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: Config.chargingMatrixMessageDirection = modelData.name
+                        onClicked: ScreensaverConfig.messageDirection = modelData.name
                     }
                 }
             }
@@ -320,7 +321,7 @@ ColumnLayout {
 
     // 13e. SURROUNDING FLASH (visible when messages set)
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -332,8 +333,8 @@ ColumnLayout {
                 objectName: "messageFlashSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixMessageFlash
-                trigger: function() { Config.chargingMatrixMessageFlash = !Config.chargingMatrixMessageFlash; }
+                checked: ScreensaverConfig.messageFlash
+                trigger: function() { ScreensaverConfig.messageFlash = !ScreensaverConfig.messageFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Surrounding flash"
                 KeyNavigation.up: messageDirRow; KeyNavigation.down: messagePulseSwitch
@@ -343,7 +344,7 @@ ColumnLayout {
 
     // 13f. BRIGHTNESS PULSE (visible when messages set)
     ColumnLayout {
-        visible: Config.chargingMatrixMessages !== "" && Config.chargingMatrixMessagesEnabled
+        visible: ScreensaverConfig.messages !== "" && ScreensaverConfig.messagesEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -355,8 +356,8 @@ ColumnLayout {
                 objectName: "messagePulseSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixMessagePulse
-                trigger: function() { Config.chargingMatrixMessagePulse = !Config.chargingMatrixMessagePulse; }
+                checked: ScreensaverConfig.messagePulse
+                trigger: function() { ScreensaverConfig.messagePulse = !ScreensaverConfig.messagePulse; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Brightness pulse"
                 KeyNavigation.up: messageFlashSwitch

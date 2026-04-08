@@ -9,6 +9,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -41,8 +42,8 @@ ColumnLayout {
                 objectName: "tapToCloseSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingTapToClose
-                trigger: function() { Config.chargingTapToClose = !Config.chargingTapToClose; }
+                checked: ScreensaverConfig.tapToClose
+                trigger: function() { ScreensaverConfig.tapToClose = !ScreensaverConfig.tapToClose; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Double-tap to close"
                 KeyNavigation.up: root.navUpTarget
@@ -69,19 +70,21 @@ ColumnLayout {
                 objectName: "motionToCloseSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMotionToClose
-                trigger: function() { Config.chargingMotionToClose = !Config.chargingMotionToClose; }
+                checked: ScreensaverConfig.motionToClose
+                trigger: function() { ScreensaverConfig.motionToClose = !ScreensaverConfig.motionToClose; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Close on wake"
-                KeyNavigation.up: tapToCloseSwitch; KeyNavigation.down: dpadEnabledSwitch
+                KeyNavigation.up: tapToCloseSwitch
+                KeyNavigation.down: ScreensaverConfig.theme === "matrix" ? dpadEnabledSwitch : idleEnabledSwitch
             }
         }
     }
 
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    Rectangle { visible: ScreensaverConfig.theme === "matrix"; Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
 
-    // 15b. DPAD INTERACTIVE
+    // 15b. DPAD INTERACTIVE (Matrix only — Starfield/Minimal have no interactive input)
     ColumnLayout {
+        visible: ScreensaverConfig.theme === "matrix"
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -96,19 +99,19 @@ ColumnLayout {
                 objectName: "dpadEnabledSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDpadEnabled
-                trigger: function() { Config.chargingMatrixDpadEnabled = !Config.chargingMatrixDpadEnabled; }
+                checked: ScreensaverConfig.dpadEnabled
+                trigger: function() { ScreensaverConfig.dpadEnabled = !ScreensaverConfig.dpadEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "DPAD interactive"
                 KeyNavigation.up: motionToCloseSwitch
-                KeyNavigation.down: Config.chargingMatrixDpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
+                KeyNavigation.down: ScreensaverConfig.dpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
             }
         }
     }
 
-    // 15c. PERSIST DIRECTION (visible when DPAD is on)
+    // 15c. PERSIST DIRECTION (visible when DPAD is on + Matrix theme)
     ColumnLayout {
-        visible: Config.chargingMatrixDpadEnabled
+        visible: ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -120,10 +123,10 @@ ColumnLayout {
                 objectName: "dpadPersistSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDpadPersist
+                checked: ScreensaverConfig.dpadPersist
                 trigger: function() {
-                    Config.chargingMatrixDpadPersist = !Config.chargingMatrixDpadPersist;
-                    if (!Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = "";
+                    ScreensaverConfig.dpadPersist = !ScreensaverConfig.dpadPersist;
+                    if (!ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = "";
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Remember direction"
@@ -132,9 +135,9 @@ ColumnLayout {
         }
     }
 
-    // 15d. TOUCHBAR SPEED (visible when DPAD is on)
+    // 15d. TOUCHBAR SPEED (visible when DPAD is on + Matrix theme)
     ColumnLayout {
-        visible: Config.chargingMatrixDpadEnabled
+        visible: ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -146,8 +149,8 @@ ColumnLayout {
                 objectName: "touchbarSpeedSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDpadTouchbarSpeed
-                trigger: function() { Config.chargingMatrixDpadTouchbarSpeed = !Config.chargingMatrixDpadTouchbarSpeed; }
+                checked: ScreensaverConfig.dpadTouchbarSpeed
+                trigger: function() { ScreensaverConfig.dpadTouchbarSpeed = !ScreensaverConfig.dpadTouchbarSpeed; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Touchbar speed control"
                 KeyNavigation.up: dpadPersistSwitch; KeyNavigation.down: tapDirectionSwitch
@@ -155,10 +158,11 @@ ColumnLayout {
         }
     }
 
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    Rectangle { visible: ScreensaverConfig.theme === "matrix"; Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
 
-    // 15d. TOUCH DIRECTIONS (mutually exclusive with DPAD interactive)
+    // 15d. TOUCH DIRECTIONS (Matrix only, mutually exclusive with DPAD interactive)
     ColumnLayout {
+        visible: ScreensaverConfig.theme === "matrix"
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -173,16 +177,16 @@ ColumnLayout {
                 objectName: "tapDirectionSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixTapDirection
-                trigger: function() { Config.chargingMatrixTapDirection = !Config.chargingMatrixTapDirection; }
+                checked: ScreensaverConfig.tapDirection
+                trigger: function() { ScreensaverConfig.tapDirection = !ScreensaverConfig.tapDirection; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Touch directions"
-                KeyNavigation.up: Config.chargingMatrixDpadEnabled ? touchbarSpeedSwitch : dpadEnabledSwitch
-                KeyNavigation.down: Config.chargingMatrixTapDirection ? tapDirPersistSwitch : idleEnabledSwitch
+                KeyNavigation.up: ScreensaverConfig.dpadEnabled ? touchbarSpeedSwitch : dpadEnabledSwitch
+                KeyNavigation.down: ScreensaverConfig.tapDirection ? tapDirPersistSwitch : idleEnabledSwitch
             }
         }
         Text {
-            visible: Config.chargingMatrixTapDirection
+            visible: ScreensaverConfig.tapDirection
             Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
             color: colors.medium; wrapMode: Text.WordWrap
             text: qsTr("Tap screen zones to change direction. Triple-tap center to close.")
@@ -190,9 +194,9 @@ ColumnLayout {
         }
     }
 
-    // 15e. REMEMBER DIRECTION (visible when touch directions is on)
+    // 15e. REMEMBER DIRECTION (visible when touch directions is on + Matrix theme)
     ColumnLayout {
-        visible: Config.chargingMatrixTapDirection
+        visible: ScreensaverConfig.theme === "matrix" && ScreensaverConfig.tapDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -204,10 +208,10 @@ ColumnLayout {
                 objectName: "tapDirPersistSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDpadPersist
+                checked: ScreensaverConfig.dpadPersist
                 trigger: function() {
-                    Config.chargingMatrixDpadPersist = !Config.chargingMatrixDpadPersist;
-                    if (!Config.chargingMatrixDpadPersist) Config.chargingMatrixLastDirection = "";
+                    ScreensaverConfig.dpadPersist = !ScreensaverConfig.dpadPersist;
+                    if (!ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = "";
                 }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Remember direction"
@@ -216,9 +220,9 @@ ColumnLayout {
         }
     }
 
-    // 15f. SWIPE SPEED (visible when touch directions is on)
+    // 15f. SWIPE SPEED (visible when touch directions is on + Matrix theme)
     ColumnLayout {
-        visible: Config.chargingMatrixTapDirection
+        visible: ScreensaverConfig.theme === "matrix" && ScreensaverConfig.tapDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -230,8 +234,8 @@ ColumnLayout {
                 objectName: "swipeSpeedSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixTapSwipeSpeed
-                trigger: function() { Config.chargingMatrixTapSwipeSpeed = !Config.chargingMatrixTapSwipeSpeed; }
+                checked: ScreensaverConfig.tapSwipeSpeed
+                trigger: function() { ScreensaverConfig.tapSwipeSpeed = !ScreensaverConfig.tapSwipeSpeed; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Swipe to adjust speed"
                 KeyNavigation.up: tapDirPersistSwitch; KeyNavigation.down: idleEnabledSwitch
@@ -257,11 +261,13 @@ ColumnLayout {
                 objectName: "idleEnabledSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingIdleEnabled
-                trigger: function() { Config.chargingIdleEnabled = !Config.chargingIdleEnabled; }
+                checked: ScreensaverConfig.idleEnabled
+                trigger: function() { ScreensaverConfig.idleEnabled = !ScreensaverConfig.idleEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Idle screensaver"
-                KeyNavigation.up: Config.chargingMatrixTapDirection ? tapDirPersistSwitch : tapDirectionSwitch
+                KeyNavigation.up: ScreensaverConfig.theme === "matrix"
+                    ? (ScreensaverConfig.tapDirection ? tapDirPersistSwitch : tapDirectionSwitch)
+                    : motionToCloseSwitch
                 KeyNavigation.down: idleTimeoutSlider
             }
         }
@@ -269,14 +275,14 @@ ColumnLayout {
 
     // 16b. IDLE TIMEOUT (visible when idle is on)
     ColumnLayout {
-        visible: Config.chargingIdleEnabled
+        visible: ScreensaverConfig.idleEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Idle timeout") + " (" + Config.chargingIdleTimeout + "s)"
+            text: qsTr("Idle timeout") + " (" + ScreensaverConfig.idleTimeout + "s)"
             font: fonts.primaryFont(30)
         }
         Components.Slider {
@@ -285,9 +291,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 15; to: 55; stepSize: 5
-            value: Config.chargingIdleTimeout; live: true
-            onMoved: Config.chargingIdleTimeout = value
-            onUserInteractionEnded: Config.chargingIdleTimeout = value
+            value: ScreensaverConfig.idleTimeout; live: true
+            onMoved: ScreensaverConfig.idleTimeout = value
+            onUserInteractionEnded: ScreensaverConfig.idleTimeout = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Idle timeout " + value
             KeyNavigation.up: idleEnabledSwitch

@@ -8,6 +8,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -16,7 +17,7 @@ ColumnLayout {
 
     property alias firstFocusItem: glitchChaosSwitch
     property Item lastFocusItem: {
-        if (Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosScatter) return chaosScatterLengthSlider;
+        if (ScreensaverConfig.glitchChaos && ScreensaverConfig.glitchChaosScatter) return chaosScatterLengthSlider;
         return chaosWipeSwitch;  // fallback — last always-visible toggle when scatter is off
     }
     property Item navUpTarget
@@ -26,7 +27,7 @@ ColumnLayout {
 
     // 12h. CHAOS EVENTS
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -38,8 +39,8 @@ ColumnLayout {
                 objectName: "glitchChaosSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaos
-                trigger: function() { Config.chargingMatrixGlitchChaos = !Config.chargingMatrixGlitchChaos; }
+                checked: ScreensaverConfig.glitchChaos
+                trigger: function() { ScreensaverConfig.glitchChaos = !ScreensaverConfig.glitchChaos; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Chaos events"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: chaosFrequencySlider
@@ -49,7 +50,7 @@ ColumnLayout {
 
     // 12i. CHAOS FREQUENCY
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -60,9 +61,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
-            value: Config.chargingMatrixGlitchChaosFrequency
-            onMoved: Config.chargingMatrixGlitchChaosFrequency = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchChaosFrequency = value
+            value: ScreensaverConfig.glitchChaosFrequency
+            onMoved: ScreensaverConfig.glitchChaosFrequency = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosFrequency = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchChaosSwitch; KeyNavigation.down: chaosIntensitySlider
@@ -71,7 +72,7 @@ ColumnLayout {
 
     // 12i2. CHAOS INTENSITY
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -82,9 +83,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
-            value: Config.chargingMatrixGlitchChaosIntensity
-            onMoved: Config.chargingMatrixGlitchChaosIntensity = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchChaosIntensity = value
+            value: ScreensaverConfig.glitchChaosIntensity
+            onMoved: ScreensaverConfig.glitchChaosIntensity = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosIntensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Intensity " + value
             KeyNavigation.up: chaosFrequencySlider; KeyNavigation.down: chaosSurgeSwitch
@@ -93,7 +94,7 @@ ColumnLayout {
 
     // 12j. CHAOS SUB-TYPES
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -105,8 +106,8 @@ ColumnLayout {
                 objectName: "chaosSurgeSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosSurge
-                trigger: function() { Config.chargingMatrixGlitchChaosSurge = !Config.chargingMatrixGlitchChaosSurge; }
+                checked: ScreensaverConfig.glitchChaosSurge
+                trigger: function() { ScreensaverConfig.glitchChaosSurge = !ScreensaverConfig.glitchChaosSurge; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Surge (flash)"
                 KeyNavigation.up: chaosIntensitySlider; KeyNavigation.down: chaosScrambleSwitch
@@ -120,8 +121,8 @@ ColumnLayout {
                 objectName: "chaosScrambleSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosScramble
-                trigger: function() { Config.chargingMatrixGlitchChaosScramble = !Config.chargingMatrixGlitchChaosScramble; }
+                checked: ScreensaverConfig.glitchChaosScramble
+                trigger: function() { ScreensaverConfig.glitchChaosScramble = !ScreensaverConfig.glitchChaosScramble; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Scramble (mutate)"
                 KeyNavigation.up: chaosSurgeSwitch; KeyNavigation.down: chaosFreezeSwitch
@@ -135,8 +136,8 @@ ColumnLayout {
                 objectName: "chaosFreezeSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosFreeze
-                trigger: function() { Config.chargingMatrixGlitchChaosFreeze = !Config.chargingMatrixGlitchChaosFreeze; }
+                checked: ScreensaverConfig.glitchChaosFreeze
+                trigger: function() { ScreensaverConfig.glitchChaosFreeze = !ScreensaverConfig.glitchChaosFreeze; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Freeze (stutter)"
                 KeyNavigation.up: chaosScrambleSwitch; KeyNavigation.down: chaosSquareBurstSwitch
@@ -151,32 +152,32 @@ ColumnLayout {
                 objectName: "chaosSquareBurstSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosSquareBurst
-                trigger: function() { Config.chargingMatrixGlitchChaosSquareBurst = !Config.chargingMatrixGlitchChaosSquareBurst; }
+                checked: ScreensaverConfig.glitchChaosSquareBurst
+                trigger: function() { ScreensaverConfig.glitchChaosSquareBurst = !ScreensaverConfig.glitchChaosSquareBurst; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Square burst"
                 KeyNavigation.up: chaosFreezeSwitch
-                KeyNavigation.down: Config.chargingMatrixGlitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosRippleSwitch
+                KeyNavigation.down: ScreensaverConfig.glitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosRippleSwitch
             }
         }
     }
 
     // 12j2. SQUARE BURST SIZE (visible when square burst is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosSquareBurst
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos && ScreensaverConfig.glitchChaosSquareBurst
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 70; Layout.rightMargin: 10
         spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square size") + " (" + Config.chargingMatrixGlitchChaosSquareBurstSize + ")"; font: fonts.primaryFont(22) }
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square size") + " (" + ScreensaverConfig.glitchChaosSquareBurstSize + ")"; font: fonts.primaryFont(22) }
         Components.Slider {
             id: chaosSquareBurstSizeSlider
             objectName: "chaosSquareBurstSizeSlider"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 2; to: 10; stepSize: 1; live: true
-            value: Config.chargingMatrixGlitchChaosSquareBurstSize
-            onMoved: Config.chargingMatrixGlitchChaosSquareBurstSize = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchChaosSquareBurstSize = value
+            value: ScreensaverConfig.glitchChaosSquareBurstSize
+            onMoved: ScreensaverConfig.glitchChaosSquareBurstSize = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosSquareBurstSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Square size " + value
             KeyNavigation.up: chaosSquareBurstSwitch; KeyNavigation.down: chaosRippleSwitch
@@ -185,7 +186,7 @@ ColumnLayout {
 
     // 12j3. Ripple
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -197,11 +198,11 @@ ColumnLayout {
                 objectName: "chaosRippleSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosRipple
-                trigger: function() { Config.chargingMatrixGlitchChaosRipple = !Config.chargingMatrixGlitchChaosRipple; }
+                checked: ScreensaverConfig.glitchChaosRipple
+                trigger: function() { ScreensaverConfig.glitchChaosRipple = !ScreensaverConfig.glitchChaosRipple; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Ripple"
-                KeyNavigation.up: Config.chargingMatrixGlitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosSquareBurstSwitch
+                KeyNavigation.up: ScreensaverConfig.glitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosSquareBurstSwitch
                 KeyNavigation.down: chaosWipeSwitch
             }
         }
@@ -209,7 +210,7 @@ ColumnLayout {
 
     // 12j4. Screen wipe
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -221,8 +222,8 @@ ColumnLayout {
                 objectName: "chaosWipeSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosWipe
-                trigger: function() { Config.chargingMatrixGlitchChaosWipe = !Config.chargingMatrixGlitchChaosWipe; }
+                checked: ScreensaverConfig.glitchChaosWipe
+                trigger: function() { ScreensaverConfig.glitchChaosWipe = !ScreensaverConfig.glitchChaosWipe; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Screen wipe"
                 KeyNavigation.up: chaosRippleSwitch; KeyNavigation.down: chaosScatterSwitch
@@ -232,7 +233,7 @@ ColumnLayout {
 
     // 12j5. Scatter (burst)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -244,19 +245,19 @@ ColumnLayout {
                 objectName: "chaosScatterSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchChaosScatter
-                trigger: function() { Config.chargingMatrixGlitchChaosScatter = !Config.chargingMatrixGlitchChaosScatter; }
+                checked: ScreensaverConfig.glitchChaosScatter
+                trigger: function() { ScreensaverConfig.glitchChaosScatter = !ScreensaverConfig.glitchChaosScatter; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Scatter (burst)"
                 KeyNavigation.up: chaosWipeSwitch
-                KeyNavigation.down: Config.chargingMatrixGlitchChaosScatter ? chaosScatterRateSlider : root.navDownTarget
+                KeyNavigation.down: ScreensaverConfig.glitchChaosScatter ? chaosScatterRateSlider : root.navDownTarget
             }
         }
     }
 
     // 12k. SCATTER FREQUENCY
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosScatter
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos && ScreensaverConfig.glitchChaosScatter
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 70; Layout.rightMargin: 10
         spacing: 10
@@ -267,9 +268,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5; live: true
-            value: Config.chargingMatrixGlitchChaosScatterRate
-            onMoved: Config.chargingMatrixGlitchChaosScatterRate = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterRate = value
+            value: ScreensaverConfig.glitchChaosScatterRate
+            onMoved: ScreensaverConfig.glitchChaosScatterRate = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosScatterRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Scatter frequency " + value
             KeyNavigation.up: chaosScatterSwitch; KeyNavigation.down: chaosScatterLengthSlider
@@ -278,7 +279,7 @@ ColumnLayout {
 
     // 12l. SCATTER TRAIL LENGTH
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos && Config.chargingMatrixGlitchChaosScatter
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos && ScreensaverConfig.glitchChaosScatter
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 70; Layout.rightMargin: 10
         spacing: 10
@@ -289,9 +290,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 3; to: 40; stepSize: 1; live: true
-            value: Config.chargingMatrixGlitchChaosScatterLength
-            onMoved: Config.chargingMatrixGlitchChaosScatterLength = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchChaosScatterLength = value
+            value: ScreensaverConfig.glitchChaosScatterLength
+            onMoved: ScreensaverConfig.glitchChaosScatterLength = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosScatterLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Scatter trail length " + value
             KeyNavigation.up: chaosScatterRateSlider; KeyNavigation.down: root.navDownTarget

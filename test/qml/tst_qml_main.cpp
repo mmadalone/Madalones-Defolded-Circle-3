@@ -11,11 +11,11 @@
 #include <QColor>
 #include <QFont>
 
-#include "MockConfig.h"
+#include "MockScreensaverConfig.h"
 #include "MockHaptic.h"
 
 // ── Mock objects (singleton lifetime) ──────────────────────────────
-static MockConfig *s_config = nullptr;
+static MockScreensaverConfig *s_config = nullptr;
 static MockHaptic *s_haptic = nullptr;
 
 static QObject *configProvider(QQmlEngine *, QJSEngine *) {
@@ -151,9 +151,9 @@ class Setup : public QObject {
 
  public slots:
     void applicationAvailable() {
-        s_config = new MockConfig;
+        s_config = new MockScreensaverConfig;
         s_haptic = new MockHaptic;
-        qmlRegisterSingletonType<MockConfig>("Config", 1, 0, "Config", configProvider);
+        qmlRegisterSingletonType<MockScreensaverConfig>("ScreensaverConfig", 1, 0, "ScreensaverConfig", configProvider);
         qmlRegisterSingletonType<MockHaptic>("Haptic", 1, 0, "Haptic", hapticProvider);
     }
 

@@ -8,6 +8,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -21,9 +22,9 @@ ColumnLayout {
 
     // Helper to toggle a bit in the mask with minimum-1 guard
     function toggleDirBit(bit) {
-        var newMask = Config.chargingMatrixGlitchDirMask ^ (1 << bit);
+        var newMask = ScreensaverConfig.glitchDirMask ^ (1 << bit);
         if (newMask > 0) {
-            Config.chargingMatrixGlitchDirMask = newMask;
+            ScreensaverConfig.glitchDirMask = newMask;
             Haptic.play(Haptic.Click);
         }
     }
@@ -32,7 +33,7 @@ ColumnLayout {
 
     // 12e. DIRECTION CHANGE
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -44,8 +45,8 @@ ColumnLayout {
                 objectName: "glitchDirectionSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchDirection
-                trigger: function() { Config.chargingMatrixGlitchDirection = !Config.chargingMatrixGlitchDirection; }
+                checked: ScreensaverConfig.glitchDirection
+                trigger: function() { ScreensaverConfig.glitchDirection = !ScreensaverConfig.glitchDirection; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Direction change"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: glitchDirRateSlider
@@ -55,7 +56,7 @@ ColumnLayout {
 
     // 12f. DIRECTION GLITCH FREQUENCY (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -70,9 +71,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 80; stepSize: 5
-            value: Config.chargingMatrixGlitchDirRate; live: true
-            onMoved: Config.chargingMatrixGlitchDirRate = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchDirRate = value
+            value: ScreensaverConfig.glitchDirRate; live: true
+            onMoved: ScreensaverConfig.glitchDirRate = value
+            onUserInteractionEnded: ScreensaverConfig.glitchDirRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchDirectionSwitch; KeyNavigation.down: glitchDirLengthSlider
@@ -81,7 +82,7 @@ ColumnLayout {
 
     // 12f2. DIRECTION GLITCH LENGTH (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -92,9 +93,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 3; to: 30; stepSize: 1; live: true
-            value: Config.chargingMatrixGlitchDirLength
-            onMoved: Config.chargingMatrixGlitchDirLength = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchDirLength = value
+            value: ScreensaverConfig.glitchDirLength
+            onMoved: ScreensaverConfig.glitchDirLength = value
+            onUserInteractionEnded: ScreensaverConfig.glitchDirLength = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail length " + value
             KeyNavigation.up: glitchDirRateSlider; KeyNavigation.down: glitchDirCardinalRow
@@ -103,7 +104,7 @@ ColumnLayout {
 
     // 12g. DIRECTION TOGGLES — 8 individual direction toggles (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -127,7 +128,7 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    property bool checked: (Config.chargingMatrixGlitchDirMask & (1 << modelData.bit)) !== 0
+                    property bool checked: (ScreensaverConfig.glitchDirMask & (1 << modelData.bit)) !== 0
                     color: checked ? colors.offwhite : colors.dark
                     border { color: checked ? colors.offwhite : colors.medium; width: checked ? 3 : 1 }
                     Text {
@@ -160,7 +161,7 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    property bool checked: (Config.chargingMatrixGlitchDirMask & (1 << modelData.bit)) !== 0
+                    property bool checked: (ScreensaverConfig.glitchDirMask & (1 << modelData.bit)) !== 0
                     color: checked ? colors.offwhite : colors.dark
                     border { color: checked ? colors.offwhite : colors.medium; width: checked ? 3 : 1 }
                     Text {
@@ -179,7 +180,7 @@ ColumnLayout {
 
     // 12g2. TRAIL FADE (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -190,9 +191,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 0; to: 100; stepSize: 5; live: true
-            value: Config.chargingMatrixGlitchDirFade
-            onMoved: Config.chargingMatrixGlitchDirFade = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchDirFade = value
+            value: ScreensaverConfig.glitchDirFade
+            onMoved: ScreensaverConfig.glitchDirFade = value
+            onUserInteractionEnded: ScreensaverConfig.glitchDirFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail fade " + value
             KeyNavigation.up: glitchDirDiagRow; KeyNavigation.down: glitchDirSpeedSlider
@@ -201,7 +202,7 @@ ColumnLayout {
 
     // 12g3. TRAIL SPEED (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -212,9 +213,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5; live: true
-            value: Config.chargingMatrixGlitchDirSpeed
-            onMoved: Config.chargingMatrixGlitchDirSpeed = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchDirSpeed = value
+            value: ScreensaverConfig.glitchDirSpeed
+            onMoved: ScreensaverConfig.glitchDirSpeed = value
+            onUserInteractionEnded: ScreensaverConfig.glitchDirSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail speed " + value
             KeyNavigation.up: glitchDirFadeSlider; KeyNavigation.down: glitchRandomColorSwitch
@@ -223,7 +224,7 @@ ColumnLayout {
 
     // 12g4. RANDOM COLOR (visible when direction glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch && Config.chargingMatrixGlitchDirection
+        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -235,8 +236,8 @@ ColumnLayout {
                 objectName: "glitchRandomColorSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchRandomColor
-                trigger: function() { Config.chargingMatrixGlitchRandomColor = !Config.chargingMatrixGlitchRandomColor; }
+                checked: ScreensaverConfig.glitchRandomColor
+                trigger: function() { ScreensaverConfig.glitchRandomColor = !ScreensaverConfig.glitchRandomColor; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Random color"
                 KeyNavigation.up: glitchDirSpeedSlider; KeyNavigation.down: root.navDownTarget

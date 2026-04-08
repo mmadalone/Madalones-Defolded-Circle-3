@@ -17,6 +17,7 @@
 #include "softwareupdate/softwareUpdate.h"
 #include "translation/translation.h"
 #include "ui/uiController.h"
+#include "ui/avatargrid.h"
 #include "ui/matrixrain.h"
 #include "ui/screensaverconfig.h"
 #include "voice.h"
@@ -74,6 +75,7 @@ int main(int argc, char *argv[]) {
     engine.addImportPath("qrc:/keyboard");
 
     qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
+    qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid");
 
     QCoreApplication::setOrganizationName("Unfolded Circle");
     QCoreApplication::setOrganizationDomain("uc.io");
@@ -103,7 +105,7 @@ int main(int argc, char *argv[]) {
 
     uc::core::Api                          core(socketUrl, &app);
     uc::Config                             config(&core, &app);
-    uc::ScreensaverConfig                  screensaverConfig(&config, &app);
+    uc::ScreensaverConfig                  screensaverConfig(&app);
     uc::SoftwareUpdate                     softwareUpdate(&core, &app);
     uc::hw::Controller                     hwController(model, &core, &config, &app);
     uc::ui::Controller                     uiController(model, width, height, &engine, &config, &core, &app);

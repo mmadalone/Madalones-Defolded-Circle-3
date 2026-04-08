@@ -8,7 +8,7 @@
 import QtQuick 2.15
 import QtTest 1.2
 
-import Config 1.0
+import ScreensaverConfig 1.0
 
 TestCase {
     id: testCase
@@ -16,7 +16,7 @@ TestCase {
     when: windowShown
 
     function init() {
-        Config.resetDefaults();
+        ScreensaverConfig.resetDefaults();
     }
 
     // ─────────────────────────────────────────
@@ -71,16 +71,16 @@ TestCase {
         // CommonToggles.last -> MatrixAppearance.first
         // MatrixAppearance.last -> MatrixEffects.first
         // MatrixEffects.last -> GeneralBehavior.first
-        Config.chargingTheme = "matrix";
-        var themeIsMatrix = Config.chargingTheme === "matrix";
+        ScreensaverConfig.theme = "matrix";
+        var themeIsMatrix = ScreensaverConfig.theme === "matrix";
         verify(themeIsMatrix, "matrix sections in nav chain when theme is matrix");
     }
 
     function test_cross_boundary_non_matrix_skip() {
         // When theme is NOT matrix, the chain skips MatrixAppearance and MatrixEffects:
         // CommonToggles.last -> GeneralBehavior.first
-        Config.chargingTheme = "starfield";
-        var themeIsMatrix = Config.chargingTheme === "matrix";
+        ScreensaverConfig.theme = "starfield";
+        var themeIsMatrix = ScreensaverConfig.theme === "matrix";
         verify(!themeIsMatrix, "matrix sections skipped in nav chain for non-matrix theme");
     }
 
@@ -91,19 +91,19 @@ TestCase {
     function test_effects_nav_glitch_off() {
         // When glitch is off, all sub-toggles are hidden.
         // Chain: invertTrailSwitch -> glowSwitch -> glitchSwitch -> (hidden) -> messagesInput
-        Config.chargingMatrixGlitch = false;
+        ScreensaverConfig.glitch = false;
         // The glitch sub-settings (rate, flash, stutter, etc.) have
-        // visible: Config.chargingMatrixGlitch — they all hide.
+        // visible: ScreensaverConfig.glitch — they all hide.
         // KeyNavigation still points to them, but QML skips invisible items.
-        verify(!Config.chargingMatrixGlitch,
+        verify(!ScreensaverConfig.glitch,
                "glitch sub-nav items hidden when glitch is off");
     }
 
     function test_effects_nav_chaos_adds_subtypes() {
         // When chaos is on, 5 extra items appear: frequency + 4 sub-type switches
-        Config.chargingMatrixGlitch = true;
-        Config.chargingMatrixGlitchChaos = true;
-        var chaosVisible = Config.chargingMatrixGlitch && Config.chargingMatrixGlitchChaos;
+        ScreensaverConfig.glitch = true;
+        ScreensaverConfig.glitchChaos = true;
+        var chaosVisible = ScreensaverConfig.glitch && ScreensaverConfig.glitchChaos;
         verify(chaosVisible,
                "chaos frequency + 4 subtypes in nav chain when chaos enabled");
     }
@@ -111,8 +111,8 @@ TestCase {
     function test_effects_nav_messages_adds_options() {
         // When messages are non-empty, 5 extra items appear:
         // interval slider + random switch + direction row + flash + pulse
-        Config.chargingMatrixMessages = "HELLO";
-        var msgVisible = Config.chargingMatrixMessages !== "";
+        ScreensaverConfig.messages = "HELLO";
+        var msgVisible = ScreensaverConfig.messages !== "";
         verify(msgVisible,
                "message options in nav chain when messages are set");
     }

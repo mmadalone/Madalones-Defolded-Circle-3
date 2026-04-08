@@ -6,6 +6,7 @@
 import QtQuick 2.15
 import QtTest 1.2
 import MatrixRain 1.0
+import ScreensaverConfig 1.0
 
 Item {
     id: root
@@ -25,7 +26,7 @@ Item {
         // --- Transform tests: verify the same math ScreensaverConfig uses ---
 
         function test_speedTransform() {
-            // ScreensaverConfig: speed = Config.chargingMatrixSpeed / 50.0
+            // ScreensaverConfig: speed = ScreensaverConfig.matrixSpeed / 50.0
             // Config range: 10-100, renderer range: 0.2-2.0
             rain.speed = 10 / 50.0  // min
             fuzzyCompare(rain.speed, 0.2, 0.01)
@@ -36,7 +37,7 @@ Item {
         }
 
         function test_densityTransform() {
-            // ScreensaverConfig: density = Config.chargingMatrixDensity / 100.0
+            // ScreensaverConfig: density = ScreensaverConfig.matrixDensity / 100.0
             // Config range: 20-500, renderer range: 0.2-5.0
             rain.density = 20 / 100.0
             fuzzyCompare(rain.density, 0.2, 0.01)
@@ -47,7 +48,7 @@ Item {
         }
 
         function test_fadeRateTransform() {
-            // ScreensaverConfig: fadeRate = 0.76 + Config.chargingMatrixFade * 0.002
+            // ScreensaverConfig: fadeRate = 0.76 + ScreensaverConfig.matrixFade * 0.002
             // Config range: 20-100, renderer range: 0.80-0.96
             rain.fadeRate = 0.76 + 20 * 0.002  // min
             fuzzyCompare(rain.fadeRate, 0.80, 0.01)

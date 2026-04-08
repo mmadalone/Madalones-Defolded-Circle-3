@@ -9,6 +9,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -41,8 +42,8 @@ ColumnLayout {
                 objectName: "showClockSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingShowClock
-                trigger: function() { Config.chargingShowClock = !Config.chargingShowClock; }
+                checked: ScreensaverConfig.showClock
+                trigger: function() { ScreensaverConfig.showClock = !ScreensaverConfig.showClock; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Show clock"
                 Component.onCompleted: showClockSwitch.forceActiveFocus()
@@ -70,8 +71,8 @@ ColumnLayout {
                 objectName: "showBatterySwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingShowBattery
-                trigger: function() { Config.chargingShowBattery = !Config.chargingShowBattery; }
+                checked: ScreensaverConfig.showBatteryEnabled
+                trigger: function() { ScreensaverConfig.showBatteryEnabled = !ScreensaverConfig.showBatteryEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Show battery"
                 KeyNavigation.up: showClockSwitch
@@ -82,7 +83,7 @@ ColumnLayout {
 
     // 3b. BATTERY DOCKED ONLY (visible when Show battery is on)
     ColumnLayout {
-        visible: Config.chargingShowBattery
+        visible: ScreensaverConfig.showBatteryEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -97,8 +98,8 @@ ColumnLayout {
                 objectName: "batteryDockedSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingBatteryDockedOnly
-                trigger: function() { Config.chargingBatteryDockedOnly = !Config.chargingBatteryDockedOnly; }
+                checked: ScreensaverConfig.batteryDockedOnly
+                trigger: function() { ScreensaverConfig.batteryDockedOnly = !ScreensaverConfig.batteryDockedOnly; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Charging only"
                 KeyNavigation.up: showBatterySwitch

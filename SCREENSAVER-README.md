@@ -4,14 +4,29 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 ## Screenshots
 
-<!-- Add screenshots here: settings page, matrix rain, starfield, minimal clock -->
-| Matrix Rain | Starfield | Minimal Clock |
-|:-----------:|:---------:|:-------------:|
-| *screenshot* | *screenshot* | *screenshot* |
+### Themes
 
-| Settings Page | Color Modes | Glitch Effects |
-|:-------------:|:-----------:|:--------------:|
-| *screenshot* | *screenshot* | *screenshot* |
+| Matrix Rain (Neon) | Matrix Rain (Green) | Starfield | Minimal Clock |
+|:------------------:|:-------------------:|:---------:|:-------------:|
+| ![Neon](docs/screenshots/matrix-color-01.jpeg) | ![Green](docs/screenshots/matrix-color-02.jpeg) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) |
+
+### Settings
+
+| Theme & Overlays | Appearance | Direction & Visual |
+|:----------------:|:----------:|:------------------:|
+| ![Theme](docs/screenshots/menu-02.png) | ![Appearance](docs/screenshots/menu-04.png) | ![Direction](docs/screenshots/menu-05.png) |
+
+| Glitch Effects | Direction Glitch | Chaos & Tap |
+|:--------------:|:----------------:|:-----------:|
+| ![Glitch](docs/screenshots/menu-06.png) | ![DirGlitch](docs/screenshots/menu-07.png) | ![Chaos](docs/screenshots/menu-08.png) |
+
+| Tap Effects | Messages & Behavior | DPAD & Touch |
+|:-----------:|:-------------------:|:------------:|
+| ![Tap](docs/screenshots/menu-09.png) | ![Messages](docs/screenshots/menu-11.png) | ![DPAD](docs/screenshots/menu-12.png) |
+
+| Starfield Settings | Minimal Settings |
+|:------------------:|:----------------:|
+| ![Starfield](docs/screenshots/starfield-settings.png) | ![Minimal](docs/screenshots/minimal-settings.png) |
 
 ## Features
 
@@ -19,7 +34,7 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 - **Matrix Rain** — GPU-accelerated falling character rain with full customization (see below)
 - **Starfield** — animated star field with configurable speed and density
-- **Minimal Clock** — clean digital clock on black background
+- **Minimal Clock** — clean digital clock with date, always visible (battery overlay optional)
 
 ### Matrix Rain
 
@@ -127,20 +142,22 @@ A fully configurable screensaver system replacing the UC Remote 3's stock analog
 
 All settings are in **Settings > Screensaver** on the remote.
 
-| Section | Settings |
-|---------|----------|
-| Theme | Matrix / Starfield / Minimal |
-| Overlays | Show clock, Show battery, Charging only |
-| Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade |
-| Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker |
-| Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) |
-| Glitch | Master toggle, Intensity, Column flash/stutter, Reverse glow |
-| Direction Glitch | Toggle, Frequency, Length, 8 direction toggles, Fade, Speed, Random color |
-| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe/Scatter (+ freq + length) |
-| Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance |
-| Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration |
-| Messages | Text input, Interval, Random order, Direction, Flash, Pulse |
-| Behavior | Double-tap to close, Close on wake, DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed), Idle screensaver, Idle timeout |
+| Section | Settings | Themes |
+|---------|----------|--------|
+| Theme | Matrix / Starfield / Minimal | All |
+| Overlays | Show clock, Show battery, Charging only | All |
+| Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
+| Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker | Matrix |
+| Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) | Matrix |
+| Glitch | Master toggle, Intensity, Column flash/stutter, Reverse glow | Matrix |
+| Direction Glitch | Toggle, Frequency, Length, 8 direction toggles, Fade, Speed, Random color | Matrix |
+| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe/Scatter (+ freq + length) | Matrix |
+| Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance | Matrix |
+| Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration | Matrix |
+| Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
+| Starfield | Animation speed, Star density | Starfield |
+| Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
+| Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 
 ## Installation
 
@@ -196,6 +213,16 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 
 For architecture details, see [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md).
 For build instructions, see [BUILD.md](BUILD.md).
+
+## Roadmap
+
+- **TV Static** — analog snow / static noise theme (planned)
+
+## How This Was Built
+
+This project was vibecoded — designed, implemented, and iterated entirely through conversation with [Claude Code](https://claude.ai/claude-code) (Anthropic's CLI agent). The C++ renderers, QML settings UI, GPU shader pipeline, config bridge architecture, test suite, CI workflow, and this README were all produced through iterative human-AI collaboration. No line was copy-pasted from a tutorial or LLM playground; every commit went through the same review loop: describe intent, generate code, test on device, refine.
+
+The human side: architecture decisions, visual taste, UC3 hardware testing, and "that doesn't look right" feedback. The AI side: C++17/Qt 5.15 implementation, QSG scene graph plumbing, test generation, and debugging CI failures at 3am.
 
 ## License
 

@@ -21,6 +21,7 @@ import Integration.Controller 1.0
 import "qrc:/components" as Components
 import "qrc:/settings/softwareupdate" as Softwareupdate
 import "qrc:/components/entities/activity" as ActivityComponents
+import ScreensaverConfig 1.0
 
 ApplicationWindow {
     id: applicationWindow
@@ -511,28 +512,30 @@ ApplicationWindow {
             id: idleScreensaverTimer
             repeat: false
             running: false
-            interval: Config.chargingIdleTimeout * 1000
+            interval: ScreensaverConfig.idleTimeout * 1000
             onTriggered: {
-                if (Config.chargingIdleEnabled && !Battery.powerSupply && !chargingScreenLoader.active) {
+                var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
+                if (ScreensaverConfig.idleEnabled && undocked && !chargingScreenLoader.active) {
                     chargingScreenLoader.active = true;
                 }
             }
         }
 
         Connections {
-            target: Config
+            target: ScreensaverConfig
             ignoreUnknownSignals: true
 
-            function onChargingIdleEnabledChanged() {
-                if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+            function onIdleEnabledChanged() {
+                var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
+                if (ScreensaverConfig.idleEnabled && undocked) {
                     idleScreensaverTimer.restart();
                 } else {
                     idleScreensaverTimer.stop();
                 }
             }
 
-            function onChargingIdleTimeoutChanged() {
-                idleScreensaverTimer.interval = Config.chargingIdleTimeout * 1000;
+            function onIdleTimeoutChanged() {
+                idleScreensaverTimer.interval = ScreensaverConfig.idleTimeout * 1000;
                 if (idleScreensaverTimer.running) idleScreensaverTimer.restart();
             }
         }
@@ -563,7 +566,7 @@ ApplicationWindow {
                         if (chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
                         }
-                        if (Config.chargingIdleEnabled) {
+                        if (ScreensaverConfig.idleEnabled) {
                             idleScreensaverTimer.restart();
                         }
                     }
@@ -588,7 +591,7 @@ ApplicationWindow {
                             chargingScreenLoader.item.displayOff = false;
                         }
                         // Motion/pickup detected while screensaver is showing — close it if enabled
-                        if (Config.chargingMotionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
+                        if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
                         }
                         // Re-open screensaver when waking from suspend while charging (if not motion-closed)
@@ -596,7 +599,7 @@ ApplicationWindow {
                             chargingScreenLoader.active = true;
                         }
                         // Reset idle timer on activity
-                        if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+                        if (ScreensaverConfig.idleEnabled && !Battery.powerSupply) {
                             idleScreensaverTimer.restart();
                         }
                     }
@@ -610,7 +613,8 @@ ApplicationWindow {
                 function onClosed() {
                     chargingScreenLoader.active = false;
                     // Restart idle timer after user dismisses screensaver (if enabled and undocked)
-                    if (Config.chargingIdleEnabled && !Battery.powerSupply) {
+                    var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
+                    if (ScreensaverConfig.idleEnabled && undocked) {
                         idleScreensaverTimer.restart();
                     }
                 }

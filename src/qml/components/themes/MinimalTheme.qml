@@ -18,7 +18,9 @@ Item {
     property bool isClosing: false
 
     property bool showBattery: ScreensaverConfig.showBattery
-    property bool showClock: ScreensaverConfig.showClock
+    // Clock is always visible in Minimal theme — it's the entire theme.
+    // The global showClock toggle only affects overlays on Matrix/Starfield.
+    property bool showClock: true
 
     function interactiveInput(action) {}
 

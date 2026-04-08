@@ -146,10 +146,12 @@ HEADERS += \
     src/ui/uiController.h \
     src/ui/matrixrain.h \
     src/ui/screensaverconfig.h \
+    src/ui/screensaverconfig_macros.h \
     src/ui/rainsimulation.h \
     src/ui/gravitydirection.h \
     src/ui/glitchengine.h \
     src/ui/messageengine.h \
+    src/ui/avatargrid.h \
     src/ui/glyphatlas.h \
     src/util.h \
     src/voice.h
@@ -218,6 +220,7 @@ SOURCES += \
         src/ui/gravitydirection.cpp \
         src/ui/glitchengine.cpp \
         src/ui/messageengine.cpp \
+        src/ui/avatargrid.cpp \
         src/ui/glyphatlas.cpp \
         src/util.cpp \
         src/voice.cpp

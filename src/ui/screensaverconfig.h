@@ -1,173 +1,148 @@
-// Copyright (c) 2024 madalone. Screensaver config bridge — reads from Config singleton,
-// applies value transforms, exposes domain-specific properties for MatrixRainItem binding.
+// Copyright (c) 2024 madalone. Screensaver config — owns QSettings storage for all screensaver
+// properties. Single declaration per property via SCRN_* macros. No dependency on upstream Config.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
-#include <QObject>
 #include <QColor>
+#include <QObject>
 #include <QQmlEngine>
+#include <QSettings>
 
-#include "../config/config.h"
+#include "screensaverconfig_macros.h"
 
 namespace uc {
 
-/// @name SC_BOOL / SC_INT / SC_STRING macros
-/// Read-only Q_PROPERTY generator macros for ScreensaverConfig.
-/// Each macro expands to: a Q_PROPERTY declaration, a public getter that reads
-/// live from the Config singleton via the specified Getter method, and a signal.
-/// Properties are read-only from QML -- Config writes happen through settings pages.
-/// @{
-#define SC_BOOL(Name, Getter)                                                  \
-    Q_PROPERTY(bool Name READ Name NOTIFY Name##Changed FINAL)                 \
-public:                                                                        \
-    bool Name() const { return m_config->Getter(); }                           \
-Q_SIGNALS:                                                                     \
-    void Name##Changed();                                                      \
-private:
-
-#define SC_INT(Name, Getter)                                                   \
-    Q_PROPERTY(int Name READ Name NOTIFY Name##Changed FINAL)                  \
-public:                                                                        \
-    int Name() const { return m_config->Getter(); }                            \
-Q_SIGNALS:                                                                     \
-    void Name##Changed();                                                      \
-private:
-
-#define SC_STRING(Name, Getter)                                                \
-    Q_PROPERTY(QString Name READ Name NOTIFY Name##Changed FINAL)              \
-public:                                                                        \
-    QString Name() const { return m_config->Getter(); }                        \
-Q_SIGNALS:                                                                     \
-    void Name##Changed();                                                      \
-private:
-/// @}
-
 // ---------------------------------------------------------------------------
-// ScreensaverConfig — singleton bridge between Config and MatrixRainItem.
+// ScreensaverConfig — singleton owning all screensaver QSettings storage.
 //
 // Responsibilities:
-//   1. Forward Config::chargingMatrix*Changed signals as domain-specific signals
+//   1. Read/write all charging/* QSettings keys (own QSettings instance)
 //   2. Apply value transforms (speed/50, density/100, fadeRate formula, trailLength)
 //   3. Handle showBattery conditional (dockedOnly + Battery::powerSupply)
 //
 // QML usage:  import ScreensaverConfig 1.0
 //             MatrixRain { speed: ScreensaverConfig.speed }
+//             // Settings pages write: ScreensaverConfig.matrixSpeed = slider.value
 // ---------------------------------------------------------------------------
-/// @brief Singleton bridge between Config (QSettings) and MatrixRainItem.
-///
-/// Forwards Config change signals as domain-specific signals, applies value
-/// transforms (speed/50, density/100, fadeRate formula, trailLength mapping),
-/// and handles conditional logic (showBattery dockedOnly check).
 class ScreensaverConfig : public QObject {
     Q_OBJECT
 
-    // --- Theme + overlays (shared across all themes) ---
-    SC_STRING(theme,      getChargingTheme)
-    SC_BOOL(showClock,    getChargingShowClock)
-    // showBattery has custom getter (dockedOnly logic) — declared manually below
+    // === Theme + overlays (shared across all themes) ===
+    SCRN_STRING(theme,             "charging/theme",                  "matrix")
+    SCRN_BOOL(showClock,           "charging/showClock",              false)
+    SCRN_BOOL(showBatteryEnabled,  "charging/showBattery",            true)
+    SCRN_BOOL(batteryDockedOnly,   "charging/batteryDockedOnly",      true)
 
-    // --- Core appearance (transformed) ---
-    // speed, density, fadeRate, trailLength have custom getters — declared manually below
+    // === Core appearance — raw ints for settings page sliders ===
+    SCRN_STRING(matrixColor,       "charging/matrixColor",            "#00ff41")
+    SCRN_INT(matrixSpeed,          "charging/matrixSpeed",            50)
+    SCRN_INT(matrixDensity,        "charging/matrixDensity",          70)
+    SCRN_INT(matrixFade,           "charging/matrixFade",             60)
+    SCRN_INT(matrixTrail,          "charging/matrixTrail",            50)
+    SCRN_STRING(colorMode,         "charging/matrixColorMode",        "green")
+    SCRN_INT(fontSize,             "charging/matrixFontSize",         16)
+    SCRN_STRING(charset,           "charging/matrixCharset",          "ascii")
 
-    // --- Core appearance (direct pass-through) ---
-    SC_STRING(colorMode,  getChargingMatrixColorMode)
-    SC_INT(fontSize,      getChargingMatrixFontSize)
-    SC_STRING(charset,    getChargingMatrixCharset)
+    // === Visual effects ===
+    SCRN_BOOL(glow,                "charging/matrixGlow",             true)
+    SCRN_INT(glowFade,             "charging/matrixGlowFade",         50)
+    SCRN_BOOL(depthGlow,           "charging/matrixDepthGlow",        false)
+    SCRN_INT(depthGlowMin,         "charging/matrixDepthGlowMin",     40)
+    SCRN_BOOL(invertTrail,         "charging/matrixInvertTrail",      false)
 
-    // --- Visual effects ---
-    SC_BOOL(glow,         getChargingMatrixGlow)
-    SC_INT(glowFade,      getChargingMatrixGlowFade)
-    SC_BOOL(depthGlow,    getChargingMatrixDepthGlow)
-    SC_INT(depthGlowMin,  getChargingMatrixDepthGlowMin)
-    SC_BOOL(invertTrail,  getChargingMatrixInvertTrail)
+    // === Glitch ===
+    SCRN_BOOL(glitch,              "charging/matrixGlitch",           true)
+    SCRN_INT(glitchRate,           "charging/matrixGlitchRate",       30)
+    SCRN_BOOL(glitchFlash,         "charging/matrixGlitchFlash",      true)
+    SCRN_BOOL(glitchStutter,       "charging/matrixGlitchStutter",    true)
+    SCRN_BOOL(glitchReverse,       "charging/matrixGlitchReverse",    true)
+    SCRN_BOOL(glitchDirection,     "charging/matrixGlitchDirection",  true)
+    SCRN_INT(glitchDirRate,        "charging/matrixGlitchDirRate",    30)
+    SCRN_INT(glitchDirMask,        "charging/matrixGlitchDirMask",    255)
+    SCRN_INT(glitchDirFade,        "charging/matrixGlitchDirFade",    20)
+    SCRN_INT(glitchDirSpeed,       "charging/matrixGlitchDirSpeed",   50)
+    SCRN_INT(glitchDirLength,      "charging/matrixGlitchDirLength",  5)
+    SCRN_BOOL(glitchRandomColor,   "charging/matrixGlitchRandomColor", false)
+    SCRN_BOOL(glitchChaos,         "charging/matrixGlitchChaos",      false)
+    SCRN_INT(glitchChaosFrequency, "charging/matrixGlitchChaosFrequency", 50)
+    SCRN_BOOL(glitchChaosSurge,    "charging/matrixGlitchChaosSurge", true)
+    SCRN_BOOL(glitchChaosScramble, "charging/matrixGlitchChaosScramble", true)
+    SCRN_BOOL(glitchChaosFreeze,   "charging/matrixGlitchChaosFreeze", true)
+    SCRN_BOOL(glitchChaosScatter,  "charging/matrixGlitchChaosScatter", true)
+    SCRN_BOOL(glitchChaosSquareBurst, "charging/matrixGlitchChaosSquareBurst", true)
+    SCRN_INT(glitchChaosSquareBurstSize, "charging/matrixGlitchChaosSquareBurstSize", 5)
+    SCRN_BOOL(glitchChaosRipple,   "charging/matrixGlitchChaosRipple", true)
+    SCRN_BOOL(glitchChaosWipe,     "charging/matrixGlitchChaosWipe",  false)
+    SCRN_INT(glitchChaosIntensity, "charging/matrixGlitchChaosIntensity", 50)
+    SCRN_INT(glitchChaosScatterRate, "charging/matrixGlitchChaosScatterRate", 50)
+    SCRN_INT(glitchChaosScatterLength, "charging/matrixGlitchChaosScatterLength", 8)
 
-    // --- Glitch ---
-    SC_BOOL(glitch,              getChargingMatrixGlitch)
-    SC_INT(glitchRate,           getChargingMatrixGlitchRate)
-    SC_BOOL(glitchFlash,         getChargingMatrixGlitchFlash)
-    SC_BOOL(glitchStutter,       getChargingMatrixGlitchStutter)
-    SC_BOOL(glitchReverse,       getChargingMatrixGlitchReverse)
-    SC_BOOL(glitchDirection,     getChargingMatrixGlitchDirection)
-    SC_INT(glitchDirRate,        getChargingMatrixGlitchDirRate)
-    SC_INT(glitchDirMask,        getChargingMatrixGlitchDirMask)
-    SC_INT(glitchDirFade,        getChargingMatrixGlitchDirFade)
-    SC_INT(glitchDirSpeed,       getChargingMatrixGlitchDirSpeed)
-    SC_INT(glitchDirLength,      getChargingMatrixGlitchDirLength)
-    SC_BOOL(glitchRandomColor,   getChargingMatrixGlitchRandomColor)
-    SC_BOOL(glitchChaos,         getChargingMatrixGlitchChaos)
-    SC_INT(glitchChaosFrequency, getChargingMatrixGlitchChaosFrequency)
-    SC_BOOL(glitchChaosSurge,    getChargingMatrixGlitchChaosSurge)
-    SC_BOOL(glitchChaosScramble, getChargingMatrixGlitchChaosScramble)
-    SC_BOOL(glitchChaosFreeze,   getChargingMatrixGlitchChaosFreeze)
-    SC_BOOL(glitchChaosScatter,     getChargingMatrixGlitchChaosScatter)
-    SC_BOOL(glitchChaosSquareBurst,     getChargingMatrixGlitchChaosSquareBurst)
-    SC_INT(glitchChaosSquareBurstSize, getChargingMatrixGlitchChaosSquareBurstSize)
-    SC_BOOL(glitchChaosRipple,          getChargingMatrixGlitchChaosRipple)
-    SC_BOOL(glitchChaosWipe,            getChargingMatrixGlitchChaosWipe)
-    SC_INT(glitchChaosIntensity, getChargingMatrixGlitchChaosIntensity)
-    SC_INT(glitchChaosScatterRate,   getChargingMatrixGlitchChaosScatterRate)
-    SC_INT(glitchChaosScatterLength, getChargingMatrixGlitchChaosScatterLength)
+    // === Direction / gravity ===
+    SCRN_STRING(direction,         "charging/matrixDirection",        "down")
+    SCRN_BOOL(gravityMode,         "charging/matrixGravity",         false)
+    SCRN_INT(autoRotateSpeed,      "charging/matrixAutoRotateSpeed",  50)
+    SCRN_INT(autoRotateBend,       "charging/matrixAutoRotateBend",   50)
 
-    // --- Direction / gravity ---
-    SC_STRING(direction,      getChargingMatrixDirection)
-    SC_BOOL(gravityMode,      getChargingMatrixGravity)
-    SC_INT(autoRotateSpeed,   getChargingMatrixAutoRotateSpeed)
-    SC_INT(autoRotateBend,    getChargingMatrixAutoRotateBend)
+    // === Messages ===
+    SCRN_STRING(messages,          "charging/matrixMessages",         "")
+    SCRN_BOOL(messagesEnabled,     "charging/matrixMessagesEnabled",  true)
+    SCRN_INT(messageInterval,      "charging/matrixMessageInterval",  10)
+    SCRN_BOOL(messageRandom,       "charging/matrixMessageRandom",    true)
+    SCRN_STRING(messageDirection,  "charging/matrixMessageDirection", "horizontal-lr")
+    SCRN_BOOL(messageFlash,        "charging/matrixMessageFlash",     true)
+    SCRN_BOOL(messagePulse,        "charging/matrixMessagePulse",     true)
 
-    // --- Messages ---
-    SC_STRING(messages,         getChargingMatrixMessages)
-    SC_BOOL(messagesEnabled,    getChargingMatrixMessagesEnabled)
-    SC_INT(messageInterval,     getChargingMatrixMessageInterval)
-    SC_BOOL(messageRandom,      getChargingMatrixMessageRandom)
-    SC_STRING(messageDirection,  getChargingMatrixMessageDirection)
-    SC_BOOL(messageFlash,       getChargingMatrixMessageFlash)
-    SC_BOOL(messagePulse,       getChargingMatrixMessagePulse)
+    // === Subliminal ===
+    SCRN_BOOL(subliminal,          "charging/matrixSubliminal",       false)
+    SCRN_INT(subliminalInterval,   "charging/matrixSubliminalInterval", 5)
+    SCRN_INT(subliminalDuration,   "charging/matrixSubliminalDuration", 8)
+    SCRN_BOOL(subliminalStream,    "charging/matrixSubliminalStream", true)
+    SCRN_BOOL(subliminalOverlay,   "charging/matrixSubliminalOverlay", true)
+    SCRN_BOOL(subliminalFlash,     "charging/matrixSubliminalFlash",  false)
 
-    // --- Subliminal ---
-    SC_BOOL(subliminal,          getChargingMatrixSubliminal)
-    SC_INT(subliminalInterval,   getChargingMatrixSubliminalInterval)
-    SC_INT(subliminalDuration,   getChargingMatrixSubliminalDuration)
-    SC_BOOL(subliminalStream,    getChargingMatrixSubliminalStream)
-    SC_BOOL(subliminalOverlay,   getChargingMatrixSubliminalOverlay)
-    SC_BOOL(subliminalFlash,     getChargingMatrixSubliminalFlash)
+    // === Tap interaction ===
+    SCRN_BOOL(tapBurst,            "charging/matrixTapBurst",         true)
+    SCRN_INT(tapBurstCount,        "charging/matrixTapBurstCount",    25)
+    SCRN_INT(tapBurstLength,       "charging/matrixTapBurstLength",   6)
+    SCRN_BOOL(tapFlash,            "charging/matrixTapFlash",         true)
+    SCRN_BOOL(tapScramble,         "charging/matrixTapScramble",      true)
+    SCRN_BOOL(tapSpawn,            "charging/matrixTapSpawn",         true)
+    SCRN_INT(tapSpawnCount,        "charging/matrixTapSpawnCount",    6)
+    SCRN_INT(tapSpawnLength,       "charging/matrixTapSpawnLength",   10)
+    SCRN_BOOL(tapMessage,          "charging/matrixTapMessage",       true)
+    SCRN_BOOL(tapSquareBurst,      "charging/matrixTapSquareBurst",   true)
+    SCRN_INT(tapSquareBurstSize,   "charging/matrixTapSquareBurstSize", 5)
+    SCRN_BOOL(tapRipple,           "charging/matrixTapRipple",        true)
+    SCRN_BOOL(tapWipe,             "charging/matrixTapWipe",          false)
+    SCRN_BOOL(tapRandomize,        "charging/matrixTapRandomize",     false)
+    SCRN_INT(tapRandomizeChance,   "charging/matrixTapRandomizeChance", 50)
 
-    // --- Tap interaction flags (read on-demand by ChargingScreen.qml tap handler) ---
-    SC_BOOL(tapBurst,            getChargingMatrixTapBurst)
-    SC_INT(tapBurstCount,       getChargingMatrixTapBurstCount)
-    SC_INT(tapBurstLength,      getChargingMatrixTapBurstLength)
-    SC_BOOL(tapFlash,            getChargingMatrixTapFlash)
-    SC_BOOL(tapScramble,         getChargingMatrixTapScramble)
-    SC_BOOL(tapSpawn,            getChargingMatrixTapSpawn)
-    SC_INT(tapSpawnCount,       getChargingMatrixTapSpawnCount)
-    SC_INT(tapSpawnLength,      getChargingMatrixTapSpawnLength)
-    SC_BOOL(tapMessage,          getChargingMatrixTapMessage)
-    SC_BOOL(tapSquareBurst,        getChargingMatrixTapSquareBurst)
-    SC_INT(tapSquareBurstSize,    getChargingMatrixTapSquareBurstSize)
-    SC_BOOL(tapRipple,           getChargingMatrixTapRipple)
-    SC_BOOL(tapWipe,             getChargingMatrixTapWipe)
-    SC_BOOL(tapRandomize,        getChargingMatrixTapRandomize)
-    SC_INT(tapRandomizeChance,   getChargingMatrixTapRandomizeChance)
+    // === General behavior ===
+    SCRN_BOOL(tapToClose,          "charging/tapToClose",             true)
+    SCRN_BOOL(motionToClose,       "charging/motionToClose",          false)
+    SCRN_BOOL(idleEnabled,         "charging/idleEnabled",            false)
+    SCRN_INT(idleTimeout,          "charging/idleTimeout",            45)
+    SCRN_BOOL(dpadEnabled,         "charging/matrixDpadEnabled",      true)
+    SCRN_BOOL(dpadPersist,         "charging/matrixDpadPersist",      true)
+    SCRN_BOOL(dpadTouchbarSpeed,   "charging/matrixDpadTouchbarSpeed", true)
+    SCRN_BOOL(tapDirection,        "charging/matrixTapDirection",     false)
+    SCRN_BOOL(tapSwipeSpeed,       "charging/matrixTapSwipeSpeed",    true)
+    SCRN_STRING(lastDirection,     "charging/matrixLastDirection",    "")
 
-    // --- General behavior (used by ChargingScreen.qml) ---
-    SC_BOOL(tapToClose,     getChargingTapToClose)
-    SC_BOOL(motionToClose,  getChargingMotionToClose)
-    SC_BOOL(idleEnabled,    getChargingIdleEnabled)
-    SC_INT(idleTimeout,     getChargingIdleTimeout)
-    SC_BOOL(dpadEnabled,    getChargingMatrixDpadEnabled)
-    SC_BOOL(tapDirection,   getChargingMatrixTapDirection)
-    SC_STRING(lastDirection, getChargingMatrixLastDirection)
+    // === Color layers (per-vertex depth tinting) ===
+    SCRN_BOOL(depthEnabled,        "charging/matrixDepthEnabled",     false)
+    SCRN_INT(depthIntensity,       "charging/matrixDepthIntensity",   50)
+    SCRN_BOOL(depthOverlay,        "charging/matrixDepthOverlay",     false)
 
-    // --- Color layers (per-vertex depth tinting) ---
-    SC_BOOL(depthEnabled,   getChargingMatrixDepthEnabled)
-    SC_INT(depthIntensity,  getChargingMatrixDepthIntensity)
-    SC_BOOL(depthOverlay,   getChargingMatrixDepthOverlay)
+    // === Rain layers (multi-grid depth) ===
+    SCRN_BOOL(layersEnabled,       "charging/matrixLayersEnabled",    false)
 
-    // --- Rain layers (multi-grid depth) ---
-    SC_BOOL(layersEnabled,  getChargingMatrixLayersEnabled)
+    // === Starfield theme ===
+    SCRN_INT(starfieldSpeed,       "charging/starfieldSpeed",         50)
+    SCRN_INT(starfieldDensity,     "charging/starfieldDensity",       50)
 
-    // ---- Manually declared properties (custom getters with transforms) ----
-
+    // === Transformed read-only properties (custom getters) ===
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged FINAL)
     Q_PROPERTY(qreal speed READ speed NOTIFY speedChanged FINAL)
     Q_PROPERTY(qreal density READ density NOTIFY densityChanged FINAL)
@@ -176,7 +151,7 @@ class ScreensaverConfig : public QObject {
     Q_PROPERTY(bool showBattery READ showBattery NOTIFY showBatteryChanged FINAL)
 
 public:
-    explicit ScreensaverConfig(Config *config, QObject *parent = nullptr);
+    explicit ScreensaverConfig(QObject *parent = nullptr);
 
     /// @brief QML singleton factory -- registered via qmlRegisterSingletonType.
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
@@ -184,19 +159,13 @@ public:
     static ScreensaverConfig *instance() { return s_instance; }
 
     /// @name Transformed getters
-    /// These apply value transforms to raw Config integers before exposing to QML.
+    /// These apply value transforms to raw QSettings integers before exposing to QML.
     /// @{
-    /// @brief Returns QColor parsed from Config's hex string.
     QColor color() const;
-    /// @brief Returns Config speed / 50.0 (normalized to ~0.0-2.0 range).
     qreal  speed() const;
-    /// @brief Returns Config density / 100.0 (normalized to 0.0-1.0 range).
     qreal  density() const;
-    /// @brief Returns transformed fade rate: 0.80 + (Config value / 100.0) * 0.18.
     qreal  fadeRate() const;
-    /// @brief Returns Config trail length mapped from percentage to cell count.
     int    trailLength() const;
-    /// @brief Returns true if battery overlay should show (respects dockedOnly + power state).
     bool   showBattery() const;
     /// @}
 
@@ -209,15 +178,13 @@ signals:
     void showBatteryChanged();
 
 private:
-    void connectSignals();
-
     static ScreensaverConfig *s_instance;
-    Config *m_config;
+    QSettings *m_settings;
 };
 
 // Clean up macros — not needed outside this header
-#undef SC_BOOL
-#undef SC_INT
-#undef SC_STRING
+#undef SCRN_BOOL
+#undef SCRN_INT
+#undef SCRN_STRING
 
 }  // namespace uc

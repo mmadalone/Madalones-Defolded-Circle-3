@@ -15,9 +15,9 @@ Item {
     property bool isClosing: false
     property bool displayOff: false
 
-    // Configurable properties
-    property int starCount: 200
-    property real speed: 1.0
+    // Starfield-specific config (independent from Matrix)
+    property int starCount: Math.round(50 + ScreensaverConfig.starfieldDensity * 6)  // 0→50, 50→350, 100→650
+    property real speed: ScreensaverConfig.starfieldSpeed / 50.0                      // 0→0, 50→1.0, 100→2.0
 
     // No-op stub — Starfield has no interactive input, but ChargingScreen
     // calls this unconditionally on all themes.

@@ -9,6 +9,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -45,8 +46,8 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: root.navUpTarget
             KeyNavigation.down: gradientColorRow
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["green","blue","red","amber","white","purple"], Config.chargingMatrixColorMode, function(v){ Config.chargingMatrixColorMode = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["green","blue","red","amber","white","purple"], Config.chargingMatrixColorMode, function(v){ Config.chargingMatrixColorMode = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["green","blue","red","amber","white","purple"], ScreensaverConfig.colorMode, function(v){ ScreensaverConfig.colorMode = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["green","blue","red","amber","white","purple"], ScreensaverConfig.colorMode, function(v){ ScreensaverConfig.colorMode = v }, 1)
             Repeater {
                 model: [
                     { name: "green",  color: "#00ff41" },
@@ -60,12 +61,12 @@ ColumnLayout {
                     Layout.fillWidth: true; height: 46; radius: 8
                     color: modelData.color
                     border {
-                        color: Config.chargingMatrixColorMode === modelData.name ? colors.offwhite : colors.medium
-                        width: Config.chargingMatrixColorMode === modelData.name ? 3 : 1
+                        color: ScreensaverConfig.colorMode === modelData.name ? colors.offwhite : colors.medium
+                        width: ScreensaverConfig.colorMode === modelData.name ? 3 : 1
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: Config.chargingMatrixColorMode = modelData.name
+                        onClicked: ScreensaverConfig.colorMode = modelData.name
                     }
                 }
             }
@@ -79,13 +80,13 @@ ColumnLayout {
             Accessible.name: "Gradient color selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: solidColorRow; KeyNavigation.down: charsetRow
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], Config.chargingMatrixColorMode, function(v){ Config.chargingMatrixColorMode = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], Config.chargingMatrixColorMode, function(v){ Config.chargingMatrixColorMode = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.colorMode, function(v){ ScreensaverConfig.colorMode = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.colorMode, function(v){ ScreensaverConfig.colorMode = v }, 1)
             // Rainbow (12 hues)
             Rectangle {
                 Layout.fillWidth: true; height: 46; radius: 8
                 color: "transparent"
-                border { color: Config.chargingMatrixColorMode === "rainbow" ? colors.offwhite : colors.medium; width: Config.chargingMatrixColorMode === "rainbow" ? 3 : 1 }
+                border { color: ScreensaverConfig.colorMode === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "rainbow" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
                     gradient: Gradient {
@@ -98,13 +99,13 @@ ColumnLayout {
                     }
                 }
                 Text { anchors.centerIn: parent; text: "Rainbow"; color: colors.offwhite; font: fonts.secondaryFont(18) }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: Config.chargingMatrixColorMode = "rainbow" }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "rainbow" }
             }
             // Rainbow+ (24 hues, smoother)
             Rectangle {
                 Layout.fillWidth: true; height: 46; radius: 8
                 color: "transparent"
-                border { color: Config.chargingMatrixColorMode === "rainbow_gradient" ? colors.offwhite : colors.medium; width: Config.chargingMatrixColorMode === "rainbow_gradient" ? 3 : 1 }
+                border { color: ScreensaverConfig.colorMode === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "rainbow_gradient" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
                     gradient: Gradient {
@@ -123,13 +124,13 @@ ColumnLayout {
                     }
                 }
                 Text { anchors.centerIn: parent; text: "Rainbow+"; color: colors.offwhite; font: fonts.secondaryFont(18) }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: Config.chargingMatrixColorMode = "rainbow_gradient" }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "rainbow_gradient" }
             }
             // Neon (24 hues, high lightness)
             Rectangle {
                 Layout.fillWidth: true; height: 46; radius: 8
                 color: "transparent"
-                border { color: Config.chargingMatrixColorMode === "neon" ? colors.offwhite : colors.medium; width: Config.chargingMatrixColorMode === "neon" ? 3 : 1 }
+                border { color: ScreensaverConfig.colorMode === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "neon" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
                     gradient: Gradient {
@@ -148,7 +149,7 @@ ColumnLayout {
                     }
                 }
                 Text { anchors.centerIn: parent; text: "Neon"; color: colors.offwhite; font: fonts.secondaryFont(18) }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: Config.chargingMatrixColorMode = "neon" }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "neon" }
             }
         }
 
@@ -174,8 +175,8 @@ ColumnLayout {
             Accessible.name: "Character set selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: gradientColorRow; KeyNavigation.down: fontSizeSlider
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["katakana","ascii","binary","digits"], Config.chargingMatrixCharset, function(v){ Config.chargingMatrixCharset = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["katakana","ascii","binary","digits"], Config.chargingMatrixCharset, function(v){ Config.chargingMatrixCharset = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["katakana","ascii","binary","digits"], ScreensaverConfig.charset, function(v){ ScreensaverConfig.charset = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["katakana","ascii","binary","digits"], ScreensaverConfig.charset, function(v){ ScreensaverConfig.charset = v }, 1)
             Repeater {
                 model: [
                     { name: "katakana", label: "Kana" },
@@ -185,16 +186,16 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    color: Config.chargingMatrixCharset === modelData.name ? colors.offwhite : colors.dark
+                    color: ScreensaverConfig.charset === modelData.name ? colors.offwhite : colors.dark
                     border { color: colors.medium; width: 1 }
                     Text {
                         anchors.centerIn: parent; text: modelData.label
-                        color: Config.chargingMatrixCharset === modelData.name ? colors.black : colors.offwhite
+                        color: ScreensaverConfig.charset === modelData.name ? colors.black : colors.offwhite
                         font: fonts.primaryFont(22)
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: Config.chargingMatrixCharset = modelData.name
+                        onClicked: ScreensaverConfig.charset = modelData.name
                     }
                 }
             }
@@ -219,9 +220,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 60; stepSize: 1
-            value: Config.chargingMatrixFontSize; live: true; showLiveValue: true
-            onMoved: Config.chargingMatrixFontSize = value
-            onUserInteractionEnded: Config.chargingMatrixFontSize = value
+            value: ScreensaverConfig.fontSize; live: true; showLiveValue: true
+            onMoved: ScreensaverConfig.fontSize = value
+            onUserInteractionEnded: ScreensaverConfig.fontSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Font size " + value
             KeyNavigation.up: charsetRow; KeyNavigation.down: speedSlider
@@ -246,9 +247,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5
-            value: Config.chargingMatrixSpeed; live: true
-            onMoved: Config.chargingMatrixSpeed = value
-            onUserInteractionEnded: Config.chargingMatrixSpeed = value
+            value: ScreensaverConfig.matrixSpeed; live: true
+            onMoved: ScreensaverConfig.matrixSpeed = value
+            onUserInteractionEnded: ScreensaverConfig.matrixSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Animation speed " + value
             KeyNavigation.up: fontSizeSlider; KeyNavigation.down: densitySlider
@@ -273,9 +274,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 20; to: 500; stepSize: 5
-            value: Config.chargingMatrixDensity; live: true
-            onMoved: Config.chargingMatrixDensity = value
-            onUserInteractionEnded: Config.chargingMatrixDensity = value
+            value: ScreensaverConfig.matrixDensity; live: true
+            onMoved: ScreensaverConfig.matrixDensity = value
+            onUserInteractionEnded: ScreensaverConfig.matrixDensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Column density " + value
             KeyNavigation.up: speedSlider; KeyNavigation.down: trailSlider
@@ -300,9 +301,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5
-            value: Config.chargingMatrixTrail; live: true
-            onMoved: Config.chargingMatrixTrail = value
-            onUserInteractionEnded: Config.chargingMatrixTrail = value
+            value: ScreensaverConfig.matrixTrail; live: true
+            onMoved: ScreensaverConfig.matrixTrail = value
+            onUserInteractionEnded: ScreensaverConfig.matrixTrail = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail length " + value
             KeyNavigation.up: densitySlider; KeyNavigation.down: fadeSlider
@@ -327,9 +328,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 20; to: 100; stepSize: 5
-            value: Config.chargingMatrixFade; live: true
-            onMoved: Config.chargingMatrixFade = value
-            onUserInteractionEnded: Config.chargingMatrixFade = value
+            value: ScreensaverConfig.matrixFade; live: true
+            onMoved: ScreensaverConfig.matrixFade = value
+            onUserInteractionEnded: ScreensaverConfig.matrixFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail fade " + value
             KeyNavigation.up: trailSlider; KeyNavigation.down: dirCardinalRow
@@ -354,8 +355,8 @@ ColumnLayout {
                 objectName: "gravitySwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGravity
-                trigger: function() { Config.chargingMatrixGravity = !Config.chargingMatrixGravity; }
+                checked: ScreensaverConfig.gravityMode
+                trigger: function() { ScreensaverConfig.gravityMode = !ScreensaverConfig.gravityMode; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Auto-rotate"
                 KeyNavigation.up: fadeSlider
@@ -366,14 +367,14 @@ ColumnLayout {
 
     // 10a2. AUTO-ROTATE SPEED (visible when auto-rotate is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGravity
+        visible: ScreensaverConfig.gravityMode
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Rotation speed") + " (" + Config.chargingMatrixAutoRotateSpeed + "%)"
+            text: qsTr("Rotation speed") + " (" + ScreensaverConfig.autoRotateSpeed + "%)"
             font: fonts.primaryFont(26)
         }
         Components.Slider {
@@ -382,9 +383,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5
-            value: Config.chargingMatrixAutoRotateSpeed; live: true
-            onMoved: Config.chargingMatrixAutoRotateSpeed = value
-            onUserInteractionEnded: Config.chargingMatrixAutoRotateSpeed = value
+            value: ScreensaverConfig.autoRotateSpeed; live: true
+            onMoved: ScreensaverConfig.autoRotateSpeed = value
+            onUserInteractionEnded: ScreensaverConfig.autoRotateSpeed = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Rotation speed " + value
             KeyNavigation.up: gravitySwitch; KeyNavigation.down: autoRotateSmoothnessSlider
@@ -393,14 +394,14 @@ ColumnLayout {
 
     // 10a3. AUTO-ROTATE SMOOTHNESS (visible when auto-rotate is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGravity
+        visible: ScreensaverConfig.gravityMode
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Trail bend") + " (" + Config.chargingMatrixAutoRotateBend + "%)"
+            text: qsTr("Trail bend") + " (" + ScreensaverConfig.autoRotateBend + "%)"
             font: fonts.primaryFont(26)
         }
         Components.Slider {
@@ -409,9 +410,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 100; stepSize: 5
-            value: Config.chargingMatrixAutoRotateBend; live: true
-            onMoved: Config.chargingMatrixAutoRotateBend = value
-            onUserInteractionEnded: Config.chargingMatrixAutoRotateBend = value
+            value: ScreensaverConfig.autoRotateBend; live: true
+            onMoved: ScreensaverConfig.autoRotateBend = value
+            onUserInteractionEnded: ScreensaverConfig.autoRotateBend = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Trail bend " + value
             KeyNavigation.up: autoRotateSpeedSlider; KeyNavigation.down: dirCardinalRow
@@ -425,7 +426,7 @@ ColumnLayout {
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
-        opacity: Config.chargingMatrixGravity ? 0.4 : 1.0
+        opacity: ScreensaverConfig.gravityMode ? 0.4 : 1.0
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
@@ -437,13 +438,13 @@ ColumnLayout {
             id: dirCardinalRow
             objectName: "dirCardinalRow"
             spacing: 8; focus: true
-            enabled: !Config.chargingMatrixGravity
+            enabled: !ScreensaverConfig.gravityMode
             Accessible.name: "Cardinal direction selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: autoRotateSmoothnessSlider
             KeyNavigation.down: dirDiagRow
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["down","up","left","right"], Config.chargingMatrixDirection, function(v){ Config.chargingMatrixDirection = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["down","up","left","right"], Config.chargingMatrixDirection, function(v){ Config.chargingMatrixDirection = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["down","up","left","right"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["down","up","left","right"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, 1)
             Repeater {
                 model: [
                     { name: "down",  label: "\u2193 Down" },
@@ -453,16 +454,16 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    color: Config.chargingMatrixDirection === modelData.name ? colors.offwhite : colors.dark
+                    color: ScreensaverConfig.direction === modelData.name ? colors.offwhite : colors.dark
                     border { color: colors.medium; width: 1 }
                     Text {
                         anchors.centerIn: parent; text: modelData.label
-                        color: Config.chargingMatrixDirection === modelData.name ? colors.black : colors.offwhite
+                        color: ScreensaverConfig.direction === modelData.name ? colors.black : colors.offwhite
                         font: fonts.primaryFont(22)
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: Config.chargingMatrixDirection = modelData.name
+                        onClicked: ScreensaverConfig.direction = modelData.name
                     }
                 }
             }
@@ -473,13 +474,13 @@ ColumnLayout {
             id: dirDiagRow
             objectName: "dirDiagRow"
             spacing: 8; focus: true
-            enabled: !Config.chargingMatrixGravity
+            enabled: !ScreensaverConfig.gravityMode
             Accessible.name: "Diagonal direction selector"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: dirCardinalRow
             KeyNavigation.down: root.navDownTarget
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["down-right","down-left","up-right","up-left"], Config.chargingMatrixDirection, function(v){ Config.chargingMatrixDirection = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["down-right","down-left","up-right","up-left"], Config.chargingMatrixDirection, function(v){ Config.chargingMatrixDirection = v }, 1)
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["down-right","down-left","up-right","up-left"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["down-right","down-left","up-right","up-left"], ScreensaverConfig.direction, function(v){ ScreensaverConfig.direction = v }, 1)
             Repeater {
                 model: [
                     { name: "down-right", label: "\u2198 D-R" },
@@ -489,16 +490,16 @@ ColumnLayout {
                 ]
                 Rectangle {
                     Layout.fillWidth: true; height: 46; radius: 8
-                    color: Config.chargingMatrixDirection === modelData.name ? colors.offwhite : colors.dark
+                    color: ScreensaverConfig.direction === modelData.name ? colors.offwhite : colors.dark
                     border { color: colors.medium; width: 1 }
                     Text {
                         anchors.centerIn: parent; text: modelData.label
-                        color: Config.chargingMatrixDirection === modelData.name ? colors.black : colors.offwhite
+                        color: ScreensaverConfig.direction === modelData.name ? colors.black : colors.offwhite
                         font: fonts.primaryFont(22)
                     }
                     Components.HapticMouseArea {
                         anchors.fill: parent
-                        onClicked: Config.chargingMatrixDirection = modelData.name
+                        onClicked: ScreensaverConfig.direction = modelData.name
                     }
                 }
             }

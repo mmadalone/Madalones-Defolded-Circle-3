@@ -4,7 +4,7 @@
 import QtQuick 2.15
 import QtTest 1.2
 
-import Config 1.0
+import ScreensaverConfig 1.0
 
 TestCase {
     id: testCase
@@ -32,7 +32,7 @@ TestCase {
     // ── init / cleanup ────────────────────────────────────────
     function init() {
         lastSetValue = undefined;
-        Config.resetDefaults();
+        ScreensaverConfig.resetDefaults();
     }
 
     // ── Tests ─────────────────────────────────────────────────
@@ -84,20 +84,20 @@ TestCase {
 
     function test_cycle_integrated_theme_forward() {
         // Test via actual Config property writes
-        Config.chargingTheme = "matrix";
+        ScreensaverConfig.theme = "matrix";
         var options = ["matrix", "starfield", "minimal"];
-        cycleOption(options, Config.chargingTheme,
-                    function(v) { Config.chargingTheme = v; }, 1);
-        compare(Config.chargingTheme, "starfield",
+        cycleOption(options, ScreensaverConfig.theme,
+                    function(v) { ScreensaverConfig.theme = v; }, 1);
+        compare(ScreensaverConfig.theme, "starfield",
                 "theme cycles from matrix to starfield via Config");
     }
 
     function test_cycle_integrated_colormode() {
-        Config.chargingMatrixColorMode = "blue";
+        ScreensaverConfig.colorMode = "blue";
         var options = ["green", "blue", "red", "amber", "white", "purple"];
-        cycleOption(options, Config.chargingMatrixColorMode,
-                    function(v) { Config.chargingMatrixColorMode = v; }, 1);
-        compare(Config.chargingMatrixColorMode, "red",
+        cycleOption(options, ScreensaverConfig.colorMode,
+                    function(v) { ScreensaverConfig.colorMode = v; }, 1);
+        compare(ScreensaverConfig.colorMode, "red",
                 "color mode cycles from blue to red via Config");
     }
 }

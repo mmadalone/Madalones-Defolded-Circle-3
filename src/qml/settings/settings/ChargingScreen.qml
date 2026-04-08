@@ -9,7 +9,9 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/settings" as Settings
+import "qrc:/components" as Components
 import "qrc:/settings/settings/chargingscreen" as ChargingScreenComponents
+import ScreensaverConfig 1.0
 
 Settings.Page {
     id: chargingScreenPage
@@ -68,13 +70,15 @@ Settings.Page {
                 settingsPage: chargingScreenPage
                 Layout.fillWidth: true
                 navUpTarget: commonToggles.lastFocusItem
-                navDownTarget: matrixAppearance.visible ? matrixAppearance.firstFocusItem : generalBehavior.firstFocusItem
+                navDownTarget: matrixAppearance.visible ? matrixAppearance.firstFocusItem
+                             : starfieldSettings.visible ? starfieldSpeedSlider
+                             : generalBehavior.firstFocusItem
             }
 
             ChargingScreenComponents.MatrixAppearance {
                 id: matrixAppearance
                 settingsPage: chargingScreenPage
-                visible: Config.chargingTheme === "matrix"
+                visible: ScreensaverConfig.theme === "matrix"
                 Layout.fillWidth: true
                 navUpTarget: themeSelector.lastFocusItem
                 navDownTarget: matrixEffects.firstFocusItem
@@ -83,17 +87,62 @@ Settings.Page {
             ChargingScreenComponents.MatrixEffects {
                 id: matrixEffects
                 settingsPage: chargingScreenPage
-                visible: Config.chargingTheme === "matrix"
+                visible: ScreensaverConfig.theme === "matrix"
                 Layout.fillWidth: true
                 navUpTarget: matrixAppearance.lastFocusItem
                 navDownTarget: generalBehavior.firstFocusItem
+            }
+
+            // --- Starfield settings (speed + density) ---
+            ColumnLayout {
+                id: starfieldSettings
+                visible: ScreensaverConfig.theme === "starfield"
+                Layout.fillWidth: true
+                Layout.leftMargin: 10; Layout.rightMargin: 10
+                spacing: 20
+
+                Text {
+                    Layout.fillWidth: true; color: colors.offwhite
+                    text: qsTr("Animation speed"); font: fonts.primaryFont(30)
+                }
+                Components.Slider {
+                    id: starfieldSpeedSlider
+                    height: 60; Layout.fillWidth: true
+                    from: 10; to: 100; stepSize: 5
+                    value: ScreensaverConfig.starfieldSpeed; live: true
+                    onMoved: ScreensaverConfig.starfieldSpeed = value
+                    onUserInteractionEnded: ScreensaverConfig.starfieldSpeed = value
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: themeSelector.lastFocusItem
+                    KeyNavigation.down: starfieldDensitySlider
+                }
+
+                Text {
+                    Layout.fillWidth: true; color: colors.offwhite
+                    text: qsTr("Star density"); font: fonts.primaryFont(30)
+                }
+                Components.Slider {
+                    id: starfieldDensitySlider
+                    height: 60; Layout.fillWidth: true
+                    from: 10; to: 100; stepSize: 5
+                    value: ScreensaverConfig.starfieldDensity; live: true
+                    onMoved: ScreensaverConfig.starfieldDensity = value
+                    onUserInteractionEnded: ScreensaverConfig.starfieldDensity = value
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                    onActiveFocusChanged: if (activeFocus) chargingScreenPage.ensureVisible(this)
+                    KeyNavigation.up: starfieldSpeedSlider
+                    KeyNavigation.down: generalBehavior.firstFocusItem
+                }
             }
 
             ChargingScreenComponents.GeneralBehavior {
                 id: generalBehavior
                 settingsPage: chargingScreenPage
                 Layout.fillWidth: true
-                navUpTarget: matrixEffects.visible ? matrixEffects.lastFocusItem : themeSelector.lastFocusItem
+                navUpTarget: matrixEffects.visible ? matrixEffects.lastFocusItem
+                           : starfieldSettings.visible ? starfieldDensitySlider
+                           : themeSelector.lastFocusItem
             }
 
             Item { Layout.preferredHeight: 40 }

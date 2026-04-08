@@ -9,6 +9,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -37,8 +38,8 @@ ColumnLayout {
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: root.navUpTarget
         KeyNavigation.down: root.navDownTarget
-        Keys.onLeftPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], Config.chargingTheme, function(v){ Config.chargingTheme = v }, -1)
-        Keys.onRightPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], Config.chargingTheme, function(v){ Config.chargingTheme = v }, 1)
+        Keys.onLeftPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, -1)
+        Keys.onRightPressed: root.settingsPage.cycleOption(["matrix","starfield","minimal"], ScreensaverConfig.theme, function(v){ ScreensaverConfig.theme = v }, 1)
         Repeater {
             model: [
                 { name: "matrix", label: "Matrix" },
@@ -47,16 +48,16 @@ ColumnLayout {
             ]
             Rectangle {
                 Layout.fillWidth: true; height: 50; radius: 8
-                color: Config.chargingTheme === modelData.name ? colors.offwhite : colors.dark
+                color: ScreensaverConfig.theme === modelData.name ? colors.offwhite : colors.dark
                 border { color: colors.medium; width: 1 }
                 Text {
                     anchors.centerIn: parent; text: modelData.label
-                    color: Config.chargingTheme === modelData.name ? colors.black : colors.offwhite
+                    color: ScreensaverConfig.theme === modelData.name ? colors.black : colors.offwhite
                     font: fonts.primaryFont(24)
                 }
                 Components.HapticMouseArea {
                     anchors.fill: parent
-                    onClicked: Config.chargingTheme = modelData.name
+                    onClicked: ScreensaverConfig.theme = modelData.name
                 }
             }
         }

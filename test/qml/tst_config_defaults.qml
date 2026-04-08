@@ -5,7 +5,7 @@
 import QtQuick 2.15
 import QtTest 1.2
 
-import Config 1.0
+import ScreensaverConfig 1.0
 
 TestCase {
     id: testCase
@@ -13,69 +13,69 @@ TestCase {
     when: windowShown
 
     function init() {
-        Config.resetDefaults();
+        ScreensaverConfig.resetDefaults();
     }
 
     // ── All 40 charging* defaults ─────────────────────────────
     // Values sourced from config.cpp QSettings::value() calls
 
-    function test_default_theme() { compare(Config.chargingTheme, "matrix"); }
-    function test_default_showClock() { compare(Config.chargingShowClock, false); }
-    function test_default_showBattery() { compare(Config.chargingShowBattery, true); }
-    function test_default_matrixColor() { compare(Config.chargingMatrixColor, "#00ff41"); }
-    function test_default_matrixSpeed() { compare(Config.chargingMatrixSpeed, 50); }
-    function test_default_matrixDensity() { compare(Config.chargingMatrixDensity, 70); }
-    function test_default_matrixColorMode() { compare(Config.chargingMatrixColorMode, "green"); }
-    function test_default_matrixTrail() { compare(Config.chargingMatrixTrail, 50); }
-    function test_default_matrixFontSize() { compare(Config.chargingMatrixFontSize, 16); }
-    function test_default_matrixCharset() { compare(Config.chargingMatrixCharset, "ascii"); }
-    function test_default_matrixGlow() { compare(Config.chargingMatrixGlow, true); }
-    function test_default_matrixGlitch() { compare(Config.chargingMatrixGlitch, true); }
-    function test_default_matrixGlitchRate() { compare(Config.chargingMatrixGlitchRate, 30); }
-    function test_default_matrixGlitchFlash() { compare(Config.chargingMatrixGlitchFlash, true); }
-    function test_default_matrixGlitchStutter() { compare(Config.chargingMatrixGlitchStutter, true); }
-    function test_default_matrixGlitchReverse() { compare(Config.chargingMatrixGlitchReverse, true); }
-    function test_default_matrixGlitchDirection() { compare(Config.chargingMatrixGlitchDirection, true); }
-    function test_default_matrixGlitchDirRate() { compare(Config.chargingMatrixGlitchDirRate, 30); }
-    function test_default_matrixGlitchDirCardinal() { compare(Config.chargingMatrixGlitchDirCardinal, false); }
-    function test_default_matrixGlitchChaos() { compare(Config.chargingMatrixGlitchChaos, false); }
-    function test_default_matrixGlitchChaosFrequency() { compare(Config.chargingMatrixGlitchChaosFrequency, 50); }
-    function test_default_matrixGlitchChaosSurge() { compare(Config.chargingMatrixGlitchChaosSurge, true); }
-    function test_default_matrixGlitchChaosScramble() { compare(Config.chargingMatrixGlitchChaosScramble, true); }
-    function test_default_matrixGlitchChaosFreeze() { compare(Config.chargingMatrixGlitchChaosFreeze, true); }
-    function test_default_matrixGlitchChaosScatter() { compare(Config.chargingMatrixGlitchChaosScatter, true); }
-    function test_default_matrixFade() { compare(Config.chargingMatrixFade, 60); }
-    function test_default_matrixDirection() { compare(Config.chargingMatrixDirection, "down"); }
-    function test_default_matrixInvertTrail() { compare(Config.chargingMatrixInvertTrail, false); }
-    function test_default_matrixMessages() { compare(Config.chargingMatrixMessages, ""); }
-    function test_default_matrixMessageInterval() { compare(Config.chargingMatrixMessageInterval, 10); }
-    function test_default_matrixMessageRandom() { compare(Config.chargingMatrixMessageRandom, true); }
-    function test_default_matrixMessageDirection() { compare(Config.chargingMatrixMessageDirection, "horizontal-lr"); }
-    function test_default_matrixMessageFlash() { compare(Config.chargingMatrixMessageFlash, true); }
-    function test_default_matrixMessagePulse() { compare(Config.chargingMatrixMessagePulse, true); }
-    function test_default_tapToClose() { compare(Config.chargingTapToClose, true); }
-    function test_default_idleEnabled() { compare(Config.chargingIdleEnabled, false); }
-    function test_default_idleTimeout() { compare(Config.chargingIdleTimeout, 45); }
-    function test_default_motionToClose() { compare(Config.chargingMotionToClose, false); }
-    function test_default_batteryDockedOnly() { compare(Config.chargingBatteryDockedOnly, true); }
+    function test_default_theme() { compare(ScreensaverConfig.theme, "matrix"); }
+    function test_default_showClock() { compare(ScreensaverConfig.showClock, false); }
+    function test_default_showBattery() { compare(ScreensaverConfig.showBatteryEnabled, true); }
+    function test_default_matrixColor() { compare(ScreensaverConfig.matrixColor, "#00ff41"); }
+    function test_default_matrixSpeed() { compare(ScreensaverConfig.matrixSpeed, 50); }
+    function test_default_matrixDensity() { compare(ScreensaverConfig.matrixDensity, 70); }
+    function test_default_matrixColorMode() { compare(ScreensaverConfig.colorMode, "green"); }
+    function test_default_matrixTrail() { compare(ScreensaverConfig.matrixTrail, 50); }
+    function test_default_matrixFontSize() { compare(ScreensaverConfig.fontSize, 16); }
+    function test_default_matrixCharset() { compare(ScreensaverConfig.charset, "ascii"); }
+    function test_default_matrixGlow() { compare(ScreensaverConfig.glow, true); }
+    function test_default_matrixGlitch() { compare(ScreensaverConfig.glitch, true); }
+    function test_default_matrixGlitchRate() { compare(ScreensaverConfig.glitchRate, 30); }
+    function test_default_matrixGlitchFlash() { compare(ScreensaverConfig.glitchFlash, true); }
+    function test_default_matrixGlitchStutter() { compare(ScreensaverConfig.glitchStutter, true); }
+    function test_default_matrixGlitchReverse() { compare(ScreensaverConfig.glitchReverse, true); }
+    function test_default_matrixGlitchDirection() { compare(ScreensaverConfig.glitchDirection, true); }
+    function test_default_matrixGlitchDirRate() { compare(ScreensaverConfig.glitchDirRate, 30); }
+    function test_default_matrixGlitchDirCardinal() { compare(ScreensaverConfig.glitchDirCardinal, false); }
+    function test_default_matrixGlitchChaos() { compare(ScreensaverConfig.glitchChaos, false); }
+    function test_default_matrixGlitchChaosFrequency() { compare(ScreensaverConfig.glitchChaosFrequency, 50); }
+    function test_default_matrixGlitchChaosSurge() { compare(ScreensaverConfig.glitchChaosSurge, true); }
+    function test_default_matrixGlitchChaosScramble() { compare(ScreensaverConfig.glitchChaosScramble, true); }
+    function test_default_matrixGlitchChaosFreeze() { compare(ScreensaverConfig.glitchChaosFreeze, true); }
+    function test_default_matrixGlitchChaosScatter() { compare(ScreensaverConfig.glitchChaosScatter, true); }
+    function test_default_matrixFade() { compare(ScreensaverConfig.matrixFade, 60); }
+    function test_default_matrixDirection() { compare(ScreensaverConfig.direction, "down"); }
+    function test_default_matrixInvertTrail() { compare(ScreensaverConfig.invertTrail, false); }
+    function test_default_matrixMessages() { compare(ScreensaverConfig.messages, ""); }
+    function test_default_matrixMessageInterval() { compare(ScreensaverConfig.messageInterval, 10); }
+    function test_default_matrixMessageRandom() { compare(ScreensaverConfig.messageRandom, true); }
+    function test_default_matrixMessageDirection() { compare(ScreensaverConfig.messageDirection, "horizontal-lr"); }
+    function test_default_matrixMessageFlash() { compare(ScreensaverConfig.messageFlash, true); }
+    function test_default_matrixMessagePulse() { compare(ScreensaverConfig.messagePulse, true); }
+    function test_default_tapToClose() { compare(ScreensaverConfig.tapToClose, true); }
+    function test_default_idleEnabled() { compare(ScreensaverConfig.idleEnabled, false); }
+    function test_default_idleTimeout() { compare(ScreensaverConfig.idleTimeout, 45); }
+    function test_default_motionToClose() { compare(ScreensaverConfig.motionToClose, false); }
+    function test_default_batteryDockedOnly() { compare(ScreensaverConfig.batteryDockedOnly, true); }
 
     // ── Reset restores all values ─────────────────────────────
 
     function test_reset_restores_after_changes() {
-        Config.chargingTheme = "minimal";
-        Config.chargingShowClock = true;
-        Config.chargingMatrixSpeed = 99;
-        Config.chargingMatrixGlitch = false;
-        Config.chargingMatrixMessages = "MODIFIED";
-        Config.chargingIdleEnabled = true;
+        ScreensaverConfig.theme = "minimal";
+        ScreensaverConfig.showClock = true;
+        ScreensaverConfig.matrixSpeed = 99;
+        ScreensaverConfig.glitch = false;
+        ScreensaverConfig.messages = "MODIFIED";
+        ScreensaverConfig.idleEnabled = true;
 
-        Config.resetDefaults();
+        ScreensaverConfig.resetDefaults();
 
-        compare(Config.chargingTheme, "matrix", "theme reset");
-        compare(Config.chargingShowClock, false, "clock reset");
-        compare(Config.chargingMatrixSpeed, 50, "speed reset");
-        compare(Config.chargingMatrixGlitch, true, "glitch reset");
-        compare(Config.chargingMatrixMessages, "", "messages reset");
-        compare(Config.chargingIdleEnabled, false, "idle reset");
+        compare(ScreensaverConfig.theme, "matrix", "theme reset");
+        compare(ScreensaverConfig.showClock, false, "clock reset");
+        compare(ScreensaverConfig.matrixSpeed, 50, "speed reset");
+        compare(ScreensaverConfig.glitch, true, "glitch reset");
+        compare(ScreensaverConfig.messages, "", "messages reset");
+        compare(ScreensaverConfig.idleEnabled, false, "idle reset");
     }
 }

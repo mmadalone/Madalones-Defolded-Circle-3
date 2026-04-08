@@ -10,6 +10,7 @@ import Haptic 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import ScreensaverConfig 1.0
 
 ColumnLayout {
     id: root
@@ -42,8 +43,8 @@ ColumnLayout {
                 objectName: "invertTrailSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixInvertTrail
-                trigger: function() { Config.chargingMatrixInvertTrail = !Config.chargingMatrixInvertTrail; }
+                checked: ScreensaverConfig.invertTrail
+                trigger: function() { ScreensaverConfig.invertTrail = !ScreensaverConfig.invertTrail; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Invert trail"
                 KeyNavigation.up: root.navUpTarget
@@ -70,8 +71,8 @@ ColumnLayout {
                 objectName: "glowSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlow
-                trigger: function() { Config.chargingMatrixGlow = !Config.chargingMatrixGlow; }
+                checked: ScreensaverConfig.glow
+                trigger: function() { ScreensaverConfig.glow = !ScreensaverConfig.glow; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Head glow"
                 KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: glowFadeSlider
@@ -94,9 +95,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 0; to: 100; stepSize: 5
-            value: Config.chargingMatrixGlowFade; live: true
-            onMoved: Config.chargingMatrixGlowFade = value
-            onUserInteractionEnded: Config.chargingMatrixGlowFade = value
+            value: ScreensaverConfig.glowFade; live: true
+            onMoved: ScreensaverConfig.glowFade = value
+            onUserInteractionEnded: ScreensaverConfig.glowFade = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Glow fade " + value
             KeyNavigation.up: glowSwitch; KeyNavigation.down: depthGlowSwitch
@@ -119,8 +120,8 @@ ColumnLayout {
                 objectName: "depthGlowSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDepthGlow
-                trigger: function() { Config.chargingMatrixDepthGlow = !Config.chargingMatrixDepthGlow; }
+                checked: ScreensaverConfig.depthGlow
+                trigger: function() { ScreensaverConfig.depthGlow = !ScreensaverConfig.depthGlow; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Depth glow"
                 KeyNavigation.up: glowFadeSlider; KeyNavigation.down: depthGlowMinSlider
@@ -130,7 +131,7 @@ ColumnLayout {
 
     // DEPTH GLOW MIN SIZE (visible when depth glow is on)
     ColumnLayout {
-        visible: Config.chargingMatrixDepthGlow
+        visible: ScreensaverConfig.depthGlow
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -144,9 +145,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 90; stepSize: 5
-            value: Config.chargingMatrixDepthGlowMin; live: true
-            onMoved: Config.chargingMatrixDepthGlowMin = value
-            onUserInteractionEnded: Config.chargingMatrixDepthGlowMin = value
+            value: ScreensaverConfig.depthGlowMin; live: true
+            onMoved: ScreensaverConfig.depthGlowMin = value
+            onUserInteractionEnded: ScreensaverConfig.depthGlowMin = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Minimum glow size " + value + "%"
             KeyNavigation.up: depthGlowSwitch; KeyNavigation.down: layersEnabledSwitch
@@ -171,8 +172,8 @@ ColumnLayout {
                 objectName: "layersEnabledSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixLayersEnabled
-                trigger: function() { Config.chargingMatrixLayersEnabled = !Config.chargingMatrixLayersEnabled; }
+                checked: ScreensaverConfig.layersEnabled
+                trigger: function() { ScreensaverConfig.layersEnabled = !ScreensaverConfig.layersEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Rain layers"
                 KeyNavigation.up: glowSwitch; KeyNavigation.down: depthEnabledSwitch
@@ -198,8 +199,8 @@ ColumnLayout {
                 objectName: "depthEnabledSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDepthEnabled
-                trigger: function() { Config.chargingMatrixDepthEnabled = !Config.chargingMatrixDepthEnabled; }
+                checked: ScreensaverConfig.depthEnabled
+                trigger: function() { ScreensaverConfig.depthEnabled = !ScreensaverConfig.depthEnabled; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Color layers"
                 KeyNavigation.up: glowSwitch; KeyNavigation.down: depthIntensitySlider
@@ -209,7 +210,7 @@ ColumnLayout {
 
     // COLOR LAYERS INTENSITY (visible when depth is on)
     ColumnLayout {
-        visible: Config.chargingMatrixDepthEnabled
+        visible: ScreensaverConfig.depthEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -223,9 +224,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 10; to: 100; stepSize: 5
-            value: Config.chargingMatrixDepthIntensity; live: true
-            onMoved: Config.chargingMatrixDepthIntensity = value
-            onUserInteractionEnded: Config.chargingMatrixDepthIntensity = value
+            value: ScreensaverConfig.depthIntensity; live: true
+            onMoved: ScreensaverConfig.depthIntensity = value
+            onUserInteractionEnded: ScreensaverConfig.depthIntensity = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Depth intensity " + value
             KeyNavigation.up: depthEnabledSwitch; KeyNavigation.down: depthOverlaySwitch
@@ -234,7 +235,7 @@ ColumnLayout {
 
     // COLOR LAYERS OVERLAY MODE (visible when depth is on)
     ColumnLayout {
-        visible: Config.chargingMatrixDepthEnabled
+        visible: ScreensaverConfig.depthEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -246,8 +247,8 @@ ColumnLayout {
                 objectName: "depthOverlaySwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixDepthOverlay
-                trigger: function() { Config.chargingMatrixDepthOverlay = !Config.chargingMatrixDepthOverlay; }
+                checked: ScreensaverConfig.depthOverlay
+                trigger: function() { ScreensaverConfig.depthOverlay = !ScreensaverConfig.depthOverlay; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Depth overlay mode"
                 KeyNavigation.up: depthIntensitySlider; KeyNavigation.down: glitchSwitch
@@ -273,8 +274,8 @@ ColumnLayout {
                 objectName: "glitchSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitch
-                trigger: function() { Config.chargingMatrixGlitch = !Config.chargingMatrixGlitch; }
+                checked: ScreensaverConfig.glitch
+                trigger: function() { ScreensaverConfig.glitch = !ScreensaverConfig.glitch; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Glitch effect"
                 KeyNavigation.up: depthOverlaySwitch; KeyNavigation.down: glitchRateSlider
@@ -284,7 +285,7 @@ ColumnLayout {
 
     // 12. GLITCH INTENSITY (visible when glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -299,9 +300,9 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             height: 60; Layout.fillWidth: true
             from: 5; to: 80; stepSize: 5
-            value: Config.chargingMatrixGlitchRate; live: true
-            onMoved: Config.chargingMatrixGlitchRate = value
-            onUserInteractionEnded: Config.chargingMatrixGlitchRate = value
+            value: ScreensaverConfig.glitchRate; live: true
+            onMoved: ScreensaverConfig.glitchRate = value
+            onUserInteractionEnded: ScreensaverConfig.glitchRate = value
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Glitch intensity " + value
             KeyNavigation.up: glitchSwitch; KeyNavigation.down: glitchFlashSwitch
@@ -310,7 +311,7 @@ ColumnLayout {
 
     // 12b. COLUMN FLASH (sub-toggle, visible when glitch is on)
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -322,8 +323,8 @@ ColumnLayout {
                 objectName: "glitchFlashSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchFlash
-                trigger: function() { Config.chargingMatrixGlitchFlash = !Config.chargingMatrixGlitchFlash; }
+                checked: ScreensaverConfig.glitchFlash
+                trigger: function() { ScreensaverConfig.glitchFlash = !ScreensaverConfig.glitchFlash; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Column flash"
                 KeyNavigation.up: glitchRateSlider; KeyNavigation.down: glitchStutterSwitch
@@ -333,7 +334,7 @@ ColumnLayout {
 
     // 12c. COLUMN STUTTER
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -345,8 +346,8 @@ ColumnLayout {
                 objectName: "glitchStutterSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchStutter
-                trigger: function() { Config.chargingMatrixGlitchStutter = !Config.chargingMatrixGlitchStutter; }
+                checked: ScreensaverConfig.glitchStutter
+                trigger: function() { ScreensaverConfig.glitchStutter = !ScreensaverConfig.glitchStutter; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Column stutter"
                 KeyNavigation.up: glitchFlashSwitch; KeyNavigation.down: glitchReverseSwitch
@@ -356,7 +357,7 @@ ColumnLayout {
 
     // 12d. REVERSE GLOW
     ColumnLayout {
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -368,8 +369,8 @@ ColumnLayout {
                 objectName: "glitchReverseSwitch"
                 icon: "uc:check"
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: Config.chargingMatrixGlitchReverse
-                trigger: function() { Config.chargingMatrixGlitchReverse = !Config.chargingMatrixGlitchReverse; }
+                checked: ScreensaverConfig.glitchReverse
+                trigger: function() { ScreensaverConfig.glitchReverse = !ScreensaverConfig.glitchReverse; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Reverse glow"
                 KeyNavigation.up: glitchStutterSwitch; KeyNavigation.down: directionGlitchSection.firstFocusItem
@@ -381,7 +382,7 @@ ColumnLayout {
 
     DirectionGlitchSection {
         id: directionGlitchSection
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         settingsPage: root.settingsPage
         Layout.fillWidth: true
         navUpTarget: glitchReverseSwitch
@@ -390,7 +391,7 @@ ColumnLayout {
 
     ChaosSection {
         id: chaosSection
-        visible: Config.chargingMatrixGlitch
+        visible: ScreensaverConfig.glitch
         settingsPage: root.settingsPage
         Layout.fillWidth: true
         navUpTarget: directionGlitchSection.lastFocusItem
