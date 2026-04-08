@@ -108,3 +108,10 @@ qmlcache_loader.cpp
 CLAUDE.md
 CLAUDE.md
 .claude/settings.local.json
+
+# Mod 2 (Avatar) — not ready for release
+src/ui/avatargrid.h
+src/ui/avatargrid.cpp
+src/qml/components/avatar/
+test/avatar_preview/
+AVATAR_PLAN.md
