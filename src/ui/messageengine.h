@@ -89,16 +89,30 @@ class MessageEngine {
     bool setMessagesEnabled(bool v);
     bool setMessages(const QString &m);
     bool setMessageInterval(int v);
-    bool setMessageRandom(bool v) { if (m_messageRandom == v) return false; m_messageRandom = v; return true; }
+    bool setMessageRandom(bool v) {
+        if (m_messageRandom == v) { return false; } m_messageRandom = v; return true;
+    }
     bool setMessageDirection(const QString &d);
-    bool setMessageFlash(bool v)  { if (m_messageFlash == v) return false; m_messageFlash = v; return true; }
-    bool setMessagePulse(bool v)  { if (m_messagePulse == v) return false; m_messagePulse = v; return true; }
-    bool setSubliminal(bool v)         { if (m_subliminal == v) return false; m_subliminal = v; return true; }
+    bool setMessageFlash(bool v) {
+        if (m_messageFlash == v) { return false; } m_messageFlash = v; return true;
+    }
+    bool setMessagePulse(bool v) {
+        if (m_messagePulse == v) { return false; } m_messagePulse = v; return true;
+    }
+    bool setSubliminal(bool v) {
+        if (m_subliminal == v) { return false; } m_subliminal = v; return true;
+    }
     bool setSubliminalInterval(int v);
     bool setSubliminalDuration(int v);
-    bool setSubliminalStream(bool v)   { if (m_subliminalStream == v) return false; m_subliminalStream = v; return true; }
-    bool setSubliminalOverlay(bool v)  { if (m_subliminalOverlay == v) return false; m_subliminalOverlay = v; return true; }
-    bool setSubliminalFlash(bool v)    { if (m_subliminalFlash == v) return false; m_subliminalFlash = v; return true; }
+    bool setSubliminalStream(bool v) {
+        if (m_subliminalStream == v) { return false; } m_subliminalStream = v; return true;
+    }
+    bool setSubliminalOverlay(bool v) {
+        if (m_subliminalOverlay == v) { return false; } m_subliminalOverlay = v; return true;
+    }
+    bool setSubliminalFlash(bool v) {
+        if (m_subliminalFlash == v) { return false; } m_subliminalFlash = v; return true;
+    }
 
     // --- Tap/sim mutation methods ---
     int messageBrightAt(int idx) const {

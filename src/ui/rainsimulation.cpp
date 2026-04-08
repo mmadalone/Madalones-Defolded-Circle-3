@@ -4,9 +4,9 @@
 
 #include "rainsimulation.h"
 
+#include <QtMath>
 #include <cmath>
 #include <numeric>  // std::gcd (C++17)
-#include <QtMath>
 
 #include "glyphatlas.h"
 #include "../logging.h"

@@ -3,11 +3,11 @@
 
 #include "screensaverconfig.h"
 
-#include "../hardware/battery.h"
-
 #include <QCoreApplication>
 #include <QTimer>
 #include <QtMath>
+
+#include "../hardware/battery.h"
 
 namespace uc {
 
