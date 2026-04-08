@@ -1447,3 +1447,65 @@ False positives confirmed NOT bugs: `static_cast` in `updatePaintNode` (correct 
 | `main.qml` | Touchbar idle timer reset, Loader.item null guard, Connections target null guard |
 | `Preview.qml` | L key for layers toggle |
 | `test_matrixrain.cpp` | 10 new safety/negative tests (atlas overflow, metrics match, vertex cap, cache key, fallback, zero-glyph) |
+
+---
+
+## Planned: GPU-Accelerated Starfield (StarfieldItem)
+
+### Problem
+
+The current Starfield theme uses QML `Canvas` (HTML5 Canvas 2D API) for rendering. At max density (1100 stars), each frame executes ~1100 `ctx.stroke()` calls through JavaScript. On the UC3's ARM64 GPU this runs at 18 FPS but leaves no headroom — higher star counts or faster frame rates cause visible jank. The Canvas API also lacks hardware anti-aliasing, z-buffering, and efficient per-star color control.
+
+### Approach
+
+Replace `StarfieldTheme.qml`'s Canvas with a C++ `QQuickItem` subclass (`StarfieldItem`) using the same QSGGeometryNode architecture proven by `MatrixRainItem`. Each star becomes a textured quad (or line segment) rendered in a single GPU draw call.
+
+### Architecture
+
+**Class:** `StarfieldItem` — QQuickItem subclass, registered as `Starfield` QML type.
+
+**Rendering:** QSGGeometryNode with custom vertex format:
+- Per-star vertex: `{x, y, prevX, prevY, brightness, r, g, b, a}` — position, trail origin, color
+- Single draw call per frame using `GL_LINES` or `GL_TRIANGLES` with round endcap emulation
+- Trail length = distance between current and previous projected position × `trailFactor`
+- Star size = line width or quad width, scaled by `brightness * starSize`
+
+**Simulation (C++ side):**
+- Star state: `{x, y, z, prevZ}` in 3D space, projected to 2D each frame
+- `z -= speed * dt` per tick; when `z <= 0`, respawn at `z = maxDepth` with random `(x, y)`
+- Projection: `screenX = (star.x / star.z) * halfWidth + centerX` (perspective divide)
+- All math in `advanceSimulation()`, called from timer tick on main thread
+- Rainbow color: `hue = starIndex / starCount` (same as current JS `starRgb()`)
+
+**Config binding:** Same pattern as MatrixRainItem — `bindToScreensaverConfig()` connects:
+- `starfieldSpeed` → simulation speed
+- `starfieldDensity` → star count (triggers reinit)
+- `starfieldStarSize` → vertex size multiplier
+- `starfieldTrailLength` → trail factor
+- `starfieldColor` → solid color or rainbow mode flag
+
+**Performance target:**
+- 2000+ stars at 30+ FPS (vs current 1100 stars at 18 FPS)
+- Zero JavaScript execution per frame
+- Single GPU draw call (vs ~1100 Canvas stroke calls)
+- `displayOff` gates the timer — zero CPU/GPU when screen is off
+
+### Migration
+
+1. Create `src/ui/starfielditem.h` / `starfielditem.cpp`
+2. Register as `qmlRegisterType<StarfieldItem>("Starfield", 1, 0, "Starfield")`
+3. Replace Canvas in `StarfieldTheme.qml` with `Starfield { }` QML element
+4. Config properties already exist — just wire `bindToScreensaverConfig()`
+5. Remove `Canvas`, `starRgb()`, `hexToRgb()`, `hslToRgb()` JS functions
+6. Existing settings UI unchanged — same sliders, same config keys
+
+### Files
+
+| File | Action |
+|------|--------|
+| `src/ui/starfielditem.h` | NEW — QQuickItem subclass |
+| `src/ui/starfielditem.cpp` | NEW — simulation + QSGGeometryNode renderer |
+| `src/qml/components/themes/StarfieldTheme.qml` | Replace Canvas with Starfield QML type |
+| `src/main.cpp` | Add `qmlRegisterType<StarfieldItem>` |
+| `remote-ui.pro` | Add to HEADERS/SOURCES |
+| `test/matrixrain/test_matrixrain.cpp` | Add StarfieldItem simulation tests (or separate test file) |
