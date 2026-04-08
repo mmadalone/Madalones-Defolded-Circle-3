@@ -1,4 +1,4 @@
-QT += qml quick qmltest testlib gui
+QT += qml quick qmltest testlib gui websockets
 CONFIG += testcase c++17 sdk_no_version_check
 TARGET = test_integration
 DEFINES += MATRIX_RAIN_TESTING
