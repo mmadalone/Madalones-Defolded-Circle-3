@@ -28,6 +28,12 @@ Popup {
     property var requiredCoverFeaturesForPosition: [CoverFeatures.Position]
 
     function startSetup() {
+        // Suppress touch slider while screensaver is active
+        if (applicationWindow.screensaverActive) {
+            touchSlider.active = false;
+            return;
+        }
+
         if (HwInfo.modelNumber != "UCR3" && HwInfo.modelNumber != "DEV") {
             console.info("[Touch Slider] Disabled on this hardware");
             touchSlider.active = false;
