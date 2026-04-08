@@ -977,6 +977,14 @@ class MatrixRainTest : public QObject {
         setupItem(item, 480, 800, "down");
         item.setGlitch(true);
         item.setGlitchChaos(true);
+        // Only enable Surge — it sets m_chaosActiveFrames (SquareBurst/Ripple don't)
+        item.setGlitchChaosSurge(true);
+        item.setGlitchChaosScramble(false);
+        item.setGlitchChaosFreeze(false);
+        item.setGlitchChaosScatter(false);
+        item.setGlitchChaosSquareBurst(false);
+        item.setGlitchChaosRipple(false);
+        item.setGlitchChaosWipe(false);
 
         item.interactiveInput("enter");
         QVERIFY2(item.m_sim.m_glitch.m_chaosActiveFrames > 0,
