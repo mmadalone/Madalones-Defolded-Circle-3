@@ -60,6 +60,8 @@ Item {
         function onTouchPressed() {
             console.log("Touch pressed");
 
+            if (applicationWindow.screensaverActive) return;
+
             // if entity is unavalable we do nothing
             if (!entityObj.enabled) {
                 ui.createActionableNotification(qsTr("Touch slider is not available."),

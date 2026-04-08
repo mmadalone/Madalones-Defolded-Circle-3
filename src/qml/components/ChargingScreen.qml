@@ -172,6 +172,11 @@ Popup {
 
     background: Rectangle { color: "black" }
 
+    // Only Matrix has interactive gestures (swipe speed, direction zones, hold-to-slow, tap effects).
+    // All themes support double-tap-to-close.
+    readonly property bool isInteractiveTheme: ScreensaverConfig.theme === "matrix"
+    readonly property bool isSwipeableTheme: ScreensaverConfig.theme === "matrix" || ScreensaverConfig.theme === "starfield"
+
     // --- Gesture handling ---
     // Three gesture types distinguished by movement + duration:
     //   Tap: press+release with < swipeThreshold movement
@@ -204,7 +209,7 @@ Popup {
             chargingScreenRoot.isDragging = false;
             chargingScreenRoot.isHolding = false;
             chargingScreenRoot.holdStage = 0;
-            holdSlowTimer.restart();
+            if (chargingScreenRoot.isInteractiveTheme) holdSlowTimer.restart();
         }
 
         onPositionChanged: {
@@ -233,13 +238,19 @@ Popup {
             }
 
             if (chargingScreenRoot.isDragging) {
-                // --- Swipe gesture: adjust speed (when enabled + tap direction on) ---
-                if (ScreensaverConfig.tapSwipeSpeed && ScreensaverConfig.tapDirection) {
+                // --- Swipe gesture: adjust speed (Matrix/Starfield, when enabled + tap direction on) ---
+                if (chargingScreenRoot.isSwipeableTheme && ScreensaverConfig.tapSwipeSpeed && ScreensaverConfig.tapDirection) {
                     var deltaY = mouse.y - chargingScreenRoot.pressStartY;
                     var speedDelta = Math.round(-deltaY / 10);
                     if (speedDelta !== 0) {
-                        var newSpeed = Math.min(100, Math.max(10, ScreensaverConfig.matrixSpeed + speedDelta));
-                        ScreensaverConfig.matrixSpeed = newSpeed;
+                        if (ScreensaverConfig.theme === "starfield") {
+                            var newStarSpeed = Math.min(100, Math.max(10, ScreensaverConfig.starfieldSpeed + speedDelta));
+                            ScreensaverConfig.starfieldSpeed = newStarSpeed;
+                        } else {
+                            var newMatrixSpeed = Math.min(100, Math.max(10, ScreensaverConfig.matrixSpeed + speedDelta));
+                            ScreensaverConfig.matrixSpeed = newMatrixSpeed;
+                        }
+                        var newSpeed = ScreensaverConfig.theme === "starfield" ? ScreensaverConfig.starfieldSpeed : ScreensaverConfig.matrixSpeed;
                         speedOverlay.text = "Speed: " + newSpeed;
                         speedOverlayTimer.restart();
                         speedOverlay.visible = true;
@@ -255,8 +266,8 @@ Popup {
             chargingScreenRoot.lastTapX = mouse.x;
             chargingScreenRoot.lastTapY = mouse.y;
 
-            if (ScreensaverConfig.tapDirection) {
-                // --- Zone direction mode ---
+            if (chargingScreenRoot.isInteractiveTheme && ScreensaverConfig.tapDirection) {
+                // --- Zone direction mode (Matrix only) ---
                 var zone = chargingScreenRoot.zoneFromTap(mouse.x, mouse.y);
 
                 if (zone !== "enter") {
@@ -355,7 +366,7 @@ Popup {
     // Normal mode timer — single tap confirmed after 300ms
     Timer {
         id: doubleTapTimer; interval: doubleTapMs
-        onTriggered: chargingScreenRoot.fireTapEffects();
+        onTriggered: { if (chargingScreenRoot.isInteractiveTheme) chargingScreenRoot.fireTapEffects(); }
     }
 
     // Zone mode timer — reset center tap counter after 400ms of inactivity
@@ -381,10 +392,9 @@ Popup {
     // Active when DPAD direction is on + touchbar speed toggle is on.
     // Swipe left = faster, swipe right = slower. Shows speed overlay briefly.
     property real touchbarPrevX: -1
-    readonly property bool touchbarSpeedActive: ScreensaverConfig.dpadTouchbarSpeed
-                                                && ScreensaverConfig.dpadEnabled
-                                                && !ScreensaverConfig.tapDirection
-                                                && !chargingScreenRoot.isClosing
+    readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing
+                                                && (  (ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
+                                                   || (ScreensaverConfig.theme === "starfield")  )
     Connections {
         target: TouchSliderProcessor
         ignoreUnknownSignals: true
@@ -401,13 +411,26 @@ Popup {
 
             if (Math.abs(delta) < 3) return;  // minimum 3px movement
 
-            var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - delta);
-            newSpeed = Math.max(10, Math.min(100, newSpeed));
-            if (newSpeed !== ScreensaverConfig.matrixSpeed) {
-                ScreensaverConfig.matrixSpeed = newSpeed;
-                speedOverlay.text = "Speed: " + newSpeed;
-                speedOverlayTimer.restart();
-                speedOverlay.visible = true;
+            if (ScreensaverConfig.theme === "starfield") {
+                // Starfield: touchbar adjusts density
+                var newDensity = Math.round(ScreensaverConfig.starfieldDensity - delta);
+                newDensity = Math.max(10, Math.min(100, newDensity));
+                if (newDensity !== ScreensaverConfig.starfieldDensity) {
+                    ScreensaverConfig.starfieldDensity = newDensity;
+                    speedOverlay.text = "Density: " + newDensity;
+                    speedOverlayTimer.restart();
+                    speedOverlay.visible = true;
+                }
+            } else {
+                // Matrix: touchbar adjusts speed
+                var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - delta);
+                newSpeed = Math.max(10, Math.min(100, newSpeed));
+                if (newSpeed !== ScreensaverConfig.matrixSpeed) {
+                    ScreensaverConfig.matrixSpeed = newSpeed;
+                    speedOverlay.text = "Speed: " + newSpeed;
+                    speedOverlayTimer.restart();
+                    speedOverlay.visible = true;
+                }
             }
         }
         function onTouchReleased() {

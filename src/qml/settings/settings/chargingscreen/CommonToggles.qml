@@ -307,7 +307,46 @@ ColumnLayout {
             onUserInteractionEnded: ScreensaverConfig.clockDateSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: showBatterySwitch
+            KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: clockPositionRow
+        }
+    }
+
+    // 2i. CLOCK POSITION (visible when Show clock is on)
+    ColumnLayout {
+        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Position"); font: fonts.primaryFont(26) }
+        RowLayout {
+            id: clockPositionRow
+            spacing: 10; focus: true
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            KeyNavigation.up: ScreensaverConfig.clockShowDate ? clockDateSizeSlider : clockShowDateSwitch
+            KeyNavigation.down: showBatterySwitch
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, 1)
+            Repeater {
+                model: [
+                    { name: "top", label: "Top" },
+                    { name: "center", label: "Center" },
+                    { name: "bottom", label: "Bottom" }
+                ]
+                Rectangle {
+                    Layout.fillWidth: true; height: 40; radius: 8
+                    color: ScreensaverConfig.clockPosition === modelData.name ? colors.offwhite : colors.dark
+                    border { color: colors.medium; width: 1 }
+                    Text {
+                        anchors.centerIn: parent; text: modelData.label
+                        color: ScreensaverConfig.clockPosition === modelData.name ? colors.black : colors.offwhite
+                        font: fonts.primaryFont(22)
+                    }
+                    Components.HapticMouseArea {
+                        anchors.fill: parent
+                        onClicked: ScreensaverConfig.clockPosition = modelData.name
+                    }
+                }
+            }
         }
     }
 
@@ -334,9 +373,7 @@ ColumnLayout {
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Show battery"
                 KeyNavigation.up: (ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog")
-                    ? (ScreensaverConfig.showClock
-                        ? (ScreensaverConfig.clockShowDate ? clockDateSizeSlider : clockShowDateSwitch)
-                        : showClockSwitch)
+                    ? (ScreensaverConfig.showClock ? clockPositionRow : showClockSwitch)
                     : root.navUpTarget
                 KeyNavigation.down: batteryDockedSwitch
             }

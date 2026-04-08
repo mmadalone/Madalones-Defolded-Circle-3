@@ -17,12 +17,55 @@ Item {
     property bool displayOff: false
 
     // Starfield-specific config (independent from Matrix)
-    property int starCount: Math.round(50 + ScreensaverConfig.starfieldDensity * 6)  // 0→50, 50→350, 100→650
-    property real speed: ScreensaverConfig.starfieldSpeed / 50.0                      // 0→0, 50→1.0, 100→2.0
+    property int starCount: Math.round(100 + ScreensaverConfig.starfieldDensity * 10) // 0→100, 50→600, 100→1100
+    property real speed: ScreensaverConfig.starfieldSpeed / 10.0                      // 0→0, 50→5.0, 100→10.0
+    property real starSize: 1.0 + ScreensaverConfig.starfieldStarSize * 0.08          // 0→1.0, 50→5.0, 100→9.0
+    property real trailFactor: 0.2 + ScreensaverConfig.starfieldTrailLength * 0.018   // 0→0.2, 50→1.1, 100→2.0
 
     // No-op stub — Starfield has no interactive input, but ChargingScreen
     // calls this unconditionally on all themes.
     function interactiveInput(action) {}
+
+    // Star color helper — returns {r,g,b} for a given star index
+    property string starColor: ScreensaverConfig.starfieldColor
+    function isGradient(v) { return v === "rainbow" || v === "rainbow_gradient" || v === "neon"; }
+
+    // Parse hex "#rrggbb" → {r, g, b} (0-255)
+    function hexToRgb(hex) {
+        var r = parseInt(hex.substring(1, 3), 16);
+        var g = parseInt(hex.substring(3, 5), 16);
+        var b = parseInt(hex.substring(5, 7), 16);
+        return { r: r, g: g, b: b };
+    }
+
+    // HSL to RGB (h: 0-1, s: 0-1, l: 0-1) → {r,g,b} 0-255
+    function hslToRgb(h, s, l) {
+        var r, g, b;
+        if (s === 0) { r = g = b = l; }
+        else {
+            function hue2rgb(p, q, t) {
+                if (t < 0) t += 1; if (t > 1) t -= 1;
+                if (t < 1/6) return p + (q - p) * 6 * t;
+                if (t < 1/2) return q;
+                if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            }
+            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            var p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+        return { r: Math.round(r * 255), g: Math.round(g * 255), b: Math.round(b * 255) };
+    }
+
+    // Get star color for index i out of total n stars
+    function starRgb(i, n) {
+        if (!isGradient(starColor)) return hexToRgb(starColor);
+        var hue = (i / Math.max(1, n)) % 1.0;
+        var lightness = starColor === "neon" ? 0.75 : 0.5;
+        return hslToRgb(hue, 1.0, lightness);
+    }
 
     Rectangle {
         anchors.fill: parent
@@ -98,21 +141,21 @@ Item {
 
                 // Star brightness based on distance (closer = brighter)
                 var brightness = 1 - star.z / width;
-                var size = brightness * 3;
+                var size = brightness * root.starSize;
 
-                // Draw streak line
+                // Star color
+                var sc = root.starRgb(s, stars.length);
+
+                // Draw streak line (trail length amplifies the previous position offset)
+                var tpx = sx + (px - sx) * root.trailFactor;
+                var tpy = sy + (py - sy) * root.trailFactor;
                 ctx.beginPath();
-                ctx.moveTo(px, py);
+                ctx.moveTo(tpx, tpy);
                 ctx.lineTo(sx, sy);
-                ctx.strokeStyle = "rgba(255, 255, 255, " + (brightness * 0.8) + ")";
-                ctx.lineWidth = size * 0.5;
+                ctx.strokeStyle = "rgba(" + sc.r + "," + sc.g + "," + sc.b + "," + brightness + ")";
+                ctx.lineWidth = size;
+                ctx.lineCap = "round";  // rounded endcap IS the star head — no gap
                 ctx.stroke();
-
-                // Draw star point
-                ctx.beginPath();
-                ctx.arc(sx, sy, size * 0.5, 0, Math.PI * 2);
-                ctx.fillStyle = "rgba(255, 255, 255, " + brightness + ")";
-                ctx.fill();
             }
         }
     }
@@ -129,9 +172,12 @@ Item {
     Overlays.ClockOverlay {
         visible: ScreensaverConfig.showClock && (!ScreensaverConfig.clockDockedOnly || Battery.powerSupply)
         anchors {
-            top: parent.top
-            topMargin: parent.height * 0.15
             horizontalCenter: parent.horizontalCenter
+            top: ScreensaverConfig.clockPosition === "top" ? parent.top : undefined
+            topMargin: ScreensaverConfig.clockPosition === "top" ? parent.height * 0.15 : 0
+            verticalCenter: ScreensaverConfig.clockPosition === "center" ? parent.verticalCenter : undefined
+            bottom: ScreensaverConfig.clockPosition === "bottom" ? parent.bottom : undefined
+            bottomMargin: ScreensaverConfig.clockPosition === "bottom" ? parent.height * 0.15 : 0
         }
     }
 

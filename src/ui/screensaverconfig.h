@@ -38,6 +38,7 @@ class ScreensaverConfig : public QObject {
     SCRN_BOOL(clockClock24h,       "charging/clockClock24h",          true)
     SCRN_INT(clockDateSize,        "charging/clockDateSize",          20)
     SCRN_BOOL(clockShowDate,       "charging/clockShowDate",          false)
+    SCRN_STRING(clockPosition,     "charging/clockPosition",          "top")
     SCRN_BOOL(showBatteryEnabled,  "charging/showBattery",            true)
     SCRN_BOOL(batteryDockedOnly,   "charging/batteryDockedOnly",      true)
     SCRN_INT(batteryTextSize,      "charging/batteryTextSize",        24)
@@ -157,6 +158,9 @@ class ScreensaverConfig : public QObject {
     // === Starfield theme ===
     SCRN_INT(starfieldSpeed,       "charging/starfieldSpeed",         50)
     SCRN_INT(starfieldDensity,     "charging/starfieldDensity",       50)
+    SCRN_STRING(starfieldColor,    "charging/starfieldColor",         "#ffffff")
+    SCRN_INT(starfieldStarSize,    "charging/starfieldStarSize",      50)
+    SCRN_INT(starfieldTrailLength, "charging/starfieldTrailLength",   50)
 
     // === Transformed read-only properties (custom getters) ===
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged FINAL)

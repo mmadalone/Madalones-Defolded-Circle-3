@@ -45,6 +45,8 @@ Item {
         function onTouchPressed() {
             console.log("Touch pressed");
 
+            if (applicationWindow.screensaverActive) return;
+
             if (sliderContainer.unavailableWarningShown) {
                 return;
             }

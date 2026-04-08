@@ -29,6 +29,10 @@ ApplicationWindow {
     title: "Remote Two simulator"
     visible: true
 
+    // Global flag: true when the screensaver is covering the UI.
+    // Used by TouchSlider components to suppress volume/seek during screensaver.
+    property bool screensaverActive: chargingScreenLoader.active
+
     minimumWidth: ui.width * ui.ratio
     maximumWidth: minimumWidth
     minimumHeight: ui.height * ui.ratio

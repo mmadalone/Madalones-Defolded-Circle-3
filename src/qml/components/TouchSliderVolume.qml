@@ -45,6 +45,9 @@ Item {
         function onTouchPressed() {
             console.log("Touch pressed");
 
+            // Suppress volume slider when screensaver is active (touchbar used for density/speed)
+            if (applicationWindow.screensaverActive) return;
+
             if (sliderContainer.unavailableWarningShown) {
                 return;
             }

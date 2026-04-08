@@ -62,9 +62,12 @@ Item {
     Overlays.ClockOverlay {
         visible: ScreensaverConfig.showClock && (!ScreensaverConfig.clockDockedOnly || Battery.powerSupply)
         anchors {
-            top: parent.top
-            topMargin: parent.height * 0.15
             horizontalCenter: parent.horizontalCenter
+            top: ScreensaverConfig.clockPosition === "top" ? parent.top : undefined
+            topMargin: ScreensaverConfig.clockPosition === "top" ? parent.height * 0.15 : 0
+            verticalCenter: ScreensaverConfig.clockPosition === "center" ? parent.verticalCenter : undefined
+            bottom: ScreensaverConfig.clockPosition === "bottom" ? parent.bottom : undefined
+            bottomMargin: ScreensaverConfig.clockPosition === "bottom" ? parent.height * 0.15 : 0
         }
     }
 
