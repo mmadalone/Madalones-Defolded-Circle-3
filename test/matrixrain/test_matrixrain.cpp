@@ -601,6 +601,9 @@ class MatrixRainTest : public QObject {
         item.setGlitchChaosScramble(false);
         item.setGlitchChaosFreeze(false);
         item.setGlitchChaosScatter(false);
+        item.setGlitchChaosSquareBurst(false);
+        item.setGlitchChaosRipple(false);
+        item.setGlitchChaosWipe(false);
 
         // Prevent inactive streams from respawning during this tick
         // (respawn resets flashFrames to 0, which would false-fail the check)
@@ -629,6 +632,9 @@ class MatrixRainTest : public QObject {
         item.setGlitchChaosScramble(false);
         item.setGlitchChaosFreeze(true);
         item.setGlitchChaosScatter(false);
+        item.setGlitchChaosSquareBurst(false);
+        item.setGlitchChaosRipple(false);
+        item.setGlitchChaosWipe(false);
 
         // Prevent inactive streams from respawning during this tick
         for (auto &s : item.m_sim.m_streams) {
@@ -670,6 +676,14 @@ class MatrixRainTest : public QObject {
         item.setGlitch(true);
         item.setGlitchChaos(true);
         item.setGlitchChaosFrequency(1);  // low freq = long interval
+        // Only enable Surge — it sets m_chaosActiveFrames (SquareBurst/Ripple don't)
+        item.setGlitchChaosSurge(true);
+        item.setGlitchChaosScramble(false);
+        item.setGlitchChaosFreeze(false);
+        item.setGlitchChaosScatter(false);
+        item.setGlitchChaosSquareBurst(false);
+        item.setGlitchChaosRipple(false);
+        item.setGlitchChaosWipe(false);
 
         // Force trigger
         item.m_sim.m_glitch.m_chaosTickCounter = 1;
