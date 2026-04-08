@@ -1,4 +1,4 @@
-QT += qml quick qmltest testlib gui websockets
+QT += qml quick qmltest testlib gui
 CONFIG += testcase c++17 sdk_no_version_check
 TARGET = test_integration
 DEFINES += MATRIX_RAIN_TESTING
@@ -19,7 +19,6 @@ SOURCES += tst_integration_main.cpp \
     ../../src/ui/gravitydirection.cpp \
     ../../src/ui/glitchengine.cpp \
     ../../src/ui/messageengine.cpp \
-    ../../src/ui/screensaverconfig.cpp \
     ../../src/logging.cpp
 
 HEADERS += ../../src/ui/matrixrain.h \
@@ -28,8 +27,6 @@ HEADERS += ../../src/ui/matrixrain.h \
     ../../src/ui/gravitydirection.h \
     ../../src/ui/glitchengine.h \
     ../../src/ui/messageengine.h \
-    ../../src/ui/screensaverconfig.h \
-    ../../src/ui/screensaverconfig_macros.h \
     ../../src/logging.h
 
 INCLUDEPATH += ../../src ../..

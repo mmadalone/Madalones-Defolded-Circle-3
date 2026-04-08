@@ -10,20 +10,55 @@
 #include <QQmlEngine>
 #include <QQmlContext>
 #include "ui/matrixrain.h"
-#include "ui/screensaverconfig.h"
-#include "hardware/battery.h"
+// Minimal ScreensaverConfig stub for integration tests.
+// The real ScreensaverConfig pulls in Battery → Core → QWebSocket and
+// requires MOC for Battery signals. Instead, register a bare QObject
+// as the "ScreensaverConfig" QML singleton with default property values.
+#include <QSettings>
 
-// Stub: Battery singleton not available in integration tests
-namespace uc { namespace hw { Battery *Battery::s_instance = nullptr; } }
+class StubScreensaverConfig : public QObject {
+    Q_OBJECT
+    // Only the properties referenced by integration test QML files
+    Q_PROPERTY(qreal speed READ speed CONSTANT)
+    Q_PROPERTY(qreal density READ density CONSTANT)
+    Q_PROPERTY(qreal fadeRate READ fadeRate CONSTANT)
+    Q_PROPERTY(int trailLength READ trailLength CONSTANT)
+    Q_PROPERTY(int fontSize READ fontSize CONSTANT)
+    Q_PROPERTY(QString colorMode READ colorMode CONSTANT)
+    Q_PROPERTY(QString charset READ charset CONSTANT)
+    Q_PROPERTY(int matrixSpeed READ matrixSpeed CONSTANT)
+    Q_PROPERTY(int matrixDensity READ matrixDensity CONSTANT)
+    Q_PROPERTY(int matrixFade READ matrixFade CONSTANT)
+    Q_PROPERTY(int matrixTrail READ matrixTrail CONSTANT)
+public:
+    explicit StubScreensaverConfig(QObject *p = nullptr) : QObject(p) {}
+    qreal speed() const { return 1.0; }
+    qreal density() const { return 0.7; }
+    qreal fadeRate() const { return 0.88; }
+    int trailLength() const { return 50; }
+    int fontSize() const { return 16; }
+    QString colorMode() const { return "green"; }
+    QString charset() const { return "ascii"; }
+    int matrixSpeed() const { return 50; }
+    int matrixDensity() const { return 70; }
+    int matrixFade() const { return 60; }
+    int matrixTrail() const { return 50; }
+};
 
-static uc::ScreensaverConfig *s_screensaverConfig = nullptr;
+static StubScreensaverConfig *s_stubConfig = nullptr;
+static QObject *stubConfigProvider(QQmlEngine *e, QJSEngine *) {
+    e->setObjectOwnership(s_stubConfig, QQmlEngine::CppOwnership);
+    return s_stubConfig;
+}
 
 class Setup : public QObject {
     Q_OBJECT
 public slots:
     void applicationAvailable() {
         qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
-        s_screensaverConfig = new uc::ScreensaverConfig(qApp);
+        s_stubConfig = new StubScreensaverConfig(qApp);
+        qmlRegisterSingletonType<StubScreensaverConfig>(
+            "ScreensaverConfig", 1, 0, "ScreensaverConfig", stubConfigProvider);
     }
     void qmlEngineAvailable(QQmlEngine *engine) {
         Q_UNUSED(engine);
