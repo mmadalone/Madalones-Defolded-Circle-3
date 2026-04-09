@@ -115,8 +115,9 @@ jobs:
           - {
             name: "Linux x64", artifact: "Linux-x64", build: "release",
             qmake-args: "CONFIG+=release",
-            # Warning: 22.04 comes with GCC 11 which doesn't work with Qt 5.18.2! https://github.com/msys2/MINGW-packages/issues/10502
-            os: ubuntu-20.04
+            # ubuntu-20.04 runners were deprecated by GitHub in April 2025.
+            # Qt 5.15.2 builds fine with GCC 11 on 22.04.
+            os: ubuntu-22.04
           }
           # Attention: macOS minutes count 10x more than Linux!
 #          - {
