@@ -717,15 +717,11 @@ Popup {
                 chargingScreenRoot.screenOffEffectActive = false;
                 screenOffAnim.stop();
                 screenOffOverlay.progress = 0.0;
-            } else {
-                // Poller stopped (condition went false — display blanked,
-                // popup closed, or user undocked). Don't leave the flag true
-                // if the condition that stopped us was something OTHER than
-                // an active effect (e.g., close). When the conditions flip
-                // back true, onRunningChanged(true) above will reset the
-                // flag fresh, so this is for the case where conditions stay
-                // false for a while before the Popup is destroyed.
             }
+            // When running -> false (display blanked, popup closed, undock),
+            // state cleanup is handled elsewhere: onDisplayOffChanged fires
+            // cancelScreenOffEffect() on wake, and onOpened re-initialises
+            // on the next popup creation. No action needed here.
         }
         onTriggered: {
             // Guard: don't re-fire while the effect is already in progress.

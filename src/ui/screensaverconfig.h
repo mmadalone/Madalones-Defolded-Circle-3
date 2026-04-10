@@ -187,8 +187,6 @@ class ScreensaverConfig : public QObject {
     SCRN_INT(tvStaticFlashDuration,     "charging/tvStaticFlashDuration",     400)  // ms
     SCRN_INT(tvStaticFlashBrightness,   "charging/tvStaticFlashBrightness",   100)  // 0..100
     SCRN_STRING(tvStaticTint,           "charging/tvStaticTint",              "#ffffff")
-    // Deprecated — kept as fallback. tvStaticFlashOnTap supersedes this.
-    SCRN_STRING(tvStaticInputMode,      "charging/tvStaticInputMode",         "flash")
 
     // === Transformed read-only properties (custom getters) ===
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged FINAL)
