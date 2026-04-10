@@ -1735,3 +1735,80 @@ Commit stats: 16 files changed, 1457 insertions, 25 deletions. +1 cleanup commit
 4. **`hasOwnProperty` for QML-declared functions** — unreliable in Qt 5.15. Use truthy `&& item.funcName` checks for function existence, `hasOwnProperty` only for properties. (This codebase uses both inconsistently — match the existing convention per call site.)
 5. **Popup lifecycle vs Loader lifecycle** — `chargingScreenLoader.active = false` destroys the entire ChargingScreen Popup. Popup `open()/close()` alone does not. For state that should reset on each dock cycle, lift it into ChargingScreen (the Popup itself) — the outer Loader destroys + recreates it on every `active` toggle.
 6. **UC Remote community research finding**: there is zero prior art for ChargingScreen extensibility or pre-display-off animations in the `unfoldedcircle/remote-ui` ecosystem. Upstream `ChargingScreen.qml` is 60 lines with no theme system, no Loader, no extension point. This fork is the reference implementation.
+
+---
+
+## 2026-04-10 Session: Batch 2 screen-off animation styles (theme sampling)
+
+Shipped as commit `dea996b`. Adds 4 new shared overlay styles to the screen-off animation system — three of which sample the underlying theme's rendering via a new `ShaderEffectSource` capture primitive introduced in this batch.
+
+### What shipped
+
+**1. ShaderEffectSource theme-capture infrastructure**
+
+A single new `ShaderEffectSource` (`id: themeCapture`) in `src/qml/components/ChargingScreen.qml`, placed immediately after `themeLoader`. It mirrors the theme's rendered output into an offscreen FBO so sampling-based overlay shaders can read the theme as a `sampler2D` texture. Key properties:
+
+- `sourceItem: themeLoader.item` — reactive binding, automatically picks up Loader reloads
+- `hideSource: false` — theme keeps drawing in its normal position; the SES just mirrors the output
+- `wrapMode: ShaderEffectSource.ClampToEdge` — no wrap artefacts at screen edges
+- `visible: false` — the SES itself is never drawn; only its texture is sampled by other shaders
+- `live: chargingScreenRoot.screenOffEffectActive && chargingScreenRoot._needsThemeCapture` — the offscreen FBO render pass only runs during an effect that actually uses the texture
+
+A new `readonly property bool _needsThemeCapture` returns `true` only when `screenOffEffectStyle` is one of the three sampling styles (`genie` / `pixelate` / `dissolve`). For all other styles (fade / flash / vignette / wipe / sleepwave / theme-native), the SES stays dormant — zero GPU cost.
+
+**FBO footprint:** 480 × 850 × 4 bytes ≈ 1.6 MB VRAM. Allocated lazily on first `live: true` transition and retained thereafter (freeing on `live: false` would force re-allocation each cycle for no real savings). Standard on Mali T-series; UC3 handles this trivially.
+
+**2. Four new overlay styles (`src/qml/components/overlays/ScreenOffOverlay.qml`)**
+
+A new `property variant source: null` on the overlay receives `themeCapture` from ChargingScreen. The three sampling styles bind it to their `ShaderEffect.source` (which Qt 5.15 auto-maps as `uniform sampler2D source`). Non-sampling styles ignore it.
+
+- **Sleep wave (non-sampling)** — soft cyan gradient band travels top to bottom, leaving progressively darkened space behind it. Pure fragment-shader output using `qt_TexCoord0` and `u_progress` only, no texture reads. Visual: band at mid-screen crest with smoothstep falloff, top half above the crest darkens via a separate smoothstep. Feels like a gentle wave of night sweeping across the display.
+
+- **Genie / zoom-to-corner (sampling)** — the theme content shrinks and slides toward a target corner (bottom centre). Implemented as an **inverse-scale-around-moving-center UV transform**:
+  ```glsl
+  float t = progress * progress;               // ease-in quadratic
+  float s = max(1.0 - t, 0.001);               // scale: 1 -> 0 (clamped)
+  vec2 center = mix(vec2(0.5), vec2(0.5, 1.0), t);
+  vec2 sampleUv = (qt_TexCoord0 - center) / s + vec2(0.5);
+  // step(...) mask for inside/outside the shrinking rect
+  ```
+  For each output pixel, this asks "if the theme is being shown as a rectangle of size `s` centred at `center`, what texture coordinate should I sample here, and am I inside that rectangle?" Outside the rectangle → black. Inside → sample the theme at the scaled position. At progress=0 it's a passthrough; at progress=1 everything but one pixel is masked to black.
+
+  **First attempt was wrong and got fixed mid-session.** The initial version was `mix(uv, target, t)` which pulls every output pixel's *sample coordinate* toward the target — meaning at progress=1 the entire screen shows one bottom-centre pixel of the theme instead of shrinking. User reported "genie doesn't do anything we expect." The inverse-scale fix was a rewrite of the shader math, not just a tweak.
+
+  **Limitation (acknowledged in the shader comment):** Qt 5.15 `ShaderEffect` is fragment-shader-only — no vertex-shader access — so this is a uniform shrink, not a fluid macOS-dock mesh-warp ribbon. It looks like a proper zoom-to-corner rather than a curl. A true mesh warp would require Qt 6 or a custom `QSGGeometryNode` with per-vertex deformation; deferred indefinitely.
+
+- **Pixelate (sampling)** — quantise UV coordinates to a grid, sample the theme at the grid centre. Block size ramps from 0.5% to 8% of screen width over the first 80% of progress, then the pixelated output fades to black in the last 20%. Centre-of-block sampling (`+ blockSize * 0.5`) keeps the result crisp under `GL_LINEAR` filtering because the interpolation always lands dead-centre in each block cell. Qt 5.15 `ShaderEffectSource` doesn't expose a filter-mode toggle so `GL_NEAREST` isn't available; the centre-sample trick is the standard workaround.
+
+- **Dissolve to noise (sampling)** — theme is blended with per-pixel hash noise (the same Inigo Quilez `hash12` function proven-on-device by TV Static), progressively shifting toward pure noise, then the noise fades to black in the last 35% of progress. Two-phase shader with clean transition math.
+
+**3. Power saving menu style picker: 5 → 9 buttons in a 3×3 grid**
+
+`src/qml/settings/settings/Power.qml` picker model expanded from 5 entries to 9 (adding `sleepwave`, `genie`, `pixelate`, `dissolve` before `theme-native`). The picker's parent container converted from `RowLayout` to `GridLayout { columns: 3 }` because 9 buttons in a single row at 480 px wide would compress labels to ~50 px each and be unreadable. Same grid pattern used for `ThemeSelector.qml` in Batch 1.
+
+**Layout footgun hit and fixed mid-session:** the enclosing `Item { height: childrenRect.height + 40 }` wasn't reliably picking up the GridLayout's implicit height with anchor-based positioning — only 2 rows' worth of height were being reported at the binding time, so the subsequent Sleep timeout block was drawn overlapping the 3rd row of buttons. **First fix attempt** replaced `childrenRect.height` with `screenOffStyleRow.y + screenOffStyleRow.height + 20`. That still didn't work because `screenOffStyleRow.height` itself was returning the wrong value. **Final fix** sets the GridLayout's `height` to a literal: `3 * 44 + 2 * 6` (3 rows of 44 px buttons plus 2 × 6 px row spacing = 144 px). With both values deterministic (y from anchors + height from literal), the outer Item sizes correctly and everything below sits properly.
+
+### Files changed (commit dea996b)
+
+| Action | File | Change |
+|--------|------|--------|
+| Modified | `src/qml/components/ChargingScreen.qml` | Added `ShaderEffectSource { id: themeCapture; ... }` after themeLoader, added `_needsThemeCapture` readonly property, wired `source: themeCapture` on the existing ScreenOffOverlay instance |
+| Modified | `src/qml/components/overlays/ScreenOffOverlay.qml` | Added `property variant source: null`, appended 4 new sub-items (Sleep wave + Genie + Pixelate + Dissolve), each visible-gated on its style name |
+| Modified | `src/qml/settings/settings/Power.qml` | Expanded style picker model 5→9, converted RowLayout→GridLayout(columns:3), extended cycleOption arrays in Left/Right handlers, set explicit `height: 3*44+2*6` on the GridLayout, changed outer Item `height` binding to `screenOffStyleRow.y + screenOffStyleRow.height + 20` |
+
+Total: 237 insertions, 6 deletions.
+
+### Footguns added this session
+
+1. **`childrenRect` doesn't reliably measure anchor-positioned Layouts** — if your Item's height depends on `childrenRect.height` and the children include a GridLayout (or other Layout) positioned by anchors rather than sized explicitly, the height may be under-reported. Fix: set the Layout's height explicitly, or use an explicit `children[i].y + children[i].height` expression instead of `childrenRect`.
+2. **UV distortion ≠ mesh warp** — Qt 5.15 `ShaderEffect` is fragment-shader-only. Any effect that wants to deform content spatially must do it via UV distortion in the fragment shader, not per-vertex deformation. For a shrink-toward-target transform, the correct formula is inverse-scale around a moving centre (`(uv - center) / scale + 0.5`), NOT `mix(uv, target, t)` which produces uniform sampling at the target.
+
+### What Batch 2 sets up for the future
+
+The `ShaderEffectSource` infrastructure is a reusable primitive. Any future sampling-based effect (Batch 3 theme-native animations, e.g. Minimal digit crumble) can read from `themeCapture` without any further infrastructure changes. The `live` gate pattern (`screenOffEffectActive && _needsThemeCapture`) is the template for adding more sampling styles: just extend the `_needsThemeCapture` computed property to include the new style name and the SES will activate automatically.
+
+Batch 3 (per-theme native animations) is the next natural extension:
+- **Matrix rain fall-off** — rain accelerates downward and falls off the bottom edge. Natural fit for the existing `MatrixRainItem` C++ renderer; would add a new uniform to bias the per-stream velocity.
+- **Starfield warp-out** — stars tunnel into the centre then collapse to a dot. Matches Starfield's visual language.
+- **Analog clock hands sweep** — both hands spin rapidly to 12:00 then both fall to 6:00 as the face dims. Pure QML PropertyAnimation.
+- **Minimal digit crumble** — the most visually complex. Digit characters detach pixel-by-pixel from the bottom and fall. Would benefit from Batch 2's theme-capture infrastructure: sample the rendered clock digits and apply a per-pixel particle dissolve.

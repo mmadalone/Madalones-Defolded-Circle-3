@@ -171,11 +171,21 @@ A shared pre-display-off animation system. When the core decides it's time to di
 
 **How it's triggered:** event-driven via the core's `Normal → Idle` power-mode transition (the moment the display actually starts dimming). The system then measures the real duration of the dim phase on each cycle and times the animation so it ends exactly at `Idle → Low_power` (the hardware blank). No baseline drift, no guessing — dim-phase duration is self-calibrating across dock states and config changes. A 200 ms polling fallback remains in place in case the `Idle` signal is missed.
 
-**Tier 1 — Shared overlay (any theme)**, 4 styles so far:
+**Tier 1 — Shared overlay (any theme)**, 8 styles:
+
+*Draw-over styles (no theme sampling — zero GPU overhead beyond the shader pass):*
 - **Fade** — simple monotonic black ramp. Safe baseline.
 - **Flash** — brief white pulse followed by cut to black. Classic "TV zap off".
 - **Iris (vignette)** — circular black mask closes from edges to centre. Soft smoothstep edge. (Uses a small inline GLSL shader for the radial mask.)
 - **Wipe** — black rectangle sweeps top-to-bottom like an old film projector.
+- **Wave** — soft cyan gradient wave travels from top to bottom, dimming everything behind it.
+
+*Theme-sampling styles (distort the underlying theme's rendering via a captured-texture shader):*
+- **Genie** — theme content shrinks and slides toward the bottom of the screen via an inverse-scale UV transform. Uniform-shrink, not a fluid mesh-warp ribbon (Qt 5.15 limitation: fragment-shader-only), but visually "zoom to corner". Outside the shrinking rectangle masks to black.
+- **Pixels** — theme progressively pixelates into bigger and bigger blocks (0.5% → 8% of screen width), then the pixelated output fades to black.
+- **Dissolve** — theme blends into per-pixel white noise, progressively shifting to pure noise, then the noise fades to black.
+
+The sampling-based styles use a single `ShaderEffectSource` to capture the active theme into an offscreen FBO so the overlay shaders can sample it. The FBO is only allocated when one of the sampling styles is actually playing — non-sampling styles and the theme-native mode keep zero GPU cost.
 
 **Tier 2 — Theme-native animations**: themes can opt in with their own tightly-integrated shutdown effect via an optional protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`). Currently **TV Static** uses this for a classic **CRT collapse** — the snow and scanlines collapse vertically into a bright horizontal line, then the line shrinks horizontally to a single dot, then the dot fades to black. 800 ms collapse + 500 ms black hold so it finishes synchronized with the real hardware display-off.
 
@@ -214,7 +224,7 @@ All settings are in **Settings > Screensaver** on the remote.
 | Starfield | Animation speed, Star density, Star size, Trail length, Star color (7 solid + 3 rainbow) | Starfield |
 | Minimal | 24-hour clock, Font (Poppins / Space Mono), Time color (7 solid + 3 rainbow), Date color (7 solid + 3 rainbow), Clock size, Date size | Minimal |
 | TV Static | Snow intensity, Snow size (1–8 px), Scanline strength, Scanline roll speed, Chroma bleed, Rolling tracking bar (+ speed), Tint color, Channel flash (on-tap + auto bursts + interval + duration + brightness) | TV Static |
-| Screen off animations | Enabled, Fire when undocked, Style (Fade / Flash / Iris / Wipe / Theme-native) | All (lives under **Power saving**, not Screensaver) |
+| Screen off animations | Enabled, Fire when undocked, Style (Fade / Flash / Iris / Wipe / Wave / Genie / Pixels / Dissolve / Theme-native) | All (lives under **Power saving**, not Screensaver) |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 
@@ -280,8 +290,9 @@ For build instructions, see [BUILD.md](BUILD.md).
 
 - ✅ **TV Static** — analog snow / VHS chroma / CRT scanlines / rolling tracking bar / channel-flash bursts (shipped 2026-04-10)
 - ✅ **Screen-off animation system** — shared Fade / Flash / Iris / Wipe styles + theme-native protocol with TV Static CRT collapse (shipped 2026-04-10)
-- **Batch 2 screen-off styles** — additional shared overlay animations (Sleep wave, Venetian blinds, Radial sweep, Barn doors, CRT degauss flash, etc.)
-- **Per-theme native screen-off animations** — Matrix rain fall-off, Starfield warp-out tunnel, Analog clock hands sweep-to-12, Minimal digit crumble
+- ✅ **Screen-off animations Batch 2** — Wave + Genie + Pixels + Dissolve, with `ShaderEffectSource` theme-capture infrastructure for the 3 sampling-based styles (shipped 2026-04-10)
+- **Screen-off animations Batch 3** — additional shared overlay styles (Venetian blinds, Radial sweep, Barn doors, CRT degauss flash)
+- **Per-theme native screen-off animations** — Matrix rain fall-off, Starfield warp-out tunnel, Analog clock hands sweep-to-12, Minimal digit crumble (will reuse Batch 2's theme-capture infrastructure)
 
 ## How This Was Built
 
