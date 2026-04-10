@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Adds "Screen off animations" section (shared screensaver shutdown effect).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -8,6 +9,7 @@ import QtQuick.Layouts 1.15
 import HwInfo 1.0
 import Haptic 1.0
 import Config 1.0
+import ScreensaverConfig 1.0
 import Wifi 1.0
 
 import "qrc:/settings" as Settings
@@ -283,8 +285,149 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: wakeupSensitivitySlider
-                    KeyNavigation.down: sleepTimeoutSlider
+                    KeyNavigation.down: screenOffEnabledSwitch
                     highlight: activeFocus && ui.keyNavigationEnabled
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SCREEN OFF ANIMATIONS (madalone) **/
+            Item {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20
+                height: childrenRect.height + 40
+
+                Text {
+                    id: screenOffTitle
+                    width: parent.width - 80
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: qsTr("Screen off animations")
+                    anchors { left: parent.left; top: parent.top }
+                    font: fonts.primaryFont(30)
+                }
+
+                /** MASTER ENABLE **/
+                Text {
+                    id: screenOffEnabledLabel
+                    color: colors.light
+                    text: qsTr("Enabled")
+                    anchors { left: parent.left; top: screenOffTitle.bottom; topMargin: 14 }
+                    font: fonts.secondaryFont(24)
+                }
+                Components.Switch {
+                    id: screenOffEnabledSwitch
+                    icon: "uc:check"
+                    checked: ScreensaverConfig.screenOffEffectEnabled
+                    trigger: function() { ScreensaverConfig.screenOffEffectEnabled = !ScreensaverConfig.screenOffEffectEnabled; }
+                    anchors { right: parent.right; verticalCenter: screenOffEnabledLabel.verticalCenter }
+                    KeyNavigation.up: displayoffTimeoutSlider
+                    KeyNavigation.down: screenOffUndockedSwitch
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                }
+
+                /** FIRE WHEN UNDOCKED **/
+                Text {
+                    id: screenOffUndockedLabel
+                    color: colors.light
+                    text: qsTr("Fire when undocked")
+                    anchors { left: parent.left; top: screenOffEnabledLabel.bottom; topMargin: 18 }
+                    font: fonts.secondaryFont(24)
+                    opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
+                }
+                Components.Switch {
+                    id: screenOffUndockedSwitch
+                    icon: "uc:check"
+                    checked: ScreensaverConfig.screenOffEffectUndocked
+                    enabled: ScreensaverConfig.screenOffEffectEnabled
+                    opacity: enabled ? 1.0 : 0.4
+                    trigger: function() { ScreensaverConfig.screenOffEffectUndocked = !ScreensaverConfig.screenOffEffectUndocked; }
+                    anchors { right: parent.right; verticalCenter: screenOffUndockedLabel.verticalCenter }
+                    KeyNavigation.up: screenOffEnabledSwitch
+                    KeyNavigation.down: screenOffStyleRow
+                    highlight: activeFocus && ui.keyNavigationEnabled
+                }
+
+                /** STYLE PICKER (fade / flash / vignette / wipe / theme-native) **/
+                Text {
+                    id: screenOffStyleLabel
+                    color: colors.light
+                    text: qsTr("Style")
+                    anchors { left: parent.left; top: screenOffUndockedLabel.bottom; topMargin: 18 }
+                    font: fonts.secondaryFont(24)
+                    opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
+                }
+                RowLayout {
+                    id: screenOffStyleRow
+                    width: parent.width
+                    spacing: 6
+                    focus: true
+                    enabled: ScreensaverConfig.screenOffEffectEnabled
+                    opacity: enabled ? 1.0 : 0.4
+                    anchors { left: parent.left; right: parent.right; top: screenOffStyleLabel.bottom; topMargin: 8 }
+                    KeyNavigation.up: screenOffUndockedSwitch
+                    KeyNavigation.down: sleepTimeoutSlider
+                    Keys.onLeftPressed: {
+                        var styles = ["fade","flash","vignette","wipe","theme-native"];
+                        var cur = ScreensaverConfig.screenOffEffectStyle;
+                        for (var i = 0; i < styles.length; i++) {
+                            if (styles[i] === cur) {
+                                var next = i > 0 ? i - 1 : styles.length - 1;
+                                ScreensaverConfig.screenOffEffectStyle = styles[next];
+                                Haptic.play(Haptic.Click);
+                                return;
+                            }
+                        }
+                    }
+                    Keys.onRightPressed: {
+                        var styles = ["fade","flash","vignette","wipe","theme-native"];
+                        var cur = ScreensaverConfig.screenOffEffectStyle;
+                        for (var i = 0; i < styles.length; i++) {
+                            if (styles[i] === cur) {
+                                var next = (i + 1) % styles.length;
+                                ScreensaverConfig.screenOffEffectStyle = styles[next];
+                                Haptic.play(Haptic.Click);
+                                return;
+                            }
+                        }
+                    }
+                    Repeater {
+                        model: [
+                            { name: "fade",         label: "Fade" },
+                            { name: "flash",        label: "Flash" },
+                            { name: "vignette",     label: "Iris" },
+                            { name: "wipe",         label: "Wipe" },
+                            { name: "theme-native", label: "Theme" }
+                        ]
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 44
+                            radius: 8
+                            color: ScreensaverConfig.screenOffEffectStyle === modelData.name ? colors.offwhite : colors.dark
+                            border { color: colors.medium; width: 1 }
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: ScreensaverConfig.screenOffEffectStyle === modelData.name ? colors.black : colors.offwhite
+                                font: fonts.primaryFont(18)
+                                elide: Text.ElideRight
+                                width: parent.width - 8
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            MouseArea {
+                                anchors.fill: parent
+                                onClicked: {
+                                    ScreensaverConfig.screenOffEffectStyle = modelData.name;
+                                    Haptic.play(Haptic.Click);
+                                }
+                            }
+                        }
+                    }
                 }
             }
 
@@ -339,7 +482,7 @@ Settings.Page {
                     }
 
                     /** KEYBOARD NAVIGATION **/
-                    KeyNavigation.up: displayoffTimeoutSlider
+                    KeyNavigation.up: screenOffStyleRow
                     highlight: activeFocus && ui.keyNavigationEnabled
                 }
             }

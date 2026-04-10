@@ -31,7 +31,7 @@ Item {
             bottomMargin: 12
             horizontalCenter: parent.horizontalCenter
         }
-        colorValue: ScreensaverConfig.clockColor
+        colorValue: ScreensaverConfig.clockDateColor
         font: root.clockFont(ScreensaverConfig.clockDateSize)
         text: {
             void(ui.time);  // trigger rebinding on time change

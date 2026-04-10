@@ -3,6 +3,9 @@
 
 #include "inputController.h"
 
+#include <QCoreApplication>
+
+#include "../hardware/battery.h"
 #include "../logging.h"
 
 namespace uc {
@@ -28,6 +31,14 @@ InputController::InputController(hw::HardwareModel::Enum model) : m_model(model)
     s_instance = this;
 
     m_source = nullptr;
+
+    // DEV-only: install an application-level event filter so F12 (fake-dock
+    // shortcut) is caught BEFORE QtQuick Controls Popups can swallow it with
+    // their focus scopes. Regular key handling still goes through the
+    // per-window filter installed by setSource().
+    if (m_model == hw::HardwareModel::DEV) {
+        qApp->installEventFilter(this);
+    }
 }
 
 InputController::~InputController() {
@@ -35,6 +46,9 @@ InputController::~InputController() {
 
     if (m_source != nullptr) {
         m_source->removeEventFilter(this);
+    }
+    if (m_model == hw::HardwareModel::DEV) {
+        qApp->removeEventFilter(this);
     }
 }
 
@@ -143,6 +157,31 @@ void InputController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode) 
 
 bool InputController::eventFilter(QObject *obj, QEvent *event) {
     QKeyEvent *keyEvent;
+
+    // DEV-only: F12 fakes a dock/undock event by toggling Battery.powerSupply.
+    // This branch runs for events from the application-level filter (installed
+    // in the constructor when model == DEV), which fires BEFORE QtQuick Controls
+    // Popups can swallow the event with their focus scopes. Consumed unconditionally.
+    if (m_model == hw::HardwareModel::DEV && event->type() == QEvent::KeyPress) {
+        auto *ke = static_cast<QKeyEvent *>(event);
+        if (ke->key() == Qt::Key_F12) {
+            auto *battery = hw::Battery::instance();
+            if (battery) {
+                const bool next = !battery->getPowerSupply();
+                battery->setPowerSupply(next);
+                qCInfo(lcInput()) << "[DEV] Faked dock event — Battery.powerSupply =" << next;
+            }
+            return true;  // consume — stop all further propagation
+        }
+    }
+
+    // Everything below is the per-window key handling. The app-level filter
+    // hook (DEV only) should NOT run this logic — the per-window filter
+    // installed by setSource() will handle it when the event reaches the
+    // application window. Gating on obj == m_source avoids double-emit.
+    if (obj != m_source) {
+        return false;
+    }
 
     if (m_blockInput) {
         return false;

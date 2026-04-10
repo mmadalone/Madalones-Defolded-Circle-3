@@ -72,6 +72,7 @@ Settings.Page {
                 navDownTarget: matrixAppearance.visible ? matrixAppearance.firstFocusItem
                              : starfieldSettings.visible ? starfieldSpeedSlider
                              : minimalSettings.visible ? minimalClock24hSwitch
+                             : tvStaticSettings.visible ? tvStaticSettings.firstFocusItem
                              : generalBehavior.firstFocusItem
             }
 
@@ -391,6 +392,16 @@ Settings.Page {
                 }
             }
 
+            // --- TV Static settings ---
+            ChargingScreenComponents.TvStaticSettings {
+                id: tvStaticSettings
+                settingsPage: chargingScreenPage
+                visible: ScreensaverConfig.theme === "tvstatic"
+                Layout.fillWidth: true
+                navUpTarget: commonToggles.lastFocusItem
+                navDownTarget: generalBehavior.firstFocusItem
+            }
+
             ChargingScreenComponents.GeneralBehavior {
                 id: generalBehavior
                 settingsPage: chargingScreenPage
@@ -398,6 +409,7 @@ Settings.Page {
                 navUpTarget: matrixEffects.visible ? matrixEffects.lastFocusItem
                            : starfieldSettings.visible ? starfieldColorGradientRow
                            : minimalSettings.visible ? minimalDateSlider
+                           : tvStaticSettings.visible ? tvStaticSettings.lastFocusItem
                            : commonToggles.lastFocusItem
             }
 

@@ -31,14 +31,17 @@
         <file alias="settings/settings/chargingscreen/TapSection.qml">../../src/qml/settings/settings/chargingscreen/TapSection.qml</file>
         <file alias="settings/settings/chargingscreen/MessageSection.qml">../../src/qml/settings/settings/chargingscreen/MessageSection.qml</file>
         <file alias="settings/settings/chargingscreen/GeneralBehavior.qml">../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml</file>
+        <file alias="settings/settings/chargingscreen/TvStaticSettings.qml">../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml</file>
         <file alias="components/themes/BaseTheme.qml">../../src/qml/components/themes/BaseTheme.qml</file>
         <file alias="components/themes/MatrixTheme.qml">../../src/qml/components/themes/MatrixTheme.qml</file>
         <file alias="components/themes/StarfieldTheme.qml">../../src/qml/components/themes/StarfieldTheme.qml</file>
         <file alias="components/themes/MinimalTheme.qml">../../src/qml/components/themes/MinimalTheme.qml</file>
         <file alias="components/themes/AnalogTheme.qml">../../src/qml/components/themes/AnalogTheme.qml</file>
+        <file alias="components/themes/TvStaticTheme.qml">../../src/qml/components/themes/TvStaticTheme.qml</file>
         <file alias="components/overlays/ClockOverlay.qml">../../src/qml/components/overlays/ClockOverlay.qml</file>
         <file alias="components/overlays/GradientText.qml">../../src/qml/components/overlays/GradientText.qml</file>
         <file alias="components/overlays/BatteryOverlay.qml">../../src/qml/components/overlays/BatteryOverlay.qml</file>
+        <file alias="components/overlays/ScreenOffOverlay.qml">../../src/qml/components/overlays/ScreenOffOverlay.qml</file>
         <!-- Avatar art files excluded until Mod 2 is ready for release -->
         <file alias="components/RemoteOpen.qml">../../src/qml/components/RemoteOpen.qml</file>
         <file alias="components/PopupMenu.qml">../../src/qml/components/PopupMenu.qml</file>

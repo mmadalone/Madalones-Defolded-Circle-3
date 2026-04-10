@@ -306,7 +306,122 @@ ColumnLayout {
             onUserInteractionEnded: ScreensaverConfig.clockDateSize = value
             highlight: activeFocus && ui.keyNavigationEnabled
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: clockPositionRow
+            KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: clockDateColorRow
+        }
+    }
+
+    // 2h2. DATE COLOR (visible when show date is on)
+    ColumnLayout {
+        visible: ScreensaverConfig.showClock && ScreensaverConfig.clockShowDate && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Date color"); font: fonts.primaryFont(26) }
+        RowLayout {
+            id: clockDateColorRow
+            spacing: 6; focus: true
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            KeyNavigation.up: clockDateSizeSlider; KeyNavigation.down: clockDateGradientRow
+            Keys.onLeftPressed: {
+                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
+                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, -1);
+            }
+            Keys.onRightPressed: {
+                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
+                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, 1);
+            }
+            Repeater {
+                model: [
+                    { color: "#ffffff" },
+                    { color: "#00ff41" },
+                    { color: "#00b4d8" },
+                    { color: "#ff0040" },
+                    { color: "#ffbf00" },
+                    { color: "#bf00ff" },
+                    { color: "#d0d0d0" }
+                ]
+                Rectangle {
+                    Layout.fillWidth: true; height: 36; radius: 6
+                    color: modelData.color
+                    border {
+                        color: ScreensaverConfig.clockDateColor === modelData.color ? colors.offwhite : colors.medium
+                        width: ScreensaverConfig.clockDateColor === modelData.color ? 3 : 1
+                    }
+                    Components.HapticMouseArea {
+                        anchors.fill: parent
+                        onClicked: ScreensaverConfig.clockDateColor = modelData.color
+                    }
+                }
+            }
+        }
+    }
+
+    // 2h3. DATE GRADIENT PRESETS (visible when show date is on)
+    ColumnLayout {
+        visible: ScreensaverConfig.showClock && ScreensaverConfig.clockShowDate && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 30; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            id: clockDateGradientRow
+            spacing: 6; focus: true
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            KeyNavigation.up: clockDateColorRow; KeyNavigation.down: clockPositionRow
+            Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, -1)
+            Keys.onRightPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, 1)
+            // Rainbow
+            Rectangle {
+                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                border { color: ScreensaverConfig.clockDateColor === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "rainbow" ? 3 : 1 }
+                Rectangle {
+                    anchors.fill: parent; anchors.margins: 1; radius: 5
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "#ff0000" }
+                        GradientStop { position: 0.25; color: "#ffbf00" }
+                        GradientStop { position: 0.5; color: "#00ff41" }
+                        GradientStop { position: 0.75; color: "#0000ff" }
+                        GradientStop { position: 1.0; color: "#ff0000" }
+                    }
+                }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "rainbow" }
+            }
+            // Rainbow+
+            Rectangle {
+                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                border { color: ScreensaverConfig.clockDateColor === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "rainbow_gradient" ? 3 : 1 }
+                Rectangle {
+                    anchors.fill: parent; anchors.margins: 1; radius: 5
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "#ff0000" }
+                        GradientStop { position: 0.2; color: "#ffff00" }
+                        GradientStop { position: 0.4; color: "#00ff80" }
+                        GradientStop { position: 0.6; color: "#0080ff" }
+                        GradientStop { position: 0.8; color: "#8000ff" }
+                        GradientStop { position: 1.0; color: "#ff0000" }
+                    }
+                }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "rainbow_gradient" }
+            }
+            // Neon
+            Rectangle {
+                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
+                border { color: ScreensaverConfig.clockDateColor === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "neon" ? 3 : 1 }
+                Rectangle {
+                    anchors.fill: parent; anchors.margins: 1; radius: 5
+                    gradient: Gradient {
+                        orientation: Gradient.Horizontal
+                        GradientStop { position: 0.0; color: "#ff8080" }
+                        GradientStop { position: 0.2; color: "#ffff80" }
+                        GradientStop { position: 0.4; color: "#80ffd0" }
+                        GradientStop { position: 0.6; color: "#80d0ff" }
+                        GradientStop { position: 0.8; color: "#d080ff" }
+                        GradientStop { position: 1.0; color: "#ff8080" }
+                    }
+                }
+                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "neon" }
+            }
         }
     }
 
@@ -321,7 +436,7 @@ ColumnLayout {
             id: clockPositionRow
             spacing: 10; focus: true
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: ScreensaverConfig.clockShowDate ? clockDateSizeSlider : clockShowDateSwitch
+            KeyNavigation.up: ScreensaverConfig.clockShowDate ? clockDateGradientRow : clockShowDateSwitch
             KeyNavigation.down: showBatterySwitch
             Keys.onLeftPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, -1)
             Keys.onRightPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, 1)

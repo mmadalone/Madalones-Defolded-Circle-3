@@ -32,6 +32,8 @@ ApplicationWindow {
     // Global flag: true when the screensaver is covering the UI.
     // Used by TouchSlider components to suppress volume/seek during screensaver.
     property bool screensaverActive: chargingScreenLoader.active
+    // DEV-only dock fake: F12 → InputController::eventFilter toggles Battery.powerSupply
+    // (handled in C++ so it works even under modal focus capture).
 
     minimumWidth: ui.width * ui.ratio
     maximumWidth: minimumWidth
@@ -511,6 +513,16 @@ ApplicationWindow {
             }
         }
 
+        // Helper: whether the screensaver should auto-open on battery idle.
+        // True if either the legacy idle toggle is on OR the user has enabled
+        // the screen-off animation system AND asked for it to fire when
+        // undocked (which only works if the screensaver actually opens).
+        function _shouldOpenOnIdle() {
+            return ScreensaverConfig.idleEnabled
+                || (ScreensaverConfig.screenOffEffectEnabled
+                    && ScreensaverConfig.screenOffEffectUndocked);
+        }
+
         // Idle screensaver timer — activates screensaver after N seconds of inactivity when undocked
         Timer {
             id: idleScreensaverTimer
@@ -519,7 +531,7 @@ ApplicationWindow {
             interval: ScreensaverConfig.idleTimeout * 1000
             onTriggered: {
                 var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
-                if (ScreensaverConfig.idleEnabled && undocked && !chargingScreenLoader.active) {
+                if (root._shouldOpenOnIdle() && undocked && !chargingScreenLoader.active) {
                     chargingScreenLoader.active = true;
                 }
             }
@@ -530,17 +542,29 @@ ApplicationWindow {
             ignoreUnknownSignals: true
 
             function onIdleEnabledChanged() {
-                var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
-                if (ScreensaverConfig.idleEnabled && undocked) {
-                    idleScreensaverTimer.restart();
-                } else {
-                    idleScreensaverTimer.stop();
-                }
+                root._refreshIdleTimer();
+            }
+
+            function onScreenOffEffectEnabledChanged() {
+                root._refreshIdleTimer();
+            }
+
+            function onScreenOffEffectUndockedChanged() {
+                root._refreshIdleTimer();
             }
 
             function onIdleTimeoutChanged() {
                 idleScreensaverTimer.interval = ScreensaverConfig.idleTimeout * 1000;
                 if (idleScreensaverTimer.running) idleScreensaverTimer.restart();
+            }
+        }
+
+        function _refreshIdleTimer() {
+            var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
+            if (root._shouldOpenOnIdle() && undocked) {
+                idleScreensaverTimer.restart();
+            } else {
+                idleScreensaverTimer.stop();
             }
         }
 
@@ -570,7 +594,7 @@ ApplicationWindow {
                         if (chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
                         }
-                        if (ScreensaverConfig.idleEnabled) {
+                        if (root._shouldOpenOnIdle()) {
                             idleScreensaverTimer.restart();
                         }
                     }
@@ -603,7 +627,7 @@ ApplicationWindow {
                             chargingScreenLoader.active = true;
                         }
                         // Reset idle timer on activity
-                        if (ScreensaverConfig.idleEnabled && !Battery.powerSupply) {
+                        if (root._shouldOpenOnIdle() && !Battery.powerSupply) {
                             idleScreensaverTimer.restart();
                         }
                     }
@@ -618,7 +642,7 @@ ApplicationWindow {
                     chargingScreenLoader.active = false;
                     // Restart idle timer after user dismisses screensaver (if enabled and undocked)
                     var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
-                    if (ScreensaverConfig.idleEnabled && undocked) {
+                    if (root._shouldOpenOnIdle() && undocked) {
                         idleScreensaverTimer.restart();
                     }
                 }

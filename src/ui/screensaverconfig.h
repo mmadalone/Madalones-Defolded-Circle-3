@@ -38,6 +38,7 @@ class ScreensaverConfig : public QObject {
     SCRN_BOOL(clockClock24h,       "charging/clockClock24h",          true)
     SCRN_INT(clockDateSize,        "charging/clockDateSize",          20)
     SCRN_BOOL(clockShowDate,       "charging/clockShowDate",          false)
+    SCRN_STRING(clockDateColor,    "charging/clockDateColor",         "#d0d0d0")
     SCRN_STRING(clockPosition,     "charging/clockPosition",          "top")
     SCRN_BOOL(showBatteryEnabled,  "charging/showBattery",            true)
     SCRN_BOOL(batteryDockedOnly,   "charging/batteryDockedOnly",      true)
@@ -161,6 +162,33 @@ class ScreensaverConfig : public QObject {
     SCRN_STRING(starfieldColor,    "charging/starfieldColor",         "#ffffff")
     SCRN_INT(starfieldStarSize,    "charging/starfieldStarSize",      50)
     SCRN_INT(starfieldTrailLength, "charging/starfieldTrailLength",   50)
+
+    // === Screen-off animation system (shared across all themes) ===
+    // Master on/off + "fire when undocked" gate + shared-overlay style selector.
+    // Style values: "fade", "flash", "vignette", "wipe", "theme-native".
+    // "theme-native" defers to theme.startScreenOff()/cancelScreenOff()/finalizeScreenOff()
+    // when the theme declares providesNativeScreenOff: true; otherwise behaves as "fade".
+    SCRN_BOOL  (screenOffEffectEnabled,  "charging/screenOffEffectEnabled",  true)
+    SCRN_BOOL  (screenOffEffectUndocked, "charging/screenOffEffectUndocked", false)
+    SCRN_STRING(screenOffEffectStyle,    "charging/screenOffEffectStyle",    "theme-native")
+
+    // === TV Static theme ===
+    SCRN_INT(tvStaticIntensity,         "charging/tvStaticIntensity",         70)
+    SCRN_INT(tvStaticSnowSize,          "charging/tvStaticSnowSize",          2)   // 1..8 px per cell
+    SCRN_INT(tvStaticScanlineStrength,  "charging/tvStaticScanlineStrength",  35)
+    SCRN_INT(tvStaticScanlineSpeed,     "charging/tvStaticScanlineSpeed",     0)
+    SCRN_INT(tvStaticChromaAmount,      "charging/tvStaticChromaAmount",      25)
+    SCRN_BOOL(tvStaticTrackingEnable,   "charging/tvStaticTrackingEnable",    true)
+    SCRN_INT(tvStaticTrackingSpeed,     "charging/tvStaticTrackingSpeed",     40)
+    // --- Channel-flash effect ---
+    SCRN_BOOL(tvStaticFlashOnTap,       "charging/tvStaticFlashOnTap",        true) // tap/touch fires flash
+    SCRN_BOOL(tvStaticChannelFlashAuto, "charging/tvStaticChannelFlashAuto",  true) // periodic auto bursts
+    SCRN_INT(tvStaticFlashInterval,     "charging/tvStaticFlashInterval",     20)   // seconds, ±50% jitter
+    SCRN_INT(tvStaticFlashDuration,     "charging/tvStaticFlashDuration",     400)  // ms
+    SCRN_INT(tvStaticFlashBrightness,   "charging/tvStaticFlashBrightness",   100)  // 0..100
+    SCRN_STRING(tvStaticTint,           "charging/tvStaticTint",              "#ffffff")
+    // Deprecated — kept as fallback. tvStaticFlashOnTap supersedes this.
+    SCRN_STRING(tvStaticInputMode,      "charging/tvStaticInputMode",         "flash")
 
     // === Transformed read-only properties (custom getters) ===
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged FINAL)

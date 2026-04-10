@@ -18,6 +18,42 @@
 //   2. Bind ScreensaverConfig directly on overlay visibility within the theme,
 //      bypassing these properties entirely (e.g. StarfieldTheme, MatrixTheme).
 // Both patterns are valid. The defaults here bind directly to ScreensaverConfig.
+//
+// ============================================================================
+// OPTIONAL: Screen-off animation protocol (Tier 2 native override)
+// ============================================================================
+// ChargingScreen owns a shared countdown + ScreenOffOverlay system. By default,
+// any theme inherits the user-selected shared overlay style (fade / flash /
+// vignette / wipe) from ScreensaverConfig.screenOffEffectStyle.
+//
+// A theme can OPT IN to provide its own native shutdown animation by declaring:
+//
+//   readonly property bool providesNativeScreenOff: true
+//   readonly property int  screenOffLeadMs: 800   // ms — how early to start
+//
+//   function startScreenOff()    { /* begin the animation */ }
+//   function cancelScreenOff()   { /* reset — user activity, theme re-enters  */ }
+//   function finalizeScreenOff() { /* snap to final state — display physically off */ }
+//
+// When providesNativeScreenOff === true AND the user-selected effect style is
+// "theme-native", ChargingScreen will:
+//   - Call startScreenOff() when the idle poller crosses (displayTimeout - leadMs)
+//   - Call cancelScreenOff() on any interactiveInput and on displayOff → false (wake)
+//   - Call finalizeScreenOff() on displayOff → true (hardware display blanked)
+//
+// The shared ScreenOffOverlay is hidden for native-capable themes (unless the
+// user explicitly picks a shared style like "fade", in which case the theme's
+// native hooks are bypassed and the overlay animates instead).
+//
+// Themes that do NOT declare these (Matrix, Starfield, Minimal, Analog today)
+// automatically inherit the shared overlay behaviour when the user picks a
+// shared style, and get no animation when "theme-native" is selected (since
+// they have no native implementation).
+//
+// Dispatch convention (per ChargingScreen.qml existing style):
+//   - Property checks use hasOwnProperty("providesNativeScreenOff")
+//   - Function checks use truthy && (item && item.startScreenOff)
+// See STYLE_GUIDE.md §592 for the documented codebase convention.
 
 import QtQuick 2.15
 import ScreensaverConfig 1.0
