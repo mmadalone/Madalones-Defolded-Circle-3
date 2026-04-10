@@ -32,6 +32,7 @@
         <file alias="settings/settings/chargingscreen/MessageSection.qml">../../src/qml/settings/settings/chargingscreen/MessageSection.qml</file>
         <file alias="settings/settings/chargingscreen/GeneralBehavior.qml">../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml</file>
         <file alias="settings/settings/chargingscreen/TvStaticSettings.qml">../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml</file>
+        <file alias="settings/settings/chargingscreen/AnalogSettings.qml">../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml</file>
         <file alias="components/themes/BaseTheme.qml">../../src/qml/components/themes/BaseTheme.qml</file>
         <file alias="components/themes/MatrixTheme.qml">../../src/qml/components/themes/MatrixTheme.qml</file>
         <file alias="components/themes/StarfieldTheme.qml">../../src/qml/components/themes/StarfieldTheme.qml</file>

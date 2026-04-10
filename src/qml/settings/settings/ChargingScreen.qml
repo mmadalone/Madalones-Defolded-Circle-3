@@ -73,6 +73,7 @@ Settings.Page {
                              : starfieldSettings.visible ? starfieldSpeedSlider
                              : minimalSettings.visible ? minimalClock24hSwitch
                              : tvStaticSettings.visible ? tvStaticSettings.firstFocusItem
+                             : analogSettings.visible ? analogSettings.firstFocusItem
                              : generalBehavior.firstFocusItem
             }
 
@@ -402,6 +403,16 @@ Settings.Page {
                 navDownTarget: generalBehavior.firstFocusItem
             }
 
+            // --- Analog settings (shutdown-hands picker) ---
+            ChargingScreenComponents.AnalogSettings {
+                id: analogSettings
+                settingsPage: chargingScreenPage
+                visible: ScreensaverConfig.theme === "analog"
+                Layout.fillWidth: true
+                navUpTarget: commonToggles.lastFocusItem
+                navDownTarget: generalBehavior.firstFocusItem
+            }
+
             ChargingScreenComponents.GeneralBehavior {
                 id: generalBehavior
                 settingsPage: chargingScreenPage
@@ -410,6 +421,7 @@ Settings.Page {
                            : starfieldSettings.visible ? starfieldColorGradientRow
                            : minimalSettings.visible ? minimalDateSlider
                            : tvStaticSettings.visible ? tvStaticSettings.lastFocusItem
+                           : analogSettings.visible ? analogSettings.lastFocusItem
                            : commonToggles.lastFocusItem
             }
 

@@ -48,9 +48,12 @@ Popup {
     // power mode (display dimmed) before transitioning to Low_power (display
     // physically off). Measured empirically on each cycle so we can delay
     // the animation start to land exactly at the Low_power transition.
-    // Seeded with a reasonable default that will be refined after the first
-    // measurement completes.
-    property int  measuredDimPhaseMs: 3000
+    //
+    // PERSISTED in ScreensaverConfig.measuredDimPhaseMs (QSettings-backed)
+    // so the measurement survives Popup destruction on undock/redock cycles.
+    // Without persistence, every redock would reset to the seeded default
+    // (3000 ms), causing a visible "black screen but display still on" gap
+    // whenever the actual dim phase diverges from the seed. See screensaverconfig.h.
     property double idleEnteredAtMs: 0.0
 
     // True iff the currently-selected screen-off style needs to sample the
@@ -76,12 +79,14 @@ Popup {
             // idleEnteredAtMs is set on the Normal -> Idle transition; if we
             // see Low_power without an Idle entry recorded (rare — direct
             // Normal -> Low_power transition), skip the measurement.
+            // Writes to ScreensaverConfig.measuredDimPhaseMs persist to
+            // QSettings so the value survives Popup destruction.
             if (chargingScreenRoot.idleEnteredAtMs > 0) {
                 var dimMs = Date.now() - chargingScreenRoot.idleEnteredAtMs;
                 // Clamp to a sane range so a weird measurement can't poison
                 // the next cycle (minimum 500 ms, maximum 30 s).
                 if (dimMs >= 500 && dimMs <= 30000) {
-                    chargingScreenRoot.measuredDimPhaseMs = dimMs;
+                    ScreensaverConfig.measuredDimPhaseMs = dimMs;
                 }
                 chargingScreenRoot.idleEnteredAtMs = 0;
             }
@@ -707,7 +712,7 @@ Popup {
                 if (!ScreensaverConfig.screenOffEffectEnabled) return;
                 if (!Battery.powerSupply && !ScreensaverConfig.screenOffEffectUndocked) return;
                 if (chargingScreenRoot.screenOffEffectActive) return;
-                var delay = chargingScreenRoot.measuredDimPhaseMs
+                var delay = ScreensaverConfig.measuredDimPhaseMs
                           - chargingScreenRoot._currentLeadMs();
                 if (delay < 0) delay = 0;
                 dimPhaseDelayTimer.interval = delay;

@@ -163,6 +163,12 @@ class ScreensaverConfig : public QObject {
     SCRN_INT(starfieldStarSize,    "charging/starfieldStarSize",      50)
     SCRN_INT(starfieldTrailLength, "charging/starfieldTrailLength",   50)
 
+    // === Analog theme ===
+    // Which hands animate during the native screen-off shutdown sequence.
+    // Values: "all" (sec+min+hour spin+fall together) | "main" (min+hour
+    // animate; second hand fades opacity to 0 during the sweep phase).
+    SCRN_STRING(analogShutoffHands, "charging/analogShutoffHands",    "all")
+
     // === Screen-off animation system (shared across all themes) ===
     // Master on/off + "fire when undocked" gate + shared-overlay style selector.
     // Style values: "fade", "flash", "vignette", "wipe", "theme-native".
@@ -171,6 +177,14 @@ class ScreensaverConfig : public QObject {
     SCRN_BOOL  (screenOffEffectEnabled,  "charging/screenOffEffectEnabled",  true)
     SCRN_BOOL  (screenOffEffectUndocked, "charging/screenOffEffectUndocked", false)
     SCRN_STRING(screenOffEffectStyle,    "charging/screenOffEffectStyle",    "theme-native")
+
+    // Empirically-measured dim-phase duration (ms between Normal->Idle
+    // and Idle->Low_power). Persisted to QSettings so the measurement
+    // survives Popup destruction on undock/redock cycles (otherwise a
+    // local Popup property would reset to the 3000 ms seed on every
+    // docking, causing a visible "black but on" gap between animation
+    // end and the core's actual display-off transition).
+    SCRN_INT   (measuredDimPhaseMs,      "charging/measuredDimPhaseMs",      3000)
 
     // === TV Static theme ===
     SCRN_INT(tvStaticIntensity,         "charging/tvStaticIntensity",         70)

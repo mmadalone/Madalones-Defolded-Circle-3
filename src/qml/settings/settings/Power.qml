@@ -340,7 +340,7 @@ Settings.Page {
                     id: screenOffUndockedLabel
                     color: colors.light
                     text: qsTr("Fire when undocked")
-                    anchors { left: parent.left; top: screenOffEnabledLabel.bottom; topMargin: 18 }
+                    anchors { left: parent.left; top: screenOffEnabledLabel.bottom; topMargin: 34 }
                     font: fonts.secondaryFont(24)
                     opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
                 }
@@ -362,7 +362,7 @@ Settings.Page {
                     id: screenOffStyleLabel
                     color: colors.light
                     text: qsTr("Style")
-                    anchors { left: parent.left; top: screenOffUndockedLabel.bottom; topMargin: 18 }
+                    anchors { left: parent.left; top: screenOffUndockedLabel.bottom; topMargin: 34 }
                     font: fonts.secondaryFont(24)
                     opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
                 }
