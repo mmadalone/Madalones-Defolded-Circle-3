@@ -1,6 +1,6 @@
 # Custom Screensaver for Unfolded Circle Remote 3
 
-A fully configurable screensaver system for the UC Remote 3. Four themes — GPU-accelerated Matrix rain, Starfield warp, Minimal digital clock, and Analog clock — all controllable from the remote's Settings menu, DPAD, touchbar, and touch gestures.
+A fully configurable screensaver system for the UC Remote 3. **Five themes** — GPU-accelerated Matrix rain, Starfield warp, Minimal digital clock, Analog clock, and TV Static — all controllable from the remote's Settings menu, DPAD, touchbar, and touch gestures. Plus a shared **screen-off animation system** that plays a configurable shutdown effect right before the display blanks.
 
 ## Demo
 
@@ -13,6 +13,8 @@ A fully configurable screensaver system for the UC Remote 3. Four themes — GPU
 | Matrix Rain (Neon) | Matrix Rain (Green) | Starfield | Minimal Clock |
 |:------------------:|:-------------------:|:---------:|:-------------:|
 | ![Neon](docs/screenshots/matrix-color-01.jpeg) | ![Green](docs/screenshots/matrix-color-02.jpeg) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) |
+
+*(Screenshots for TV Static + Analog to be added.)*
 
 ### Settings — Matrix
 
@@ -54,6 +56,7 @@ A fully configurable screensaver system for the UC Remote 3. Four themes — GPU
 - **Starfield** — animated star field with configurable speed, density, star size, trail length, and color (7 solid + 3 rainbow gradients). Touchbar adjusts density, swipe adjusts speed.
 - **Minimal Clock** — clean digital clock with date, configurable font (Poppins / Space Mono), size, and independent time/date color pickers with rainbow gradient support (battery overlay optional)
 - **Analog Clock** — UC's stock analog clock face with hour dots and second/minute/hour hands (battery overlay optional)
+- **TV Static** — single-pass GPU fragment shader composing analog dead-channel snow, VHS chroma bleed, CRT scanlines, rolling vertical-hold tracking bar, and channel-flash bursts. Full visual and cadence control.
 
 ### Matrix Rain
 
@@ -143,10 +146,43 @@ A fully configurable screensaver system for the UC Remote 3. Four themes — GPU
 - Touchbar speed — swipe the touchbar to adjust animation speed (toggleable, visible when DPAD is on)
 - When DPAD interactive is OFF, all DPAD buttons dismiss the screensaver
 
+### TV Static
+
+**Visual composition (single GPU fragment-shader pass):**
+- **Luma snow** — hash-based per-pixel grayscale noise. Adjustable intensity and *snow size* (1–8 px cells, quantized for that chunky "big pixel" analog feel)
+- **VHS chroma bleed** — faint offset hash lookups in R and B channels produce the red/blue chroma ringing of an old VHS tape
+- **CRT scanlines** — hard alternating rows with configurable strength and bi-directional roll speed (negative = up, 0 = static, positive = down)
+- **Rolling tracking bar** — Gaussian soft band drifting vertically at configurable speed, like VHS vertical-hold drift
+- **Channel-flash bursts** — bright white flash overlays. Fully configurable:
+  - On-tap (tap anywhere = flash)
+  - Auto cadence (jittered interval, 3–120 s with ±50 % randomness)
+  - Flash duration (80–1000 ms)
+  - Flash brightness (0–100 %)
+- **Tint color** — 7 solid swatches (white, matrix green, neon blue, red, amber, purple, grey) tints the whole frame
+
 ### Overlays
 
-- **Clock** — digital time display with configurable font, size, color (7 solid + 3 rainbow gradients), 24h/12h toggle, optional date line with own size slider, "charging only" visibility
+- **Clock** — digital time display with configurable font, size, color (7 solid + 3 rainbow gradients), 24h/12h toggle, optional date line with **independent date color** (7 solid + 3 rainbow) and own size slider, "charging only" visibility
 - **Battery** — color-coded by charge level (green → yellow → orange → red), shows "Fully charged" at 100%, configurable text size, "charging only" visibility option
+
+### Screen-off Animations
+
+A shared pre-display-off animation system. When the core decides it's time to dim and blank the display, a short animation plays right before the hardware powers off.
+
+**How it's triggered:** event-driven via the core's `Normal → Idle` power-mode transition (the moment the display actually starts dimming). The system then measures the real duration of the dim phase on each cycle and times the animation so it ends exactly at `Idle → Low_power` (the hardware blank). No baseline drift, no guessing — dim-phase duration is self-calibrating across dock states and config changes. A 200 ms polling fallback remains in place in case the `Idle` signal is missed.
+
+**Tier 1 — Shared overlay (any theme)**, 4 styles so far:
+- **Fade** — simple monotonic black ramp. Safe baseline.
+- **Flash** — brief white pulse followed by cut to black. Classic "TV zap off".
+- **Iris (vignette)** — circular black mask closes from edges to centre. Soft smoothstep edge. (Uses a small inline GLSL shader for the radial mask.)
+- **Wipe** — black rectangle sweeps top-to-bottom like an old film projector.
+
+**Tier 2 — Theme-native animations**: themes can opt in with their own tightly-integrated shutdown effect via an optional protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`). Currently **TV Static** uses this for a classic **CRT collapse** — the snow and scanlines collapse vertically into a bright horizontal line, then the line shrinks horizontally to a single dot, then the dot fades to black. 800 ms collapse + 500 ms black hold so it finishes synchronized with the real hardware display-off.
+
+**Controls:** `Settings → Power saving → Screen off animations`:
+- **Enabled** — master on/off (default on)
+- **Fire when undocked** — also plays on battery idle-timeout (default off). Turning this on also auto-cascades so the screensaver actually opens on battery (you don't need a separate toggle).
+- **Style picker** — Fade / Flash / Iris / Wipe / Theme. "Theme" defers to the theme's native implementation if it has one, otherwise falls back to fade.
 
 ### General Behavior
 
@@ -163,8 +199,8 @@ All settings are in **Settings > Screensaver** on the remote.
 
 | Section | Settings | Themes |
 |---------|----------|--------|
-| Theme | Matrix / Starfield / Minimal / Analog | All |
-| Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size, position: top/center/bottom), Show battery (+ charging only, text size) | Matrix/Starfield |
+| Theme | Matrix / Starfield / Minimal / Analog / TV Static | All |
+| Overlays | Show clock (+ charging only, font, color, size, 24h, show date + date size + **date color (7 solid + 3 rainbow)**, position: top/center/bottom), Show battery (+ charging only, text size) | Matrix/Starfield/TV Static |
 | Overlays | Show battery (+ charging only, text size) | Minimal/Analog |
 | Appearance | Color, Characters, Font size, Speed, Density, Trail, Fade | Matrix |
 | Direction | Auto-rotate, Rotation speed, Trail bend, Direction picker | Matrix |
@@ -177,6 +213,8 @@ All settings are in **Settings > Screensaver** on the remote.
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
 | Starfield | Animation speed, Star density, Star size, Trail length, Star color (7 solid + 3 rainbow) | Starfield |
 | Minimal | 24-hour clock, Font (Poppins / Space Mono), Time color (7 solid + 3 rainbow), Date color (7 solid + 3 rainbow), Clock size, Date size | Minimal |
+| TV Static | Snow intensity, Snow size (1–8 px), Scanline strength, Scanline roll speed, Chroma bleed, Rolling tracking bar (+ speed), Tint color, Channel flash (on-tap + auto bursts + interval + duration + brightness) | TV Static |
+| Screen off animations | Enabled, Fire when undocked, Style (Fade / Flash / Iris / Wipe / Theme-native) | All (lives under **Power saving**, not Screensaver) |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 
@@ -224,21 +262,26 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 
 ## Technical Details
 
-- **Renderer:** C++ QQuickItem with custom `MatrixRainShader` (texture × per-vertex RGBA) — single GPU draw call per frame
-- **Simulation:** Pure C++ (no Qt object system) — deterministic, cache-friendly
+- **Matrix renderer:** C++ QQuickItem with custom `MatrixRainShader` (texture × per-vertex RGBA) — single GPU draw call per frame
+- **TV Static renderer:** Qt 5.15 `ShaderEffect` with inline GLSL ES 2.0 fragment shader. All six visual layers (snow, chroma, scanlines, tracking bar, intensity, channel flash) composed in a single full-frame pass. Pure QML — no C++ additions.
+- **Screen-off animation system:** two-tier architecture in `ChargingScreen.qml`. **Tier 1** shared `ScreenOffOverlay.qml` draws one of N styles above the active theme via a single `progress: 0..1` property. **Tier 2** optional theme-native protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff/cancelScreenOff/finalizeScreenOff`) lets themes take over rendering entirely. Trigger is event-driven via `Power.powerModeChanged` on `Normal → Idle` with empirical dim-phase measurement (self-calibrating, zero baseline math). 200 ms wall-clock poller as fallback.
+- **Simulation (Matrix):** Pure C++ (no Qt object system) — deterministic, cache-friendly
 - **Config bridge:** ScreensaverConfig C++ singleton — owns its own QSettings instance (zero custom lines in upstream config.h), SCRN_* macros for single-declaration properties
 - **GradientText:** Reusable QML component for solid or rainbow gradient text via QtGraphicalEffects LinearGradient (zero GPU overhead when solid)
 - **Atlas caching:** Static in-memory cache of the combined multi-layer glyph atlas (~3.7 MB). Survives dock/undock cycles (process stays alive, only QML is recreated). First dock builds the atlas (~8s on ARM64); repeat docks skip rasterization entirely (~5s — remaining time is QML lifecycle). Cache key: SHA-1 of color, colorMode, fontSize, charset, fadeRate, depthEnabled. Invalidates automatically on settings change.
 - **Tests:** 133 total (92 C++ unit + 41 QML integration), CI green
 - **Display power gating:** Zero CPU/GPU when screen is off
-- **Font:** Bundled 23KB Noto Sans Mono CJK JP subset (katakana + digits)
+- **Font:** Bundled 23KB Noto Sans Mono CJK JP subset (katakana + digits), plus a Braille subset for the upcoming Avatar mod
 
 For architecture details, see [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md).
 For build instructions, see [BUILD.md](BUILD.md).
 
 ## Roadmap
 
-- **TV Static** — analog snow / static noise theme (planned)
+- ✅ **TV Static** — analog snow / VHS chroma / CRT scanlines / rolling tracking bar / channel-flash bursts (shipped 2026-04-10)
+- ✅ **Screen-off animation system** — shared Fade / Flash / Iris / Wipe styles + theme-native protocol with TV Static CRT collapse (shipped 2026-04-10)
+- **Batch 2 screen-off styles** — additional shared overlay animations (Sleep wave, Venetian blinds, Radial sweep, Barn doors, CRT degauss flash, etc.)
+- **Per-theme native screen-off animations** — Matrix rain fall-off, Starfield warp-out tunnel, Analog clock hands sweep-to-12, Minimal digit crumble
 
 ## How This Was Built
 

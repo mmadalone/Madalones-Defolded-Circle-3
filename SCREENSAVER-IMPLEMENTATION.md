@@ -1625,3 +1625,113 @@ Replace `StarfieldTheme.qml`'s Canvas with a C++ `QQuickItem` subclass (`Starfie
 | `src/main.cpp` | Add `qmlRegisterType<StarfieldItem>` |
 | `remote-ui.pro` | Add to HEADERS/SOURCES |
 | `test/matrixrain/test_matrixrain.cpp` | Add StarfieldItem simulation tests (or separate test file) |
+
+---
+
+## 2026-04-09 / 2026-04-10 Session: TV Static theme + shared Screen-off animation system
+
+Shipped as two commits on `main`: `7220569` (feature) and `66b3132` (chore cleanup). The session introduced a 5th screensaver theme (TV Static) and refactored its pre-display-off animation into a shared, protocol-based system that any theme can opt into.
+
+### What shipped
+
+**1. TV Static theme (5th theme)**
+
+- `src/qml/components/themes/TvStaticTheme.qml` — new file. Single-pass inline GLSL ES 2.0 fragment shader via Qt 5.15 `ShaderEffect`. Composes 6 layers in one draw call:
+  1. Luma snow — Inigo Quilez `hash12()` per-pixel, seeded by `u_time * 60.0`. Quantized to `u_snowSize` px cells (1–8 px).
+  2. VHS chroma bleed — offset hash lookups in R and B channels, mixed into the luma
+  3. CRT scanlines — hard alternating rows (`mod(floor(pixel.y), 2.0)`) with optional time-based roll
+  4. Rolling tracking bar — Gaussian exp(-d²) band drifting vertically, configurable speed
+  5. Intensity mult (`u_tint * u_intensity`)
+  6. Channel-flash envelope — `mix(rgb, vec3(1.0), u_flash * u_flashBrightness)`, applied AFTER intensity so flashes stay bright regardless of snow amplitude
+
+- `TvStaticSettings.qml` — new settings panel: snow intensity, snow size, scanline strength/roll speed, chroma bleed, tracking bar toggle + speed, tint color, channel flash section (flash-on-tap / auto bursts / interval / duration / brightness)
+
+- Auto channel-flash uses a repeating Timer with randomized ±50 % jitter around the configured interval. On-tap flashes fire from `interactiveInput(action)` when `tvStaticFlashOnTap` is true.
+
+- **Shader footgun fixed mid-session:** inline GLSL source is a QML JS string literal using double quotes. Any embedded `"word"` inside a comment terminates the string early — qmlcachegen fails with `Expected token ','`. Fix: use `-- word --` or similar in comments, never inner double quotes.
+
+- **Scanline footgun fixed mid-session:** `sin(pixel.y * PI)` at integer pixel-y samples exactly on zero-crossings every pixel, producing uniform dimming instead of banding. Switched to `mod(floor(scanY), 2.0)` for hard alternating rows. The sinusoid-based approach only works if the frequency avoids integer-pixel resonance.
+
+**2. Shared Screen-off animation system**
+
+Architecture is two-tier, documented in `BaseTheme.qml`:
+
+- **Tier 1 — Shared overlay (`src/qml/components/overlays/ScreenOffOverlay.qml`, new file)**: QML `Item` with `progress: real` and `style: string` properties. Four sub-items visible-gated on `style`: Fade (black rect opacity ramp), Flash (white peak then black cut), Vignette (ShaderEffect with smoothstep circular alpha mask), Wipe (black rect top-to-bottom via height binding).
+
+- **Tier 2 — Theme-native protocol (optional)**: themes declare `readonly property bool providesNativeScreenOff: true` + `readonly property int screenOffLeadMs` and implement three functions: `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`. Only TV Static uses this for its CRT collapse.
+
+- **State ownership**: all countdown logic lives in `ChargingScreen.qml` (the Popup that hosts every theme via `themeLoader`). Per-theme state drifted across dock cycles in earlier iterations; lifting state into ChargingScreen made each dock/undock cycle rebuild fresh because the outer `chargingScreenLoader` in `main.qml` destroys and recreates the entire Popup on `active=false/true`.
+
+- **Trigger mechanism (critical — 3 iterations to get right)**:
+  1. **First attempt — single-shot Timer with `running: someBinding`**: BROKEN. Qt 5.15 footgun — after a single-shot Timer fires, it internally sets `running = false`, which breaks the QML declarative binding on `running`. The Timer never re-arms. Documented in [QML property-binding docs](https://doc.qt.io/qt-5/qtqml-syntax-propertybinding.html) and the [Qt mailing list thread](https://groups.google.com/g/qt-mailing-lists-qt-qml/c/EzypFfhpoC0). Saved as `feedback_single_shot_timer_binding.md` memory for future sessions.
+  2. **Second attempt — repeating 200 ms wall-clock poller**: works, but has baseline-drift issues. At cold boot the core's display-off counter starts before `Config.displayTimeout` is populated in QML. On battery-idle open, the core's counter has been running since last user activity while my baseline was popup-open time. Both cause the poller to fire too late (or never).
+  3. **Final approach — event-driven via `Power.powerModeChanged`**: on `Normal → Idle` transition (the core's "display is dimming" signal), a one-shot `dimPhaseDelayTimer` schedules `startScreenOffEffect()` at `(measuredDimPhaseMs - leadMs)` from now. The dim-phase duration is measured empirically on each cycle: record `Date.now()` on Idle entry, subtract on Low_power entry, store in `measuredDimPhaseMs` (seeded at 3000 ms, clamped 500–30000). First cycle uses the seed; cycle 2+ lands the animation exactly at the Low_power moment with zero drift. The 200 ms poller is kept as a fallback guarded by `screenOffEffectActive`.
+
+- **Empirical dim-phase measurement result**: on a UC3 at default settings, the dim phase is roughly 2.5–4 seconds between `Normal → Idle` and `Idle → Low_power`. The measurement self-corrects per device / per user config.
+
+- **"Fire when undocked" cascade**: the master toggle alone isn't enough — the screensaver itself has to actually open on battery for the effect to ever play. Added a `root._shouldOpenOnIdle()` helper in `main.qml` that returns `true` if either the legacy `ScreensaverConfig.idleEnabled` or `(screenOffEffectEnabled && screenOffEffectUndocked)` is set. All four call sites (`idleScreensaverTimer.onTriggered`, `onPowerSupplyChanged` fallback, `onPowerModeChanged` reset-on-activity, `onClosed` restart-on-dismiss) use this helper. New `onScreenOffEffectEnabledChanged` / `onScreenOffEffectUndockedChanged` handlers call `_refreshIdleTimer()` for live reactivity.
+
+- **Settings UI location**: `Settings → Power saving → Screen off animations` (not in the per-theme settings — they live next to the `Display off timeout` slider they depend on). Power.qml is upstream-derived; added a second `// Copyright (c) 2026 madalone` line and an `import ScreensaverConfig 1.0` at the top. Layout matches Power.qml's existing Item + absolute anchoring idiom (not the ColumnLayout-nesting style used elsewhere).
+
+- **Defensive resets (belt-and-suspenders)**: the theme has its own `onDisplayOffChanged` handler that force-resets `u_tvOff = 0.0` on wake if the ChargingScreen dispatch somehow misses. `cancelScreenOff()` / `startScreenOff()` / `finalizeScreenOff()` all call `tvOffAnim.complete()` before imperative writes to flush any pending animation frames. `themeLoader.onLoaded` calls `item.cancelScreenOff()` unconditionally on a fresh theme instance to clear any carried-over state.
+
+- **Config keys** (in `ScreensaverConfig`):
+  - `screenOffEffectEnabled` (bool, default true)
+  - `screenOffEffectUndocked` (bool, default false)
+  - `screenOffEffectStyle` (string, default `"theme-native"`) — values: `fade`, `flash`, `vignette`, `wipe`, `theme-native`
+
+- **TV Static's CRT collapse (the native implementation)**:
+  - `SequentialAnimation` with two phases: `NumberAnimation` on `u_tvOff` from 0.0 → 1.0 over 800 ms (the collapse), then `PauseAnimation` for 500 ms (pure-black hold). Total duration = 1300 ms = `screenOffLeadMs`.
+  - The 500 ms hold absorbs the poll jitter + any drift between my measurement and the actual core timing, so the user sees: collapse → black hold → display physically off, with no visible gap.
+  - Shader collapse math: phase 1 (0–0.44) shrinks window height with quadratic ease-in (`mix(1.0, 0.003, p1*p1)`), phase 2 (0.44–0.81) shrinks window width, phase 3 (0.81–1.0) fades dot to black. Glow line (`mix(rgb, vec3(1.0), glow * 0.8)`) peaks during phases 1–2.
+
+**3. Side improvements shipped alongside**
+
+- **ThemeSelector.qml** — 5 themes no longer clip. Switched from `RowLayout` to `GridLayout { columns: 3 }` with `Layout.fillWidth` + `elide: Text.ElideRight`. Gives a 3+2 layout.
+- **Date color picker** — new `clockDateColor` config in `ScreensaverConfig` (default `#d0d0d0`). Added to `CommonToggles.qml` as a full picker section (7 solid swatches + rainbow / rainbow+ / neon gradient presets) after Date size, before Clock position. `ClockOverlay.qml`'s `dateText.colorValue` now binds to `clockDateColor` instead of sharing `clockColor`.
+- **DEV-only dock-fake helpers**: `Battery::setPowerSupply` made `Q_INVOKABLE`. `InputController::eventFilter` installs itself on `qApp` (app-level filter, runs before any modal popup focus capture) when `m_model == DEV` and toggles `Battery::setPowerSupply` on F12 key press. Lets the macOS dev build simulate dock/undock for testing anything gated on `Battery.powerSupply` without real hardware. No-op on real UC3 builds.
+
+### Architectural decisions made this session
+
+- **Repeating Timer + wall-clock polling beats single-shot + binding** for anything that needs to re-arm. Documented the footgun in `STYLE_GUIDE.md`-adjacent memory.
+- **Event-driven triggers beat polling** when the signal exists. `Power.powerModeChanged` turned out to be exactly the signal we needed.
+- **Empirical measurement beats guessing** when the signal gives you entry but not "imminent". The dim-phase measurement self-calibrates per device without any hardcoded constants.
+- **Duck-typing protocol pattern extended**: the existing BaseTheme.qml convention (`"themes do NOT inherit from this type. Each theme declares these properties independently"`) is now used for the optional screen-off protocol too. Property checks use `hasOwnProperty`, function checks use the truthy `&&` pattern (following ChargingScreen's existing inconsistency — see lines 30, 31, 75, 76 vs 39, 92, 293, 342).
+- **No C++ API for programmatic display-off exists.** `Power` singleton only has `powerOff()` (full power off) and `reboot()`. The core owns the idle timer and there's no way to force `Low_power` from QML. The empirical dim-phase measurement is the only clean way to sync the animation to the actual blank.
+
+### Files changed (commit 7220569)
+
+| Action | File |
+|--------|------|
+| New | `src/qml/components/overlays/ScreenOffOverlay.qml` |
+| New | `src/qml/components/themes/TvStaticTheme.qml` |
+| New | `src/qml/settings/settings/chargingscreen/TvStaticSettings.qml` |
+| Modified C++ | `src/ui/screensaverconfig.h` (3 new global configs + 9 TV Static configs + `clockDateColor`) |
+| Modified C++ | `src/ui/inputController.cpp` (F12 fake-dock filter) |
+| Modified C++ | `src/hardware/battery.h` (Q_INVOKABLE `setPowerSupply`) |
+| Modified QML | `src/qml/components/ChargingScreen.qml` (countdown poller + dispatch + Power.Idle event + dim-phase measurement + ScreenOffOverlay instance) |
+| Modified QML | `src/qml/components/themes/BaseTheme.qml` (protocol documentation) |
+| Modified QML | `src/qml/components/overlays/ClockOverlay.qml` (date binds to `clockDateColor`) |
+| Modified QML | `src/qml/main.qml` (`_shouldOpenOnIdle()` helper + F12 note) |
+| Modified QML | `src/qml/settings/settings/Power.qml` (Screen off animations section — upstream file, madalone copyright added) |
+| Modified QML | `src/qml/settings/settings/ChargingScreen.qml` (TvStaticSettings conditional block) |
+| Modified QML | `src/qml/settings/settings/chargingscreen/CommonToggles.qml` (date color picker section) |
+| Modified QML | `src/qml/settings/settings/chargingscreen/ThemeSelector.qml` (3-col grid) |
+| Modified build | `resources/qrc/main.qrc` + `resources_qrc_main_qmlcache.qrc` (register ScreenOffOverlay, TvStaticTheme, TvStaticSettings) |
+
+Commit stats: 16 files changed, 1457 insertions, 25 deletions. +1 cleanup commit (`66b3132`): removed dead `tvStaticInputMode` config + empty `else` branch in poller.
+
+### Memories saved for future sessions
+
+- `project_screen_off_animation_system.md` — architecture reference
+- `feedback_single_shot_timer_binding.md` — Qt footgun rule
+- `reference_dev_launch.md` (from earlier in session) — macOS dev launch with `UC_TOKEN_PATH`
+
+### Footguns worth remembering
+
+1. **qmlcachegen + inline GLSL double quotes** — never put `"word"` inside GLSL comments when the shader source is a QML JS string literal. Use `-- word --` or `'word'`.
+2. **Scanline sinusoid at integer pixel Y** — `sin(pixel.y * PI)` is always ~0 at integer coordinates. Use a step function (`mod(floor(y), 2.0)`) or a non-PI-multiple frequency.
+3. **Single-shot QML Timer + `running:` binding** — breaks permanently after first fire. Use repeating Timer or event-driven signals.
+4. **`hasOwnProperty` for QML-declared functions** — unreliable in Qt 5.15. Use truthy `&& item.funcName` checks for function existence, `hasOwnProperty` only for properties. (This codebase uses both inconsistently — match the existing convention per call site.)
+5. **Popup lifecycle vs Loader lifecycle** — `chargingScreenLoader.active = false` destroys the entire ChargingScreen Popup. Popup `open()/close()` alone does not. For state that should reset on each dock cycle, lift it into ChargingScreen (the Popup itself) — the outer Loader destroys + recreates it on every `active` toggle.
+6. **UC Remote community research finding**: there is zero prior art for ChargingScreen extensibility or pre-display-off animations in the `unfoldedcircle/remote-ui` ecosystem. Upstream `ChargingScreen.qml` is 60 lines with no theme system, no Loader, no extension point. This fork is the reference implementation.
