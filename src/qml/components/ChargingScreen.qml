@@ -53,6 +53,17 @@ Popup {
     property int  measuredDimPhaseMs: 3000
     property double idleEnteredAtMs: 0.0
 
+    // True iff the currently-selected screen-off style needs to sample the
+    // underlying theme's rendering (genie, pixelate, dissolve). Used to gate
+    // the `themeCapture` ShaderEffectSource's `live` property so the offscreen
+    // FBO render pass is only active during an effect that actually uses it.
+    // For all non-sampling styles (fade, flash, vignette, wipe, sleepwave,
+    // theme-native) this is false and the SES stays dormant.
+    readonly property bool _needsThemeCapture:
+        ScreensaverConfig.screenOffEffectStyle === "genie"
+        || ScreensaverConfig.screenOffEffectStyle === "pixelate"
+        || ScreensaverConfig.screenOffEffectStyle === "dissolve"
+
     // Forward runtime state changes to the loaded theme, AND dispatch the
     // shared screen-off lifecycle hooks when the display actually blanks / wakes.
     onIsClosingChanged: if (themeLoader.item && themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = isClosing;
@@ -617,6 +628,32 @@ Popup {
         }
     }
 
+    // ---- Theme capture for sampling-based overlay styles (Batch 2) ----
+    // Mirrors the themeLoader's rendered output into an offscreen FBO so the
+    // distortion-based shared overlay styles (genie, pixelate, dissolve) can
+    // sample the theme as a texture. `hideSource: false` keeps the theme
+    // visible in its normal position — the SES just mirrors it.
+    //
+    // `live` is gated so the offscreen pass only runs while an effect that
+    // actually needs it is playing. For the 5 non-sampling styles (fade,
+    // flash, vignette, wipe, sleepwave) and theme-native mode, the SES
+    // stays dormant — zero GPU cost.
+    //
+    // FBO cost: ~1.6 MB VRAM on a 480x850 display. Allocated lazily on first
+    // `live: true` transition and retained thereafter. Mali T-series handles
+    // this trivially; see Qt 5.15 ShaderEffectSource docs.
+    ShaderEffectSource {
+        id: themeCapture
+        anchors.fill: themeLoader
+        sourceItem: themeLoader.item
+        hideSource: false
+        recursive: false
+        wrapMode: ShaderEffectSource.ClampToEdge
+        visible: false
+        live: chargingScreenRoot.screenOffEffectActive
+              && chargingScreenRoot._needsThemeCapture
+    }
+
     // ---- Shared screen-off overlay (Tier 1) ----
     // Sits above the theme in document order so it draws on top. Hidden when
     // the user picks "theme-native" AND the theme implements the native
@@ -624,6 +661,7 @@ Popup {
     Overlays.ScreenOffOverlay {
         id: screenOffOverlay
         anchors.fill: parent
+        source: themeCapture       // texture input for sampling-based styles
         style: ScreensaverConfig.screenOffEffectStyle
         progress: 0.0
         // ScreenOffOverlay handles its own visibility (progress > 0 && not theme-native)

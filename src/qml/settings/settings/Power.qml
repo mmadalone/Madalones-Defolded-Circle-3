@@ -300,7 +300,11 @@ Settings.Page {
             Item {
                 Layout.alignment: Qt.AlignCenter
                 width: parent.width - 20
-                height: childrenRect.height + 40
+                // Explicit height based on the last child's bottom. childrenRect
+                // doesn't reliably include a GridLayout's implicit height with
+                // anchor-based positioning, causing the style picker to overlap
+                // the next section when it has more than one row of buttons.
+                height: screenOffStyleRow.y + screenOffStyleRow.height + 20
 
                 Text {
                     id: screenOffTitle
@@ -362,10 +366,16 @@ Settings.Page {
                     font: fonts.secondaryFont(24)
                     opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
                 }
-                RowLayout {
+                GridLayout {
                     id: screenOffStyleRow
-                    width: parent.width
-                    spacing: 6
+                    columns: 3
+                    rowSpacing: 6
+                    columnSpacing: 6
+                    // Explicit height — GridLayout's implicitHeight isn't
+                    // reliably picked up by the outer Item's binding at
+                    // bind time when anchor-based positioning is used.
+                    // 9 buttons / 3 cols = 3 rows at 44 px + 2 × 6 px spacing.
+                    height: 3 * 44 + 2 * 6
                     focus: true
                     enabled: ScreensaverConfig.screenOffEffectEnabled
                     opacity: enabled ? 1.0 : 0.4
@@ -373,7 +383,7 @@ Settings.Page {
                     KeyNavigation.up: screenOffUndockedSwitch
                     KeyNavigation.down: sleepTimeoutSlider
                     Keys.onLeftPressed: {
-                        var styles = ["fade","flash","vignette","wipe","theme-native"];
+                        var styles = ["fade","flash","vignette","wipe","sleepwave","genie","pixelate","dissolve","theme-native"];
                         var cur = ScreensaverConfig.screenOffEffectStyle;
                         for (var i = 0; i < styles.length; i++) {
                             if (styles[i] === cur) {
@@ -385,7 +395,7 @@ Settings.Page {
                         }
                     }
                     Keys.onRightPressed: {
-                        var styles = ["fade","flash","vignette","wipe","theme-native"];
+                        var styles = ["fade","flash","vignette","wipe","sleepwave","genie","pixelate","dissolve","theme-native"];
                         var cur = ScreensaverConfig.screenOffEffectStyle;
                         for (var i = 0; i < styles.length; i++) {
                             if (styles[i] === cur) {
@@ -402,6 +412,10 @@ Settings.Page {
                             { name: "flash",        label: "Flash" },
                             { name: "vignette",     label: "Iris" },
                             { name: "wipe",         label: "Wipe" },
+                            { name: "sleepwave",    label: "Wave" },
+                            { name: "genie",        label: "Genie" },
+                            { name: "pixelate",     label: "Pixels" },
+                            { name: "dissolve",     label: "Dissolve" },
                             { name: "theme-native", label: "Theme" }
                         ]
                         Rectangle {
