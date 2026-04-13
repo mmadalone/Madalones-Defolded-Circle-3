@@ -4,7 +4,8 @@ Custom firmware fork of [`unfoldedcircle/remote-ui`](https://github.com/unfolded
 
 Five themes, five screen-off animation styles, full DPAD/touch interaction, zero Home Assistant dependency, clean fall-back to stock UI on install failure.
 
-![Matrix rain screensaver](docs/screenshots/matrix-green.png) (docs/screenshots/matrix-color-3.png) 
+![Matrix rain screensaver](docs/screenshots/matrix-green.png)
+![Matrix rain color 3 screensaver](docs/screenshots/matrix-color-3.png) 
 
 ---
 
