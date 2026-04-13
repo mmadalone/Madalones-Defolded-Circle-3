@@ -234,6 +234,29 @@
     </message>
 </context>
 <context>
+    <name>AnalogSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="34"/>
+        <source>Shutdown hands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="39"/>
+        <source>Which hands animate when the display is about to turn off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="63"/>
+        <source>All three hands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="64"/>
+        <source>Minute + hour only</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Base</name>
     <message>
         <location filename="../../src/qml/components/entities/Base.qml" line="74"/>
@@ -331,12 +354,12 @@
 <context>
     <name>BatteryOverlay</name>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="37"/>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
         <source>Fully charged</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="39"/>
         <source> - Charging</source>
         <translation type="unfinished"></translation>
     </message>
@@ -798,6 +821,61 @@
         <source>Tap to close</source>
         <translation type="obsolete">Tocca per chiudere</translation>
     </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="118"/>
+        <source>Animation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="135"/>
+        <source>Star density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="150"/>
+        <source>Star size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="163"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="176"/>
+        <source>Star color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="233"/>
+        <source>24-hour clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="249"/>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="282"/>
+        <source>Time color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="327"/>
+        <source>Date color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="373"/>
+        <source>Clock size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="390"/>
+        <source>Date size</source>
+        <translation type="unfinished"></translation>
+    </message>
 </context>
 <context>
     <name>Climate</name>
@@ -931,17 +1009,63 @@ Climate fan</extracomment>
 <context>
     <name>CommonToggles</name>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="37"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="38"/>
         <source>Show clock</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="66"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="84"/>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="121"/>
+        <source>Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="236"/>
+        <source>Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="258"/>
+        <source>24-hour clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="279"/>
+        <source>Show date</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="299"/>
+        <source>Date size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="319"/>
+        <source>Date color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="434"/>
+        <source>Position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="478"/>
         <source>Show battery</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="93"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="530"/>
+        <source>Text size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="64"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="507"/>
         <source>Charging only</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1508,43 +1632,43 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="92"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="94"/>
         <source>DPAD interactive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="117"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="201"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="119"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="204"/>
         <source>Remember direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="143"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="145"/>
         <source>Touchbar speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="169"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="172"/>
         <source>Touch directions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="188"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="191"/>
         <source>Tap screen zones to change direction. Triple-tap center to close.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="227"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="230"/>
         <source>Swipe speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="253"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="256"/>
         <source>Idle screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="279"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="284"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2268,43 +2392,66 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="194"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="195"/>
         <source>Color layers</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="218"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="219"/>
         <source>Intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="243"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="244"/>
         <source>Overlay mode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="269"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="270"/>
         <source>Glitch effect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="294"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="295"/>
         <source>Glitch intensity</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="319"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="320"/>
         <source>Column flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="342"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="343"/>
         <source>Column stutter</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="365"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="366"/>
         <source>Reverse glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatrixShutoffSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="30"/>
+        <source>Shutdown animation</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="35"/>
+        <source>A cascade sweep clears the rain before the display turns off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="43"/>
+        <source>Duration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="48"/>
+        <source>Total animation length in milliseconds (%1 ms)</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2861,76 +3008,96 @@ Climate fan</extracomment>
         <translation>Energia</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="76"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="79"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Mantieni WiFi connesso in standby</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="104"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
         <source>Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.</source>
         <translation>Mantiene il WiFi sempre connesso, anche quando il dispositivo è in standby. Consente una più rapida riconnessione dopo il risveglio. Nota che, abilitando questa funzione, la durata della batteria sarà leggermente ridotta.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="126"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="129"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="136"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="139"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="148"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="151"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="187"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="190"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Sensibilità del risveglio</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="197"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>Quantità di movimento necessaria per risvegliare il telecomando.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="212"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="215"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Spento</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="214"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="217"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Sensibilità</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="252"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="255"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Timeout spegnimento schermo</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="149"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="272"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="273"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="329"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="152"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="275"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="276"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="487"/>
         <source>%1 seconds</source>
         <translation>%1 secondi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="309"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="315"/>
+        <source>Screen off animations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="324"/>
+        <source>Enabled</source>
+        <translation type="unfinished">Attivato</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="343"/>
+        <source>Fire when undocked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="365"/>
+        <source>Style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="467"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Timeout standby</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="330"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="488"/>
         <source>%1 minutes</source>
         <translation>%1 minuti</translation>
     </message>
@@ -3719,76 +3886,81 @@ del Configuratore Web</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="41"/>
+        <source>Enable tap effects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="60"/>
         <source>Scatter burst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="63"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="82"/>
         <source>Trail count</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="84"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="103"/>
         <source>Trail length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="106"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="126"/>
         <source>Flash shockwave</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="124"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="144"/>
         <source>Character scramble</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="141"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="161"/>
         <source>Stream spawn</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="163"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="183"/>
         <source>Spawn count</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="184"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="204"/>
         <source>Spawn length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="206"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="227"/>
         <source>Show message</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="224"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="245"/>
         <source>Square burst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="246"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="267"/>
         <source>Square size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="269"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="291"/>
         <source>Ripple</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="287"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="309"/>
         <source>Screen wipe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="309"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="332"/>
         <source>Randomize</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="331"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="354"/>
         <source>Chance</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3862,12 +4034,12 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>TouchSliderBrightness</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="54"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="56"/>
         <source>Touch slider is not available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="55"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="57"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3875,12 +4047,12 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>TouchSliderPosition</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="54"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="56"/>
         <source>Touch slider is not available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="55"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="57"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3888,12 +4060,12 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>TouchSliderSeek</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="65"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="67"/>
         <source>Touch slider is not available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="66"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="68"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3901,12 +4073,12 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>TouchSliderVolume</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="54"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="57"/>
         <source>Touch slider is not available.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="55"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="58"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3942,6 +4114,79 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
         <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="659"/>
         <source>Apps</source>
         <translation>App</translation>
+    </message>
+</context>
+<context>
+    <name>TvStaticSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="30"/>
+        <source>Snow intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="48"/>
+        <source>Snow size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="66"/>
+        <source>Scanline strength</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="84"/>
+        <source>Scanline roll speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="102"/>
+        <source>Chroma bleed (VHS)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="122"/>
+        <source>Rolling tracking bar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="139"/>
+        <source>Tracking bar speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="184"/>
+        <source>— Channel flash —</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="192"/>
+        <source>Flash on tap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="211"/>
+        <source>Auto flash bursts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="228"/>
+        <source>Flash interval (seconds)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="248"/>
+        <source>Flash duration (ms)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="266"/>
+        <source>Flash brightness</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="157"/>
+        <source>Tint</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>
@@ -4563,7 +4808,7 @@ Premi e tieni premuto il pulsante voce e pronuncia il comando.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="810"/>
+        <location filename="../../src/qml/main.qml" line="842"/>
         <source>Done</source>
         <translation>Fatto</translation>
     </message>

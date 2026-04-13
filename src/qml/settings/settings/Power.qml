@@ -43,8 +43,9 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1100) {
-                contentY = 1100;
+            var maxY = contentHeight - height;
+            if (maxY > 0 && contentY > maxY) {
+                contentY = maxY;
             }
         }
 
@@ -500,6 +501,8 @@ Settings.Page {
                     highlight: activeFocus && ui.keyNavigationEnabled
                 }
             }
+
+            Item { Layout.preferredHeight: 40 }
         }
     }
 }

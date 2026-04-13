@@ -248,12 +248,52 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
     if (m_glitch.glitch() && m_glitch.glitchChaos())
         m_glitch.advanceChaos(m_streams, ctx, atlas.glyphCount(), atlas.colorVariants());
 
+    // --- Drain-exit cleanup (one-shot on wake after cascade/drain) ---
+    // Cascade's sweep writes -1 to charGrid cells; drain may leave dormant
+    // streams mid-pause. On wake (drainMode reset to 0), refill any -1
+    // glyphs with a random char and wake dormant streams so the rain
+    // regrows instantly instead of taking 1-2 s to recover.
+    if (m_drainCleanupPending) {
+        m_drainCleanupPending = false;
+        for (int i = 0; i < m_charGrid.size(); ++i) {
+            if (m_charGrid[i] < 0) m_charGrid[i] = charDist(m_rng);
+        }
+        for (int i = 0; i < m_streams.size(); ++i) {
+            if (!m_streams[i].active && m_streams[i].pauseTicks > 1) {
+                m_streams[i].pauseTicks = 1;   // respawn next advance
+            }
+        }
+    }
+
+    // --- Cascade screen-off effect ---
+    // Horizontal kill-line advances row 0 → bottom, blanking every cell
+    // above it. Writes charGrid=-1 and cellAge=CELL_AGE_MAX so both the
+    // trail and residual-glow renderers skip the cell.
+    if (m_drainMode != 0) {
+        if (m_drainWaveRow < 0) m_drainWaveRow = 0;
+        else m_drainWaveRow += m_drainWaveSpeed;
+        int capRow = qMin(m_drainWaveRow, m_gridRows - 1);
+        for (int c = 0; c < m_gridCols; ++c) {
+            int base = c * m_gridRows;
+            for (int r = 0; r <= capRow; ++r) {
+                m_cellAge[base + r] = CELL_AGE_MAX;
+                m_charGrid[base + r] = -1;
+            }
+        }
+        ++m_drainTickCount;
+    }
+
     for (int idx = 0; idx < m_streams.size(); ++idx) {
         auto &s = m_streams[idx];
 
         if (!s.active) {
             s.pauseTicks--;
             if (s.pauseTicks <= 0) {
+                // Screen-off fall-off: suppress respawns so existing
+                // streams drain off without being replenished. When
+                // m_spawnSuppress is false (normal operation), respawn
+                // happens exactly as before.
+                if (m_spawnSuppress) continue;
                 // For cardinal, preserve fixed axis position; spawnStream handles offset
                 spawnStream(s, false);
                 assignDepthColorVariant(s, atlas);
@@ -282,10 +322,22 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
             s.dy = (s.dyF > 0.3f) ? 1 : (s.dyF < -0.3f) ? -1 : 0;
         }
 
+        // Cascade sweep: any stream with its head at or above the
+        // kill-line is deactivated so it stops painting trail cells into
+        // the already-cleared zone.
+        if (m_drainMode != 0 && s.headRow <= m_drainWaveRow) {
+            s.active = false;
+            s.pauseTicks = pauseDist(m_rng);
+            continue;
+        }
+
         // Head advances along float direction vector
         // Depth streams move at scaled speed: far (0.6) = 60% speed, near (1.4) = 140%.
         // Creates asynchronous movement — depth rain drifts independently of normal rain.
+        // During drain-off (spawnSuppress), apply the drain multiplier so streams
+        // exit the grid faster than the normal tick rate would allow.
         float speedScale = s.depthFactor;
+        if (m_spawnSuppress) speedScale *= m_drainSpeedMultiplier;
         s.headColF += s.dxF * speedScale;
         s.headRowF += s.dyF * speedScale;
         s.headCol = qRound(s.headColF);
@@ -373,6 +425,25 @@ bool RainSimulation::setTrailLength(int t) {
     for (auto &s : m_streams)
         s.trailLength = lenDist(m_rng);
     return true;
+}
+
+void RainSimulation::resetAfterScreenOff(const GlyphAtlas &atlas) {
+    if (m_gridCols <= 0 || m_gridRows <= 0) return;
+    std::uniform_int_distribution<int> charDist(0, qMax(0, atlas.glyphCount() - 1));
+    for (int i = 0; i < m_charGrid.size(); ++i) {
+        if (m_charGrid[i] < 0) m_charGrid[i] = charDist(m_rng);
+    }
+    for (int i = 0; i < m_cellAge.size(); ++i) {
+        m_cellAge[i] = CELL_AGE_MAX;   // fully dark; stream heads clear on visit
+    }
+    for (int i = 0; i < m_streams.size(); ++i) {
+        m_streams[i].pauseTicks = 1;   // respawn on next advance
+        m_streams[i].active = false;
+    }
+    m_drainCleanupPending = false;
+    m_spawnSuppress = false;
+    m_drainMode = 0;
+    m_drainWaveRow = -1;
 }
 
 bool RainSimulation::setDirection(const QString &d) {

@@ -28,13 +28,14 @@ ScreensaverConfig::ScreensaverConfig(QObject *parent)
         "ScreensaverConfig", 1, 0, "ScreensaverConfig",
         &ScreensaverConfig::qmlInstance);
 
-    // Transformed property forwarding: raw int setter → transformed signal
-    // (SCRN_INT setter emits matrixSpeedChanged; we also need speedChanged for QML bindings)
-    connect(this, &ScreensaverConfig::matrixSpeedChanged,   this, &ScreensaverConfig::speedChanged);
-    connect(this, &ScreensaverConfig::matrixDensityChanged,  this, &ScreensaverConfig::densityChanged);
-    connect(this, &ScreensaverConfig::matrixFadeChanged,     this, &ScreensaverConfig::fadeRateChanged);
-    connect(this, &ScreensaverConfig::matrixTrailChanged,    this, &ScreensaverConfig::trailLengthChanged);
-    connect(this, &ScreensaverConfig::matrixColorChanged,    this, &ScreensaverConfig::colorChanged);
+    // Transformed-property forwarding is handled by dual-emission in each
+    // raw setter (see set{MatrixColor,MatrixSpeed,MatrixDensity,MatrixFade,
+    // MatrixTrail} below). Signal-to-signal connects for these five were
+    // removed: the Qt 5.15 + QML binding engine only follows the NOTIFY
+    // signal named in Q_PROPERTY directly — indirect signal chains don't
+    // trigger QML re-evaluation, and the chain also failed to reach C++
+    // consumers in this codebase due to a MOC edge case with macro-expanded
+    // Q_SIGNALS blocks mixed with a separate manual `signals:` block.
 
     // showBattery depends on showBatteryEnabled + batteryDockedOnly + Battery power state
     connect(this, &ScreensaverConfig::showBatteryEnabledChanged, this, &ScreensaverConfig::showBatteryChanged);
@@ -95,6 +96,47 @@ bool ScreensaverConfig::showBattery() const {
         return batt ? batt->getPowerSupply() : false;
     }
     return true;
+}
+
+// --- Raw setters with dual-emit of transformed signals ---
+// These replace the SCRN_INT/SCRN_STRING macro-generated setters for the
+// five properties that back transformed getters. Each fires BOTH the raw
+// NOTIFY signal and the transformed NOTIFY signal, so C++ consumers and
+// QML property bindings on either property update correctly.
+
+void ScreensaverConfig::setMatrixColor(const QString &value) {
+    if (m_settings->value("charging/matrixColor", "#00ff41").toString() == value) return;
+    m_settings->setValue("charging/matrixColor", value);
+    emit matrixColorChanged();
+    emit colorChanged();
+}
+
+void ScreensaverConfig::setMatrixSpeed(int value) {
+    if (m_settings->value("charging/matrixSpeed", 50).toInt() == value) return;
+    m_settings->setValue("charging/matrixSpeed", value);
+    emit matrixSpeedChanged();
+    emit speedChanged();
+}
+
+void ScreensaverConfig::setMatrixDensity(int value) {
+    if (m_settings->value("charging/matrixDensity", 70).toInt() == value) return;
+    m_settings->setValue("charging/matrixDensity", value);
+    emit matrixDensityChanged();
+    emit densityChanged();
+}
+
+void ScreensaverConfig::setMatrixFade(int value) {
+    if (m_settings->value("charging/matrixFade", 60).toInt() == value) return;
+    m_settings->setValue("charging/matrixFade", value);
+    emit matrixFadeChanged();
+    emit fadeRateChanged();
+}
+
+void ScreensaverConfig::setMatrixTrail(int value) {
+    if (m_settings->value("charging/matrixTrail", 50).toInt() == value) return;
+    m_settings->setValue("charging/matrixTrail", value);
+    emit matrixTrailChanged();
+    emit trailLengthChanged();
 }
 
 }  // namespace uc

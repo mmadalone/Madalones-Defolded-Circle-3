@@ -45,11 +45,51 @@ class ScreensaverConfig : public QObject {
     SCRN_INT(batteryTextSize,      "charging/batteryTextSize",        24)
 
     // === Core appearance — raw ints for settings page sliders ===
-    SCRN_STRING(matrixColor,       "charging/matrixColor",            "#00ff41")
-    SCRN_INT(matrixSpeed,          "charging/matrixSpeed",            50)
-    SCRN_INT(matrixDensity,        "charging/matrixDensity",          70)
-    SCRN_INT(matrixFade,           "charging/matrixFade",             60)
-    SCRN_INT(matrixTrail,          "charging/matrixTrail",            50)
+    // These five properties back transformed getters (color, speed, density,
+    // fadeRate, trailLength) declared below. Hand-written setters dual-emit
+    // both the raw and the transformed NOTIFY signal so QML property
+    // bindings on the transformed properties update correctly. See the
+    // `Transformed read-only properties` block below for the paired signals.
+
+    Q_PROPERTY(QString matrixColor READ matrixColor WRITE setMatrixColor NOTIFY matrixColorChanged)
+public:
+    QString matrixColor() const { return m_settings->value("charging/matrixColor", "#00ff41").toString(); }
+    void setMatrixColor(const QString &value);
+signals:
+    void matrixColorChanged();
+public:
+
+    Q_PROPERTY(int matrixSpeed READ matrixSpeed WRITE setMatrixSpeed NOTIFY matrixSpeedChanged)
+public:
+    int matrixSpeed() const { return m_settings->value("charging/matrixSpeed", 50).toInt(); }
+    void setMatrixSpeed(int value);
+signals:
+    void matrixSpeedChanged();
+public:
+
+    Q_PROPERTY(int matrixDensity READ matrixDensity WRITE setMatrixDensity NOTIFY matrixDensityChanged)
+public:
+    int matrixDensity() const { return m_settings->value("charging/matrixDensity", 70).toInt(); }
+    void setMatrixDensity(int value);
+signals:
+    void matrixDensityChanged();
+public:
+
+    Q_PROPERTY(int matrixFade READ matrixFade WRITE setMatrixFade NOTIFY matrixFadeChanged)
+public:
+    int matrixFade() const { return m_settings->value("charging/matrixFade", 60).toInt(); }
+    void setMatrixFade(int value);
+signals:
+    void matrixFadeChanged();
+public:
+
+    Q_PROPERTY(int matrixTrail READ matrixTrail WRITE setMatrixTrail NOTIFY matrixTrailChanged)
+public:
+    int matrixTrail() const { return m_settings->value("charging/matrixTrail", 50).toInt(); }
+    void setMatrixTrail(int value);
+signals:
+    void matrixTrailChanged();
+public:
     SCRN_STRING(colorMode,         "charging/matrixColorMode",        "green")
     SCRN_INT(fontSize,             "charging/matrixFontSize",         16)
     SCRN_STRING(charset,           "charging/matrixCharset",          "ascii")
@@ -112,6 +152,7 @@ class ScreensaverConfig : public QObject {
     SCRN_BOOL(subliminalFlash,     "charging/matrixSubliminalFlash",  false)
 
     // === Tap interaction ===
+    SCRN_BOOL(tapEnabled,          "charging/matrixTapEnabled",       true)
     SCRN_BOOL(tapBurst,            "charging/matrixTapBurst",         true)
     SCRN_INT(tapBurstCount,        "charging/matrixTapBurstCount",    25)
     SCRN_INT(tapBurstLength,       "charging/matrixTapBurstLength",   6)
@@ -168,6 +209,19 @@ class ScreensaverConfig : public QObject {
     // Values: "all" (sec+min+hour spin+fall together) | "main" (min+hour
     // animate; second hand fades opacity to 0 during the sweep phase).
     SCRN_STRING(analogShutoffHands, "charging/analogShutoffHands",    "all")
+
+    // === Matrix shutdown ===
+    // Style for the Matrix native screen-off animation. Pure QML — no
+    // simulation modifications. The simulation is paused (running=false)
+    // during the animation; matrixRain.opacity fades 1→0 over the lead
+    // time, then Qt Quick's renderer culls the item entirely (zero GPU
+    // work in the final state). Two presets differ only in the easing
+    // curve of the opacity fade:
+    //   "cascade" (default) — InCubic (slow start, accelerating fade)
+    //   "drain"             — OutCubic (fast start, decelerating fade)
+    SCRN_STRING(matrixShutoffStyle,    "charging/matrixShutoffStyle",    "cascade")
+    // Total fade duration in ms. User-configurable via slider (800-2000).
+    SCRN_INT   (matrixShutoffDuration, "charging/matrixShutoffDuration", 1300)
 
     // === Screen-off animation system (shared across all themes) ===
     // Master on/off + "fire when undocked" gate + shared-overlay style selector.

@@ -129,6 +129,19 @@ class MatrixRainItem : public QQuickItem {
     /// @{
     Q_PROPERTY(bool     running     READ running     WRITE setRunning     NOTIFY runningChanged)
     Q_PROPERTY(bool     displayOff  READ displayOff  WRITE setDisplayOff  NOTIFY displayOffChanged)
+    /// @}
+
+    /// @name Screen-off fall-off support
+    /// Single-flag simulation override used by MatrixTheme.qml's Tier 2
+    /// native screen-off hooks. When true, new streams do not spawn;
+    /// existing streams continue their motion and drain off the grid
+    /// naturally. Combined with a temporary speed boost (set via the
+    /// existing `speed` property) this produces the "rain drains off"
+    /// shutdown visual. See MatrixTheme.qml for usage.
+    /// @{
+    Q_PROPERTY(bool     spawnSuppress        READ spawnSuppress        WRITE setSpawnSuppress        NOTIFY spawnSuppressChanged)
+    Q_PROPERTY(qreal    drainSpeedMultiplier READ drainSpeedMultiplier WRITE setDrainSpeedMultiplier NOTIFY drainSpeedMultiplierChanged)
+    Q_PROPERTY(int      drainMode            READ drainMode            WRITE setDrainMode            NOTIFY drainModeChanged)
 
  public:
     explicit MatrixRainItem(QQuickItem *parent = nullptr);
@@ -206,6 +219,11 @@ class MatrixRainItem : public QQuickItem {
     // Item-owned properties
     bool    running()     const { return m_running; }
     bool    displayOff()  const { return m_displayOff; }
+
+    // Fall-off support — forwarded to simulation
+    bool    spawnSuppress() const { return m_sim.spawnSuppress(); }
+    qreal   drainSpeedMultiplier() const { return static_cast<qreal>(m_sim.drainSpeedMultiplier()); }
+    int     drainMode() const { return m_sim.drainMode(); }
 
     // Direction helpers
     bool isDiagonal() const { return m_sim.isDiagonal(); }
@@ -315,6 +333,37 @@ public:
     void setDepthIntensity(int v)  { if (m_sim.setDepthIntensity(v)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit depthIntensityChanged(); } }
     void setDepthOverlay(bool v)   { if (m_sim.setDepthOverlay(v)) { m_needsReinit = true; update(); emit depthOverlayChanged(); } }
 
+    // Fall-off setters — simulation-forwarded, no atlas rebuild, no reinit.
+    // Must also propagate to layer sims when layers are enabled, otherwise
+    // layer streams keep spawning independently and the drain effect is invisible.
+    void setSpawnSuppress(bool v)  {
+        bool changed = m_sim.setSpawnSuppress(v);
+        if (m_layersEnabled) {
+            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setSpawnSuppress(v);
+        }
+        if (changed) { update(); emit spawnSuppressChanged(); }
+    }
+    void setDrainSpeedMultiplier(qreal v) {
+        float f = static_cast<float>(v);
+        bool changed = m_sim.setDrainSpeedMultiplier(f);
+        if (m_layersEnabled) {
+            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setDrainSpeedMultiplier(f);
+        }
+        if (changed) emit drainSpeedMultiplierChanged(); }
+    void setDrainMode(int v) {
+        bool changed = m_sim.setDrainMode(v);
+        if (m_layersEnabled) {
+            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setDrainMode(v);
+        }
+        if (changed) { update(); emit drainModeChanged(); }
+    }
+
+    // Unconditional wake-from-screen-off reset. Forces every sim to
+    // refill blanked cells and kick all streams into respawn, regardless
+    // of the lazy cleanup flag. Called from QML on wake. Implementation
+    // in matrixrain.cpp — needs file-local TICK_* constants.
+    Q_INVOKABLE void resetAfterScreenOff();
+
  signals:
     void colorChanged();
     void colorModeChanged();
@@ -382,6 +431,9 @@ public:
     void layersEnabledChanged();
     void depthIntensityChanged();
     void depthOverlayChanged();
+    void spawnSuppressChanged();
+    void drainSpeedMultiplierChanged();
+    void drainModeChanged();
 
  protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;

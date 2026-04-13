@@ -115,3 +115,6 @@ src/ui/avatargrid.cpp
 src/qml/components/avatar/
 test/avatar_preview/
 AVATAR_PLAN.md
+
+# Test preview binaries (local build artifacts)
+test/matrixrain_preview/matrixrain_preview

@@ -9,6 +9,26 @@ Replaced the UC Remote 3's factory analog clock charging screen with a fully con
 **Base repo:** Fork of `github.com/unfoldedcircle/remote-ui` (GPL v3, Qt 5.15 / QML)
 **Working directory:** `/Users/madalone/_Claude Projects/UC-Remote-UI/`
 
+---
+
+## ⚠ Heads-up: Dangling Mod 2 Avatar reference in `remote-ui.pro` (2026-04-11)
+
+`remote-ui.pro` line 154 still references `src/ui/avatargrid.h` (HEADERS list) — and likely a matching `src/ui/avatargrid.cpp` in SOURCES — even though those files were removed when Mod 2 (Avatar) was excluded from this release. A clean build (`qmake && make`) will fail until either:
+
+1. **The avatargrid lines are removed from `remote-ui.pro`** (HEADERS + SOURCES + any related entries), OR
+2. **The avatargrid files are restored from git history** (Phase A implementation lives in commits prior to 2026-04-08; see the `project_avatar_phase_a_complete` memory note for what was implemented)
+
+Related leftovers from the Mod 2 work that should also be checked before release:
+- `src/main.cpp` may still contain `#include "ui/avatargrid.h"` and `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` — both must be removed if avatargrid.h is gone
+- `resources/qrc/main.qrc` already has a comment `<!-- Avatar art files excluded until Mod 2 is ready for release -->` — confirms the intentional exclusion
+- `test/avatar_preview/` contains stale `.o` build artifacts only (source files removed); safe to delete the whole directory or leave as-is
+- `deploy/config/BrailleFont.ttf` (24KB) is unused by Mod 1 but harmless — can stay or be removed
+- `src/ui/glyphatlas.h/.cpp` retain Braille support (`loadBrailleFont()`, `CHARS_BRAILLE`, `"braille"` charset, programmatic dot rendering branch in `build()`/`buildMetricsOnly()`). Mod 1 doesn't use it but it doesn't break anything either — leave it for when Mod 2 resumes.
+
+**TL;DR:** Before the next clean build / release packaging, audit these files for Mod 2 leftovers. Mod 1 (Screensaver) is release-ready; Mod 2 was implemented and visually validated then intentionally rolled back to keep the release scope clean.
+
+---
+
 ## Architecture
 
 ### C++ GPU Renderer (`src/ui/matrixrain.h` / `matrixrain.cpp`)
@@ -1812,3 +1832,108 @@ Batch 3 (per-theme native animations) is the next natural extension:
 - **Starfield warp-out** — stars tunnel into the centre then collapse to a dot. Matches Starfield's visual language.
 - **Analog clock hands sweep** — both hands spin rapidly to 12:00 then both fall to 6:00 as the face dims. Pure QML PropertyAnimation.
 - **Minimal digit crumble** — the most visually complex. Digit characters detach pixel-by-pixel from the bottom and fall. Would benefit from Batch 2's theme-capture infrastructure: sample the rendered clock digits and apply a per-pixel particle dissolve.
+
+---
+
+## 2026-04-10 / 2026-04-11 Session: Batch 3 Analog (shipped) + Matrix (in progress, several iterations)
+
+Long session covering Batch 3 Part 1 (Analog, **shipped as commit `884ab31`**) and Batch 3 Part 2 (Matrix, **uncommitted, multiple iterations, currently broken-but-safe**).
+
+### Shipped: Analog theme native screen-off animation (commit `884ab31`)
+
+Three-phase shutdown for the Analog clock theme — sweep all 3 hands forward to 12 o'clock (600 ms, OutQuart easing), fall clockwise to 6 o'clock + dim-to-black overlay (400 ms, InCubic), 300 ms black hold. Total 1300 ms = `screenOffLeadMs`. Configurable via `Settings → Screensaver → Shutdown hands` (one SCRN_STRING picker `analogShutoffHands`: "all" or "main"). In "main" mode the second hand fades opacity 1→0 during phase 1 instead of rotating.
+
+**Mechanism**: direct `NumberAnimation` on `Item.rotation` with `Qt.binding()` restore on cancel. Phase 1's `from:` is set imperatively in `startScreenOff()` reading current live angles from `clock.hours/minutes/seconds`. Phases use `to: 720` (= 12 o'clock after at least one full forward rotation, since `Item.rotation` is a plain `qreal` with no normalisation — verified via `LoadingScreen.qml:202-203` precedent). The dim overlay is a standard QML `Rectangle { opacity: shutoffDim; visible: shutoffDim > 0.001; z: 100 }`.
+
+**Settings UI**: new `AnalogSettings.qml` panel matching the `TvStaticSettings.qml` shape. Conditionally visible on `theme === "analog"`, plugged into `ChargingScreen.qml` settings page after `TvStaticSettings`. DPAD nav chains updated.
+
+**Bundled fix in same commit**: `measuredDimPhaseMs` moved from a local `ChargingScreen` Popup property to `ScreensaverConfig.measuredDimPhaseMs` (QSettings-backed `SCRN_INT`). The Popup is destroyed on every undock (`main.qml:642` sets `chargingScreenLoader.active = false` in `onClosed`), which previously reset the empirical measurement to its 3000 ms seed on every docking — every dock cycle had a visible "black-but-display-on" gap when the actual dim phase didn't match the seed. Now persists across Popup destruction AND reboots: first dock calibrates against the seed, every subsequent dock reads the accurate measured value. **User confirmed**: dock 2 has no gap.
+
+**Bundled polish in same commit**: bumped `topMargin` 18 → 34 on the "Fire when undocked" and "Style" labels in `Power.qml` so the toggle switches no longer feel cramped against each other.
+
+**Memory saved**: `project_chargingscreen_popup_state_persistence.md` — "any state that must survive undock/redock cycles must live in ScreensaverConfig (QSettings-backed), not as a local Popup property".
+
+### Uncommitted: ChargingScreen safety timer (the heat-issue fix)
+
+After Analog shipped and the user moved on to Matrix testing on **battery**, they reported: "after the screen animation the screen goes black but screen stays on. heat is back". The root cause turned out to be that on battery the UC3's core sometimes leaves the screensaver popup running with `displayOff = false` indefinitely after the Analog animation ends — the animation's final state (`shutoffDim = 1.0`) leaves a fullscreen black `Rectangle` overlay over a continuously-rendering scene graph, burning CPU/GPU and generating heat.
+
+**Fix in `ChargingScreen.qml`**: `postAnimationSafetyTimer` — non-repeating `Timer` started in `startScreenOffEffect()` with `interval = _currentLeadMs() + 1500 ms`. On trigger, if `displayOff` is still false, calls `chargingScreenRoot.close()` which cascades to `chargingScreenLoader.active = false` in `main.qml:642` → entire ChargingScreen Popup destroyed → all theme rendering stops. Stopped in `cancelScreenOffEffect()` (user wake) and `finalizeScreenOffEffect()` (display physically blanked).
+
+**User confirmed**: heat went away after this deploy. Power-mode polling via `/api/system/power` (the same UC3 core REST endpoint we use for installs, just `GET` instead of `POST`) showed clean `NORMAL → IDLE → LOW_POWER` transitions in both undocked and docked scenarios — average 5-10 seconds in each phase, no stuck states, battery stable. Two clean cycles were captured in the loop output (cycle 1 around 02:33–02:34, cycle 2 around 02:34–02:35).
+
+**Worth saving**: `/api/system/power` returns `{mode, power_supply, standby_timeout_sec, standby_inhibitors}` where `mode ∈ {NORMAL, IDLE, LOW_POWER, SUSPEND}`. `standby_timeout_sec` is a per-state countdown that resets on transitions and on user activity, NOT a single global counter. There's no CPU/thermal endpoint in the UC core API — the `BatteryStatusResponse` schema only has `capacity`/`status`/`power_supply`. Verified against the official OpenAPI spec at `unfoldedcircle/core-api/core-api/rest/UCR-core-openapi.yaml`.
+
+### In progress: Matrix theme native screen-off animation — FOUR iterations, currently broken
+
+**The user wants**: rain physically drains off the grid via the simulation. Cascade = "rain falls all at once without new rain on the top, screen goes off". Drain = "all rain drains out of the screen".
+
+**Iteration 1 — full C++ branches** (reverted): Added `m_fallOffActive` + `m_fallOffMode` to `RainSimulation` with three modes (cascade/drain/freeze), each branching `advanceSimulation()` to suppress spawns and/or accelerate streams. Added Q_PROPERTYs on `MatrixRainItem`. The user reported heat (which we later attributed to the timing-gap bug, not the C++). Reverted entirely while we debugged the heat issue. Settings panel already in place from this iteration.
+
+**Iteration 2 — pure-QML opacity fade** (reverted): Stop the simulation tick (`running: false`) + fade `matrixRain.opacity` 1→0 over screen-off lead time. Tried to differentiate Cascade/Drain via easing curve only (`InCubic` vs `OutCubic`). User: "garbage" — easing differences are invisible to the eye, both presets looked identical. Also: `matrixRain.opacity` fade may not actually compose with the custom `QSGGeometryNode` shader's output, so the visual didn't always work.
+
+**Iteration 3 — Rectangle overlay + structural difference** (reverted): Added a standard QML `Rectangle { opacity: shutoffDim; visible: shutoffDim > 0.001 }` overlay on top (reliable composition via standard `QSGSimpleRectNode`). Differentiated presets: Cascade froze the simulation (`running: false`), Drain kept the simulation running (`running: true`), both faded the overlay. User saw the Cascade freeze but Drain "didn't do anything Cascade didn't do" — they want the rain to actually drain, not be obscured by an overlay.
+
+**Iteration 4 — `spawnSuppress` C++ flag (current, deployed at 03:23:27)**:
+- `RainSimulation`: added `m_spawnSuppress` member + getter + setter. ONE new branch in `advanceSimulation()` at the inactive-stream respawn point: `if (m_spawnSuppress) continue;`. When false, code path is byte-for-byte identical to before.
+- `MatrixRainItem`: added `Q_PROPERTY(bool spawnSuppress)` + inline setter forwarding to `m_sim`.
+- `MatrixTheme.qml`: dropped Rectangle overlay, `shutoffDim`, `matrixRain.opacity` binding, `running: false` gate. `startScreenOff()` saves `matrixRain.speed`, sets `matrixRain.spawnSuppress = true`, and for cascade also sets `matrixRain.speed = 2.0` (max, C++ clamps). `cancelScreenOff()` restores both. Theory: simulation keeps ticking, no new streams spawn, existing streams drift off the grid naturally. Cascade accelerates this via the speed boost.
+
+**Iteration 4 result**: User reports neither Cascade nor Drain shows any visible drain effect — display just goes off. The Cascade-freeze visual that worked in iteration 3 is gone (because we're no longer freezing). No drain motion is visible in either preset.
+
+### Hypotheses for why iteration 4 isn't visible
+
+1. **Timing gap** — `startScreenOff()` may be firing too close to actual `Low_power` for the drain to be visible. With `screenOffLeadMs = matrixShutoffDuration` (default 1300, user maxed to 2000), the animation has at most 2 s before the display blanks. If the user's existing matrix `speed` is already high, streams reach the bottom in <1 s normally; with cascade's max-speed boost, they may all drain in <500 ms — too fast to perceive against the previous frame.
+2. **`startScreenOff()` not actually called for Matrix** — same dispatch chain Analog uses, but maybe Matrix doesn't hit `_themeProvidesNative()` for some reason (`hasOwnProperty` quirk?). Worth verifying with a debug indicator.
+3. **`spawnSuppress` setter not actually reaching the C++ side** — maybe the QML→C++ property write fails silently. The `update()` call after `m_sim.setSpawnSuppress(true)` should signal a render but doesn't actually change anything visually if streams continue normally.
+4. **Other spawn paths in `advanceSimulation()`** — maybe streams don't only respawn from the inactive-stream branch. `spawnStream()` might be called from `triggerChaosBurst`, `tap*` effects, or `processStreamGlitches` (e.g., direction-glitch spawn). I only guarded the inactive-stream branch.
+5. **Speed boost too small to matter** — `matrixRain.speed = 2.0` from QML clamps via the C++ setter. If the user's matrix speed is already at the slider max (100 → m_speed=2.0), my "boost" is a no-op.
+6. **The user's display-off timeout is short** — if `Config.displayTimeout` is e.g. 10 s and the previous Idle measurement landed around 3 s, the dim phase fires `Low_power` ~3 s after Idle entry. With `screenOffLeadMs = 2000`, animation starts at T=1000 ms and we have 2000 ms of "drain window" — but on this particular UC3 the dim phase may be shorter than expected, leaving sub-second windows.
+
+### Next steps (resume after reboot)
+
+**Immediate**: verify that `spawnSuppress` is actually getting set on the C++ side AND that there are no other spawn paths I missed in `RainSimulation`.
+
+1. **Verify spawn paths** — grep `rainsimulation.cpp` for all `spawnStream(` call sites. Add `if (m_spawnSuppress) return;` (or skip) at every site, not just the one in `advanceSimulation()`.
+2. **Verify dispatch** — temporarily add a `console.log("MatrixTheme.startScreenOff fired, mode=" + ScreensaverConfig.matrixShutoffStyle)` at the top of `startScreenOff()`. If the log doesn't appear in `lodgy`, the dispatch chain is broken (different bug). But: lodgy logging from QML may not be visible without explicit logging category setup — verify with the user first.
+3. **Force a longer visible drain window** — maybe `screenOffLeadMs` needs to be much larger for Matrix specifically. Try `screenOffLeadMs: 3000` (3 seconds) hardcoded and see if the drain becomes visible. This would also tell us whether the current 1300-2000 ms range is the issue.
+4. **Visible debug indicator** — add a temporary bright-coloured `Rectangle` (e.g., `color: "red"; opacity: 0.3`) that's visible only when `_screenOffAnimating === true`. If the red overlay never appears during a shutdown cycle, `startScreenOff()` is never being called (different bug). If it appears, the dispatch works and the issue is with the simulation modification.
+5. **Check other spawn paths** — particularly `processStreamGlitches()` in `glitchengine.cpp` may spawn streams via direction-glitch or chaos events. Need to ensure those also respect `m_spawnSuppress` (or at least don't fire during the shutdown window).
+6. **Consider giving up on speed boost** — if Matrix is already running fast, the boost doesn't help. Cascade's distinctive visual could come from a *different* mechanism: e.g., immediately deactivating ALL streams (set `s.active = false; s.pauseTicks = INT_MAX`) so they freeze in place AND don't respawn. The user's interpretation: "rain falls all at once without new rain on the top" — actually means the rain that's currently mid-fall continues to fall (because they're already moving), but no new rain enters. That's exactly what `spawnSuppress` does. The "all at once" might be an artifact of the user expecting all streams to be "in the middle" of their fall when the animation starts — not all at the top.
+
+### Files state at session end (uncommitted, currently deployed at 03:23:27)
+
+```
+M resources/qrc/main.qrc                                                  (registers MatrixShutoffSettings)
+M resources_qrc_main_qmlcache.qrc                                         (same)
+M src/qml/components/ChargingScreen.qml                                   (postAnimationSafetyTimer — KEEP)
+M src/qml/components/themes/MatrixTheme.qml                               (Tier 2 + spawnSuppress — broken visual)
+M src/qml/settings/settings/ChargingScreen.qml                            (instantiates MatrixShutoffSettings)
+M src/ui/matrixrain.h                                                     (Q_PROPERTY spawnSuppress)
+M src/ui/rainsimulation.cpp                                               (1 new branch in advanceSimulation)
+M src/ui/rainsimulation.h                                                 (m_spawnSuppress + setter)
+M src/ui/screensaverconfig.h                                              (matrixShutoffStyle + matrixShutoffDuration)
+?? src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml     (NEW — picker + duration slider)
+```
+
+Latest deploy: `2026-04-11T03:23:27` (UI restart confirmed via `installed: true, active: true` JSON response).
+
+**Don't lose the `ChargingScreen.qml` safety timer!** Even if we revert the rest of Matrix again, the safety timer is the heat-issue fix and the user explicitly confirmed it works. It applies to all themes via the shared dispatch path.
+
+### UC3 power-mode polling reference (for future debugging)
+
+```bash
+# Single shot
+curl -sS -u 'web-configurator:6984' http://192.168.2.204/api/system/power
+# returns: {"mode":"...","power_supply":...,"standby_timeout_sec":N,"standby_inhibitors":...}
+
+# Continuous polling loop with battery
+for i in $(seq 1 45); do
+  ts=$(date +%H:%M:%S)
+  pwr=$(curl -sS --max-time 3 -u 'web-configurator:6984' http://192.168.2.204/api/system/power 2>&1)
+  bat=$(curl -sS --max-time 3 -u 'web-configurator:6984' http://192.168.2.204/api/system/power/battery 2>&1)
+  echo "$ts  $pwr  $bat"
+  sleep 2
+done
+```
+
+Power modes: `NORMAL` (display on, user active) → `IDLE` (display dimmed, ~5-10s in this state) → `LOW_POWER` (display physically off) → `SUSPEND` (full system standby). Watch for `mode` getting stuck in `NORMAL` while the screen visually appears black — that's the safety timer's catch case.

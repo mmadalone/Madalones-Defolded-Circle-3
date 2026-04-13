@@ -27,7 +27,7 @@
 // Timer constants (not simulation constants — control the QTimer)
 static constexpr int    TICK_BASE_MS          = 50;    // baseline timer interval at speed 1.0 (20 FPS)
 static constexpr int    TICK_MIN_MS           = 25;    // max speed cap (~40 FPS)
-static constexpr int    TICK_MAX_MS           = 150;   // min speed cap (~7 FPS)
+static constexpr int    TICK_MAX_MS           = 300;   // min speed cap (~3 FPS) — slider 10 → speed 0.2 → 250 ms
 static constexpr qreal  FADE_MIN              = 0.75;  // steepest allowed decay
 static constexpr qreal  FADE_MAX              = 0.98;  // gentlest allowed decay
 
@@ -1074,6 +1074,16 @@ void MatrixRainItem::setFadeRate(qreal r) {
 }
 void MatrixRainItem::setCharset(const QString &c) {
     if (m_sim.setCharset(c)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit charsetChanged(); }
+}
+
+void MatrixRainItem::resetAfterScreenOff() {
+    m_sim.resetAfterScreenOff(m_atlas);
+    if (m_layersEnabled) {
+        for (int i = 0; i < LAYER_COUNT; ++i) {
+            m_layers[i].sim.resetAfterScreenOff(m_layers[i].atlas);
+        }
+    }
+    update();
 }
 
 // Complex simulation-forwarding setters (trivial ones are inline in header)

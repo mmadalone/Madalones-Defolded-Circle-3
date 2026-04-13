@@ -14,7 +14,7 @@ ColumnLayout {
 
     required property Item settingsPage
 
-    property alias firstFocusItem: tapBurstSwitch
+    property alias firstFocusItem: tapEnabledSwitch
     property Item lastFocusItem: ScreensaverConfig.tapRandomize ? tapRandomizeChanceSlider : tapRandomizeSwitch
     property Item navUpTarget
     property Item navDownTarget
@@ -35,8 +35,27 @@ ColumnLayout {
             text: qsTr("Tap effects"); font: fonts.primaryFont(30)
         }
 
+        // --- Master enable toggle ---
+        RowLayout {
+            spacing: 10
+            Text { Layout.fillWidth: true; color: colors.offwhite; text: qsTr("Enable tap effects"); font: fonts.primaryFont(26) }
+            Components.Switch {
+                id: tapEnabledSwitch
+                objectName: "tapEnabledSwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: ScreensaverConfig.tapEnabled
+                trigger: function() { ScreensaverConfig.tapEnabled = !ScreensaverConfig.tapEnabled; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Enable tap effects"
+                KeyNavigation.up: root.navUpTarget
+                KeyNavigation.down: ScreensaverConfig.tapEnabled ? tapBurstSwitch : root.navDownTarget
+            }
+        }
+
         // --- Scatter burst + sub-settings ---
         RowLayout {
+            visible: ScreensaverConfig.tapEnabled
             spacing: 10
             Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Scatter burst"); font: fonts.primaryFont(26) }
             Components.Switch {
@@ -48,7 +67,7 @@ ColumnLayout {
                 trigger: function() { ScreensaverConfig.tapBurst = !ScreensaverConfig.tapBurst; }
                 highlight: activeFocus && ui.keyNavigationEnabled
                 Accessible.name: "Scatter burst"
-                KeyNavigation.up: root.navUpTarget
+                KeyNavigation.up: tapEnabledSwitch
                 KeyNavigation.down: ScreensaverConfig.tapBurst ? tapBurstCountSlider : tapFlashSwitch
             }
         }
@@ -56,7 +75,7 @@ ColumnLayout {
 
     // Burst count
     ColumnLayout {
-        visible: ScreensaverConfig.tapBurst
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapBurst
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -77,7 +96,7 @@ ColumnLayout {
 
     // Burst trail length
     ColumnLayout {
-        visible: ScreensaverConfig.tapBurst
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapBurst
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -98,6 +117,7 @@ ColumnLayout {
 
     // --- Flash shockwave ---
     ColumnLayout {
+        visible: ScreensaverConfig.tapEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -156,7 +176,7 @@ ColumnLayout {
 
     // Spawn count
     ColumnLayout {
-        visible: ScreensaverConfig.tapSpawn
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSpawn
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -177,7 +197,7 @@ ColumnLayout {
 
     // Spawn trail length
     ColumnLayout {
-        visible: ScreensaverConfig.tapSpawn
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSpawn
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -198,6 +218,7 @@ ColumnLayout {
 
     // --- Show message ---
     ColumnLayout {
+        visible: ScreensaverConfig.tapEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -239,7 +260,7 @@ ColumnLayout {
 
     // Square burst size
     ColumnLayout {
-        visible: ScreensaverConfig.tapSquareBurst
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSquareBurst
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 50; Layout.rightMargin: 10
         spacing: 10
@@ -261,6 +282,7 @@ ColumnLayout {
 
     // --- Ripple ---
     ColumnLayout {
+        visible: ScreensaverConfig.tapEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 10; Layout.rightMargin: 10
         spacing: 10
@@ -301,6 +323,7 @@ ColumnLayout {
 
     // 12n. TAP RANDOMIZE
     ColumnLayout {
+        visible: ScreensaverConfig.tapEnabled
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 30; Layout.rightMargin: 10
         spacing: 10
@@ -324,7 +347,7 @@ ColumnLayout {
 
     // 12o. TAP RANDOMIZE CHANCE
     ColumnLayout {
-        visible: ScreensaverConfig.tapRandomize
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapRandomize
         Layout.alignment: Qt.AlignCenter
         Layout.leftMargin: 70; Layout.rightMargin: 10
         spacing: 10

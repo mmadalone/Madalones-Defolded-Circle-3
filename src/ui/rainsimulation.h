@@ -134,6 +134,78 @@ class RainSimulation {
     /// @brief Set the per-tick lerp rate for stream direction convergence toward gravity target.
     void setGravityLerpRate(float rate) { m_gravityLerpRate = rate; }
 
+    // --- Screen-off "fall-off" support ---
+    //
+    // When spawnSuppress is true, inactive streams whose pauseTicks
+    // reach 0 are NOT respawned. Active streams continue their existing
+    // motion and eventually exit the grid. Combined with a temporary
+    // speed boost (from QML), this produces a "rain drains off" visual
+    // for the Matrix theme's native screen-off animation.
+    //
+    // Default false — when inactive, the normal spawn path runs unchanged.
+    bool spawnSuppress() const { return m_spawnSuppress; }
+    bool setSpawnSuppress(bool s) {
+        if (m_spawnSuppress == s) return false;
+        m_spawnSuppress = s;
+        return true;
+    }
+
+    // Speed multiplier applied to stream movement when spawnSuppress is
+    // active. Lets QML differentiate Cascade (fast drain, e.g. 3.0) from
+    // Drain (gentle drain, e.g. 1.5) without needing to override the
+    // tick timer. Only affects the per-tick cell advancement (speedScale),
+    // not the timer interval.
+    float drainSpeedMultiplier() const { return m_drainSpeedMultiplier; }
+    bool setDrainSpeedMultiplier(float m) {
+        m = qBound(1.0f, m, 8.0f);
+        if (qFuzzyCompare(m_drainSpeedMultiplier, m)) return false;
+        m_drainSpeedMultiplier = m;
+        return true;
+    }
+
+    // Drain mode for theme-native screen-off animation.
+    //   0 = None: rely on spawnSuppress + drainSpeedMultiplier only.
+    //   1 = SweepWave (Cascade): a horizontal kill-line advances from row 0
+    //       to gridRows, clearing cells and deactivating streams it passes.
+    //   2 = Zigzag (Drain): synchronized sine wobble on dxF with forced
+    //       dyF = 1 so all streams snake downward as they drain off.
+    // Resetting to 0 clears tick counters, wave row, and queues a cleanup
+    // pass (refill -1 cells, wake dormant streams) for the next advance.
+    int drainMode() const { return m_drainMode; }
+    bool setDrainMode(int m) {
+        if (m < 0) m = 0;
+        if (m > 2) m = 2;
+        if (m_drainMode == m) return false;
+        int prev = m_drainMode;
+        m_drainMode = m;
+        m_drainTickCount = 0;
+        m_drainWaveRow = -1;
+        m_drainPauseTicksRemaining = (m == 2) ? m_drainPauseTicks : 0;
+        if (m == 0 && prev != 0) m_drainCleanupPending = true;
+        return true;
+    }
+    // Sweep wave speed in rows-per-tick. Default 2.
+    bool setDrainWaveSpeed(int s) {
+        s = qBound(1, s, 10);
+        if (m_drainWaveSpeed == s) return false;
+        m_drainWaveSpeed = s;
+        return true;
+    }
+
+    // Unconditional "wake from screen-off" reset. Called by the theme when
+    // the display comes back on, regardless of whether the lazy cleanup
+    // flag already fired. Refills blanked charGrid cells with fresh
+    // glyphs, resets cell ages so residual glow starts clean, and kicks
+    // every stream (active or inactive) into immediate respawn.
+    void resetAfterScreenOff(const GlyphAtlas &atlas);
+    // Zigzag pause duration in ticks (freeze before wobble). Default 6.
+    bool setDrainPauseTicks(int t) {
+        t = qBound(0, t, 60);
+        if (m_drainPauseTicks == t) return false;
+        m_drainPauseTicks = t;
+        return true;
+    }
+
     inline bool isStreamOffScreen(const StreamState &s) const {
         int headC = qRound(s.headColF);
         int headR = qRound(s.headRowF);
@@ -309,6 +381,19 @@ class RainSimulation {
     float m_gravityLerpRate = 0.08f;  // per-stream lerp toward global direction (configurable)
     int m_gravitySpawnRow = 0;  // golden ratio counter for even horizontal row distribution
     QString m_savedDirection;  // saved manual direction when entering gravity mode
+
+    // Screen-off fall-off: when true, inactive streams are not respawned.
+    // Default false — normal code path runs unchanged. See setSpawnSuppress().
+    bool m_spawnSuppress = false;
+    float m_drainSpeedMultiplier = 1.0f;
+    // Drain mode state (0 none, 1 sweep, 2 zigzag). See setDrainMode().
+    int   m_drainMode = 0;
+    int   m_drainTickCount = 0;
+    int   m_drainWaveRow = -1;
+    int   m_drainWaveSpeed = 2;              // rows/tick for sweep wave
+    int   m_drainPauseTicks = 8;             // zigzag initial freeze ticks (~400ms at 50ms tick)
+    int   m_drainPauseTicksRemaining = 0;
+    bool  m_drainCleanupPending = false;     // set when drainMode resets 1/2 → 0
 
     // Config properties
     qreal   m_speed{1.0};

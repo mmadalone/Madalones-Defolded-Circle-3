@@ -33,11 +33,11 @@ GPU-accelerated screensaver replacing UC's stock analog clock. Matrix rain rende
 
 **Recent changes (2026-04-07):**
 - **Per-cell residual glow** — Rezmason-inspired (3.7k stars) per-cell age tracking. Cells retain brightness independently after stream head passes, decaying via the same brightness map. Eliminates dark gaps between active trails, especially visible in horizontal directions.
-- **3D depth parallax** — per-stream depth factor (0.6–1.4) scales quad size and brightness. Far streams render smaller and dimmer (atmospheric perspective). Two modes: Full (all streams scaled) and Overlay (70% normal + 30% depth-shifted). Settings: depth toggle, intensity slider (10–100%), overlay mode toggle.
+- **Color layers** — custom `MatrixRainShader` (texture × per-vertex RGBA) for atmospheric color variation. Each stream's `depthFactor` (0.6–1.4) produces a unique tint via continuous lerp: dim teal (slow) → base green → bright chartreuse (fast). White atlas when enabled. Also: trail length scaling, async speed, spatial offset, depth-sorted occlusion. Settings: "Color layers" toggle, intensity slider, overlay mode.
 - **Coprime gravity spawn** — `coprimeGoldenStep()` enforces `gcd(step, n) == 1`, guaranteeing all rows/columns visited during gravity mode. Previously `gcd(40,65)=5` left 80% of rows empty.
 - **Full-screen grid** — grid covers entire screen at native glyph spacing. Density slider controls stream count (multiplier), not grid spacing.
 - **Docker visual preview** — `test/matrixrain_preview/` with Dockerfile, TigerVNC on port 5909. Builds x86_64 native with Mesa software OpenGL.
-- **Keyboard:** Arrow keys = direction, Enter = chaos, R = restore, G = toggle gravity, D = toggle depth.
+- **Keyboard:** Arrow keys = direction, Enter = chaos, R = restore, G = toggle gravity, D = toggle color layers.
 
 **Design doc:** `SCREENSAVER-IMPLEMENTATION.md`
 
@@ -105,9 +105,9 @@ qmlscene test_themes.qml           # Theme testing
 
 ### Font Subsetting
 ```bash
-pyftsubset InputFont.ttf --unicodes="U+2800-28FF" --output-file=BrailleFont.otf
+pyftsubset DejaVuSansMono.ttf --unicodes="U+2800-28FF" --output-file=BrailleFont.ttf
 ```
-Subset fonts go in `deploy/config/`. Same pattern as `NotoSansMonoCJKjp.otf` (23KB katakana subset).
+TTF format for FreeType hinting quality on ARM. Subset fonts go in `deploy/config/`. Same pattern as `NotoSansMonoCJKjp.otf` (23KB katakana subset).
 
 ---
 

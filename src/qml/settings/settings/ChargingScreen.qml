@@ -92,6 +92,16 @@ Settings.Page {
                 visible: ScreensaverConfig.theme === "matrix"
                 Layout.fillWidth: true
                 navUpTarget: matrixAppearance.lastFocusItem
+                navDownTarget: matrixShutoffSettings.firstFocusItem
+            }
+
+            // --- Matrix shutdown animation picker (cascade / drain + duration) ---
+            ChargingScreenComponents.MatrixShutoffSettings {
+                id: matrixShutoffSettings
+                settingsPage: chargingScreenPage
+                visible: ScreensaverConfig.theme === "matrix"
+                Layout.fillWidth: true
+                navUpTarget: matrixEffects.lastFocusItem
                 navDownTarget: generalBehavior.firstFocusItem
             }
 
@@ -417,7 +427,7 @@ Settings.Page {
                 id: generalBehavior
                 settingsPage: chargingScreenPage
                 Layout.fillWidth: true
-                navUpTarget: matrixEffects.visible ? matrixEffects.lastFocusItem
+                navUpTarget: matrixShutoffSettings.visible ? matrixShutoffSettings.lastFocusItem
                            : starfieldSettings.visible ? starfieldColorGradientRow
                            : minimalSettings.visible ? minimalDateSlider
                            : tvStaticSettings.visible ? tvStaticSettings.lastFocusItem

@@ -133,6 +133,17 @@ Popup {
             screenOffOverlay.progress = 0.0;
             screenOffAnim.start();
         }
+        // Safety: if the core's Low_power transition never fires (e.g.
+        // on battery the core's idle timer may not reliably transition
+        // Idle → Low_power), the animation ends at shutoffDim=1.0 and
+        // the display stays on rendering a full-screen black overlay
+        // continuously, wasting battery and generating heat. Give the
+        // core a generous grace window past the animation end; if
+        // displayOff is still false by then, close the popup entirely
+        // so the scene graph stops rendering the stuck screensaver.
+        postAnimationSafetyTimer.interval = chargingScreenRoot._currentLeadMs()
+                                          + chargingScreenRoot.safetyGraceMs;
+        postAnimationSafetyTimer.restart();
     }
 
     function cancelScreenOffEffect() {
@@ -141,6 +152,9 @@ Popup {
         chargingScreenRoot.screenOffEffectActive = false;
         // Cancel any pending delayed start from the Idle-entry handler.
         dimPhaseDelayTimer.stop();
+        // Cancel the stuck-animation safety timer — the user is awake
+        // (or otherwise cancelling), no need to force-close the popup.
+        postAnimationSafetyTimer.stop();
         // Defensive: call theme.cancelScreenOff unconditionally if it exists,
         // regardless of the providesNativeScreenOff property check — covers
         // the case where the theme declares the function but the property
@@ -156,12 +170,34 @@ Popup {
         // NOTE: leave screenOffEffectActive = true. The display is about to
         // blank; we don't want the poller re-firing. It will be cleared on
         // the next wake via cancelScreenOffEffect().
+        // Display is physically blanking — the safety timer is no longer
+        // needed; cancel it so it doesn't fire while the display is off.
+        postAnimationSafetyTimer.stop();
         if (chargingScreenRoot._themeProvidesNative()
                 && themeLoader.item && themeLoader.item.finalizeScreenOff) {
             themeLoader.item.finalizeScreenOff();
         }
         screenOffAnim.stop();
         screenOffOverlay.progress = 1.0;
+    }
+
+    // Grace window past the animation end before we assume the core's
+    // Low_power transition isn't coming and force-close the popup.
+    readonly property int safetyGraceMs: 1500
+
+    // Safety timer — fires at (animation lead time + safetyGraceMs)
+    // after startScreenOffEffect(). If displayOff is still false at
+    // that point, the core never blanked the display after our
+    // animation finished, so we close the popup to stop the scene
+    // graph from continuously rendering the stuck shutdown state.
+    Timer {
+        id: postAnimationSafetyTimer
+        repeat: false
+        onTriggered: {
+            if (!chargingScreenRoot.displayOff) {
+                chargingScreenRoot.close();
+            }
+        }
     }
 
     // Persist direction between sessions (gated by dpadPersist setting, works for both DPAD and touch)
@@ -503,6 +539,12 @@ Popup {
 
     // Fire tap effects at last recorded tap position
     function fireTapEffects() {
+        // Master gate — user can disable all tap effects with one toggle.
+        // Still cancel any active screen-off effect so a tap wakes the UI.
+        if (!ScreensaverConfig.tapEnabled) {
+            chargingScreenRoot.cancelScreenOffEffect();
+            return;
+        }
         if (themeLoader.item && themeLoader.item.interactiveInput)
             themeLoader.item.interactiveInput("tap:" + lastTapX + "," + lastTapY + "," + tapEffectFlags());
         chargingScreenRoot.cancelScreenOffEffect();
