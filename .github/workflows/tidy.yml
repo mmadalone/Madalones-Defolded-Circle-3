@@ -1,0 +1,154 @@
+# GitHub Action that runs clang-tidy against custom C++ files in src/ui/.
+#
+# Mode: baseline/tolerant — warnings are reported to the workflow log and
+# annotated on PRs, but the job exits 0 even with findings. Flip to strict
+# mode either manually via workflow_dispatch (strict=true input) or by
+# setting `strict: true` on the default push trigger once the baseline is
+# cleaned up.
+#
+# Generates compile_commands.json via `bear -- make` so clang-tidy sees the
+# same include paths and compile flags as a real build.
+---
+name: Clang-Tidy
+
+on:
+  push:
+    branches-ignore:
+      - i18n
+    paths:
+      - '.clang-tidy'
+      - '.github/workflows/tidy.yml'
+      - 'src/ui/**/*.cpp'
+      - 'src/ui/**/*.h'
+      - 'remote-ui.pro'
+  pull_request:
+    branches:
+      - main
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+    inputs:
+      strict:
+        description: 'Fail on warnings (strict mode)'
+        required: false
+        default: 'false'
+
+env:
+  QT_VERSION: 5.15.2
+
+jobs:
+  clang-tidy:
+    name: Clang-Tidy on custom files
+    runs-on: ubuntu-22.04
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Install clang-tidy and bear
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang-tidy bear
+          clang-tidy --version
+          bear --version
+
+      - name: Install Qt
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtvirtualkeyboard'
+          archives: 'qtbase qtdeclarative qtmultimedia qtquickcontrols2 qtsvg qttools qtwebsockets'
+          cache: true
+          cache-key-prefix: ${{ env.QT_VERSION }}-tidy
+
+      - name: Generate compile database with bear
+        run: |
+          mkdir -p build-tidy
+          cd build-tidy
+          qmake ../remote-ui.pro CONFIG+=release
+          # bear intercepts make calls and writes compile_commands.json
+          # -k: keep going on errors — we care about the compile db, not
+          # producing a fully linked binary on the host toolchain
+          bear -- make -j $(nproc) -k || true
+          if [ ! -f compile_commands.json ]; then
+            echo "::error::bear did not produce compile_commands.json"
+            exit 1
+          fi
+          cp compile_commands.json ..
+          cd ..
+          echo "compile_commands.json has $(jq length compile_commands.json 2>/dev/null || echo '?') entries"
+
+      - name: Run clang-tidy on custom C++ files
+        shell: bash
+        run: |
+          set -o pipefail
+
+          # Custom files per docs/CUSTOM_FILES.md — keep in sync when the
+          # manifest changes. Headers are linted via HeaderFilterRegex in
+          # .clang-tidy when they're #include'd by these .cpp files.
+          CUSTOM_FILES=(
+            src/ui/matrixrain.cpp
+            src/ui/rainsimulation.cpp
+            src/ui/glitchengine.cpp
+            src/ui/messageengine.cpp
+            src/ui/gravitydirection.cpp
+            src/ui/screensaverconfig.cpp
+            src/ui/glyphatlas.cpp
+          )
+
+          # Filter to files that actually exist (some may be deferred to
+          # feature/avatar branch and absent from main)
+          EXISTING_FILES=()
+          for f in "${CUSTOM_FILES[@]}"; do
+            if [ -f "$f" ]; then
+              EXISTING_FILES+=("$f")
+            else
+              echo "::notice::$f not present on this branch — skipping"
+            fi
+          done
+
+          if [ ${#EXISTING_FILES[@]} -eq 0 ]; then
+            echo "::error::No custom files to lint"
+            exit 1
+          fi
+
+          echo "Running clang-tidy on ${#EXISTING_FILES[@]} custom source files..."
+          clang-tidy -p . "${EXISTING_FILES[@]}" 2>&1 | tee tidy-output.txt || true
+
+          # Parse findings
+          WARNING_COUNT=$(grep -cE "warning:" tidy-output.txt || true)
+          ERROR_COUNT=$(grep -cE "error:" tidy-output.txt || true)
+          # grep -c exits 1 when nothing matches; `|| true` keeps the pipeline
+          WARNING_COUNT=${WARNING_COUNT:-0}
+          ERROR_COUNT=${ERROR_COUNT:-0}
+
+          echo ""
+          echo "=== clang-tidy SUMMARY ==="
+          echo "Warnings: $WARNING_COUNT"
+          echo "Errors:   $ERROR_COUNT"
+
+          STRICT="${{ github.event.inputs.strict || 'false' }}"
+
+          if [ "$ERROR_COUNT" -gt 0 ]; then
+            echo "::error::clang-tidy reported $ERROR_COUNT error(s) — failing build"
+            exit 1
+          fi
+
+          if [ "$STRICT" = "true" ] && [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "::error::clang-tidy reported $WARNING_COUNT warning(s) in strict mode"
+            exit 1
+          fi
+
+          if [ "$WARNING_COUNT" -gt 0 ]; then
+            echo "::warning::clang-tidy reported $WARNING_COUNT warning(s) in baseline/tolerant mode — add NOLINTNEXTLINE with explanation or fix the root cause"
+          else
+            echo "clang-tidy: 0 findings on custom files"
+          fi
+
+      - name: Upload clang-tidy report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: clang-tidy-report
+          path: tidy-output.txt
+          retention-days: 14

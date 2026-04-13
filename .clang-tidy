@@ -1,0 +1,68 @@
+# clang-tidy starter ruleset for UC Remote 3 screensaver mods.
+#
+# Scope: custom C++ files under src/ui/ (per docs/CUSTOM_FILES.md).
+# Mode:  baseline/tolerant — warnings are reported but don't fail CI.
+#        Upgrade to strict once the baseline is cleaned up by flipping
+#        `strict=true` on the tidy.yml workflow_dispatch input, then
+#        eventually adding `strict-on-push: true` as a permanent gate.
+#
+# Check groups enabled:
+#   bugprone-*     — real-bug patterns (null deref, misuse, etc.)
+#   cert-*         — CERT C++ security / reliability rules
+#   modernize-*    — upgrade to modern C++17 idioms
+#   performance-*  — avoid unnecessary allocations/copies
+#
+# Disabled individual checks (intentional — see per-line rationale):
+#
+#   bugprone-easily-swappable-parameters — noisy, warns on consecutive
+#     same-type params which is common and mostly harmless
+#   bugprone-implicit-widening-of-multiplication-result — pixel math
+#     fires constantly, too noisy for a rendering codebase
+#   bugprone-narrowing-conversions — Qt uses qreal/float/int
+#     interchangeably in its APIs; narrowing is intentional and
+#     documented in the types themselves
+#   cert-dcl21-cpp — cosmetic, warns about non-const return from
+#     postfix operators (rarely matters)
+#   cert-err58-cpp — warns about static initializers that can throw;
+#     Qt uses this pattern extensively (QRegularExpression statics, etc.)
+#   cert-err33-c — warns about unchecked return values from certain
+#     C APIs that Qt wraps safely
+#   modernize-avoid-c-arrays — Qt containers are fine, but some Qt
+#     APIs take C arrays; disabling prevents false positives at API
+#     boundaries
+#   modernize-use-trailing-return-type — purely stylistic, controversial
+#   modernize-use-nodiscard — would add [[nodiscard]] everywhere, noisy
+#   modernize-pass-by-value — fights Qt's const-ref convention
+#   modernize-return-braced-init-list — stylistic only
+#
+# See https://clang.llvm.org/extra/clang-tidy/checks/list.html for the
+# full catalog.
+
+Checks: >
+  bugprone-*,
+  cert-*,
+  modernize-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-implicit-widening-of-multiplication-result,
+  -bugprone-narrowing-conversions,
+  -cert-dcl21-cpp,
+  -cert-err58-cpp,
+  -cert-err33-c,
+  -modernize-avoid-c-arrays,
+  -modernize-use-trailing-return-type,
+  -modernize-use-nodiscard,
+  -modernize-pass-by-value,
+  -modernize-return-braced-init-list
+
+# In baseline mode, nothing is a hard error.
+# Flip this to a specific list (e.g. 'bugprone-*,cert-*') to upgrade those
+# categories to errors while leaving modernize-* / performance-* as warnings.
+WarningsAsErrors: ''
+
+# Only emit diagnostics for headers inside src/ui/. Upstream UC headers
+# and Qt headers are excluded — we can't fix those.
+HeaderFilterRegex: 'src/ui/.*\.h$'
+
+# Use the repo's .clang-format file for clang-tidy fix suggestions.
+FormatStyle: file
