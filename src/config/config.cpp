@@ -1054,6 +1054,6 @@ void Config::setCountryNameAsSelectedLanguage() {
     }
 }
 
-// Charging screen settings — now inline in config.h via CFG_BOOL/CFG_INT/CFG_STRING macros
+// Charging screen settings — moved to ScreensaverConfig (src/ui/screensaverconfig.{h,cpp})
 
 }  // namespace uc

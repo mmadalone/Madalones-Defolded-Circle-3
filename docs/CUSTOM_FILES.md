@@ -12,7 +12,6 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ### Custom Files
 | File | Purpose |
 |------|---------|
-| `src/config/config_macros.h` | `CFG_BOOL` / `CFG_INT` / `CFG_STRING` macros for QSettings-backed Q_PROPERTYs |
 | `src/ui/glyphatlas.h` | Glyph atlas texture builder — shared GPU texture for all character grid renderers |
 | `src/ui/glyphatlas.cpp` | Atlas build, UV lookup, brightness map, font loading |
 | `src/ui/simcontext.h` | Simulation context struct (header-only) |

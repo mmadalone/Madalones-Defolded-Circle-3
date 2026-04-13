@@ -12,7 +12,6 @@
 #include <QSettings>
 #include <QTimeZone>
 
-#include "config_macros.h"
 #include "../core/core.h"
 #include "../translation/translation.h"
 #include "../ui/notification.h"
@@ -174,11 +173,8 @@ class Config : public QObject {
     int getResumeTimeoutWindowSec();
     void setResumeTimeoutWindowSec(int value);
 
-    // Charging screen
-    // Charging screen properties — inline via macros (QSettings read/write + signal emit)
-    // See config_macros.h for CFG_BOOL/CFG_INT/CFG_STRING definitions
-    //
-    // Charging screen settings moved to ScreensaverConfig (owns its own QSettings scope).
+    // Charging screen settings moved to ScreensaverConfig (owns its own
+    // QSettings scope, uses SCRN_* macros from screensaverconfig_macros.h).
     // See src/ui/screensaverconfig.h for all charging/* properties.
 
     enum WakeupSensitivities { off = 0, low = 1, medium = 2, high = 3 };

@@ -399,16 +399,31 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 
 **Signal naming:** `{propertyName}Changed` for property notifications. No other pattern.
 
-### §6.6 Config macros
-Defined in `config_macros.h`:
+### §6.6 Config macros — `SCRN_*` (canonical for custom singletons)
 
-| Macro | Type | Usage |
-|---|---|---|
-| `CFG_BOOL(Func, key, def, sig)` | `bool` | `CFG_BOOL(AvatarEnabled, "avatar/enabled", false, avatarEnabledChanged)` |
-| `CFG_INT(Func, key, def, sig)` | `int` | `CFG_INT(AvatarOverlayOpacity, "avatar/overlayOpacity", 90, avatarOverlayOpacityChanged)` |
-| `CFG_STRING(Func, key, def, sig)` | `QString` | `CFG_STRING(AvatarCharacter, "avatar/character", "auto", avatarCharacterChanged)` |
+**Canonical pattern:** `SCRN_BOOL` / `SCRN_INT` / `SCRN_STRING` macros defined in `src/ui/screensaverconfig_macros.h`. Each invocation generates a complete property stanza — `Q_PROPERTY` declaration, inline getter (Qt5/QML-friendly `name()` style), setter, signal declaration — in one line.
 
-QSettings key namespacing: `"charging/"` for screensaver, `"avatar/"` for avatar. Always provide a safe default.
+```cpp
+// src/ui/screensaverconfig.h — 1 line per property
+SCRN_BOOL(idleEnabled,   "charging/idleEnabled",       false)
+SCRN_INT (idleTimeout,   "charging/idleTimeout",       20)
+SCRN_STRING(direction,   "charging/matrixDirection",   "down")
+```
+
+Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 108 screensaver properties currently use this pattern.
+
+**When to use `SCRN_*`:** custom mod-specific config singletons you own outright (e.g. `ScreensaverConfig`). Use the macro for anything with more than ~5 properties — below that threshold, hand-writing is clearer.
+
+**Upstream pattern — hand-written `Q_PROPERTY`:** upstream UC singletons (`Config`, `Power`, `Battery`, `Wifi`, `Haptic`) do NOT use macros — each property is hand-written one at a time. Follow this convention for any upstream-modified file to keep merge conflict surface small. Don't introduce macros into files in the conflict-surface table (see `docs/UPSTREAM_MERGE.md`).
+
+**Key namespacing in QSettings:**
+- `"charging/"` — the screensaver (current)
+- `"avatar/"` — avatar mod (on `feature/avatar` branch)
+- Any new mod picks its own prefix to avoid key collisions
+
+Always provide a safe default. Getters read directly from QSettings (not cached), so the default fires every time the key is absent from the persistent store.
+
+**Legacy `CFG_*` macros** — previously in `src/config/config_macros.h`, removed in Batch E as dead code. They were a stepping-stone pattern from when screensaver properties lived inside upstream's `Config` class. Once the properties migrated to `ScreensaverConfig`, zero call sites remained and the file became maintenance-only. `SCRN_*` supersedes them with a strictly richer generator (full `Q_PROPERTY` + signal, not just getter/setter).
 
 ### §6.7 Config bridge singletons
 When QML needs **transformed** config values (speed/50.0, conditional logic, cross-property derivations), create a bridge singleton (`ScreensaverConfig` pattern). Raw values → `Config` directly.

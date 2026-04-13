@@ -88,7 +88,6 @@ QMAKE_SUBSTITUTES += version.txt.in
 
 HEADERS += \
     src/config/config.h \
-    src/config/config_macros.h \
     src/core/core.h \
     src/core/enums.h \
     src/core/structs.h \
