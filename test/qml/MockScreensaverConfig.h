@@ -119,6 +119,20 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(QString starfieldColor READ starfieldColor WRITE setStarfieldColor NOTIFY starfieldColorChanged)
     Q_PROPERTY(int starfieldStarSize READ starfieldStarSize WRITE setStarfieldStarSize NOTIFY starfieldStarSizeChanged)
     Q_PROPERTY(int starfieldTrailLength READ starfieldTrailLength WRITE setStarfieldTrailLength NOTIFY starfieldTrailLengthChanged)
+    Q_PROPERTY(QString analogShutoffHands READ analogShutoffHands WRITE setAnalogShutoffHands NOTIFY analogShutoffHandsChanged)
+    Q_PROPERTY(int tvStaticIntensity READ tvStaticIntensity WRITE setTvStaticIntensity NOTIFY tvStaticIntensityChanged)
+    Q_PROPERTY(int tvStaticSnowSize READ tvStaticSnowSize WRITE setTvStaticSnowSize NOTIFY tvStaticSnowSizeChanged)
+    Q_PROPERTY(int tvStaticScanlineStrength READ tvStaticScanlineStrength WRITE setTvStaticScanlineStrength NOTIFY tvStaticScanlineStrengthChanged)
+    Q_PROPERTY(int tvStaticScanlineSpeed READ tvStaticScanlineSpeed WRITE setTvStaticScanlineSpeed NOTIFY tvStaticScanlineSpeedChanged)
+    Q_PROPERTY(int tvStaticChromaAmount READ tvStaticChromaAmount WRITE setTvStaticChromaAmount NOTIFY tvStaticChromaAmountChanged)
+    Q_PROPERTY(bool tvStaticTrackingEnable READ tvStaticTrackingEnable WRITE setTvStaticTrackingEnable NOTIFY tvStaticTrackingEnableChanged)
+    Q_PROPERTY(int tvStaticTrackingSpeed READ tvStaticTrackingSpeed WRITE setTvStaticTrackingSpeed NOTIFY tvStaticTrackingSpeedChanged)
+    Q_PROPERTY(bool tvStaticFlashOnTap READ tvStaticFlashOnTap WRITE setTvStaticFlashOnTap NOTIFY tvStaticFlashOnTapChanged)
+    Q_PROPERTY(bool tvStaticChannelFlashAuto READ tvStaticChannelFlashAuto WRITE setTvStaticChannelFlashAuto NOTIFY tvStaticChannelFlashAutoChanged)
+    Q_PROPERTY(int tvStaticFlashInterval READ tvStaticFlashInterval WRITE setTvStaticFlashInterval NOTIFY tvStaticFlashIntervalChanged)
+    Q_PROPERTY(int tvStaticFlashDuration READ tvStaticFlashDuration WRITE setTvStaticFlashDuration NOTIFY tvStaticFlashDurationChanged)
+    Q_PROPERTY(int tvStaticFlashBrightness READ tvStaticFlashBrightness WRITE setTvStaticFlashBrightness NOTIFY tvStaticFlashBrightnessChanged)
+    Q_PROPERTY(QString tvStaticTint READ tvStaticTint WRITE setTvStaticTint NOTIFY tvStaticTintChanged)
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged)
     Q_PROPERTY(qreal speed READ speed NOTIFY speedChanged)
     Q_PROPERTY(qreal density READ density NOTIFY densityChanged)
@@ -345,6 +359,34 @@ class MockScreensaverConfig : public QObject {
     void setStarfieldStarSize(int v) { if (m_starfieldStarSize == v) return; m_starfieldStarSize = v; emit starfieldStarSizeChanged(); }
     int starfieldTrailLength() const { return m_starfieldTrailLength; }
     void setStarfieldTrailLength(int v) { if (m_starfieldTrailLength == v) return; m_starfieldTrailLength = v; emit starfieldTrailLengthChanged(); }
+    QString analogShutoffHands() const { return m_analogShutoffHands; }
+    void setAnalogShutoffHands(QString v) { if (m_analogShutoffHands == v) return; m_analogShutoffHands = v; emit analogShutoffHandsChanged(); }
+    int tvStaticIntensity() const { return m_tvStaticIntensity; }
+    void setTvStaticIntensity(int v) { if (m_tvStaticIntensity == v) return; m_tvStaticIntensity = v; emit tvStaticIntensityChanged(); }
+    int tvStaticSnowSize() const { return m_tvStaticSnowSize; }
+    void setTvStaticSnowSize(int v) { if (m_tvStaticSnowSize == v) return; m_tvStaticSnowSize = v; emit tvStaticSnowSizeChanged(); }
+    int tvStaticScanlineStrength() const { return m_tvStaticScanlineStrength; }
+    void setTvStaticScanlineStrength(int v) { if (m_tvStaticScanlineStrength == v) return; m_tvStaticScanlineStrength = v; emit tvStaticScanlineStrengthChanged(); }
+    int tvStaticScanlineSpeed() const { return m_tvStaticScanlineSpeed; }
+    void setTvStaticScanlineSpeed(int v) { if (m_tvStaticScanlineSpeed == v) return; m_tvStaticScanlineSpeed = v; emit tvStaticScanlineSpeedChanged(); }
+    int tvStaticChromaAmount() const { return m_tvStaticChromaAmount; }
+    void setTvStaticChromaAmount(int v) { if (m_tvStaticChromaAmount == v) return; m_tvStaticChromaAmount = v; emit tvStaticChromaAmountChanged(); }
+    bool tvStaticTrackingEnable() const { return m_tvStaticTrackingEnable; }
+    void setTvStaticTrackingEnable(bool v) { if (m_tvStaticTrackingEnable == v) return; m_tvStaticTrackingEnable = v; emit tvStaticTrackingEnableChanged(); }
+    int tvStaticTrackingSpeed() const { return m_tvStaticTrackingSpeed; }
+    void setTvStaticTrackingSpeed(int v) { if (m_tvStaticTrackingSpeed == v) return; m_tvStaticTrackingSpeed = v; emit tvStaticTrackingSpeedChanged(); }
+    bool tvStaticFlashOnTap() const { return m_tvStaticFlashOnTap; }
+    void setTvStaticFlashOnTap(bool v) { if (m_tvStaticFlashOnTap == v) return; m_tvStaticFlashOnTap = v; emit tvStaticFlashOnTapChanged(); }
+    bool tvStaticChannelFlashAuto() const { return m_tvStaticChannelFlashAuto; }
+    void setTvStaticChannelFlashAuto(bool v) { if (m_tvStaticChannelFlashAuto == v) return; m_tvStaticChannelFlashAuto = v; emit tvStaticChannelFlashAutoChanged(); }
+    int tvStaticFlashInterval() const { return m_tvStaticFlashInterval; }
+    void setTvStaticFlashInterval(int v) { if (m_tvStaticFlashInterval == v) return; m_tvStaticFlashInterval = v; emit tvStaticFlashIntervalChanged(); }
+    int tvStaticFlashDuration() const { return m_tvStaticFlashDuration; }
+    void setTvStaticFlashDuration(int v) { if (m_tvStaticFlashDuration == v) return; m_tvStaticFlashDuration = v; emit tvStaticFlashDurationChanged(); }
+    int tvStaticFlashBrightness() const { return m_tvStaticFlashBrightness; }
+    void setTvStaticFlashBrightness(int v) { if (m_tvStaticFlashBrightness == v) return; m_tvStaticFlashBrightness = v; emit tvStaticFlashBrightnessChanged(); }
+    QString tvStaticTint() const { return m_tvStaticTint; }
+    void setTvStaticTint(QString v) { if (m_tvStaticTint == v) return; m_tvStaticTint = v; emit tvStaticTintChanged(); }
 
     QColor color() const { return m_color; }
     qreal speed() const { return m_speed; }
@@ -462,6 +504,20 @@ class MockScreensaverConfig : public QObject {
         setStarfieldColor("#ffffff");
         setStarfieldStarSize(50);
         setStarfieldTrailLength(50);
+        setAnalogShutoffHands("all");
+        setTvStaticIntensity(70);
+        setTvStaticSnowSize(2);
+        setTvStaticScanlineStrength(35);
+        setTvStaticScanlineSpeed(0);
+        setTvStaticChromaAmount(25);
+        setTvStaticTrackingEnable(true);
+        setTvStaticTrackingSpeed(40);
+        setTvStaticFlashOnTap(true);
+        setTvStaticChannelFlashAuto(true);
+        setTvStaticFlashInterval(20);
+        setTvStaticFlashDuration(400);
+        setTvStaticFlashBrightness(100);
+        setTvStaticTint("#ffffff");
     }
 
  signals:
@@ -573,6 +629,20 @@ class MockScreensaverConfig : public QObject {
     void starfieldColorChanged();
     void starfieldStarSizeChanged();
     void starfieldTrailLengthChanged();
+    void analogShutoffHandsChanged();
+    void tvStaticIntensityChanged();
+    void tvStaticSnowSizeChanged();
+    void tvStaticScanlineStrengthChanged();
+    void tvStaticScanlineSpeedChanged();
+    void tvStaticChromaAmountChanged();
+    void tvStaticTrackingEnableChanged();
+    void tvStaticTrackingSpeedChanged();
+    void tvStaticFlashOnTapChanged();
+    void tvStaticChannelFlashAutoChanged();
+    void tvStaticFlashIntervalChanged();
+    void tvStaticFlashDurationChanged();
+    void tvStaticFlashBrightnessChanged();
+    void tvStaticTintChanged();
     void colorChanged();
     void speedChanged();
     void densityChanged();
@@ -689,6 +759,20 @@ class MockScreensaverConfig : public QObject {
     QString m_starfieldColor{"#ffffff"};
     int m_starfieldStarSize{50};
     int m_starfieldTrailLength{50};
+    QString m_analogShutoffHands{"all"};
+    int m_tvStaticIntensity{70};
+    int m_tvStaticSnowSize{2};
+    int m_tvStaticScanlineStrength{35};
+    int m_tvStaticScanlineSpeed{0};
+    int m_tvStaticChromaAmount{25};
+    bool m_tvStaticTrackingEnable{true};
+    int m_tvStaticTrackingSpeed{40};
+    bool m_tvStaticFlashOnTap{true};
+    bool m_tvStaticChannelFlashAuto{true};
+    int m_tvStaticFlashInterval{20};
+    int m_tvStaticFlashDuration{400};
+    int m_tvStaticFlashBrightness{100};
+    QString m_tvStaticTint{"#ffffff"};
     QColor m_color{QColor("#00ff41")};
     qreal m_speed{1.0};
     qreal m_density{0.7};
