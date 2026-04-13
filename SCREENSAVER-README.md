@@ -233,10 +233,21 @@ All settings are in **Settings > Screensaver** on the remote.
 
 ## Installation
 
+> ### ⚠ If anything goes wrong — **REVERT FIRST, DIAGNOSE LATER**
+>
+> ```bash
+> curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
+>     -u "web-configurator:<pin>"
+> ```
+>
+> This disables the custom UI and hands control back to the stock UC firmware immediately. It's a fully supported UC3 API and cannot brick the device — the stock Qt UI process is always available as a fallback. **Save this command before you install anything.** If the UI fails to load, shows a black screen for >30 s, or you lose access to Settings, run the revert and your device is back to stock. Full backstop, no recovery tools needed.
+
 ### Requirements
 
-- Unfolded Circle Remote 3 (firmware >= 1.9.0)
-- Docker (for cross-compilation)
+- **Unfolded Circle Remote 3** — **tested only on firmware 1.9.x** (maintainer device). Other firmware versions have **not** been validated; an ABI mismatch against the UC3's Qt 5.15.8 static runtime would cause the custom UI process to fail to start. If that happens, run the revert command above and stock firmware resumes.
+- **Hardware revisions:** only tested on the maintainer's device. If UC ships a silicon/display/touch revision, our untested code paths may differ.
+- **Warranty:** installing anything here requires `?void_warranty=yes`. Upstream UC will not support the device while the custom UI is active. The revert endpoint restores stock and puts the warranty state back in UC's hands.
+- **Docker** — for cross-compilation if you're building from source.
 
 ### Build & Deploy
 

@@ -137,6 +137,17 @@ Current fork base: **`v0.71.1`** (tracked via the `upstream` remote). Next upstr
 
 Log each rehearsal here so "last known merge state" is always at a glance.
 
+### 2026-04-13 — safety re-check before broader distribution
+
+- **Trigger:** Maintainer asked "should we contrast our build with upstream before anyone else's UC3 installs it?" — quick re-check to confirm upstream hasn't moved since the Batch G rehearsal earlier in the day.
+- **Fetch result:** `git fetch upstream` — no new commits on `upstream/main` since the earlier rehearsal.
+- **Divergence:**
+  - `git rev-list --count HEAD..upstream/main` → **0 commits behind upstream** (unchanged)
+  - `git rev-list --count upstream/main..HEAD` → **91 commits ahead of upstream** (+9 from this session's batch 0 fixes, avatar cleanup, button-lockout fix, doc refreshes, CI tidy fix, test determinism fix)
+  - `git merge-base HEAD upstream/main` → `0586d45b3ee7a04d2f1a15d9e4b2606c24d7ae08` (unchanged)
+  - Upstream `HEAD` commit: `0586d45 v0.71.1 changes` (unchanged since the earlier rehearsal)
+- **Conclusion:** Fork is still a strict superset of `upstream/main`. No new signal renames, no new upstream bug fixes missing from our tree. Safe to distribute from the "upstream deltas" angle. Real blast-radius concerns for non-maintainer devices (firmware/hardware revision mismatch, untested code paths) are orthogonal to this check and are documented in the new Install warnings in `README.md` and `SCREENSAVER-README.md`.
+
 ### 2026-04-13 — Batch G #17 initial rehearsal
 
 - **Trigger:** Batch G #17 of the path-to-A plan (first rehearsal under this playbook).

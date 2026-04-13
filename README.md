@@ -32,6 +32,17 @@ Five themes, five screen-off animation styles, full DPAD/touch interaction, zero
 
 ## Install
 
+> ### ⚠ Read this before installing on a UC3 that isn't yours
+>
+> **Tested only on the maintainer's UC Remote 3 running firmware 1.9.x.** Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
+>
+> ```bash
+> curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" \
+>     -u "web-configurator:${UC3_PIN}"
+> ```
+>
+> This is a fully supported UC3 API and cannot brick the device. **Save it before you install.** Installing voids warranty (`?void_warranty=yes` is mandatory); the revert above restores stock and returns warranty state to UC. For extra safety, run [`scripts/deploy-canary.sh`](scripts/deploy-canary.sh) — it auto-reverts on health-check failure.
+
 See **[SCREENSAVER-README.md](SCREENSAVER-README.md)** for the full install flow including device setup, PIN, and revert procedure.
 
 Quick version for anyone who's already set up:
