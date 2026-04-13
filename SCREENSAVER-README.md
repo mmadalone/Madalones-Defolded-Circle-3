@@ -114,6 +114,7 @@ A fully configurable screensaver system for the UC Remote 3. **Five themes** —
 - Configurable interval and duration
 
 **Tap Interaction:**
+- **Master "Enable tap effects" toggle** — single switch that disables every tap effect at once. When off, taps still wake/cancel screen-off animations but produce no visual effect on the rain. All sub-options collapse from the settings page so only the master toggle shows.
 - Single tap — corruption burst at touch point with configurable effects:
   - Scatter burst (glitch trails explode from tap) — configurable count + length
   - Flash shockwave (nearby streams flash)
@@ -188,6 +189,8 @@ A shared pre-display-off animation system. When the core decides it's time to di
 The sampling-based styles use a single `ShaderEffectSource` to capture the active theme into an offscreen FBO so the overlay shaders can sample it. The FBO is only allocated when one of the sampling styles is actually playing — non-sampling styles and the theme-native mode keep zero GPU cost.
 
 **Tier 2 — Theme-native animations**: themes can opt in with their own tightly-integrated shutdown effect via an optional protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`). Currently **TV Static** uses this for a classic **CRT collapse** — the snow and scanlines collapse vertically into a bright horizontal line, then the line shrinks horizontally to a single dot, then the dot fades to black. 800 ms collapse + 500 ms black hold so it finishes synchronized with the real hardware display-off.
+
+All other themes (Matrix, Starfield, Analog, Minimal) use the Tier 1 shared overlay exclusively. Matrix briefly had a native cascade prototype in earlier builds; it was rolled back in v1.2.1 because the running-binding pause/resume race on wake left the rain area black across multiple cycles. The shared styles are architecturally simpler, work reliably on every theme, and don't fight Qt's scene graph lifecycle.
 
 **Controls:** `Settings → Power saving → Screen off animations`:
 - **Enabled** — master on/off (default on)
@@ -286,13 +289,30 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 For architecture details, see [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md).
 For build instructions, see [BUILD.md](BUILD.md).
 
+## Release History
+
+**v1.2.1** (2026-04-13) — drop displayOff gate from running binding (fixes wake-black)
+- **Fixed** rain going black on wake from any screen-off animation cycle. Root cause was a `running: visible && !isClosing && !displayOff` binding race: on wake, `setRunning(false) → setRunning(true)` fired in the same QML tick as `cancelScreenOffEffect` and `setSpeed`, and Qt does not guarantee binding / notifier / onChanged ordering. The race left the scene graph's first post-wake `updatePaintNode()` submitting an empty geometry node. Fix: drop `!displayOff` from the binding — the sim ticks through display-off (near-zero cost because Qt stops compositing when the display is off).
+- **Removed** Matrix theme-native cascade animation. Matrix now falls through to the shared `ScreenOffOverlay` styles (fade / pixelate / dissolve / genie / etc.) same as Starfield and Minimal.
+- **Removed** the Matrix shutdown animation settings section.
+- **Fixed** `holdPauseTimer` was writing `matrixRain.running = false` imperatively from QML, permanently breaking the running binding on the theme instance. Replaced with new `Q_INVOKABLE pauseTicks()` / `resumeTicks()` C++ methods that stop and start the tick timer without breaking the binding.
+- **Fixed** `postAnimationSafetyTimer` was closing the popup when the core's `Low_power` transition didn't fire within `leadMs + 1500ms`. On undocked setups where `Low_power` never fires, this was dumping the user to the home screen on every wake. Changed to set `displayOff = true` instead — popup stays alive.
+
+**v1.2.0** (2026-04-13) — runtime slider wiring + tap master toggle
+- **Fixed** the Matrix animation speed, density, trail length, fade, and color sliders silently having no effect on the live rain. Root cause was a signal-to-signal `connect` in `ScreensaverConfig`'s ctor that didn't route through correctly because the raw `matrix*Changed` signals were declared via macro while the transformed `*Changed` signals were declared in a separate manual `signals:` block — Qt's MOC + QML binding engine don't trace indirect signal chains. Fixed with the canonical Qt dual-emit pattern: hand-written setters emit both the raw and the transformed NOTIFY signal directly.
+- **Added** master "Enable tap effects" toggle in the Tap section of the Charging Screen settings.
+- **Bumped** `TICK_MAX_MS` from 150 to 300 so slider value 10 actually maps to a visibly slower tick.
+- **Cleaned** dangling Mod 2 (Avatar) references from `remote-ui.pro` and `src/main.cpp`.
+
+See [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md) for detailed session logs.
+
 ## Roadmap
 
 - ✅ **TV Static** — analog snow / VHS chroma / CRT scanlines / rolling tracking bar / channel-flash bursts (shipped 2026-04-10)
-- ✅ **Screen-off animation system** — shared Fade / Flash / Iris / Wipe styles + theme-native protocol with TV Static CRT collapse (shipped 2026-04-10)
-- ✅ **Screen-off animations Batch 2** — Wave + Genie + Pixels + Dissolve, with `ShaderEffectSource` theme-capture infrastructure for the 3 sampling-based styles (shipped 2026-04-10)
-- **Screen-off animations Batch 3** — additional shared overlay styles (Venetian blinds, Radial sweep, Barn doors, CRT degauss flash)
-- **Per-theme native screen-off animations** — Matrix rain fall-off, Starfield warp-out tunnel, Analog clock hands sweep-to-12, Minimal digit crumble (will reuse Batch 2's theme-capture infrastructure)
+- ✅ **Screen-off animation system** — shared Fade / Flash / Iris / Wipe / Wave / Genie / Pixels / Dissolve + theme-native protocol with TV Static CRT collapse (shipped 2026-04-10)
+- ✅ **v1.2.1 wake-black fix** — dropped the `displayOff` gate from the theme `running` binding. Matrix + Starfield sims now keep ticking through display-off, eliminating the QML binding / scene-graph race that left the rain area black on wake (shipped 2026-04-13)
+- **Screen-off animations Batch 3** — additional shared overlay styles under consideration (Venetian blinds, Radial sweep, Barn doors, CRT degauss flash)
+- ~~**Per-theme native screen-off animations**~~ — the native cascade was attempted for Matrix and rolled back in v1.2.1 because any theme that pauses its internal tick on display-off triggers a QML binding race with the scene graph on wake. Future theme-native effects should either use the TV Static model (C++ shader-driven, no ticking simulation underneath) or be implemented as pure visual overlays that do NOT mutate the underlying sim state.
 
 ## How This Was Built
 
