@@ -249,13 +249,20 @@ Item {
     }
 
     // ---- Animation driver: advance u_time ----
-    // ~30 FPS is plenty for noise; zero cost when displayOff.
+    // Timer `running` binding stays free of displayOff to avoid the
+    // binding-vs-scene-graph race on wake (see MatrixTheme.qml and
+    // fbf9028). Per-tick work short-circuits in onTriggered so the
+    // shader time uniform effectively freezes during display-off —
+    // saves CPU on long dock sessions.
     Timer {
         id: animTimer
         interval: 33
         repeat: true
-        running: root.visible && !root.isClosing && !root.displayOff
-        onTriggered: root.u_time += 0.033
+        running: root.visible && !root.isClosing
+        onTriggered: {
+            if (root.displayOff) return;
+            root.u_time += 0.033;
+        }
     }
 
     // ---- Automatic channel-flash cadence ----
@@ -269,10 +276,11 @@ Item {
     Timer {
         id: autoFlashTimer
         repeat: true
-        running: root.visible && !root.isClosing && !root.displayOff
+        running: root.visible && !root.isClosing
                  && ScreensaverConfig.tvStaticChannelFlashAuto
         interval: root._pickFlashInterval()
         onTriggered: {
+            if (root.displayOff) return;
             root.triggerFlash();
             interval = root._pickFlashInterval();
         }

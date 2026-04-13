@@ -44,6 +44,18 @@ Popup {
     // re-trigger until the next wake).
     property bool screenOffEffectActive: false
 
+    // True when the popup opened via the idle-screensaver timer on battery
+    // — a legacy path where `idleTimeout` seconds of inactivity preceded
+    // the open and the core's display-off counter has ALREADY been counting
+    // during that window. When this flag is set, the screen-off countdown
+    // poller subtracts idleTimeout from the effective window to align with
+    // the core's internal counter. Any event that represents fresh user
+    // activity (dock, undock, wake from displayOff) resets this flag — those
+    // events reset the core's idle counter, giving us the full displayTimeout
+    // window ahead. Signalled from main.qml via chargingScreenLoader
+    // .onStatusChanged before item.open() fires.
+    property bool _openedViaIdleTimer: false
+
     // Measured dim-phase duration — how long the core spends in the Idle
     // power mode (display dimmed) before transitioning to Low_power (display
     // physically off). Measured empirically on each cycle so we can delay
@@ -150,6 +162,9 @@ Popup {
         // Reset wall-clock baseline so the poller restarts from now.
         chargingScreenRoot.countdownStartTime = Date.now();
         chargingScreenRoot.screenOffEffectActive = false;
+        // Wake is fresh user activity — the core's idle counter just reset,
+        // so the next cycle uses the full displayTimeout window.
+        chargingScreenRoot._openedViaIdleTimer = false;
         // Cancel any pending delayed start from the Idle-entry handler.
         dimPhaseDelayTimer.stop();
         // Cancel the stuck-animation safety timer — the user is awake
@@ -164,6 +179,10 @@ Popup {
         }
         screenOffAnim.stop();
         screenOffOverlay.progress = 0.0;
+        // Belt-and-suspenders scene-graph refresh for themes without cancelScreenOff().
+        if (themeLoader.item && typeof themeLoader.item.update === "function") {
+            themeLoader.item.update();
+        }
     }
 
     function finalizeScreenOffEffect() {
@@ -737,6 +756,30 @@ Popup {
         easing.type: Easing.Linear
     }
 
+    // Dock / undock are both fresh user activity from the core's perspective
+    // — the core's display-off timer resets on either transition. Follow suit:
+    // reset our countdown baseline and clear the idle-open flag so the next
+    // screen-off cycle aligns with the core's fresh idle counter instead of a
+    // stale pre-transition baseline. Without this, a popup that persists
+    // through undock (via 'Close on wake' toggle OFF) uses a stale baseline
+    // plus the subtracted idleTimeout formula, firing the animation seconds
+    // before the core actually blanks the display.
+    Connections {
+        target: Battery
+        ignoreUnknownSignals: true
+        function onPowerSupplyChanged(value) {
+            if (chargingScreenRoot.isClosing) return;
+            chargingScreenRoot.countdownStartTime = Date.now();
+            chargingScreenRoot._openedViaIdleTimer = false;
+            // Cancel any in-flight animation from the pre-transition cycle
+            // so it doesn't finish early against the fresh baseline.
+            if (chargingScreenRoot.screenOffEffectActive
+                    && !chargingScreenRoot.displayOff) {
+                chargingScreenRoot.cancelScreenOffEffect();
+            }
+        }
+    }
+
     // ---- Primary trigger: core Power state transition ----
     // The core drives its own idle countdown based on system-level activity.
     // When that countdown reaches the display-off point, it transitions:
@@ -842,15 +885,16 @@ Popup {
             var elapsed = now - chargingScreenRoot.countdownStartTime;
 
             // Effective remaining window until the core blanks the display.
-            // On dock: core's idle timer restarts when we dock (activity),
-            //          so the full displayTimeout is ahead of us.
-            // On battery: the popup was opened by the QML idleScreensaverTimer
-            //          after `idleTimeout` seconds of user inactivity, during
-            //          which the core's display-off counter was ALSO running.
-            //          So only (displayTimeout - idleTimeout) seconds remain
-            //          before the core blanks the display.
+            // - On dock / undock / wake / any user activity: the core's idle
+            //   counter just reset, so the full displayTimeout is ahead.
+            // - Opened via idleScreensaverTimer on battery (legacy path): the
+            //   popup opened after `idleTimeout` seconds of inactivity during
+            //   which the core's display-off counter was ALSO running, so
+            //   only (displayTimeout - idleTimeout) remain. Tracked via the
+            //   _openedViaIdleTimer flag (set by main.qml before item.open
+            //   when the idle timer fired the open).
             var effectiveTimeoutMs = Config.displayTimeout * 1000;
-            if (!Battery.powerSupply) {
+            if (chargingScreenRoot._openedViaIdleTimer) {
                 effectiveTimeoutMs -= ScreensaverConfig.idleTimeout * 1000;
             }
 

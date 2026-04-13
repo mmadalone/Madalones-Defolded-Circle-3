@@ -26,6 +26,11 @@ Item {
     // calls this unconditionally on all themes.
     function interactiveInput(action) {}
 
+    // Wake-refresh hook — force canvas repaint to avoid binding-vs-paint race.
+    function cancelScreenOff() {
+        canvas.requestPaint();
+    }
+
     // Star color helper — returns {r,g,b} for a given star index
     property string starColor: ScreensaverConfig.starfieldColor
     function isGradient(v) { return v === "rainbow" || v === "rainbow_gradient" || v === "neon"; }
@@ -163,15 +168,18 @@ Item {
     Timer {
         id: animTimer
         interval: 55
-        // Intentionally NOT gating on `!root.displayOff`. See MatrixTheme.qml
-        // running-binding comment — pausing on display-off causes a
-        // QML-binding-vs-scene-graph race that leaves the canvas empty on
-        // wake. Keeping the timer alive through display-off matches the
-        // pre-screen-off-animation behaviour and has minimal CPU cost
-        // because the compositor stops frames when the display is off.
+        // Timer `running` binding stays free of displayOff to avoid the
+        // QML-binding-vs-scene-graph race on wake (see MatrixTheme.qml
+        // and fbf9028). Per-tick work short-circuits in onTriggered so
+        // the canvas repaint effectively stops during display-off —
+        // saves CPU on long dock sessions while preserving the race-free
+        // wake path.
         running: root.visible && !root.isClosing
         repeat: true
-        onTriggered: canvas.requestPaint()
+        onTriggered: {
+            if (root.displayOff) return;
+            canvas.requestPaint();
+        }
     }
 
     // Clock overlay

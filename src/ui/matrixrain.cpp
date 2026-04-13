@@ -1459,10 +1459,25 @@ void MatrixRainItem::setRunning(bool r) {
 void MatrixRainItem::setDisplayOff(bool d) {
     if (m_displayOff != d) {
         m_displayOff = d;
-        if (d)
+        if (d) {
+            // Pause the sim tick timer during display-off to save ~4% of
+            // one ARM core on long dock sessions (sustained load prevents
+            // deep C-state sleep → thermal accumulation). m_running and
+            // the QML running binding stay untouched so the fbf9028
+            // binding-vs-scene-graph race fix is intact. Wake is handled
+            // by MatrixTheme.cancelScreenOff() → resetAfterScreenOff()
+            // which restarts the timer and forces a fresh frame.
+            m_timer.stop();
             m_gravity.stopAutoRotation();
-        else if (m_running && m_sim.gravityMode())
-            m_gravity.startAutoRotation();
+        } else {
+            if (m_running && !m_timer.isActive()) {
+                m_timer.start(qBound(TICK_MIN_MS,
+                    static_cast<int>(TICK_BASE_MS / m_sim.speed()),
+                    TICK_MAX_MS));
+            }
+            if (m_running && m_sim.gravityMode())
+                m_gravity.startAutoRotation();
+        }
         emit displayOffChanged();
     }
 }

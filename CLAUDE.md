@@ -7,7 +7,7 @@ Custom firmware mod project for the **Unfolded Circle Remote 3**. Fork of [`unfo
 Multiple independent mods are built on top of the upstream UC codebase — some bridge to Home Assistant and [Project Fronkensteen](https://github.com/mmadalone/Project_Fronkensteen) (the HA voice AI ecosystem), some are purely UC3-native. Each mod is self-contained but may share infrastructure (GlyphAtlas, config macros, etc.).
 
 **Owner:** madalone  
-**Device:** UC Remote 3 at `192.168.2.204`, PIN `6984`  
+**Device:** UC Remote 3 at `${UC3_HOST}`, PIN `${UC3_PIN}`  
 **Display:** 480 × 850px IPS LCD  
 **SoC:** Quad-core ARM64 1.8 GHz, 4 GB RAM, 32 GB eMMC  
 **Repo:** Private — `mmadalone/Madalones-Defolded-Circle-3`  
@@ -41,10 +41,10 @@ GPU-accelerated screensaver replacing UC's stock analog clock. Matrix rain rende
 
 **Design doc:** `SCREENSAVER-IMPLEMENTATION.md`
 
-### Mod 2: Avatar System 🔧 In Progress
-Braille character grid renderer with mood-reactive animation, per-cell sprite animation (eye blinks, talking, expressions), voice overlay integration, HA entity bridge for push events. Bridges to Project Fronkensteen voice personas but works standalone via local fallback.
+### Mod 2: Avatar System 📦 Archived on `feature/avatar` branch
+Braille character grid renderer with mood-reactive animation, per-cell sprite animation, voice overlay integration, HA entity bridge for push events. **Removed from `main` on 2026-04-08** (commit `c7e7a3a`) to keep release scope clean. Phase A was code-complete on the feature branch; no current merge plan. Both `AVATAR_PLAN.md` and avatar source (`src/ui/avatargrid.*`, `test/avatar_preview/`) are gitignored on `main`.
 
-**Design doc:** `AVATAR_PLAN.md` — **READ THIS BEFORE TOUCHING AVATAR CODE.** All architecture decisions are resolved. Implementation order is defined (Phase A→B→C→D).
+**Design doc:** `AVATAR_PLAN.md` — local reference only, gitignored on `main`. **To work on avatar code: `git checkout feature/avatar`.**
 
 ### Mod 3+: Future
 TBD. New mods follow the established mod anatomy pattern (see `STYLE_GUIDE.md`).
@@ -91,10 +91,10 @@ Output: `binaries/linux-arm64/release/remote-ui`
 ```bash
 cp binaries/linux-arm64/release/remote-ui deploy/bin/remote-ui
 cd deploy && tar czf /tmp/remote-ui-deploy.tar.gz release.json bin/ config/
-curl --location "http://192.168.2.204/api/system/install/ui?void_warranty=yes" \
-    --form "file=@/tmp/remote-ui-deploy.tar.gz" -u 'web-configurator:6984'
+curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
+    --form "file=@/tmp/remote-ui-deploy.tar.gz" -u 'web-configurator:${UC3_PIN}'
 ```
-Restarts the UI on the device (~10s). Revert to stock: `curl -X PUT "http://192.168.2.204/api/system/install/ui?enable=false" -u 'web-configurator:6984'`
+Restarts the UI on the device (~10s). Revert to stock: `curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" -u 'web-configurator:${UC3_PIN}'`
 
 ### QML Prototyping
 ```bash

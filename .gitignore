@@ -106,7 +106,7 @@ test/integration/testdir.h
 qmlcache_loader.cpp
 /.claude
 CLAUDE.md
-CLAUDE.md
+.env.local
 .claude/settings.local.json
 
 # Mod 2 (Avatar) — not ready for release

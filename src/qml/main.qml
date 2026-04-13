@@ -513,14 +513,20 @@ ApplicationWindow {
             }
         }
 
+        // One-shot: set true when the next chargingScreenLoader.active = true
+        // is triggered by idleScreensaverTimer firing (legacy idle-open path).
+        // Consumed by chargingScreenLoader.onStatusChanged when the popup
+        // becomes Ready, propagated to the popup's _openedViaIdleTimer flag
+        // to drive the screen-off countdown's subtraction rule.
+        property bool _nextOpenViaIdleTimer: false
+
         // Helper: whether the screensaver should auto-open on battery idle.
-        // True if either the legacy idle toggle is on OR the user has enabled
-        // the screen-off animation system AND asked for it to fire when
-        // undocked (which only works if the screensaver actually opens).
+        // Strictly gated by the 'Idle screensaver' toggle — when off, no
+        // auto-open regardless of other settings. The screen-off animation
+        // system is a separate feature that applies when the screensaver is
+        // already open; it does not trigger auto-open on its own.
         function _shouldOpenOnIdle() {
-            return ScreensaverConfig.idleEnabled
-                || (ScreensaverConfig.screenOffEffectEnabled
-                    && ScreensaverConfig.screenOffEffectUndocked);
+            return ScreensaverConfig.idleEnabled;
         }
 
         // Idle screensaver timer — activates screensaver after N seconds of inactivity when undocked
@@ -532,6 +538,7 @@ ApplicationWindow {
             onTriggered: {
                 var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
                 if (root._shouldOpenOnIdle() && undocked && !chargingScreenLoader.active) {
+                    root._nextOpenViaIdleTimer = true;
                     chargingScreenLoader.active = true;
                 }
             }
@@ -542,14 +549,6 @@ ApplicationWindow {
             ignoreUnknownSignals: true
 
             function onIdleEnabledChanged() {
-                root._refreshIdleTimer();
-            }
-
-            function onScreenOffEffectEnabledChanged() {
-                root._refreshIdleTimer();
-            }
-
-            function onScreenOffEffectUndockedChanged() {
                 root._refreshIdleTimer();
             }
 
@@ -577,6 +576,12 @@ ApplicationWindow {
 
             onStatusChanged: {
                 if (status == Loader.Ready) {
+                    // Propagate "open reason" to the popup so the screen-off
+                    // countdown knows whether to subtract idleTimeout. AND
+                    // with Battery state to cover the race where the user
+                    // docks while the async loader is still loading.
+                    item._openedViaIdleTimer = root._nextOpenViaIdleTimer && !Battery.powerSupply;
+                    root._nextOpenViaIdleTimer = false;
                     item.open();
                 }
             }
@@ -591,7 +596,8 @@ ApplicationWindow {
                         chargingScreenLoader.active = true;
                         SoundEffects.play(SoundEffects.BatteryCharge);
                     } else {
-                        if (chargingScreenLoader.active && chargingScreenLoader.item) {
+                        // Honor 'Close on wake' toggle — keeps undock consistent with motion wake.
+                        if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
                         }
                         if (root._shouldOpenOnIdle()) {

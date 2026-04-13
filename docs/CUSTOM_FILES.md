@@ -84,9 +84,11 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 
 ---
 
-## Mod 2: Avatar System (In Progress — Phase A)
+## Mod 2: Avatar System (Archived on `feature/avatar` branch)
 
-See `AVATAR_PLAN.md` for full specification.
+**Status:** Mod 2 was developed through Phase A but intentionally removed from `main` on 2026-04-08 (commit `c7e7a3a`) to keep the screensaver release scope clean. The C++ renderer (`src/ui/avatargrid.h/.cpp`), related QML, and design docs live on the `feature/avatar` branch. No current merge plan. To work on avatar code, check out that branch.
+
+The sections below document what exists on `feature/avatar` as a historical reference — none of these files are built into `main`'s release artifact.
 
 ### Custom C++ Files
 | File | Purpose | ~Lines |

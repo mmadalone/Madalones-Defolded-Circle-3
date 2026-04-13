@@ -117,6 +117,12 @@ Item {
     // values can never leave the theme stuck in a dimmed state. Matches
     // TvStaticTheme.qml:77-80 defensive pattern.
     //
+    // CRITICAL — Qt 5.15 qmlcachegen × scene-graph binding race. DO NOT
+    // REMOVE OR REFACTOR the Qt.binding() pre-conversion below without
+    // re-verifying "first wake after fresh boot" across MULTIPLE cold
+    // reboots. This regression is silent (no error, just a black clock)
+    // and will ship to production unless tested specifically.
+    //
     // ALSO: pre-emptively replace the compiled QML rotation bindings with
     // Qt.binding() JS-closure bindings. This is the fix for the "first
     // wake after fresh boot stays black" bug. Without this, the first

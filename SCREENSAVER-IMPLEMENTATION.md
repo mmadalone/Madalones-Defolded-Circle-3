@@ -5,7 +5,7 @@
 Replaced the UC Remote 3's factory analog clock charging screen with a fully configurable screensaver system. Features a GPU-accelerated Matrix rain renderer (C++ QQuickItem), configurable settings page in the remote's UI, and multiple themes.
 
 **Date:** 2026-04-02
-**Remote:** UC Remote 3 at 192.168.2.204, PIN 6984
+**Remote:** UC Remote 3 at ${UC3_HOST}, PIN ${UC3_PIN}
 **Base repo:** Fork of `github.com/unfoldedcircle/remote-ui` (GPL v3, Qt 5.15 / QML)
 **Working directory:** `/Users/madalone/_Claude Projects/UC-Remote-UI/`
 
@@ -234,14 +234,14 @@ docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
 ```bash
 cp binaries/linux-arm64/release/remote-ui deploy/bin/
 cd deploy && tar -czf ../matrix-charging-screen.tar.gz release.json bin/ config/
-curl --location "http://192.168.2.204/api/system/install/ui?void_warranty=yes" \
+curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
     --form "file=@../matrix-charging-screen.tar.gz" \
-    -u "web-configurator:6984" --max-time 120
+    -u "web-configurator:${UC3_PIN}" --max-time 120
 ```
 
 ### Revert
 ```bash
-curl -X PUT "http://192.168.2.204/api/system/install/ui?enable=false" -u "web-configurator:6984"
+curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" -u "web-configurator:${UC3_PIN}"
 ```
 
 ## Remote Debugging
@@ -250,21 +250,21 @@ curl -X PUT "http://192.168.2.204/api/system/install/ui?enable=false" -u "web-co
 
 ### Logdy Web Log Viewer (firmware ≥ 2.1.0)
 
-Real-time log viewer at `http://192.168.2.204/log/`. Disabled by default. Shows logs for remote-core, all integrations, and **custom remote-ui** (i.e., this project's `lcScreensaver` output).
+Real-time log viewer at `http://${UC3_HOST}/log/`. Disabled by default. Shows logs for remote-core, all integrations, and **custom remote-ui** (i.e., this project's `lcScreensaver` output).
 
 **Enable (one-shot):**
 ```bash
-curl --request PUT "http://192.168.2.204/api/system/logs/web" \
+curl --request PUT "http://${UC3_HOST}/api/system/logs/web" \
     --header 'Content-Type: application/json' \
-    --user "web-configurator:6984" \
+    --user "web-configurator:${UC3_PIN}" \
     --data '{"enabled": true}'
 ```
 
 **Enable (persistent across reboots):**
 ```bash
-curl --request PUT "http://192.168.2.204/api/system/logs/web" \
+curl --request PUT "http://${UC3_HOST}/api/system/logs/web" \
     --header 'Content-Type: application/json' \
-    --user "web-configurator:6984" \
+    --user "web-configurator:${UC3_PIN}" \
     --data '{"enabled": true, "autostart": true}'
 ```
 
@@ -274,10 +274,10 @@ curl --request PUT "http://192.168.2.204/api/system/logs/web" \
 
 ```bash
 # List available log services
-curl "http://192.168.2.204/api/system/logs/services" -u "web-configurator:6984"
+curl "http://${UC3_HOST}/api/system/logs/services" -u "web-configurator:${UC3_PIN}"
 
 # Query logs
-curl "http://192.168.2.204/api/system/logs?..." -u "web-configurator:6984"
+curl "http://${UC3_HOST}/api/system/logs?..." -u "web-configurator:${UC3_PIN}"
 ```
 
 Log files also downloadable from the web configurator: **Settings → Development → Logs**.
@@ -1923,14 +1923,14 @@ Latest deploy: `2026-04-11T03:23:27` (UI restart confirmed via `installed: true,
 
 ```bash
 # Single shot
-curl -sS -u 'web-configurator:6984' http://192.168.2.204/api/system/power
+curl -sS -u 'web-configurator:${UC3_PIN}' http://${UC3_HOST}/api/system/power
 # returns: {"mode":"...","power_supply":...,"standby_timeout_sec":N,"standby_inhibitors":...}
 
 # Continuous polling loop with battery
 for i in $(seq 1 45); do
   ts=$(date +%H:%M:%S)
-  pwr=$(curl -sS --max-time 3 -u 'web-configurator:6984' http://192.168.2.204/api/system/power 2>&1)
-  bat=$(curl -sS --max-time 3 -u 'web-configurator:6984' http://192.168.2.204/api/system/power/battery 2>&1)
+  pwr=$(curl -sS --max-time 3 -u 'web-configurator:${UC3_PIN}' http://${UC3_HOST}/api/system/power 2>&1)
+  bat=$(curl -sS --max-time 3 -u 'web-configurator:${UC3_PIN}' http://${UC3_HOST}/api/system/power/battery 2>&1)
   echo "$ts  $pwr  $bat"
   sleep 2
 done

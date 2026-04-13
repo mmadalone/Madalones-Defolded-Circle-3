@@ -45,6 +45,11 @@ Item {
         matrixRain.interactiveInput(action);
     }
 
+    // Bypass QML running-binding race on wake via C++ defensive reset.
+    function cancelScreenOff() {
+        matrixRain.resetAfterScreenOff();
+    }
+
     Rectangle {
         anchors.fill: parent
         color: "black"

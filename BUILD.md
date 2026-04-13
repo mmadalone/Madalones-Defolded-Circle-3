@@ -1,5 +1,13 @@
 # Build & Deploy
 
+## Setup (one-time)
+
+Copy `.env.local.example` to `.env.local` and fill in your UC3 host and PIN, then source it into your shell. All deploy commands below expect `UC3_HOST`, `UC3_USER`, and `UC3_PIN` in the environment:
+
+```bash
+set -a; source .env.local; set +a
+```
+
 ## Cross-compile for UC Remote 3 (ARM64)
 
 ```bash
@@ -15,9 +23,9 @@ Requires Docker. Output: `binaries/linux-arm64/release/remote-ui`
 ```bash
 cp binaries/linux-arm64/release/remote-ui deploy/bin/
 cd deploy && tar -czf ../matrix-charging-screen.tar.gz release.json bin/ config/
-curl --location "http://192.168.2.204/api/system/install/ui?void_warranty=yes" \
+curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
     --form "file=@../matrix-charging-screen.tar.gz" \
-    -u "web-configurator:6984" --max-time 120
+    -u "web-configurator:${UC3_PIN}" --max-time 120
 ```
 
 UI restarts automatically after install.
@@ -25,7 +33,7 @@ UI restarts automatically after install.
 ## Revert to stock UI
 
 ```bash
-curl -X PUT "http://192.168.2.204/api/system/install/ui?enable=false" -u "web-configurator:6984"
+curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" -u "web-configurator:${UC3_PIN}"
 ```
 
 ## Desktop build (macOS)
@@ -46,17 +54,17 @@ qmake matrixrain_test.pro && make -j4
 ## Enable Logdy (on-device log viewer)
 
 ```bash
-curl --request PUT "http://192.168.2.204/api/system/logs/web" \
+curl --request PUT "http://${UC3_HOST}/api/system/logs/web" \
     --header 'Content-Type: application/json' \
-    --user "web-configurator:6984" \
+    --user "web-configurator:${UC3_PIN}" \
     --data '{"enabled": true}'
 ```
 
-View at `http://192.168.2.204/log/`. Disable when done (uses ~170 MB from integration memory pool):
+View at `http://${UC3_HOST}/log/`. Disable when done (uses ~170 MB from integration memory pool):
 
 ```bash
-curl --request PUT "http://192.168.2.204/api/system/logs/web" \
+curl --request PUT "http://${UC3_HOST}/api/system/logs/web" \
     --header 'Content-Type: application/json' \
-    --user "web-configurator:6984" \
+    --user "web-configurator:${UC3_PIN}" \
     --data '{"enabled": false, "autostart": false}'
 ```
