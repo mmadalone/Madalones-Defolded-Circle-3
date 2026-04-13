@@ -104,7 +104,10 @@ Popup {
             }
             chargingScreenRoot.finalizeScreenOffEffect();
         } else {
-            chargingScreenRoot.cancelScreenOffEffect();
+            // True wake-from-displayOff transition — pass isWakeFromOff=true
+            // so the theme's cancelScreenOff() runs to sidestep the
+            // binding/scene-graph race that otherwise leaves the rain black.
+            chargingScreenRoot.cancelScreenOffEffect(true);
         }
     }
 
@@ -158,7 +161,9 @@ Popup {
         postAnimationSafetyTimer.restart();
     }
 
-    function cancelScreenOffEffect() {
+    function cancelScreenOffEffect(isWakeFromOff) {
+        isWakeFromOff = isWakeFromOff || false;
+
         // Reset wall-clock baseline so the poller restarts from now.
         chargingScreenRoot.countdownStartTime = Date.now();
         chargingScreenRoot.screenOffEffectActive = false;
@@ -170,18 +175,26 @@ Popup {
         // Cancel the stuck-animation safety timer — the user is awake
         // (or otherwise cancelling), no need to force-close the popup.
         postAnimationSafetyTimer.stop();
-        // Defensive: call theme.cancelScreenOff unconditionally if it exists,
-        // regardless of the providesNativeScreenOff property check — covers
-        // the case where the theme declares the function but the property
-        // lookup races during Loader reload.
-        if (themeLoader.item && themeLoader.item.cancelScreenOff) {
-            themeLoader.item.cancelScreenOff();
-        }
         screenOffAnim.stop();
         screenOffOverlay.progress = 0.0;
-        // Belt-and-suspenders scene-graph refresh for themes without cancelScreenOff().
-        if (themeLoader.item && typeof themeLoader.item.update === "function") {
-            themeLoader.item.update();
+
+        // Theme reset (cancelScreenOff + scene-graph refresh) only runs on
+        // a true wake-from-displayOff transition. That path needs the
+        // defensive refresh to sidestep the QML running-binding /
+        // scene-graph race (see MatrixTheme.qml fbf9028 comment and the
+        // Matrix resetAfterScreenOff helper). On plain user interaction
+        // (DPAD, touch, tap effects) OR dock/undock mid-cycle cleanup,
+        // we must NOT call theme.cancelScreenOff() — for Matrix it chains
+        // through resetAfterScreenOff() → initStreams() and respawns every
+        // stream, which looks like a full reset instead of the smooth
+        // gravity-lerp direction change the user expects.
+        if (isWakeFromOff && themeLoader.item) {
+            if (themeLoader.item.cancelScreenOff) {
+                themeLoader.item.cancelScreenOff();
+            }
+            if (typeof themeLoader.item.update === "function") {
+                themeLoader.item.update();
+            }
         }
     }
 
