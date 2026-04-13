@@ -286,10 +286,14 @@ Popup {
         dimPhaseDelayTimer.stop();
         screenOffAnim.stop();
         screenOffOverlay.progress = 0.0;
+        // Always take button control on open. On first boot, onOpened can
+        // fire before the async Loader has realized its child item — gating
+        // takeControl() on themeLoader.item was silently skipping the push,
+        // leaving main-app ButtonNavigation in control so no close handler
+        // fired on any remote button. onLoaded re-calls takeControl() as
+        // belt-and-suspenders; pushing twice with the same scope is a no-op.
+        buttonNavigation.takeControl();
         if (themeLoader.item) {
-            // Only take focus if theme actually loaded — prevents invisible Popup
-            // from consuming keys when the theme fails to render.
-            buttonNavigation.takeControl();
             if (themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = false;
             if (themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = chargingScreenRoot.displayOff;
         }
@@ -700,6 +704,10 @@ Popup {
 
         onLoaded: {
             if (!item) return;
+            // Belt-and-suspenders re-push in case onOpened fired before the
+            // Loader realized its item (first-boot race). Stack push is
+            // idempotent for the same scope.
+            if (chargingScreenRoot.visible) buttonNavigation.takeControl();
             // Runtime state — not config, must be set explicitly
             if (item.hasOwnProperty("isClosing")) item.isClosing = chargingScreenRoot.isClosing;
             if (item.hasOwnProperty("displayOff")) item.displayOff = chargingScreenRoot.displayOff;
