@@ -30,6 +30,14 @@ Textual descriptions instead of captures, since each style is a short in-motion 
 - **Dissolve** — the live theme blends into per-pixel white noise, progressively shifting to pure noise, then the noise fades to black. Film-dissolve energy.
 - **TV Static (theme-native, CRT collapse)** — only active when the TV Static theme is on. Snow and scanlines collapse vertically into a bright horizontal line, the line shrinks horizontally to a single dot, the dot fades to black. 800 ms collapse + 500 ms black hold, synchronized with the real hardware display-off.
 
+### Settings — Entry point
+
+After installation, the stock `Settings` page gains a new **Screensaver** entry (stock UC firmware doesn't have this row — it's the sole visible footprint of this mod on the UC UI). Everything below lives behind that entry.
+
+| Settings menu |
+|:-------------:|
+| ![Settings menu with Screensaver entry](docs/screenshots/config-menu-01.png) |
+
 ### Settings — Common toggles (shared across all themes)
 
 Clock and battery overlay controls — show/hide, font, color, size, charging-only visibility — apply to every theme. General behavior toggles (double-tap to close, close on wake, idle screensaver + timeout, DPAD/touch interactivity for Matrix) are also visible on every theme's `-settings-01` capture below.
