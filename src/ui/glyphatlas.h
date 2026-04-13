@@ -37,9 +37,6 @@ class GlyphAtlas {
     /// @brief Load bundled CJK font (NotoSansMonoCJKjp subset) for katakana charset. Call once at startup.
     static void loadCJKFont();
 
-    /// @brief Load bundled Braille font (FreeMono subset, U+2800-28FF) for avatar charset. Call once at startup.
-    static void loadBrailleFont();
-
     // Resolve charset name to character string
     static QString charsetString(const QString &charset);
 

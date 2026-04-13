@@ -36,16 +36,6 @@ static const QString CHARS_BINARY = QStringLiteral("01");
 static const QString CHARS_DIGITS = QStringLiteral("0123456789");
 static const QString CHARS_MESSAGE = QStringLiteral("ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789 ");
 
-// All 256 Braille patterns (U+2800-U+28FF) for avatar character grid
-static QString buildBrailleChars() {
-    QString s;
-    s.reserve(256);
-    for (int c = 0x2800; c <= 0x28FF; ++c)
-        s.append(QChar(c));
-    return s;
-}
-static const QString CHARS_BRAILLE = buildBrailleChars();
-
 // Color presets — file-scoped (no longer a static member)
 static const QMap<QString, QColor> s_colorPresets = {
     {"green",  QColor("#00ff41")}, {"blue",   QColor("#00b4d8")},
@@ -54,7 +44,6 @@ static const QMap<QString, QColor> s_colorPresets = {
 };
 
 static bool s_cjkFontLoaded = false;
-static bool s_brailleFontLoaded = false;
 
 void GlyphAtlas::loadCJKFont() {
     if (s_cjkFontLoaded) return;
@@ -73,23 +62,6 @@ void GlyphAtlas::loadCJKFont() {
     }
 }
 
-void GlyphAtlas::loadBrailleFont() {
-    if (s_brailleFontLoaded) return;
-
-    QString configPath = qgetenv("UC_CONFIG_HOME");
-    if (configPath.isEmpty())
-        configPath = QCoreApplication::applicationDirPath() + "/../config";
-    QString fontPath = configPath + "/BrailleFont.ttf";
-    int id = QFontDatabase::addApplicationFont(fontPath);
-    if (id >= 0) {
-        s_brailleFontLoaded = true;
-        qCInfo(lcScreensaver) << "Braille font loaded:" << fontPath;
-    } else {
-        qCWarning(lcScreensaver) << "Failed to load Braille font:" << fontPath
-                                 << "-- braille charset will fall back to system monospace";
-    }
-}
-
 QColor GlyphAtlas::resolveColor(const QString &colorMode, const QColor &fallback) {
     if (colorMode == "rainbow" || colorMode == "rainbow_gradient" || colorMode == "neon")
         return Qt::white;
@@ -101,7 +73,6 @@ QString GlyphAtlas::charsetString(const QString &charset) {
     if (charset == "ascii")   return CHARS_ASCII;
     if (charset == "binary")  return CHARS_BINARY;
     if (charset == "digits")  return CHARS_DIGITS;
-    if (charset == "braille") return CHARS_BRAILLE;
     return CHARS_KATAKANA;
 }
 
@@ -114,8 +85,6 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
     QFont font;
     if (charset == "katakana" && s_cjkFontLoaded) {
         font.setFamily("Noto Sans Mono CJK JP");
-    } else if (charset == "braille" && s_brailleFontLoaded) {
-        font.setFamily("FreeMono");
     } else {
         font.setFamily("monospace");
         font.setStyleHint(QFont::Monospace);
@@ -124,29 +93,15 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
 
     // Cell size from actual font metrics -- prevents vertical stretching
     QFontMetrics fm(font);
-    if (charset == "braille") {
-        // Braille: non-square cells for 2×4 dot grid. Programmatic dot rendering.
-        // At fontSize=14: 7×13 cells → 68×65 grid on 480×850.
-        // Dots are ~3px diameter — clearly visible anti-aliased circles.
-        m_glyphW = qMax(5, fontSize / 2);       // 7px at fontSize=14
-        m_glyphH = qMax(8, fontSize - 1);       // 13px at fontSize=14
-    } else {
-        m_glyphH = qMax(fm.height(), fontSize);
-        m_glyphW = m_glyphH;  // square cells for CJK/ASCII
-    }
+    m_glyphH = qMax(fm.height(), fontSize);
+    m_glyphW = m_glyphH;  // square cells for CJK/ASCII
 
     // Tight spacing for grid and messages. ARM font metrics (horizontalAdvance,
     // maxWidth, averageCharWidth) are unreliable — use fractions of fontSize.
     static constexpr float GRID_STEP_RATIO    = 0.85f;  // CJK full-width ink ≈ 85% of em-square
     static constexpr float MESSAGE_STEP_RATIO = 0.55f;  // ASCII monospace advance ≈ 55% of em-square
-    if (charset == "braille") {
-        // Braille step = glyph cell size (no overlap — dots fill the cell)
-        m_charStepW = m_glyphW;
-        m_charStepH = m_glyphH;
-    } else {
-        m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
-        m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
-    }
+    m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
+    m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_messageStepW = qMax(1, static_cast<int>(fontSize * MESSAGE_STEP_RATIO));
 
     // Color variants
@@ -248,55 +203,7 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
             // Main charset glyphs
             for (int g = 0; g < m_glyphCount; ++g) {
                 int x = g * m_glyphW, y = row * m_glyphH;
-
-                if (charset == "braille") {
-                    // Programmatic dot rendering — no font dependency.
-                    // Unicode Braille: U+2800 + bitfield. Bits map to 2×4 dot grid:
-                    //   bit0=dot1(r0,c0) bit1=dot2(r1,c0) bit2=dot3(r2,c0)
-                    //   bit3=dot4(r0,c1) bit4=dot5(r1,c1) bit5=dot6(r2,c1)
-                    //   bit6=dot7(r3,c0) bit7=dot8(r3,c1)
-                    int bits = g;  // glyph index 0-255 = codepoint - 0x2800
-
-                    // Dot layout: 2 columns × 4 rows in a 7×13 cell.
-                    // Dots are ~3px diameter — large enough to be clearly visible.
-                    float dotR = 1.5f;
-                    float gw = static_cast<float>(m_glyphW);
-                    float gh = static_cast<float>(m_glyphH);
-
-                    // 2 dot columns centered horizontally with ~1px gap
-                    float cx[2] = { gw * 0.28f, gw * 0.72f };
-                    // 4 dot rows evenly distributed vertically
-                    float cy[4] = {
-                        gh * 0.12f + dotR,
-                        gh * 0.12f + dotR + (gh * 0.76f) / 3.0f,
-                        gh * 0.12f + dotR + (gh * 0.76f) * 2.0f / 3.0f,
-                        gh * 0.12f + dotR + (gh * 0.76f)
-                    };
-
-                    // Bit-to-position mapping: [row*2+col] -> bit index
-                    // Braille: col0=dots 1,2,3,7 (bits 0,1,2,6) col1=dots 4,5,6,8 (bits 3,4,5,7)
-                    static const int dotBit[8] = { 0, 3, 1, 4, 2, 5, 6, 7 };
-                    p.setBrush(p.pen().color());
-                    p.setPen(Qt::NoPen);
-                    p.setRenderHint(QPainter::Antialiasing, true);
-                    for (int dr = 0; dr < 4; ++dr) {
-                        for (int dc = 0; dc < 2; ++dc) {
-                            int bit = dotBit[dr * 2 + dc];
-                            if (bits & (1 << bit)) {
-                                p.drawEllipse(QPointF(x + cx[dc], y + cy[dr]), dotR, dotR);
-                            }
-                        }
-                    }
-                    p.setRenderHint(QPainter::Antialiasing, false);
-                    // Restore pen for message glyphs
-                    p.setPen(QColor(
-                        qBound(0, static_cast<int>(colors[cv].red() * br), 255),
-                        qBound(0, static_cast<int>(colors[cv].green() * br), 255),
-                        qBound(0, static_cast<int>(colors[cv].blue() * br), 255), 255));
-                    p.setBrush(Qt::NoBrush);
-                } else {
-                    p.drawText(QRect(x, y, m_glyphW, m_glyphH), Qt::AlignCenter, chars.mid(g, 1));
-                }
+                p.drawText(QRect(x, y, m_glyphW, m_glyphH), Qt::AlignCenter, chars.mid(g, 1));
 
                 int idx = g * m_brightnessLevels * m_colorVariants + cv * m_brightnessLevels + b;
                 m_glyphUVs[idx] = QRectF(
@@ -341,8 +248,6 @@ void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
     QFont font;
     if (charset == "katakana" && s_cjkFontLoaded) {
         font.setFamily("Noto Sans Mono CJK JP");
-    } else if (charset == "braille" && s_brailleFontLoaded) {
-        font.setFamily("FreeMono");
     } else {
         font.setFamily("monospace");
         font.setStyleHint(QFont::Monospace);
@@ -350,22 +255,12 @@ void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
     font.setPixelSize(fontSize);
 
     QFontMetrics fm(font);
-    if (charset == "braille") {
-        m_glyphW = qMax(5, fontSize / 2);
-        m_glyphH = qMax(8, fontSize - 1);
-    } else {
-        m_glyphH = qMax(fm.height(), fontSize);
-        m_glyphW = m_glyphH;
-    }
+    m_glyphH = qMax(fm.height(), fontSize);
+    m_glyphW = m_glyphH;
     static constexpr float GRID_STEP_RATIO    = 0.85f;
     static constexpr float MESSAGE_STEP_RATIO = 0.55f;
-    if (charset == "braille") {
-        m_charStepW = m_glyphW;
-        m_charStepH = m_glyphH;
-    } else {
-        m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
-        m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
-    }
+    m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
+    m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_messageStepW = qMax(1, static_cast<int>(fontSize * MESSAGE_STEP_RATIO));
 
     // Color variants — same logic as build()
