@@ -444,6 +444,33 @@ jobs:
         run: |
           for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
 
+      # GPG-sign release artifacts (see docs/RELEASE_SIGNING.md).
+      # Gracefully skips signing if the RELEASE_GPG_PRIVATE_KEY secret is
+      # not configured — the pipeline still publishes unsigned tarballs +
+      # SHA256 hashes, and scripts/verify-release.sh handles both cases.
+      - name: GPG-sign release artifacts (if key configured)
+        if: "contains(github.ref, 'tags/v')"
+        env:
+          GPG_PRIVATE_KEY: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
+          GPG_PASSPHRASE: ${{ secrets.RELEASE_GPG_PASSPHRASE }}
+        run: |
+          if [ -z "$GPG_PRIVATE_KEY" ]; then
+            echo "::notice::RELEASE_GPG_PRIVATE_KEY secret not set — skipping signing"
+            echo "  To enable: see docs/RELEASE_SIGNING.md"
+            exit 0
+          fi
+          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          for filename in *.tar.gz; do
+            echo "signing $filename"
+            gpg --batch --yes --pinentry-mode loopback \
+                --passphrase "$GPG_PASSPHRASE" \
+                --detach-sign --armor \
+                --output "${filename}.asc" \
+                "$filename"
+          done
+          echo "signed artifacts:"
+          ls -la *.asc
+
       - name: Create Release
         uses: "marvinpinto/action-automatic-releases@latest"
         if: "contains(github.ref, 'tags/v')"
@@ -452,4 +479,5 @@ jobs:
           prerelease: false
           files: |
             *.tar.gz
+            *.asc
             ${{ env.HASH_FILENAME }}
