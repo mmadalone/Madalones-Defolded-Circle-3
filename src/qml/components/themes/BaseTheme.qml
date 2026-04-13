@@ -32,7 +32,13 @@
 //   readonly property int  screenOffLeadMs: 800   // ms — how early to start
 //
 //   function startScreenOff()    { /* begin the animation */ }
-//   function cancelScreenOff()   { /* reset — user activity, theme re-enters  */ }
+//   function cancelScreenOff()   { /* reset on wake. ALSO the wake-refresh hook for any
+//                                    theme with stateful rendering (e.g. MatrixTheme
+//                                    calls matrixRain.resetAfterScreenOff() here to
+//                                    sidestep the QML running-binding vs scene-graph
+//                                    race — see MatrixTheme.qml / fbf9028). Gated in
+//                                    ChargingScreen.cancelScreenOffEffect(isWakeFromOff)
+//                                    so user interaction (DPAD/touch) doesn't fire it. */ }
 //   function finalizeScreenOff() { /* snap to final state — display physically off */ }
 //
 // When providesNativeScreenOff === true AND the user-selected effect style is

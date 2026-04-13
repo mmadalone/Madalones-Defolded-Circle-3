@@ -92,10 +92,11 @@ Item {
         text: {
             // ui.time is QTime (no date). Use JS Date() for the date portion.
             void(ui.time);  // trigger rebinding on time change
-            var d = new Date();
-            var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate();
+            // Locale-aware day + month names via Qt.formatDateTime. Replaces
+            // hardcoded English arrays so the date text translates automatically
+            // when the UC3 system locale changes — no .ts entries needed.
+            //   dddd = full day name, MMM = abbreviated month, d = day-of-month.
+            return Qt.formatDateTime(new Date(), "dddd, MMM d", Qt.locale());
         }
     }
 

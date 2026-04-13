@@ -354,13 +354,18 @@
 <context>
     <name>BatteryOverlay</name>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
-        <source>Fully charged</source>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="41"/>
+        <source>100% - Fully charged</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="39"/>
-        <source> - Charging</source>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="43"/>
+        <source>%1% - Charging</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="44"/>
+        <source>%1%</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4742,7 +4747,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="842"/>
+        <location filename="../../src/qml/main.qml" line="848"/>
         <source>Done</source>
         <translation type="unfinished"></translation>
     </message>

@@ -65,6 +65,26 @@ jobs:
             echo "Tag version matches: $TAG_VERSION"
           fi
           echo "Version sync OK: $PRO_VERSION"
+      - name: CHANGELOG sync gate (tagged releases only)
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF#refs/tags/v}"
+          if [ ! -f CHANGELOG.md ]; then
+            echo "::error::CHANGELOG.md not found at repo root"
+            exit 1
+          fi
+          # Accept common heading styles:
+          #   ## 1.2.3 ...
+          #   ## [1.2.3] ...
+          #   ## v1.2.3 ...
+          #   ### 1.2.3 ...
+          if ! grep -qE "^(##|###) +v?\[?${TAG_VERSION}[]\b ]" CHANGELOG.md; then
+            echo "::error::CHANGELOG.md has no entry for version $TAG_VERSION"
+            echo "Add a heading like '## $TAG_VERSION — <summary>' before tagging a release."
+            exit 1
+          fi
+          echo "CHANGELOG.md entry found for $TAG_VERSION"
 
   build-embedded:
     name: ${{ matrix.config.name }}

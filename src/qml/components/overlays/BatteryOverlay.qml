@@ -34,9 +34,14 @@ Item {
     Text {
         color: root.batteryColor
         text: {
+            // Fully translatable strings (lupdate picks these up via qsTr).
+            // Percentage is injected via %1 placeholder so translators can
+            // adjust word ordering / punctuation freely.
             if (Battery.level >= 100 && !Battery.isCharging)
-                return "100% - " + qsTr("Fully charged");
-            return Battery.level + "%" + (Battery.isCharging ? qsTr(" - Charging") : "");
+                return qsTr("100% - Fully charged");
+            if (Battery.isCharging)
+                return qsTr("%1% - Charging").arg(Battery.level);
+            return qsTr("%1%").arg(Battery.level);
         }
         anchors { left: icon.right; leftMargin: 10; verticalCenter: icon.verticalCenter }
         font: fonts.primaryFont(ScreensaverConfig.batteryTextSize)

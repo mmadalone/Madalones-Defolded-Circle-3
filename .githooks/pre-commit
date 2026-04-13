@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Pre-commit hook — validates staged C++ changes against cpplint + clang-format.
+# Install: `git config core.hooksDir .githooks` (see CONTRIBUTING.md → Local setup).
+# CI enforces the same checks in .github/workflows/code_guidelines.yml so nothing
+# slips through on push even if the hook is skipped locally.
+
+# Collect staged C++ files (added, copied, modified — not deleted)
+STAGED_CXX=$(git diff --cached --name-only --diff-filter=ACM \
+                | grep -E '^src/.*\.(cpp|h|hpp|cc)$' || true)
+
+if [ -z "$STAGED_CXX" ]; then
+    # No C++ changes staged — nothing to lint/format
+    exit 0
+fi
+
+FAILED=0
+FILE_COUNT=$(echo "$STAGED_CXX" | wc -l | tr -d ' ')
+
+# --- cpplint pass ---
+# Runs only on staged files, not the whole tree (faster than ./cpplint.sh).
+if command -v cpplint >/dev/null 2>&1; then
+    echo "pre-commit: cpplint on $FILE_COUNT staged C++ file(s)..."
+    if ! echo "$STAGED_CXX" | xargs cpplint \
+            --filter=-build/include_subdir,-build/c++11,-whitespace \
+            --linelength=120 --root=src 2>&1; then
+        echo "" >&2
+        echo "ERROR: cpplint failed. Fix the warnings above and re-stage." >&2
+        FAILED=1
+    fi
+else
+    echo "pre-commit: cpplint not installed locally — skipping (pip install cpplint)" >&2
+fi
+
+# --- clang-format pass ---
+# Dry-run mode: exits non-zero if any file would be reformatted.
+if command -v clang-format >/dev/null 2>&1; then
+    echo "pre-commit: clang-format --dry-run on $FILE_COUNT staged C++ file(s)..."
+    if ! echo "$STAGED_CXX" | xargs clang-format --dry-run -Werror 2>&1; then
+        echo "" >&2
+        echo "ERROR: clang-format check failed. Run: clang-format -i <file>" >&2
+        FAILED=1
+    fi
+else
+    echo "pre-commit: clang-format not installed locally — skipping" >&2
+fi
+
+if [ "$FAILED" -ne 0 ]; then
+    echo "" >&2
+    echo "pre-commit: FAILED — commit blocked. Bypass with --no-verify only if you know what you're doing." >&2
+    exit 1
+fi
+
+echo "pre-commit: OK"
+exit 0

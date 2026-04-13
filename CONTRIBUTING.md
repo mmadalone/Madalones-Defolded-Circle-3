@@ -25,6 +25,16 @@ compatible with the embedded runtime environment and runs smoothly.
 
 With that out of the way, here's the process of creating a pull request and making sure it passes the automated tests:
 
+### Local setup (one-time)
+
+Install the project's pre-commit hook so `cpplint` and `clang-format` run automatically on each commit:
+
+```shell
+git config core.hooksDir .githooks
+```
+
+The hook only checks staged C++ files (fast) and skips either tool gracefully if it isn't installed on your machine. CI enforces the same checks in `code_guidelines.yml` so nothing slips through on push even if the hook is skipped locally. See [.githooks/pre-commit](.githooks/pre-commit) for the exact script.
+
 ### Contributing Code :bulb:
 
 1. Fork the repo.
