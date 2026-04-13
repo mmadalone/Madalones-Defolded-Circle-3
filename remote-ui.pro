@@ -17,10 +17,16 @@ CONFIG += c++17 disable-desktop handwriting
 CONFIG += qtquickcompiler
 
 QMAKE_CXXFLAGS_WARN_ON += \
+    -Wall \
+    -Wextra \
+    -Werror=format \
     -Wold-style-cast \
     -Wfloat-equal \
     -Woverloaded-virtual \
     -Wshadow
+# Note: -Werror=implicit-function-declaration is intentionally NOT added here
+# — it's a C-only flag and GCC rejects it for C++ (cc1plus warns per TU).
+# For a Qt C++17 project with no .c sources it has no effect anyway.
 
 DEFINES += QT_DEPRECATED_WARNINGS
 DEFINES += QT_MESSAGELOGCONTEXT
