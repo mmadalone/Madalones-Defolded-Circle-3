@@ -25,7 +25,19 @@ Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero
 - Clock (position: top / center / bottom, 24h toggle, color, font, docked-only mode)
 - Battery level (icon + percent with 5-tier color coding, size slider, "Fully charged" translated)
 
-**Screen-off animations:** fade / flash / vignette / wipe / sleepwave / genie / pixelate / dissolve / theme-native (per-theme shutdown animation, e.g. Analog's sweep-and-fall, TV Static's collapse)
+**Screen-off animations:**
+A shared animation system plays a short shutdown effect right before the hardware blanks the display. Two-tier architecture: a *Tier 1* shared overlay (8 styles, works on any theme) plus an optional *Tier 2* theme-native protocol (themes can opt in with their own tightly-integrated effect). Event-driven via the core's `Normal → Idle` transition with self-calibrating dim-phase measurement — no baseline drift, no guessing.
+- **Fade** — monotonic black ramp. Clean dim-to-nothing, safest baseline.
+- **Flash** — brief white full-screen pulse, hard cut to black. Classic "TV zap off".
+- **Iris (vignette)** — circular black mask closes from edges to centre. Camera-shutter feel.
+- **Wipe** — solid black rectangle sweeps top-to-bottom like an old film projector.
+- **Wave** — soft cyan gradient wave travels downward, dimming everything behind it.
+- **Genie** — the live theme shrinks and slides toward the bottom of the screen via an inverse-scale UV transform. macOS Genie energy without the curved ribbon.
+- **Pixels** — theme progressively pixelates into bigger blocks (0.5% → 8% of screen width), then fades to black.
+- **Dissolve** — theme blends into per-pixel white noise, progressively shifts to pure noise, then fades to black.
+- **TV Static (theme-native, CRT collapse)** — only when the TV Static theme is active. Snow and scanlines collapse vertically into a bright horizontal line, the line shrinks horizontally to a dot, the dot fades to black. 800 ms collapse + 500 ms black hold, synchronized with the real hardware display-off.
+
+Controls live under `Settings → Power saving → Screen off animations`: master on/off, "Fire when undocked" toggle (plays on battery idle-timeout too), and the style picker.
 
 **Interactive (Matrix theme):**
 - DPAD 8-way direction with smooth gravity-lerp (no respawn on direction change)
