@@ -1635,10 +1635,18 @@ class MatrixRainTest : public QObject {
         MatrixRainItem item;
         setupItem(item, 480, 800, "down");
         item.setMessages("A");  // single char, always findable in ASCII charset
+        // Reseed + reinitialise streams deterministically. RainSimulation's
+        // default ctor seeds m_rng from std::random_device, which was making
+        // this test flaky on CI — unlucky seeds left no streams mature enough
+        // (histCount >= minTrail) for injectSubliminalStream to pick a
+        // candidate, and a string of 5 such unlucky attempts would fail the
+        // QVERIFY. Fixed seed + bumped attempt budget eliminates both.
+        item.m_sim.m_rng.seed(42);
+        item.m_sim.initStreams(480, 800, item.m_atlas);
 
         auto gridSnap = item.m_sim.m_charGrid;
         bool injected = false;
-        for (int attempt = 0; attempt < 5 && !injected; ++attempt) {
+        for (int attempt = 0; attempt < 30 && !injected; ++attempt) {
             for (int t = 0; t < 20; ++t)
                 item.m_sim.advanceSimulation(item.m_atlas);
             gridSnap = item.m_sim.m_charGrid;
