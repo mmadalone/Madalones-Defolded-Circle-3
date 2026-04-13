@@ -52,6 +52,33 @@ jobs:
           clang-tidy --version
           bear --version
 
+      # Qt 5.15 lupdate/lrelease require libicu56 which Ubuntu 22.04 no
+      # longer ships. qmake auto-invokes lupdate when processing the .pro
+      # file's TRANSLATIONS, so qmake itself fails without libicu56 present.
+      # Mirror the libicu56 cache/build/install steps from build.yml.
+      - name: Cache libicu56 build
+        id: cache-libicu56
+        uses: actions/cache@v4
+        with:
+          path: icu
+          key: libicu56-tidy
+
+      - name: Build libicu56 library for lupdate
+        if: steps.cache-libicu56.outputs.cache-hit != 'true'
+        run: |
+          wget https://github.com/unicode-org/icu/releases/download/release-56-2/icu4c-56_2-src.tgz
+          tar xzf icu4c-56_2-src.tgz
+          cd icu/source
+          chmod +x runConfigureICU configure install-sh
+          ./runConfigureICU Linux
+          make -j$(nproc)
+
+      - name: Install libicu56 library
+        run: |
+          cd icu/source
+          sudo make install
+          sudo ldconfig
+
       - name: Install Qt
         uses: jurplel/install-qt-action@v3
         with:
@@ -96,14 +123,14 @@ jobs:
             src/ui/glyphatlas.cpp
           )
 
-          # Filter to files that actually exist (some may be deferred to
-          # feature/avatar branch and absent from main)
+          # Filter to files that actually exist so the workflow stays
+          # resilient if the custom-file set shrinks in a future refactor.
           EXISTING_FILES=()
           for f in "${CUSTOM_FILES[@]}"; do
             if [ -f "$f" ]; then
               EXISTING_FILES+=("$f")
             else
-              echo "::notice::$f not present on this branch — skipping"
+              echo "::notice::$f not present — skipping"
             fi
           done
 
