@@ -356,17 +356,17 @@
     <message>
         <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="41"/>
         <source>100% - Fully charged</source>
-        <translation type="unfinished"></translation>
+        <translation>100% - Vollständig geladen</translation>
     </message>
     <message>
         <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="43"/>
         <source>%1% - Charging</source>
-        <translation type="unfinished"></translation>
+        <translation>%1% - Lädt</translation>
     </message>
     <message>
         <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="44"/>
         <source>%1%</source>
-        <translation type="unfinished"></translation>
+        <translation>%1%</translation>
     </message>
 </context>
 <context>

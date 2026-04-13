@@ -1,0 +1,209 @@
+{
+  "bomFormat": "CycloneDX",
+  "specVersion": "1.5",
+  "serialNumber": "urn:uuid:b1a1e9fa-0000-4000-a000-remoteui1222",
+  "version": 1,
+  "metadata": {
+    "timestamp": "2026-04-13T21:40:00Z",
+    "tools": [
+      {
+        "vendor": "madalone",
+        "name": "hand-maintained",
+        "version": "1.0",
+        "externalReferences": [
+          {
+            "type": "website",
+            "url": "https://github.com/mmadalone/Madalones-Defolded-Circle-3"
+          }
+        ]
+      }
+    ],
+    "authors": [
+      {
+        "name": "madalone"
+      }
+    ],
+    "component": {
+      "bom-ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.2.2",
+      "type": "application",
+      "group": "madalone",
+      "name": "remote-ui",
+      "version": "1.2.2",
+      "description": "Custom screensaver firmware fork of unfoldedcircle/remote-ui for the UC Remote 3 (ARM64, Qt 5.15, GPL-3.0-or-later).",
+      "licenses": [
+        {
+          "license": {
+            "id": "GPL-3.0-or-later"
+          }
+        }
+      ],
+      "purl": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.2.2",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/mmadalone/Madalones-Defolded-Circle-3"
+        },
+        {
+          "type": "website",
+          "url": "https://github.com/unfoldedcircle/remote-ui"
+        }
+      ]
+    }
+  },
+  "components": [
+    {
+      "bom-ref": "pkg:generic/qt-static@5.15.8",
+      "type": "framework",
+      "group": "qt",
+      "name": "Qt (static, arm64)",
+      "version": "5.15.8",
+      "description": "Qt 5.15.8 static build for ARM64 — statically linked into the UC Remote 3 firmware binary via the unfoldedcircle/r2-toolchain-qt-5.15.8-static Docker toolchain. Host builds (macOS dev, Linux CI) use Qt 5.15.2 from jurplel/install-qt-action, which is source-compatible for this project.",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-3.0-only"
+          }
+        },
+        {
+          "license": {
+            "id": "GPL-3.0-only"
+          }
+        }
+      ],
+      "purl": "pkg:generic/qt@5.15.8",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://www.qt.io/"
+        },
+        {
+          "type": "documentation",
+          "url": "https://doc.qt.io/qt-5.15/"
+        },
+        {
+          "type": "license",
+          "url": "https://doc.qt.io/qt-5/licensing.html"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:generic/qt-desktop@5.15.2",
+      "type": "framework",
+      "group": "qt",
+      "name": "Qt (desktop host build)",
+      "version": "5.15.2",
+      "description": "Qt 5.15.2 used on the host side for macOS dev builds and GitHub Actions runners (Linux x64). Installed via jurplel/install-qt-action@v3. Source-compatible with 5.15.8 for the custom screensaver code.",
+      "licenses": [
+        {
+          "license": {
+            "id": "LGPL-3.0-only"
+          }
+        }
+      ],
+      "purl": "pkg:generic/qt@5.15.2"
+    },
+    {
+      "bom-ref": "pkg:generic/freetype@bundled",
+      "type": "library",
+      "group": "freetype",
+      "name": "FreeType",
+      "version": "bundled-with-qt",
+      "description": "Font rasterization library bundled with the Qt static toolchain. Used for rendering custom fonts (NotoSansMonoCJKjp.otf) in the Matrix rain screensaver theme.",
+      "licenses": [
+        {
+          "license": {
+            "name": "FreeType License or GPL-2.0-only"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://freetype.org/"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:github/nayuki/qr-code-generator",
+      "type": "library",
+      "group": "nayuki",
+      "name": "QR-Code-generator",
+      "version": "submodule-HEAD",
+      "description": "QR Code generator library by nayuki, included as a git submodule at 3rd-party/QR-Code-generator. Used by upstream UC for device-pairing QR codes. Not touched by our custom mods.",
+      "licenses": [
+        {
+          "license": {
+            "id": "MIT"
+          }
+        }
+      ],
+      "purl": "pkg:github/nayuki/QR-Code-generator",
+      "externalReferences": [
+        {
+          "type": "vcs",
+          "url": "https://github.com/nayuki/QR-Code-generator"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:font/noto-sans-mono-cjkjp-subset",
+      "type": "data",
+      "group": "google",
+      "name": "Noto Sans Mono CJK JP (katakana subset)",
+      "version": "subset-23kb",
+      "description": "~23KB katakana subset of Noto Sans Mono CJK JP, bundled in deploy/config/NotoSansMonoCJKjp.otf and loaded at runtime for the Matrix rain theme's katakana glyph atlas. Subset generated via pyftsubset.",
+      "licenses": [
+        {
+          "license": {
+            "id": "OFL-1.1"
+          }
+        }
+      ],
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://fonts.google.com/noto/specimen/Noto+Sans+Mono+CJK+JP"
+        }
+      ]
+    },
+    {
+      "bom-ref": "pkg:generic/libicu@56",
+      "type": "library",
+      "group": "unicode",
+      "name": "libicu (build tool dependency)",
+      "version": "56.2",
+      "description": "ICU 56 used only by Qt's lupdate/lrelease translation tools on the Linux CI runner (via build.yml libicu56 build step). Not linked into the runtime binary; build-only dependency. Listed for completeness because it's fetched during CI.",
+      "licenses": [
+        {
+          "license": {
+            "name": "ICU License (Unicode-DFS-2016 compatible)"
+          }
+        }
+      ],
+      "scope": "excluded",
+      "externalReferences": [
+        {
+          "type": "website",
+          "url": "https://icu.unicode.org/"
+        }
+      ]
+    }
+  ],
+  "dependencies": [
+    {
+      "ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.2.2",
+      "dependsOn": [
+        "pkg:generic/qt-static@5.15.8",
+        "pkg:generic/freetype@bundled",
+        "pkg:github/nayuki/qr-code-generator",
+        "pkg:font/noto-sans-mono-cjkjp-subset"
+      ]
+    },
+    {
+      "ref": "pkg:generic/qt-static@5.15.8",
+      "dependsOn": [
+        "pkg:generic/freetype@bundled"
+      ]
+    }
+  ]
+}

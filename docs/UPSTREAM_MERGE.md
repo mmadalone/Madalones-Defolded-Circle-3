@@ -132,3 +132,38 @@ Keep the conflict-surface table in sync with [CUSTOM_FILES.md](CUSTOM_FILES.md) 
 ## Known upstream base
 
 Current fork base: **`v0.71.1`** (tracked via the `upstream` remote). Next upstream release bump requires walking through this doc end-to-end.
+
+## Rehearsal history
+
+Log each rehearsal here so "last known merge state" is always at a glance.
+
+### 2026-04-13 — Batch G #17 initial rehearsal
+
+- **Trigger:** Batch G #17 of the path-to-A plan (first rehearsal under this playbook).
+- **Fetch result:** `git fetch upstream` — no new commits on `upstream/main` since our fork point.
+- **Divergence:**
+  - `git rev-list --count HEAD..upstream/main` → **0 commits behind upstream**
+  - `git rev-list --count upstream/main..HEAD` → **82 commits ahead of upstream**
+  - `git merge-base HEAD upstream/main` → `0586d45b3ee7a04d2f1a15d9e4b2606c24d7ae08`
+  - Upstream `HEAD` commit: `0586d45 v0.71.1 changes` (same commit as the merge-base)
+- **Upstream tag state:** Latest upstream tag is `v0.38.4` (`f06f0f0`), which lags the upstream `main` commit. Upstream's `main` commit message claims "v0.71.1 changes" but they haven't pushed a `v0.71.1` tag yet — a mild inconsistency in the upstream repo, not our problem.
+- **Dry merge:** `git merge --no-commit --no-ff upstream/main` on a throwaway `rehearsal/upstream-2026-04-13` branch → **"Already up to date."** — zero conflicts, zero files touched.
+- **Branch cleanup:** rehearsal branch deleted cleanly (`git branch -D rehearsal/upstream-2026-04-13`).
+- **Validation checklist outcome:** not run — there's nothing to validate when the merge is a no-op. When the next rehearsal has real upstream commits, work through the Validation checklist section above.
+- **Conclusion:** Our fork is a strict superset of `upstream/main`. Next rehearsal should happen after upstream advances `main`; watch the upstream repo or their release cadence for triggering events.
+
+### Template for future entries
+
+```
+### YYYY-MM-DD — <trigger description>
+
+- **Trigger:** <why we ran the rehearsal>
+- **Fetch result:** `git fetch upstream` — <N new commits / no change>
+- **Divergence:** HEAD is <N commits behind> / <M commits ahead>
+- **Conflicts:** <N files / none>
+  - <file 1>: <conflict type + resolution>
+  - <file 2>: ...
+- **Dry merge / resolution:** <what happened>
+- **Validation checklist outcome:** <pass / fail + notes>
+- **Conclusion:** <merged to main / held / rolled back>
+```
