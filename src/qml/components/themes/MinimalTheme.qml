@@ -92,11 +92,18 @@ Item {
         text: {
             // ui.time is QTime (no date). Use JS Date() for the date portion.
             void(ui.time);  // trigger rebinding on time change
-            // Locale-aware day + month names via Qt.formatDateTime. Replaces
-            // hardcoded English arrays so the date text translates automatically
-            // when the UC3 system locale changes — no .ts entries needed.
+            // Locale-aware day + month names via Date.toLocaleDateString(locale, format).
+            // This is the Qt QML extension on JS Date.prototype — NOT the
+            // ECMAScript standard one — that accepts a Qt Locale object plus
+            // a Qt date format string. Neither Qt.formatDateTime(date, format,
+            // Qt.locale()) nor Qt.locale().toString(date, format) work:
+            //   - the former silently returns blank (3rd arg is a
+            //     Locale.FormatType enum, not a Locale object)
+            //   - the latter prints "[object Object]" because the QML Locale
+            //     type has no toString(date, format) method, so the call
+            //     falls through to Object.prototype.toString()
             //   dddd = full day name, MMM = abbreviated month, d = day-of-month.
-            return Qt.formatDateTime(new Date(), "dddd, MMM d", Qt.locale());
+            return new Date().toLocaleDateString(Qt.locale(), "dddd, MMM d");
         }
     }
 
