@@ -270,13 +270,13 @@ public:
     /// These adjust simulation parameters, timer intervals, or gravity state beyond simple forwarding.
     /// @{
     void setSpeed(qreal s);
-    void setDensity(qreal d);
-    void setDirection(const QString &d);
+    void setDensity(qreal density);
+    void setDirection(const QString &dir);
     void setGravityMode(bool g);
     void setAutoRotateSpeed(int v);
     void setAutoRotateBend(int v);
     void setRunning(bool r);
-    void setDisplayOff(bool d);
+    void setDisplayOff(bool off);
     /// @}
 
     // Trivial simulation-forwarding setters (inline — guard + emit)
@@ -320,7 +320,7 @@ public:
     void setMessages(const QString &m)      { if (m_sim.setMessages(m)) emit messagesChanged(); }
     void setMessageInterval(int v)    { if (m_sim.setMessageInterval(v)) emit messageIntervalChanged(); }
     void setMessageRandom(bool v)     { if (m_sim.setMessageRandom(v)) emit messageRandomChanged(); }
-    void setMessageDirection(const QString &d) { if (m_sim.setMessageDirection(d)) emit messageDirectionChanged(); }
+    void setMessageDirection(const QString &dir) { if (m_sim.setMessageDirection(dir)) emit messageDirectionChanged(); }
     void setMessageFlash(bool v)      { if (m_sim.setMessageFlash(v)) emit messageFlashChanged(); }
     void setMessagePulse(bool v)      { if (m_sim.setMessagePulse(v)) emit messagePulseChanged(); }
     void setSubliminal(bool v)        { if (m_sim.setSubliminal(v)) emit subliminalChanged(); }

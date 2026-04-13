@@ -664,8 +664,8 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
             const auto &charGrid = midSim.charGrid();
             const auto &glitchTrails = midSim.glitchTrails();
             for (const auto &gt : glitchTrails) {
-                for (int d = 0; d < gt.length; ++d) {
-                    int c = gt.col - d * gt.dx, r = gt.row - d * gt.dy;
+                for (int step = 0; step < gt.length; ++step) {
+                    int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
                     if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
                     int gridIdx = c * gridRows + r;
                     if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
@@ -778,9 +778,9 @@ int MatrixRainItem::countVisibleQuads() {
         const auto &s = streams[si];
         if (!s.active) continue;
         quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int d = 0; d < s.trailLength; ++d) {
+        for (int step = 0; step < s.trailLength; ++step) {
             int c, r;
-            s.trailPos(d, c, r);
+            s.trailPos(step, c, r);
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
             int cellIdx = c * gridRows + r;
             if (m_cellDrawn[cellIdx] >= prio) continue;
@@ -789,8 +789,8 @@ int MatrixRainItem::countVisibleQuads() {
         }
     }
     for (const auto &gt : glitchTrails) {
-        for (int d = 0; d < gt.length; ++d) {
-            int c = gt.col - d * gt.dx, r = gt.row - d * gt.dy;
+        for (int step = 0; step < gt.length; ++step) {
+            int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
             if (c >= 0 && c < gridCols && r >= 0 && r < gridRows)
                 quadCount++;
         }
@@ -813,7 +813,6 @@ int MatrixRainItem::countVisibleQuads() {
     const auto &cellAge = m_sim.cellAge();
     const auto &bmap2 = m_atlas.brightnessMap();
     int bmapSize = bmap2.size();
-    int blevels2 = m_atlas.brightnessLevels();
     int maxGlowAge = (m_glowFade <= 0) ? 0 : qMin(bmapSize, qMax(4, bmapSize * m_glowFade / 100));
     for (int i = 0; i < cellAge.size(); ++i) {
         if (m_cellDrawn[i] == 0 && cellAge[i] < maxGlowAge)
@@ -857,15 +856,15 @@ void MatrixRainItem::renderStreamTrails(MatrixRainVertex *verts, quint16 *ixBuf,
         const auto &s = streams[si];
         if (!s.active) continue;
         quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int d = 0; d < s.trailLength; ++d) {
+        for (int step = 0; step < s.trailLength; ++step) {
             int c, r;
-            s.trailPos(d, c, r);
+            s.trailPos(step, c, r);
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
             int cellIdx = c * gridRows + r;
             if (m_cellDrawn[cellIdx] >= prio) continue;
             m_cellDrawn[cellIdx] = prio;
 
-            int dist = SimContext::trailDist(d, s.trailLength, simInvertTrail);
+            int dist = SimContext::trailDist(step, s.trailLength, simInvertTrail);
             int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
             if (dist == 0 && simGlow) bright = 0;
 
@@ -977,8 +976,8 @@ void MatrixRainItem::renderGlitchTrails(MatrixRainVertex *verts, quint16 *ixBuf,
     const auto &glitchTrails = m_sim.glitchTrails();
 
     for (const auto &gt : glitchTrails) {
-        for (int d = 0; d < gt.length; ++d) {
-            int c = gt.col - d * gt.dx, r = gt.row - d * gt.dy;
+        for (int step = 0; step < gt.length; ++step) {
+            int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
 
             int gridIdx = c * gridRows + r;
@@ -1109,17 +1108,17 @@ void MatrixRainItem::setSpeed(qreal s) {
         emit speedChanged();
     }
 }
-void MatrixRainItem::setDensity(qreal d) {
-    if (m_sim.setDensity(d)) {
+void MatrixRainItem::setDensity(qreal density) {
+    if (m_sim.setDensity(density)) {
         if (m_layersEnabled) syncLayerConfig();
         m_needsReinit = true; update(); emit densityChanged();
     }
 }
-void MatrixRainItem::setDirection(const QString &d) {
-    if (m_sim.setDirection(d)) {
+void MatrixRainItem::setDirection(const QString &dir) {
+    if (m_sim.setDirection(dir)) {
         if (m_layersEnabled) {
             for (int i = 0; i < LAYER_COUNT; ++i)
-                m_layers[i].sim.setDirection(d);
+                m_layers[i].sim.setDirection(dir);
         }
         m_needsReinit = true; update(); emit directionChanged();
     }
@@ -1456,10 +1455,10 @@ void MatrixRainItem::setRunning(bool r) {
         emit runningChanged();
     }
 }
-void MatrixRainItem::setDisplayOff(bool d) {
-    if (m_displayOff != d) {
-        m_displayOff = d;
-        if (d) {
+void MatrixRainItem::setDisplayOff(bool off) {
+    if (m_displayOff != off) {
+        m_displayOff = off;
+        if (off) {
             // Pause the sim tick timer during display-off to save ~4% of
             // one ARM core on long dock sessions (sustained load prevents
             // deep C-state sleep → thermal accumulation). m_running and
@@ -1706,9 +1705,9 @@ int MatrixRainItem::countVisibleQuadsAllLayers() {
             const auto &s = streams[si];
             if (!s.active) continue;
             quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-            for (int d = 0; d < s.trailLength; ++d) {
+            for (int step = 0; step < s.trailLength; ++step) {
                 int c, r;
-                s.trailPos(d, c, r);
+                s.trailPos(step, c, r);
                 if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
                 int cellIdx = c * gridRows + r;
                 if (m_layers[li].cellDrawn[cellIdx] >= prio) continue;
@@ -1732,8 +1731,8 @@ int MatrixRainItem::countVisibleQuadsAllLayers() {
         if (m_layers[li].isInteractive) {
             const auto &glitchTrails = ls.glitchTrails();
             for (const auto &gt : glitchTrails) {
-                for (int d = 0; d < gt.length; ++d) {
-                    int c = gt.col - d * gt.dx, r = gt.row - d * gt.dy;
+                for (int step = 0; step < gt.length; ++step) {
+                    int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
                     if (c >= 0 && c < gridCols && r >= 0 && r < gridRows)
                         totalQuads++;
                 }
@@ -1806,15 +1805,15 @@ void MatrixRainItem::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *ver
         const auto &s = streams[si];
         if (!s.active) continue;
         quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int d = 0; d < s.trailLength; ++d) {
+        for (int step = 0; step < s.trailLength; ++step) {
             int c, r;
-            s.trailPos(d, c, r);
+            s.trailPos(step, c, r);
             if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
             int cellIdx = c * gridRows + r;
             if (m_layers[layerIdx].cellDrawn[cellIdx] >= prio) continue;
             m_layers[layerIdx].cellDrawn[cellIdx] = prio;
 
-            int dist = SimContext::trailDist(d, s.trailLength, simInvertTrail);
+            int dist = SimContext::trailDist(step, s.trailLength, simInvertTrail);
             int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
             if (dist == 0 && simGlow) bright = 0;
 
