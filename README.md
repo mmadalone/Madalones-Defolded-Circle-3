@@ -2,16 +2,20 @@
 
 Custom firmware fork of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui) for the **Unfolded Circle Remote 3**, replacing the stock analog-clock charging screen with a GPU-accelerated screensaver system.
 
-Five themes, five screen-off animation styles, full DPAD/touch interaction, zero Home Assistant dependency, clean fall-back to stock UI on install failure.
+Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero Home Assistant dependency, clean fall-back to stock UI on install failure.
 
-![Matrix rain screensaver](docs/screenshots/matrix-green.png)![Matrix rain color 3 screensaver](docs/screenshots/matrix-color-03.png) 
+[**▶ Watch the demo on YouTube Shorts**](https://youtube.com/shorts/jFoOmoNNWwU) — 60-second tour of Matrix rain in action on a UC3.
+
+| Matrix Rain | Starfield | Minimal | Analog | TV Static |
+|:-----------:|:---------:|:-------:|:------:|:---------:|
+| ![Matrix](docs/screenshots/matrix-green.png) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) | ![Analog](docs/screenshots/analog.png) | ![TV Static](docs/screenshots/tv-static.png) |
 
 ---
 
 ## Features
 
 **Themes (v1.2.2):**
-- **Matrix rain** — 3-layer depth with per-cell residual glow, 108 tunable properties, 6 color modes (green / blue / red / amber / white / purple + rainbow / rainbow-gradient / neon), 4 charsets (ASCII / binary / digits / katakana), full glitch engine (flash, stutter, reverse, direction trails, chaos bursts), coprime-gravity auto-rotation with DPAD/touch direction control, message overlay with pulse/flash effects
+- **Matrix rain** — 3-layer depth with per-cell residual glow, 108 tunable properties, 6 color modes (green / blue / red / amber / white / purple + rainbow / rainbow-gradient / neon), 4 charsets (ASCII / binary / digits / katakana), full glitch engine (flash, stutter, reverse, direction trails, chaos bursts), coprime-gravity auto-rotation with DPAD/touch direction control, message overlay with pulse/flash effects. **⚠ 108 tunables is enough rope to make it look stunning, subtle, chaotic, or downright unreadable.** Every combination is legitimate and intended — the defaults are a conservative starting point, but every slider, toggle, and colour picker is exposed because the point of the mod is to let you push it wherever you want.
 - **Starfield** — warp-speed star tunnel with depth, trail length, color gradients (rainbow / neon)
 - **Minimal** — large digital clock + locale-aware date, font + size + color configurable, optional 24h mode
 - **Analog** — scaled-up analog clock with gradient hands + shutoff animation
@@ -161,6 +165,10 @@ This fork was **vibecoded** — designed, implemented, audited, and iterated ent
 5. **Refine** until everything holds, then commit with a conventional-commits message that explains the *why*, not just the *what*.
 
 No line was copy-pasted from a tutorial, Stack Overflow answer, or LLM playground. Every fix was validated on actual hardware before shipping.
+
+### Human-reviewed documentation
+
+Every user-facing document in this repo — this README, [`SCREENSAVER-README.md`](SCREENSAVER-README.md), [`BUILD.md`](BUILD.md), install instructions, release notes, upstream merge playbook, release signing procedure — is **human-reviewed and corrected** before it ships. The AI writes the first draft; the maintainer proofs every claim, verifies every screenshot reference, tests every curl command against the actual device, and rewrites anything that reads as hallucinated, out-of-date, or vague. If you spot a factual error in the docs, it's a bug — please open an issue.
 
 ### Thorough audits
 

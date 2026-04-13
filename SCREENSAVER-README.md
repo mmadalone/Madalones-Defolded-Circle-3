@@ -10,43 +10,63 @@ A fully configurable screensaver system for the UC Remote 3. **Five themes** —
 
 ### Themes
 
-| Matrix Rain (Neon) | Matrix Rain (Green) | Starfield | Minimal Clock |
-|:------------------:|:-------------------:|:---------:|:-------------:|
-| ![Neon](docs/screenshots/matrix-color-01.jpeg) | ![Green](docs/screenshots/matrix-color-02.jpeg) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) |
+| Matrix Rain | Starfield | Minimal | Analog | TV Static |
+|:-----------:|:---------:|:-------:|:------:|:---------:|
+| ![Matrix](docs/screenshots/matrix-green.png) | ![Starfield](docs/screenshots/starfield.png) | ![Minimal](docs/screenshots/minimal.png) | ![Analog](docs/screenshots/analog.png) | ![TvStatic](docs/screenshots/tv-static.png) |
 
-> **Note:** Screenshots above are from Apr 2026, pre-TV Static + pre-Screen-off animation system. Refreshed captures of TV Static, Analog, and the screen-off animation styles (Iris / Wave / Genie / Pixels / Dissolve) are on the roadmap.
+### Screen-off animations
+
+Textual descriptions instead of captures, since each style is a short in-motion effect that doesn't photograph well as a single frame. The settings page for picking one of them:
+
+![Screen-off animations settings](docs/screenshots/power-saving-screen-off-animations.png)
+
+- **Fade** — monotonic black ramp. Clean dim-to-nothing, no character. Safe baseline for any theme.
+- **Flash** — brief white full-screen pulse, then hard cut to black. Classic "TV zap off".
+- **Iris (vignette)** — circular black mask closes from the edges to the centre, soft smoothstep edge. Camera-shutter / old-cartoon feel.
+- **Wipe** — solid black rectangle sweeps top-to-bottom, like an old film projector finishing a reel.
+- **Wave** — soft cyan gradient wave travels downward, dimming everything behind it. The most "peaceful" of the set.
+- **Genie** — the live theme shrinks and slides toward the bottom of the screen via an inverse-scale UV transform. Uniform shrink, not a fluid mesh warp (Qt 5.15 is fragment-shader-only). Feels like macOS Genie without the curved ribbon.
+- **Pixels** — the live theme progressively pixelates into bigger and bigger blocks (0.5% → 8% of screen width), then the pixelated output fades to black. Looks like the image is being destroyed bit by bit.
+- **Dissolve** — the live theme blends into per-pixel white noise, progressively shifting to pure noise, then the noise fades to black. Film-dissolve energy.
+- **TV Static (theme-native, CRT collapse)** — only active when the TV Static theme is on. Snow and scanlines collapse vertically into a bright horizontal line, the line shrinks horizontally to a single dot, the dot fades to black. 800 ms collapse + 500 ms black hold, synchronized with the real hardware display-off.
 
 ### Settings — Matrix
 
 | Theme & Overlays | Appearance | Direction & Effects |
 |:----------------:|:----------:|:-------------------:|
-| ![Theme](docs/screenshots/matrix-config-01.png) | ![Appearance](docs/screenshots/matrix-config-02.png) | ![Direction](docs/screenshots/matrix-config-03.png) |
+| ![Theme](docs/screenshots/matrix-settings-01.png) | ![Appearance](docs/screenshots/matrix-settings-02.png) | ![Direction](docs/screenshots/matrix-settings-03.png) |
 
 | Glitch & Chaos | Tap Effects | Messages & Behavior |
 |:--------------:|:-----------:|:-------------------:|
-| ![Glitch](docs/screenshots/matrix-config-04.png) | ![Tap](docs/screenshots/matrix-config-05.png) | ![Messages](docs/screenshots/matrix-config-06.png) |
+| ![Glitch](docs/screenshots/matrix-settings-04.png) | ![Tap](docs/screenshots/matrix-settings-05.png) | ![Messages](docs/screenshots/matrix-settings-06.png) |
 
 | DPAD & Touch |
 |:------------:|
-| ![DPAD](docs/screenshots/matrix-config-07.png) |
+| ![DPAD](docs/screenshots/matrix-settings-07.png) |
 
 ### Settings — Starfield
 
-| Speed & Density | Star Size & Trail | Star Color |
-|:---------------:|:-----------------:|:----------:|
-| ![Speed](docs/screenshots/starfield-settings-01.png) | ![Size](docs/screenshots/starfield-settings-02.png) | ![Color](docs/screenshots/starfield-settings-03.png) |
+| Speed & Density | Star Size & Trail |
+|:---------------:|:-----------------:|
+| ![Speed](docs/screenshots/starfield-settings-01.png) | ![Size](docs/screenshots/starfield-settings-02.png) |
 
 ### Settings — Minimal
 
-| Font & Time Color | Date Color & Size | Clock & Date Size |
-|:-----------------:|:-----------------:|:-----------------:|
-| ![Font](docs/screenshots/minimal-settings-01.png) | ![Date](docs/screenshots/minimal-settings-02.png) | ![Size](docs/screenshots/minimal-settings-03.png) |
+| Font & Time Color | Date & Sizes |
+|:-----------------:|:------------:|
+| ![Font](docs/screenshots/minimal-settings-01.png) | ![Date](docs/screenshots/minimal-settings-02.png) |
 
 ### Settings — Analog
 
 | Analog Settings |
 |:---------------:|
-| ![Analog](docs/screenshots/analog-settings-01.png) |
+| ![Analog](docs/screenshots/analog-settings.png) |
+
+### Settings — TV Static
+
+| Snow & Scanlines | Chroma & Tracking | Channel Flash | Tint |
+|:----------------:|:-----------------:|:-------------:|:----:|
+| ![Snow](docs/screenshots/tv-static-settings-01.png) | ![Chroma](docs/screenshots/tv-static-settings-02.png) | ![Flash](docs/screenshots/tv-static-settings-03.png) | ![Tint](docs/screenshots/tv-static-settings-04.png) |
 
 ## Features
 
