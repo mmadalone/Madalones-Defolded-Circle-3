@@ -11,24 +11,6 @@ Replaced the UC Remote 3's factory analog clock charging screen with a fully con
 
 ---
 
-## ⚠ Heads-up: Dangling Mod 2 Avatar reference in `remote-ui.pro` (2026-04-11)
-
-`remote-ui.pro` line 154 still references `src/ui/avatargrid.h` (HEADERS list) — and likely a matching `src/ui/avatargrid.cpp` in SOURCES — even though those files were removed when Mod 2 (Avatar) was excluded from this release. A clean build (`qmake && make`) will fail until either:
-
-1. **The avatargrid lines are removed from `remote-ui.pro`** (HEADERS + SOURCES + any related entries), OR
-2. **The avatargrid files are restored from git history** (Phase A implementation lives in commits prior to 2026-04-08; see the `project_avatar_phase_a_complete` memory note for what was implemented)
-
-Related leftovers from the Mod 2 work that should also be checked before release:
-- `src/main.cpp` may still contain `#include "ui/avatargrid.h"` and `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` — both must be removed if avatargrid.h is gone
-- `resources/qrc/main.qrc` already has a comment `<!-- Avatar art files excluded until Mod 2 is ready for release -->` — confirms the intentional exclusion
-- `test/avatar_preview/` contains stale `.o` build artifacts only (source files removed); safe to delete the whole directory or leave as-is
-- `deploy/config/BrailleFont.ttf` (24KB) is unused by Mod 1 but harmless — can stay or be removed
-- `src/ui/glyphatlas.h/.cpp` retain Braille support (`loadBrailleFont()`, `CHARS_BRAILLE`, `"braille"` charset, programmatic dot rendering branch in `build()`/`buildMetricsOnly()`). Mod 1 doesn't use it but it doesn't break anything either — leave it for when Mod 2 resumes.
-
-**TL;DR:** Before the next clean build / release packaging, audit these files for Mod 2 leftovers. Mod 1 (Screensaver) is release-ready; Mod 2 was implemented and visually validated then intentionally rolled back to keep the release scope clean.
-
----
-
 ## Architecture
 
 ### C++ GPU Renderer (`src/ui/matrixrain.h` / `matrixrain.cpp`)

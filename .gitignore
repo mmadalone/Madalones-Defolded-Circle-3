@@ -109,12 +109,5 @@ CLAUDE.md
 .env.local
 .claude/settings.local.json
 
-# Mod 2 (Avatar) — not ready for release
-src/ui/avatargrid.h
-src/ui/avatargrid.cpp
-src/qml/components/avatar/
-test/avatar_preview/
-AVATAR_PLAN.md
-
 # Test preview binaries (local build artifacts)
 test/matrixrain_preview/matrixrain_preview

@@ -17,7 +17,7 @@
 > | EntityController / Voice / Core API patterns | Read from UC source code — no official UC modding docs exist | ⚠️ Source-derived |
 > | Entity ID format (`hass.main.{id}`) | Read from integration source + live API test | ⚠️ Source-derived |
 > | Config / ScreensaverConfig bridge pattern | Our own custom code (established pattern) | ⚠️ Project-specific |
-> | GPU perf numbers (atlas rebuild, dual renderer) | Empirical testing on device (AVATAR_PLAN) | ⚠️ Empirical |
+> | GPU perf numbers (atlas rebuild) | Empirical testing on device | ⚠️ Empirical |
 > | UC3 SoC constraints | UC marketing materials + empirical | ⚠️ Partial |
 >
 > **What this means for Claude Code:** Items marked ✅ can be trusted as-is. Items marked ⚠️ were derived from reading the actual UC source code or from empirical device testing — they are the best available truth, but there are no official UC docs to cross-reference. If the upstream codebase changes significantly after a `git fetch upstream`, re-verify ⚠️ items by reading the updated source before relying on them. There is no UC3 firmware modding community or published modding guide — this project is pioneering that space.
@@ -49,7 +49,7 @@
 ### §1.4 Follow upstream patterns and official docs
 - Always follow the existing UC codebase conventions for upstream code.
 - **For Qt/QML:** Consult Qt 5.15 documentation. Don't use Qt 6 APIs.
-- **For integrations:** Consult UC's Core API docs, integration driver source, and entity model headers before assuming behavior. Verify from actual source code — the AVATAR_PLAN was written after reading `integration-home-assistant/src/client/get_states.rs`. Follow that standard.
+- **For integrations:** Consult UC's Core API docs, integration driver source, and entity model headers before assuming behavior. Verify from actual source code — don't guess at upstream behavior.
 - Prefer established UC patterns over novel inventions:
   - `ButtonNavigation` for input handling (not raw `Keys.onPressed`).
   - `Popup` for overlays (not custom `Item` with manual z-ordering).
@@ -108,9 +108,9 @@ Before generating **any** code (C++, QML, .pro changes, qrc registration), you M
 ### §1.8 Research-first mandate (MANDATORY)
 Before proposing or generating ANY solution:
 
-1. **Read the design doc** — AVATAR_PLAN.md or SCREENSAVER-IMPLEMENTATION.md, whichever applies.
+1. **Read the design doc** — SCREENSAVER-IMPLEMENTATION.md.
 2. **Read the actual source** — Don't assume API behavior. Check headers (`sensor.h`, `entityController.h`, `config.h`, `matrixrain.h`). Check QML files for existing patterns.
-3. **Check for existing implementations** — Search the codebase for similar patterns before inventing new ones. The screensaver system is the reference implementation for the avatar system.
+3. **Check for existing implementations** — Search the codebase for similar patterns before inventing new ones.
 4. **No hacky workarounds** — If the only path forward is a workaround, say so explicitly with risks.
 5. **Flag breaking changes** — Any change that alters existing behavior uses a `⚠️ BREAKING:` prefix.
 
@@ -133,7 +133,7 @@ All reviews, audits, and violation reports use exactly three severity tiers:
 | 1 | **Safety / memory** — No leaks, no crashes, no UB | Embedded device with no watchdog for the UI process |
 | 2 | **Git checkpoint** (§3.3 pre-flight) | Uncommitted edits are at risk |
 | 3 | **displayOff gating** — Zero CPU/GPU when screen off | Battery life on a portable device is sacred |
-| 4 | **Upstream compatibility** — Don't break stock behavior | Non-avatar users must not be affected |
+| 4 | **Upstream compatibility** — Don't break stock behavior | Users with features disabled must not be affected |
 | 5 | **Reasoning-first** (§1.7) | Prevents hallucinated code |
 | 6 | **Chunked generation** (§4.5) | Quality control for large files |
 | 7 | **Anti-pattern scan** (§5) | Last gate before delivery |
@@ -200,8 +200,8 @@ Types: mod, renderer, qml, config, settings, build, test, docs, fix, audit
 Scope: feature name or filename (short)
 
 Examples:
-[renderer] avatargrid: implement per-cell breathing animation
-[settings] avatar: add voice overlay toggle and push event config
+[renderer] matrixrain: implement per-cell breathing animation
+[settings] screensaver: add clock overlay toggle and color picker
 [fix] matrixrain: prevent atlas rebuild during displayOff
 [audit] screensaver: 8 warnings fixed across 4 files
 [docs] style guide v2: add operational framework
@@ -256,8 +256,8 @@ For non-trivial builds (new component, multi-file change, >100 lines total), cre
 ## Edit Log
 | # | File | Change | Status |
 |---|------|--------|--------|
-| 1 | src/ui/avatargrid.h | Class declaration | ✅ |
-| 2 | src/ui/avatargrid.cpp | Grid model + tick | 🔧 |
+| 1 | src/ui/matrixrain.h | Class declaration | ✅ |
+| 2 | src/ui/matrixrain.cpp | Stream model + tick | 🔧 |
 
 ## Current State
 <what exists on disk, committed vs pending>
@@ -340,7 +340,7 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-30 | ❌ | Entity value used as int without `parseInt()` | §8.4 |
 | AP-UC-31 | ❌ | Entity accessed before `onEntityLoaded` success | §8.3 |
 | AP-UC-32 | ⚠️ | Entity load not on `Component.onCompleted` | §8.3 |
-| AP-UC-33 | ⚠️ | Push event with no timeout fallback | AVATAR_PLAN §1.6 |
+| AP-UC-33 | ⚠️ | Push event with no timeout fallback | §8.6 |
 | AP-UC-34 | ⚠️ | `state.set()` sensor without `state_bridge.py` seed | §8.5 |
 
 ### Upstream Compatibility
@@ -377,7 +377,7 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 - Warnings: `-Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`
 
 ### §6.3 Include ordering
-1. Own header (`#include "ui/avatargrid.h"`)
+1. Own header (`#include "ui/matrixrain.h"`)
 2. Qt headers (`#include <QObject>`, `#include <QQuickItem>`)
 3. Project headers (`#include "../config/config.h"`)
 
@@ -418,7 +418,6 @@ Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 108 screen
 
 **Key namespacing in QSettings:**
 - `"charging/"` — the screensaver (current)
-- `"avatar/"` — avatar mod (on `feature/avatar` branch)
 - Any new mod picks its own prefix to avoid key collisions
 
 Always provide a safe default. Getters read directly from QSettings (not cached), so the default fires every time the key is absent from the persistent store.
@@ -515,8 +514,8 @@ void MyRenderer::setDisplayOff(bool off) {
 ### §7.6 Performance rules
 - Precompute brightness maps: `m_brightnessMap[distance] → atlas_level`.
 - Use lookup tables for trig functions in animation loops (AP-UC-24).
-- Two concurrent renderers (rain + avatar) expected fine, but verify on device.
-- Degradation path: reduce density/effects when dual-rendering if frame budget exceeded.
+- Multiple concurrent renderers expected fine, but verify on device.
+- Degradation path: reduce density/effects when rendering if frame budget exceeded.
 - Prefer stack allocation over heap for per-frame temporary data.
 - The scene graph renderer batches draw calls and retains geometry on GPU — design nodes to be batch-friendly (same material/texture where possible).
 
@@ -582,7 +581,7 @@ font.family: "monospace"
 ```
 
 ### §8.2 Component naming & files
-PascalCase files: `AvatarDisplay.qml`, `MoodEngine.qml`. Every `Loader` gets an `id`.
+PascalCase files: `MatrixTheme.qml`, `ScreenOffOverlay.qml`. Every `Loader` gets an `id`.
 
 ### §8.3 Entity access pattern
 ```qml
@@ -596,7 +595,7 @@ Connections {
     }
 }
 ```
-Entity IDs: `{prefix}.{ha_entity_id}` → `hass.main.sensor.ai_avatar_mood`. Prefix is configurable via `Config.avatarHaPrefix`.
+Entity IDs: `{prefix}.{ha_entity_id}` → `hass.main.sensor.living_room_temperature`. Prefix is configurable via `Config`.
 
 ### §8.4 Entity value handling
 `sensor.getValue()` returns `QString`. Use `parseInt()` for numeric comparisons. Always null-guard: `if (myEntity && myEntity.value !== "")`.

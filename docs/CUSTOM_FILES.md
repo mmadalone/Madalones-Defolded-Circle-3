@@ -83,59 +83,6 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 
 ---
 
-## Mod 2: Avatar System (Archived on `feature/avatar` branch)
-
-**Status:** Mod 2 was developed through Phase A but intentionally removed from `main` on 2026-04-08 (commit `c7e7a3a`) to keep the screensaver release scope clean. The C++ renderer (`src/ui/avatargrid.h/.cpp`), related QML, and design docs live on the `feature/avatar` branch. No current merge plan. To work on avatar code, check out that branch.
-
-The sections below document what exists on `feature/avatar` as a historical reference — none of these files are built into `main`'s release artifact.
-
-### Custom C++ Files
-| File | Purpose | ~Lines |
-|------|---------|--------|
-| `src/ui/avatargrid.h` | `AvatarGridItem` QQuickItem — Braille character grid renderer | ~140 |
-| `src/ui/avatargrid.cpp` | Portrait loading, per-cell animation, QSG rendering | ~340 |
-
-### Planned Custom QML Files
-| File | Purpose |
-|------|---------|
-| `src/qml/components/avatar/AvatarDisplay.qml` | Thin wrapper around AvatarGridItem |
-| `src/qml/components/avatar/MoodEngine.qml` | Mood state resolver with local fallback |
-| `src/qml/components/avatar/TouchHandler.qml` | Touch interaction controller |
-| `src/qml/components/avatar/AvatarPushHandler.qml` | HA entity watcher for push mode |
-| `src/qml/components/avatar/AvatarScreensaverOverlay.qml` | Avatar layer on top of screensaver themes |
-| `src/qml/components/avatar/art/manifest.json` | Character → mood → art file mapping |
-| `src/qml/components/avatar/art/*.txt` | Braille portrait and region variant files |
-| `src/qml/components/AvatarOverlay.qml` | Unified popup (voice + push modes) |
-| `src/qml/settings/settings/Avatar.qml` | Avatar settings page |
-
-### Planned Modified Upstream Files
-| File | Modification |
-|------|-------------|
-| `src/qml/components/VoiceOverlay.qml` | Conditional delegation to AvatarOverlay when avatar enabled |
-| `src/qml/main.qml` | AvatarOverlay Loader for push mode |
-
-### Completed Shared Infrastructure Modifications
-| File | Modification |
-|------|-------------|
-| `src/ui/glyphatlas.h/.cpp` | Added `"braille"` charset, `CHARS_BRAILLE` (256 chars), `loadBrailleFont()`, Braille font selection + step ratios in build()/buildMetricsOnly() |
-| `src/main.cpp` | Added `#include "ui/avatargrid.h"`, `qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid")` |
-| `remote-ui.pro` | Added `avatargrid.h/.cpp` to HEADERS/SOURCES |
-
-### Planned Shared Infrastructure Modifications (remaining)
-| File | Modification |
-|------|-------------|
-| `src/config/config.h/.cpp` | Add ~20 avatar Q_PROPERTYs |
-| `resources/qrc/main.qrc` | Register avatar QML + art files |
-| `src/qml/components/ChargingScreen.qml` | Add AvatarScreensaverOverlay Loader at z:1 |
-| `src/qml/settings/Settings.qml` | Add "Avatar" menu entry |
-
-### Custom Assets
-| File | Purpose |
-|------|---------|
-| `deploy/config/BrailleFont.ttf` | FreeMono Braille subset (U+2800-28FF), 24KB, TTF for FreeType hinting on ARM |
-
----
-
 ## Documentation & Test Files (not compiled)
 
 | File | Purpose |
@@ -143,14 +90,7 @@ The sections below document what exists on `feature/avatar` as a historical refe
 | `CLAUDE.md` | Claude Code operations manual |
 | `STYLE_GUIDE.md` | Coding and architecture standards |
 | `docs/CUSTOM_FILES.md` | This file — custom vs upstream manifest |
-| `AVATAR_PLAN.md` | Avatar system design document |
 | `SCREENSAVER-IMPLEMENTATION.md` | Screensaver system design document |
-| `ASCII_Rick_base.md` | Rick Braille portrait (30×45) for prototyping |
-| `ASCII_Rick_base_nodrool.md` | Rick portrait variant |
-| `ASCII Base.md` | Braille art reference collection |
-| `ASCII Source.md` | Rick art examples (6 variants) |
-| `test_braille.qml` | Avatar ambient life prototype (v6) |
-| `test_braille_mapper.qml` | Interactive face region mapper |
 | `test_themes.qml` | Theme testing harness |
 | `matrix-charging-screen.tar.gz` | Archived screensaver build |
 | `matrix-charging-screen-nofont.tar.gz` | Archived build (no font) |

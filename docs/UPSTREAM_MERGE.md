@@ -31,7 +31,7 @@ These files are touched by our custom code and will likely conflict on any upstr
 | `src/qml/components/TouchSliderVolume.qml` / `Seek.qml` / `Brightness.qml` / `Position.qml` | Added `applicationWindow.screensaverActive` guard (suppress touchbar during screensaver) | Low |
 | `src/qml/components/overlays/BatteryOverlay.qml` | Color-coded battery levels, fully translatable text via `qsTr`/`%1` placeholders | Medium (if upstream renames) |
 | `.github/workflows/build.yml` | Added `version-sync-check` job with VERSION + CHANGELOG gating; added `needs: version-sync-check` to `build-embedded` and `build-desktop` | Medium |
-| `.gitignore` | Added custom entries (build artifacts, `.env.local`, `CLAUDE.md`, `AVATAR_PLAN.md`, `test/avatar_preview/`, `src/ui/avatargrid.*`) | Low |
+| `.gitignore` | Added custom entries (build artifacts, `.env.local`, `CLAUDE.md`) | Low |
 | `deploy/release.json` | Custom `name`, `description`, `developer`, `version` | Low |
 
 For the authoritative custom-file manifest (purely custom, not modified upstream), see [CUSTOM_FILES.md](CUSTOM_FILES.md).

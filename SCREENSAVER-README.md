@@ -284,7 +284,7 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 - **Atlas caching:** Static in-memory cache of the combined multi-layer glyph atlas (~3.7 MB). Survives dock/undock cycles (process stays alive, only QML is recreated). First dock builds the atlas (~8s on ARM64); repeat docks skip rasterization entirely (~5s — remaining time is QML lifecycle). Cache key: SHA-1 of color, colorMode, fontSize, charset, fadeRate, depthEnabled. Invalidates automatically on settings change.
 - **Tests:** 133 total (92 C++ unit + 41 QML integration), CI green
 - **Display power gating:** Zero CPU/GPU when screen is off
-- **Font:** Bundled 23KB Noto Sans Mono CJK JP subset (katakana + digits), plus a Braille subset for the upcoming Avatar mod
+- **Font:** Bundled 23KB Noto Sans Mono CJK JP subset (katakana + digits)
 
 For architecture details, see [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md).
 For build instructions, see [BUILD.md](BUILD.md).
@@ -302,7 +302,6 @@ For build instructions, see [BUILD.md](BUILD.md).
 - **Fixed** the Matrix animation speed, density, trail length, fade, and color sliders silently having no effect on the live rain. Root cause was a signal-to-signal `connect` in `ScreensaverConfig`'s ctor that didn't route through correctly because the raw `matrix*Changed` signals were declared via macro while the transformed `*Changed` signals were declared in a separate manual `signals:` block — Qt's MOC + QML binding engine don't trace indirect signal chains. Fixed with the canonical Qt dual-emit pattern: hand-written setters emit both the raw and the transformed NOTIFY signal directly.
 - **Added** master "Enable tap effects" toggle in the Tap section of the Charging Screen settings.
 - **Bumped** `TICK_MAX_MS` from 150 to 300 so slider value 10 actually maps to a visibly slower tick.
-- **Cleaned** dangling Mod 2 (Avatar) references from `remote-ui.pro` and `src/main.cpp`.
 
 See [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md) for detailed session logs.
 
