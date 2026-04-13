@@ -4,7 +4,7 @@ Custom firmware fork of [`unfoldedcircle/remote-ui`](https://github.com/unfolded
 
 Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero Home Assistant dependency, clean fall-back to stock UI on install failure.
 
-[**▶ Watch the demo on YouTube Shorts**](https://youtube.com/shorts/jFoOmoNNWwU) — 30-second tour of Matrix rain in action on a UC3.
+[**▶ Watch the demo on YouTube Shorts**](https://youtube.com/shorts/jFoOmoNNWwU) — 30-second tour of Matrix rain in action on my UC3.
 
 | Matrix Rain | Starfield | Minimal | Analog | TV Static |
 |:-----------:|:---------:|:-------:|:------:|:---------:|
