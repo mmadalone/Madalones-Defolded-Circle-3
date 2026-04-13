@@ -17,7 +17,6 @@
 #include "softwareupdate/softwareUpdate.h"
 #include "translation/translation.h"
 #include "ui/uiController.h"
-// #include "ui/avatargrid.h"  // Mod 2 (Avatar) — not ready for release
 #include "ui/matrixrain.h"
 #include "ui/screensaverconfig.h"
 #include "voice.h"
@@ -75,7 +74,6 @@ int main(int argc, char *argv[]) {
     engine.addImportPath("qrc:/keyboard");
 
     qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
-    // qmlRegisterType<AvatarGridItem>("AvatarGrid", 1, 0, "AvatarGrid");  // Mod 2 — not ready
 
     QCoreApplication::setOrganizationName("Unfolded Circle");
     QCoreApplication::setOrganizationDomain("uc.io");

@@ -151,7 +151,6 @@ HEADERS += \
     src/ui/gravitydirection.h \
     src/ui/glitchengine.h \
     src/ui/messageengine.h \
-    # src/ui/avatargrid.h \ # Mod 2 (Avatar) — not ready for release
     src/ui/glyphatlas.h \
     src/util.h \
     src/voice.h
@@ -220,7 +219,6 @@ SOURCES += \
         src/ui/gravitydirection.cpp \
         src/ui/glitchengine.cpp \
         src/ui/messageengine.cpp \
-        # src/ui/avatargrid.cpp \ # Mod 2 (Avatar) — not ready for release
         src/ui/glyphatlas.cpp \
         src/util.cpp \
         src/voice.cpp
