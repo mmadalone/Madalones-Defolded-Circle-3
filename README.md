@@ -142,7 +142,54 @@ Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNI
 
 This is a **fork** of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui), tracked via the `upstream` git remote. All custom work lives on `main`; upstream commits are merged manually per the playbook in [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md). Current fork base: **`v0.71.1`**.
 
+Fork state is re-checked before each release: `git fetch upstream && git merge --no-commit upstream/main` on a throwaway branch. Latest re-check (2026-04-13): **0 behind, 91 ahead, strict superset of `upstream/main@0586d45`, zero conflicts**. No upstream commits are missing from our tree, no signal/property renames to worry about.
+
 If you're looking for the stock UC Remote 3 firmware source, go to the upstream repo. This fork is specifically for running the custom screensaver on a UC3.
+
+---
+
+## How this was built
+
+This fork was **vibecoded** — designed, implemented, audited, and iterated entirely through conversation with [Claude Code](https://claude.ai/claude-code) (Anthropic's CLI agent). Every C++ renderer, GPU shader, QML component, settings sub-page, test file, CI workflow, and line of documentation — including this README — was produced through the same iterative loop:
+
+1. **Describe intent** in natural language ("add a hidden message system that writes single chars into rain streams").
+2. **Generate** the implementation (usually spanning C++ renderer + config bridge + QML wrapper + settings UI + qrc registration + unit tests, in a single coherent change).
+3. **Rebuild** via the Docker ARM64 toolchain (`unfoldedcircle/r2-toolchain-qt-5.15.8-static`) and/or the Docker VNC screensaver preview (`test/matrixrain_preview/`) for visual verification against the actual Qt scene graph.
+4. **Deploy** to a real UC Remote 3 via the stock install API (`/api/system/install/ui?void_warranty=yes`), verify the feature docked and on battery, verify no regressions in adjacent behavior (dock/undock cycles, screen-off animations, wake paths, thermal).
+5. **Refine** until everything holds, then commit with a conventional-commits message that explains the *why*, not just the *what*.
+
+No line was copy-pasted from a tutorial, Stack Overflow answer, or LLM playground. Every fix was validated on actual hardware before shipping.
+
+### Thorough audits
+
+The codebase has been through a full industry-standard audit ("brutally honest, no glazing") that graded it at B−/C+ on first review and then took it to a true **A grade** via seven sequenced batches — documented end-to-end in the plan file and in this repo:
+
+- **Batch 0** — 4 user-reported screensaver bug fixes (close-on-wake-undock, Matrix/Starfield wake-black, idle-screensaver-off, display-off gap) + a thermal regression fix (sim pause during `displayOff`) + a DPAD direction respawn fix. Shipped as **v1.2.2**.
+- **Batch A** — version sync CI gate, credentials scrubbed from every tracked doc, 60 MB of build-artifact git debt purged, `CRITICAL` landmine comments on the Qt 5.15 qmlcachegen binding race in AnalogTheme.
+- **Batch B** — strict warning flags enabled project-wide (`-Wall -Wextra -Werror=format -Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`) with the full cascade fixed in every custom `src/ui/*` file. No pragma suppressions — root causes only.
+- **Batch C** — `.githooks/pre-commit` running `cpplint.sh` + `clang-format --dry-run -Werror`; `lupdate` i18n baseline populated; [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md) playbook; CHANGELOG sync gate in CI on tagged commits.
+- **Batch D** — `clang-tidy` in CI via `.github/workflows/tidy.yml` with a starter ruleset (`modernize-*`, `bugprone-*`, `cert-*`, `performance-*`), tolerant baseline mode, per-file `NOLINT` comments with reasons for any intentional upstream-compat cases.
+- **Batch E** — dead `CFG_*` macro family deleted, `SCRN_*` documented as canonical in [`STYLE_GUIDE.md`](STYLE_GUIDE.md) §6.6; four new QML theme lifecycle tests covering Starfield, Minimal, Analog, and TV Static beyond the existing Matrix suite.
+- **Batch F** — GPG release signing pipeline ([`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md), [`scripts/verify-release.sh`](scripts/verify-release.sh)); canary deploy with auto-revert on health-check failure ([`scripts/deploy-canary.sh`](scripts/deploy-canary.sh)) and a local mock UC3 endpoint ([`scripts/mock-uc3-api.py`](scripts/mock-uc3-api.py)) so the canary path can be rehearsed without a spare device.
+- **Batch G** — upstream merge rehearsal under the new playbook (result: fork is a strict superset, zero conflicts); [`docs/A11Y_AUDIT.md`](docs/A11Y_AUDIT.md) walkthrough; real translations populated for two non-English locales; CycloneDX [`sbom.cdx.json`](sbom.cdx.json) regenerated in CI.
+
+### Testing discipline
+
+- **~280 automated tests** — ~84 C++ unit tests (`test/matrixrain/`) + ~195 QML functional tests (`test/qml/`, `test/integration/`) covering Matrix/Starfield/Minimal/Analog/TvStatic lifecycles, settings bindings, visibility rules, DPAD navigation, config defaults, and the enter-state machine.
+- **Four CI workflows** green on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (the full QtTest suite), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint).
+- **On-device verification for every Batch 0 bug fix** — 5 dock→idle→Low_power→wake cycles per theme, 10-cycle rapid churn test, 10-minute sustained dock for thermal, docked AND undocked paths for the wake-black fix.
+- **Visual Docker VNC preview** — renders the actual `QSGGeometryNode` scene graph via Mesa software OpenGL in a disposable container, for when the macOS native build can't exercise the code path (Qt 5.15 OpenGL 2.1 limitation).
+- **Settings round-trip verified** — every screensaver slider/toggle persists across the full Popup destroy/recreate cycle that happens on undock, because `ScreensaverConfig` is a QSettings-backed C++ singleton and not a Popup property.
+
+### Safety posture
+
+Because the device is a piece of hardware that belongs to someone, every change is built with the revert path as the first-class backstop:
+
+- **Stock UC firmware is never modified.** The custom install only replaces the Qt `remote-ui` process. Stock boot / integration layer / entity controller / core API are untouched.
+- **Revert is one curl command** (`/api/system/install/ui?enable=false`), a fully supported UC3 API. The install section of this README shows it before the install command, not after.
+- **Canary deploy with auto-revert** is available via [`scripts/deploy-canary.sh`](scripts/deploy-canary.sh) for anyone who wants the extra safety net on first install.
+- **Upstream divergence logged** in [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md) before every release — no silent drift from the upstream baseline.
+- **Warranty state is explicit** — the `?void_warranty=yes` install flag is called out, the revert flips it back.
 
 ---
 
