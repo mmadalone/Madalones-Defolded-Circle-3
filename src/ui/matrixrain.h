@@ -364,6 +364,12 @@ public:
     // in matrixrain.cpp — needs file-local TICK_* constants.
     Q_INVOKABLE void resetAfterScreenOff();
 
+    // Pause/resume the tick timer WITHOUT touching m_running or the QML
+    // binding. Use these from QML hold-pause logic instead of writing
+    // matrixRain.running directly (which breaks the running binding).
+    Q_INVOKABLE void pauseTicks() { m_timer.stop(); }
+    Q_INVOKABLE void resumeTicks();
+
  signals:
     void colorChanged();
     void colorModeChanged();

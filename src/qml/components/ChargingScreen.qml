@@ -182,20 +182,27 @@ Popup {
     }
 
     // Grace window past the animation end before we assume the core's
-    // Low_power transition isn't coming and force-close the popup.
+    // Low_power transition isn't coming and force-stop rendering.
     readonly property int safetyGraceMs: 1500
 
     // Safety timer — fires at (animation lead time + safetyGraceMs)
     // after startScreenOffEffect(). If displayOff is still false at
-    // that point, the core never blanked the display after our
-    // animation finished, so we close the popup to stop the scene
-    // graph from continuously rendering the stuck shutdown state.
+    // that point, the core never fired Low_power. In that case we set
+    // displayOff=true ourselves — this pauses the sim and stops the
+    // tick timer (running-binding propagation), saving battery while
+    // keeping the popup open. The next Power→Normal wake still flips
+    // displayOff=false via main.qml so the user sees rain again on
+    // wake instead of being dumped to the home screen.
+    //
+    // Closing the popup here was the previous behaviour, but it left
+    // undocked users staring at the home screen on every wake because
+    // Low_power doesn't reliably fire when the device is on battery.
     Timer {
         id: postAnimationSafetyTimer
         repeat: false
         onTriggered: {
             if (!chargingScreenRoot.displayOff) {
-                chargingScreenRoot.close();
+                chargingScreenRoot.displayOff = true;
             }
         }
     }
@@ -507,7 +514,10 @@ Popup {
         id: holdPauseTimer; interval: holdPauseMs - holdSlowMs
         onTriggered: {
             chargingScreenRoot.holdStage = 2;
-            if (matrixRainRef) matrixRainRef.running = false;
+            // Use pauseTicks() instead of `running = false` — writing to
+            // matrixRain.running from QML breaks the running binding
+            // permanently, leaving the sim unable to auto-resume on wake.
+            if (matrixRainRef) matrixRainRef.pauseTicks();
         }
     }
 

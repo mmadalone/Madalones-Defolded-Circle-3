@@ -1937,3 +1937,67 @@ done
 ```
 
 Power modes: `NORMAL` (display on, user active) → `IDLE` (display dimmed, ~5-10s in this state) → `LOW_POWER` (display physically off) → `SUSPEND` (full system standby). Watch for `mode` getting stuck in `NORMAL` while the screen visually appears black — that's the safety timer's catch case.
+
+---
+
+## 2026-04-13 Session: Matrix theme-native screen-off removed, running-binding race fixed
+
+**Context:** Shipped v1.2.0 earlier today with runtime slider wiring + tap master toggle + Mod 2 cleanup. Post-release, user reported the long-standing "black rain after cascade-wake" bug was still present, now fully reliable and reproducible across ALL screen-off effect styles (not just Matrix's "theme-native" cascade). User's words: *"this used to work just fine before we implemented the screen off animations."*
+
+### What was wrong
+
+Every prior attempt tried to *reconstruct* the sim state on wake: `drainCleanupPending` lazy flag, `resetAfterScreenOff()` method, `initStreams()` on wake, `setRunning(true)` force, `pauseTicks()` / `resumeTicks()` Q_INVOKABLEs. None held up through 3+ cycles on docked.
+
+Three parallel exploration agents pinned the root cause: the `running` binding on Matrix and Starfield themes —
+
+```qml
+running: root.visible && !root.isClosing && !root.displayOff
+```
+
+— fires `setRunning(false) → setRunning(true)` in rapid succession in the same QML event-loop tick that also runs `onDisplayOffChanged`, `cancelScreenOffEffect()`, `theme.cancelScreenOff()`, and `setSpeed()`. Qt docs and KDAB are explicit: **property change notifier / bindings / onChanged handler order is NOT guaranteed**. When that race hits the scene graph's render thread, the first `updatePaintNode()` after wake can submit an empty `QSGGeometryNode` that persists indefinitely — black rain, despite the sim otherwise running fine. KDAB anti-pattern: "don't bind a custom `QQuickItem`'s runtime state to high-frequency property transitions".
+
+### Fix
+
+Drop `&& !root.displayOff` from the running binding. The sim keeps ticking through display-off. No pause/resume flip, no race, no empty-node frame. Qt's platform integration stops compositing when the display is physically off, so GPU cost is near-zero; `advanceSimulation()` costs ~4% of one core — acceptable.
+
+This matches the pre-screen-off-animation-system behaviour that worked reliably for months.
+
+### Matrix theme-native screen-off animation removed entirely
+
+Earlier in the session I tried a pure-QML cascade overlay (a top-anchored black rectangle animating downward over the rain). User rejected it: *"ugly as fuck"*. Then tried a soft-gradient version. Still rejected. Removed the whole Matrix-native screen-off protocol:
+
+- `providesNativeScreenOff`, `screenOffLeadMs` — gone
+- `startScreenOff`, `cancelScreenOff`, `finalizeScreenOff` functions — gone
+- `_screenOffAnimating` state + `onDisplayOffChanged` handler — gone
+- `cascadeOverlay` rectangle — gone
+- `MatrixShutoffSettings` settings page reference in ChargingScreen settings — removed (the QML file itself and the `matrixShutoffStyle`/`matrixShutoffDuration` config keys are left in place as inert tech-debt to clean up later)
+
+Matrix now falls through to the shared `ScreenOffOverlay` (fade / pixelate / dissolve / etc.) selected in Power settings — same as Starfield and Minimal. The shared overlay styles were already working correctly; the bug was specific to the running-binding race that only affected themes with a ticking C++ QQuickItem.
+
+### Other fixes in this session
+
+- **`holdPauseTimer` binding-break** (`ChargingScreen.qml:517`): the hold-to-pause logic was writing `matrixRainRef.running = false` imperatively from QML, **permanently breaking** the running binding on the theme instance. Fixed by adding `Q_INVOKABLE pauseTicks() / resumeTicks()` methods on `MatrixRainItem` that stop/start the tick timer without touching `m_running` or the QML property — so the binding stays live for future display-off/wake cycles.
+- **`postAnimationSafetyTimer`** (`ChargingScreen.qml:193`): was calling `chargingScreenRoot.close()` when the core's `Low_power` transition didn't arrive within `leadMs + 1500ms`. On undocked setups where `Low_power` never fires at all, this was closing the popup every cycle and dumping the user to the home screen on wake. Changed to set `chargingScreenRoot.displayOff = true` instead — popup stays alive, sim pauses via the (now-removed) displayOff binding path, next `Power.Normal` transition still brings it back cleanly.
+- **Starfield `animTimer` running gate**: same fix — dropped `!displayOff` so the canvas timer keeps firing through display-off and doesn't race on wake.
+
+### Dead code / tech-debt flagged for a future pass
+
+The sim-reconstruction machinery from earlier in this session is still in the tree but now unreachable:
+
+- `RainSimulation::resetAfterScreenOff()` + `m_drainCleanupPending` flag in `rainsimulation.h/.cpp`
+- `MatrixRainItem::resetAfterScreenOff()` Q_INVOKABLE wrapper in `matrixrain.h/.cpp`
+- The whole C++ drain-mode sweep wave (`m_drainMode`, `m_drainWaveRow`, `m_drainCleanupPending`, `setSpawnSuppress`, `setDrainSpeedMultiplier`) — was Matrix's cascade implementation; no QML caller now
+- `MatrixShutoffSettings.qml` still exists in the tree + main.qrc but is never loaded
+- `matrixShutoffStyle` / `matrixShutoffDuration` keys in `screensaverconfig.h` — harmless but unused
+
+Not removed in this session because the user wanted the fix shipped and tested first. Separate cleanup pass later.
+
+### Verification
+
+User confirmed on device:
+- Docked 5+ screen-off cycles → rain regrows every time
+- Undocked cycle → rain regrows every time
+- All shared screen-off styles work correctly
+- Matrix shutdown settings section removed from Charging Screen settings as expected
+
+Shipped as `v1.2.1`.

@@ -1076,6 +1076,12 @@ void MatrixRainItem::setCharset(const QString &c) {
     if (m_sim.setCharset(c)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit charsetChanged(); }
 }
 
+void MatrixRainItem::resumeTicks() {
+    if (m_running && !m_timer.isActive()) {
+        m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+    }
+}
+
 void MatrixRainItem::resetAfterScreenOff() {
     m_sim.resetAfterScreenOff(m_atlas);
     if (m_layersEnabled) {
@@ -1083,6 +1089,15 @@ void MatrixRainItem::resetAfterScreenOff() {
             m_layers[i].sim.resetAfterScreenOff(m_layers[i].atlas);
         }
     }
+    // Defensive: bypass the QML running-binding race. When cancelScreenOff
+    // calls this on wake, the running binding (depends on root.displayOff)
+    // SHOULD have already fired setRunning(true) — but property propagation
+    // ordering in QML isn't strictly guaranteed when multiple handlers fire
+    // off the same property change. setRunning() is idempotent (early-returns
+    // when already true) and goes through all the proper side-effect paths
+    // (timer start, gravity rotation, etc.). Calling it from C++ does NOT
+    // break the QML binding (only QML imperative writes do).
+    setRunning(true);
     update();
 }
 

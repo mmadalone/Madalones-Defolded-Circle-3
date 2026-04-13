@@ -428,22 +428,22 @@ bool RainSimulation::setTrailLength(int t) {
 }
 
 void RainSimulation::resetAfterScreenOff(const GlyphAtlas &atlas) {
-    if (m_gridCols <= 0 || m_gridRows <= 0) return;
-    std::uniform_int_distribution<int> charDist(0, qMax(0, atlas.glyphCount() - 1));
-    for (int i = 0; i < m_charGrid.size(); ++i) {
-        if (m_charGrid[i] < 0) m_charGrid[i] = charDist(m_rng);
-    }
-    for (int i = 0; i < m_cellAge.size(); ++i) {
-        m_cellAge[i] = CELL_AGE_MAX;   // fully dark; stream heads clear on visit
-    }
-    for (int i = 0; i < m_streams.size(); ++i) {
-        m_streams[i].pauseTicks = 1;   // respawn on next advance
-        m_streams[i].active = false;
-    }
+    if (m_gridCols <= 0 || m_gridRows <= 0 || m_screenW <= 0 || m_screenH <= 0) return;
+    // Clear drain state.
     m_drainCleanupPending = false;
     m_spawnSuppress = false;
     m_drainMode = 0;
     m_drainWaveRow = -1;
+    // Reset glitch + message engine state so accumulated trails/pulses/
+    // overlays from previous cycles don't interfere with the fresh sim.
+    m_glitch.resize(m_gridCols, m_gridRows);
+    m_message.resize(m_gridCols, m_gridRows);
+    // Reuse the popup-open initialization path. initStreams is the same
+    // function the very first popup-open uses successfully — it refills
+    // charGrid with random glyphs, resets cellAge to CELL_AGE_MAX, and
+    // respawns every stream with stagger=true so visible rain renders on
+    // the next frame.
+    initStreams(m_screenW, m_screenH, atlas);
 }
 
 bool RainSimulation::setDirection(const QString &d) {

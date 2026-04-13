@@ -163,7 +163,13 @@ Item {
     Timer {
         id: animTimer
         interval: 55
-        running: root.visible && !root.isClosing && !root.displayOff
+        // Intentionally NOT gating on `!root.displayOff`. See MatrixTheme.qml
+        // running-binding comment — pausing on display-off causes a
+        // QML-binding-vs-scene-graph race that leaves the canvas empty on
+        // wake. Keeping the timer alive through display-off matches the
+        // pre-screen-off-animation behaviour and has minimal CPU cost
+        // because the compositor stops frames when the display is off.
+        running: root.visible && !root.isClosing
         repeat: true
         onTriggered: canvas.requestPaint()
     }

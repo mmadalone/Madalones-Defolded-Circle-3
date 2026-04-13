@@ -822,57 +822,57 @@
         <translation type="obsolete">Tapez pour fermer</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="118"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="108"/>
         <source>Animation speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="135"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="125"/>
         <source>Star density</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="150"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="140"/>
         <source>Star size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="163"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="153"/>
         <source>Trail length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="176"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="166"/>
         <source>Star color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="233"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="223"/>
         <source>24-hour clock</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="249"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="239"/>
         <source>Font</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="282"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="272"/>
         <source>Time color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="327"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="317"/>
         <source>Date color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="373"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="363"/>
         <source>Clock size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="390"/>
+        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="380"/>
         <source>Date size</source>
         <translation type="unfinished"></translation>
     </message>
