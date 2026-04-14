@@ -99,4 +99,32 @@ Item {
             horizontalCenter: parent.horizontalCenter
         }
     }
+
+    // Atlas phase-timing debug overlay. Gated on ScreensaverConfig.debugAtlasOverlay
+    // so it stays dormant in normal use but can be toggled on from Settings ->
+    // Screensaver -> General Behavior when investigating cold-dock / compose
+    // / layer-build phase cost. Reads matrixRain.lastBuildSummary which is
+    // populated by updatePolish + updatePaintNode timing hooks in C++.
+    Item {
+        id: atlasDebugOverlay
+        anchors { top: parent.top; left: parent.left; right: parent.right; margins: 4 }
+        height: atlasDebugText.contentHeight + 4
+        z: 100
+        visible: ScreensaverConfig.debugAtlasOverlay && matrixRain.lastBuildSummary.length > 0
+        Rectangle {
+            anchors.fill: parent
+            color: "#cc000000"
+            radius: 2
+        }
+        Text {
+            id: atlasDebugText
+            anchors.fill: parent
+            anchors.margins: 2
+            color: "#00ff41"
+            font.pixelSize: 9
+            font.family: "monospace"
+            text: matrixRain.lastBuildSummary
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        }
+    }
 }

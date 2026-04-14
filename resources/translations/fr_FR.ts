@@ -826,61 +826,6 @@
         <source>Tap to close</source>
         <translation type="obsolete">Tapez pour fermer</translation>
     </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="108"/>
-        <source>Animation speed</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="125"/>
-        <source>Star density</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="140"/>
-        <source>Star size</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="153"/>
-        <source>Trail length</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="166"/>
-        <source>Star color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="223"/>
-        <source>24-hour clock</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="239"/>
-        <source>Font</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="272"/>
-        <source>Time color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="317"/>
-        <source>Date color</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="363"/>
-        <source>Clock size</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/ChargingScreen.qml" line="380"/>
-        <source>Date size</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>Climate</name>
@@ -1675,6 +1620,16 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="284"/>
         <source>Idle timeout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="317"/>
+        <source>Atlas profiling overlay</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="335"/>
+        <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2726,6 +2681,39 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="352"/>
         <source>Brightness pulse</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MinimalSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="29"/>
+        <source>24-hour clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="45"/>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="78"/>
+        <source>Time color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="123"/>
+        <source>Date color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="169"/>
+        <source>Clock size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="186"/>
+        <source>Date size</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3805,6 +3793,34 @@ le configurateur web</translation>
         <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="630"/>
         <source>Sources</source>
         <translation>Sources</translation>
+    </message>
+</context>
+<context>
+    <name>StarfieldSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="27"/>
+        <source>Animation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="44"/>
+        <source>Star density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="59"/>
+        <source>Star size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="72"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="85"/>
+        <source>Star color</source>
+        <translation type="unfinished"></translation>
     </message>
 </context>
 <context>

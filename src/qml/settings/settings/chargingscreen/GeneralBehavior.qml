@@ -16,7 +16,7 @@ ColumnLayout {
     required property Item settingsPage
 
     property alias firstFocusItem: tapToCloseSwitch
-    property alias lastFocusItem: idleTimeoutSlider
+    property alias lastFocusItem: debugOverlaySwitch
     property Item navUpTarget
     property Item navDownTarget
 
@@ -267,7 +267,7 @@ ColumnLayout {
                 KeyNavigation.up: ScreensaverConfig.theme === "matrix"
                     ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
                     : motionToCloseSwitch
-                KeyNavigation.down: idleTimeoutSlider
+                KeyNavigation.down: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : debugOverlaySwitch
             }
         }
     }
@@ -296,6 +296,44 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Idle timeout " + value
             KeyNavigation.up: idleEnabledSwitch
+            KeyNavigation.down: debugOverlaySwitch
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // 17. DEBUG — ATLAS PROFILING OVERLAY (Matrix only; profiling tool)
+    // Shows an on-screen strip with the last buildCombinedAtlas + first-paint
+    // phase timings. Useful for regression investigation. Off by default.
+    ColumnLayout {
+        visible: ScreensaverConfig.theme === "matrix"
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+        RowLayout {
+            spacing: 10
+            Text {
+                Layout.fillWidth: true; color: colors.offwhite
+                text: qsTr("Atlas profiling overlay"); font: fonts.primaryFont(30)
+            }
+            Components.Switch {
+                id: debugOverlaySwitch
+                objectName: "debugOverlaySwitch"
+                icon: "uc:check"
+                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+                checked: ScreensaverConfig.debugAtlasOverlay
+                trigger: function() { ScreensaverConfig.debugAtlasOverlay = !ScreensaverConfig.debugAtlasOverlay; }
+                highlight: activeFocus && ui.keyNavigationEnabled
+                Accessible.name: "Atlas profiling overlay"
+                KeyNavigation.up: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : idleEnabledSwitch
+                KeyNavigation.down: root.navDownTarget
+            }
+        }
+        Text {
+            Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
+            color: colors.medium; wrapMode: Text.WordWrap
+            text: qsTr("Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.")
+            font: fonts.primaryFont(26)
         }
     }
 }

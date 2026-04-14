@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include <QElapsedTimer>
 #include <QQuickItem>
 #include <QQuickWindow>
 #include <QSGGeometry>
@@ -129,6 +130,10 @@ class MatrixRainItem : public QQuickItem {
     /// @{
     Q_PROPERTY(bool     running     READ running     WRITE setRunning     NOTIFY runningChanged)
     Q_PROPERTY(bool     displayOff  READ displayOff  WRITE setDisplayOff  NOTIFY displayOffChanged)
+    /// Phase-timing summary of the most recent atlas build + first-paint cycle.
+    /// Format: "[atlas] mode=... charset=... size=... cache=hit|miss keyMs=... buildMs=[a,b,c] composeMs=... remapMs=... syncMs=... totalMs=... polishMs=... firstPaintMs=... ctorToPaintMs=..."
+    /// Exposed for an on-device debug overlay because lodgy doesn't surface qCInfo lines.
+    Q_PROPERTY(QString  lastBuildSummary READ lastBuildSummary NOTIFY lastBuildSummaryChanged)
     /// @}
 
     /// @name Screen-off fall-off support
@@ -219,6 +224,7 @@ class MatrixRainItem : public QQuickItem {
     // Item-owned properties
     bool    running()     const { return m_running; }
     bool    displayOff()  const { return m_displayOff; }
+    QString lastBuildSummary() const { return m_lastBuildSummary; }
 
     // Fall-off support — forwarded to simulation
     bool    spawnSuppress() const { return m_sim.spawnSuppress(); }
@@ -440,6 +446,7 @@ public:
     void spawnSuppressChanged();
     void drainSpeedMultiplierChanged();
     void drainModeChanged();
+    void lastBuildSummaryChanged();
 
  protected:
     QSGNode *updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) override;
@@ -533,9 +540,32 @@ public:
     bool  m_layersNeedRebuild{false};
     QImage m_combinedAtlasImage;
 
+    // Phase-timing instrumentation (Task #1 profiling — NOT shipped to end users).
+    // Captures cold-dock-to-first-paint breakdown. qCInfo logging is unreliable
+    // on UC3 (lodgy swallows it), so the summary is also exposed as a Q_PROPERTY
+    // for an on-device debug overlay to read.
+    QString       m_lastBuildSummary;
+    QElapsedTimer m_ctorTimer;           // started in ctor, stopped at first successful paint
+    bool          m_firstPaintDone{false};
+    qint64        m_lastPolishMs{0};     // outer wrapper around updatePolish() rebuild block
+    qint64        m_lastBuildTotalMs{0}; // buildCombinedAtlas() total (or single-layer equivalent)
+    bool          m_lastCacheHit{false};
+    qint64        m_lastCacheKeyMs{0};
+    qint64        m_lastLayerBuildMs[LAYER_COUNT]{0, 0, 0};
+    qint64        m_lastComposeMs{0};
+    qint64        m_lastRemapMs{0};
+    qint64        m_lastSyncMs{0};
+    qint64        m_lastFirstPaintMs{0};
+    qint64        m_lastCtorToPaintMs{0};
+
     void setLayersEnabled(bool v);
     void buildCombinedAtlas();
     void initAllLayers();
+    // Format + publish the phase-timing summary string. includeFirstPaint=true
+    // when called from updatePaintNode (main thread blocked at sync point),
+    // false from updatePolish (first-paint fields will show 0 until the next
+    // paint). Writes m_lastBuildSummary and posts a main-thread signal emit.
+    void publishBuildSummary(bool includeFirstPaint);
     int  countVisibleQuadsAllLayers();
     void renderLayerStreamTrails(int layerIdx, struct MatrixRainVertex *verts, quint16 *ixBuf,
                                  int &vi, int &ii);

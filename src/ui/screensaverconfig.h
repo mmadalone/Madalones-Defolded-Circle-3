@@ -256,6 +256,13 @@ public:
     SCRN_INT(tvStaticFlashBrightness,   "charging/tvStaticFlashBrightness",   100)  // 0..100
     SCRN_STRING(tvStaticTint,           "charging/tvStaticTint",              "#ffffff")
 
+    // === Debug / profiling ===
+    // Matrix atlas phase-timing overlay toggle. When on, MatrixTheme renders a
+    // compact green text strip at the top of the screensaver showing the last
+    // buildCombinedAtlas + first-paint timings. Off by default. Enabled from
+    // Settings -> Screensaver -> General Behavior when investigating perf.
+    SCRN_BOOL(debugAtlasOverlay,        "charging/debugAtlasOverlay",         false)
+
     // === Transformed read-only properties (custom getters) ===
     Q_PROPERTY(QColor color READ color NOTIFY colorChanged FINAL)
     Q_PROPERTY(qreal speed READ speed NOTIFY speedChanged FINAL)

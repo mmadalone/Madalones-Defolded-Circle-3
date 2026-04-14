@@ -201,6 +201,11 @@ MatrixRainItem::MatrixRainItem(QQuickItem *parent)
     });
 
     GlyphAtlas::loadCJKFont();
+
+    // Phase-timing instrumentation: start the wall-clock from construction so
+    // we can measure ctor-to-first-paint (the repeat-dock path is dominated by
+    // QML lifecycle + first render, NOT by buildCombinedAtlas which cache-hits).
+    m_ctorTimer.start();
 }
 
 MatrixRainItem::~MatrixRainItem() {}
@@ -501,10 +506,22 @@ void MatrixRainItem::updatePolish() {
     // Atlas build: QPainter font rasterization on the main thread.
     // Runs during Qt's polish phase, before the render thread sync.
     if (m_needsAtlasRebuild && width() > 0 && height() > 0) {
+        QElapsedTimer polishTimer;
+        polishTimer.start();
+
         if (m_layersEnabled) {
             buildCombinedAtlas();
         } else {
             // Single-layer in-memory cache (same pattern as buildCombinedAtlas)
+            // Instrumented inline so we capture cache-key + build phases for the
+            // default (layers-off) path too.
+            QElapsedTimer singleTimer;
+            singleTimer.start();
+            m_lastLayerBuildMs[0] = m_lastLayerBuildMs[1] = m_lastLayerBuildMs[2] = 0;
+            m_lastComposeMs = 0;
+            m_lastRemapMs = 0;
+            m_lastSyncMs = 0;
+
             static QByteArray s_singleCacheKey;
             static GlyphAtlas s_singleCacheAtlas;
 
@@ -516,24 +533,45 @@ void MatrixRainItem::updatePolish() {
             h.addData(QByteArray::number(static_cast<double>(m_fadeRate), 'g', 10));
             h.addData(QByteArray::number(static_cast<int>(m_sim.depthEnabled())));
             QByteArray cacheKey = h.result();
+            m_lastCacheKeyMs = singleTimer.elapsed();
 
             if (cacheKey == s_singleCacheKey && s_singleCacheAtlas.isBuilt()) {
                 m_atlas = s_singleCacheAtlas;
+                m_lastCacheHit = true;
             } else {
+                const qint64 tBeforeBuild = singleTimer.elapsed();
                 m_atlas.build(m_color, m_colorMode, m_fontSize, m_sim.charset(), m_fadeRate,
                               m_sim.depthEnabled(), m_sim.depthIntensity());
+                // Single-layer path reports the build under the mid slot [1]
+                // so the log line format stays stable across layers-on/off.
+                m_lastLayerBuildMs[1] = singleTimer.elapsed() - tBeforeBuild;
                 s_singleCacheKey = cacheKey;
                 s_singleCacheAtlas = m_atlas;
+                m_lastCacheHit = false;
             }
+            m_lastBuildTotalMs = singleTimer.elapsed();
         }
+
+        m_lastPolishMs = polishTimer.elapsed();
         m_atlasDirty = true;
         m_needsAtlasRebuild = false;
         m_needsReinit = true;
         update();  // ensure updatePaintNode runs this frame for GPU upload
+
+        // Publish preliminary summary (firstPaintMs / ctorToPaintMs will be
+        // filled in by updatePaintNode on the next render pass).
+        publishBuildSummary(false /*includeFirstPaint*/);
     }
 }
 
 QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *) {
+    // Phase-timing: measure the first successful updatePaintNode (from function
+    // entry to return of a valid node) so we can attribute the post-polish cost
+    // — texture upload, QSGGeometry allocation, stream init, first quad fill.
+    // Only stamped on the first paint; subsequent frames skip this entirely.
+    QElapsedTimer paintTimer;
+    if (!m_firstPaintDone) paintTimer.start();
+
     // Atlas build happens in updatePolish() (main thread).
     // initStreams stays here — lightweight grid math, safe at sync point.
     if (m_needsReinit) {
@@ -750,6 +788,19 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
 
     node->setGeometry(geo);
     node->markDirty(QSGNode::DirtyGeometry);
+
+    // First-paint instrumentation: fires exactly once per MatrixRainItem
+    // instance. ctorToPaintMs captures the full "item constructed → first
+    // frame out the door" path, which on the repeat-dock path is dominated
+    // by QML binding cascade + ScreensaverConfig getters + initStreams +
+    // GPU texture upload (NOT buildCombinedAtlas, which cache-hits instantly).
+    if (!m_firstPaintDone) {
+        m_lastFirstPaintMs  = paintTimer.elapsed();
+        m_lastCtorToPaintMs = m_ctorTimer.elapsed();
+        m_firstPaintDone    = true;
+        publishBuildSummary(true /*includeFirstPaint*/);
+    }
+
     return node;
 }
 
@@ -1495,6 +1546,16 @@ void MatrixRainItem::setLayersEnabled(bool v) {
 }
 
 void MatrixRainItem::buildCombinedAtlas() {
+    // Phase-timing instrumentation. Captures: cache-key hash, 3× GlyphAtlas::build,
+    // QImage composition, UV remap, syncLayerConfig. Results land in m_last*Ms
+    // members for the Q_PROPERTY debug overlay + qCInfo log line.
+    QElapsedTimer phaseTimer;
+    phaseTimer.start();
+    m_lastLayerBuildMs[0] = m_lastLayerBuildMs[1] = m_lastLayerBuildMs[2] = 0;
+    m_lastComposeMs = 0;
+    m_lastRemapMs = 0;
+    m_lastSyncMs = 0;
+
     // Configure layer scaling constants: [far, mid, near]
     static constexpr float fontScales[]     = {LAYER_FAR_FONT_SCALE, 1.0f, LAYER_NEAR_FONT_SCALE};
     static constexpr float speedScales[]    = {LAYER_FAR_SPEED_SCALE, 1.0f, LAYER_NEAR_SPEED_SCALE};
@@ -1525,19 +1586,26 @@ void MatrixRainItem::buildCombinedAtlas() {
     h.addData(QByteArray::number(static_cast<double>(m_fadeRate), 'g', 10));
     h.addData(QByteArray::number(static_cast<int>(m_sim.depthEnabled())));
     QByteArray cacheKey = h.result();
+    m_lastCacheKeyMs = phaseTimer.elapsed();
 
     if (cacheKey == s_cacheKey && !s_cacheImage.isNull()) {
         // Cache hit — restore atlases (metrics + remapped UVs), skip rasterization entirely
         for (int i = 0; i < LAYER_COUNT; ++i)
             m_layers[i].atlas = s_cacheAtlases[i];
         m_combinedAtlasImage = s_cacheImage;
+        m_lastCacheHit = true;
     } else {
+        m_lastCacheHit = false;
         // Cache miss — full QPainter rasterization
         for (int i = 0; i < LAYER_COUNT; ++i) {
+            const qint64 tBefore = phaseTimer.elapsed();
             int layerFontSize = qMax(8, qRound(m_fontSize * m_layers[i].fontScale));
             m_layers[i].atlas.build(m_color, m_colorMode, layerFontSize, m_sim.charset(), m_fadeRate,
                                     m_sim.depthEnabled(), m_sim.depthIntensity());
+            m_lastLayerBuildMs[i] = phaseTimer.elapsed() - tBefore;
         }
+
+        const qint64 tBeforeCompose = phaseTimer.elapsed();
 
         // Compose combined image from individual layer atlases
         int maxW = 0, sumH = 0;
@@ -1552,6 +1620,7 @@ void MatrixRainItem::buildCombinedAtlas() {
             m_combinedAtlasImage = fallback;
             syncLayerConfig();
             m_layersNeedRebuild = false;
+            m_lastBuildTotalMs = phaseTimer.elapsed();
             return;
         }
         QImage combined(maxW, sumH, QImage::Format_ARGB32_Premultiplied);
@@ -1563,6 +1632,9 @@ void MatrixRainItem::buildCombinedAtlas() {
             yOff += m_layers[i].atlas.atlasImage().height();
         }
         p.end();
+        m_lastComposeMs = phaseTimer.elapsed() - tBeforeCompose;
+
+        const qint64 tBeforeRemap = phaseTimer.elapsed();
 
         // Remap UVs and clear individual images
         int combinedW = 0, combinedH = 0;
@@ -1585,11 +1657,69 @@ void MatrixRainItem::buildCombinedAtlas() {
             s_cacheAtlases[i] = m_layers[i].atlas;
 
         m_combinedAtlasImage = combined;
+        m_lastRemapMs = phaseTimer.elapsed() - tBeforeRemap;
     }
 
+    const qint64 tBeforeSync = phaseTimer.elapsed();
     // Forward simulation config to each layer
     syncLayerConfig();
     m_layersNeedRebuild = false;
+    m_lastSyncMs = phaseTimer.elapsed() - tBeforeSync;
+    m_lastBuildTotalMs = phaseTimer.elapsed();
+}
+
+void MatrixRainItem::publishBuildSummary(bool includeFirstPaint) {
+    // Format: compact one-liner suitable for both qCInfo and a QML Text overlay.
+    // Fields roughly in dock-order: inputs, cache, build phases, outer wrappers.
+    QString s;
+    s.reserve(256);
+    s += QStringLiteral("[atlas] mode=");
+    s += m_colorMode;
+    s += QStringLiteral(" charset=");
+    s += m_sim.charset();
+    s += QStringLiteral(" size=");
+    s += QString::number(m_fontSize);
+    s += QStringLiteral(" layers=");
+    s += m_layersEnabled ? QStringLiteral("on") : QStringLiteral("off");
+    s += QStringLiteral(" cache=");
+    s += m_lastCacheHit ? QStringLiteral("hit") : QStringLiteral("miss");
+    s += QStringLiteral(" keyMs=");
+    s += QString::number(m_lastCacheKeyMs);
+    s += QStringLiteral(" buildMs=[");
+    s += QString::number(m_lastLayerBuildMs[0]);
+    s += QLatin1Char(',');
+    s += QString::number(m_lastLayerBuildMs[1]);
+    s += QLatin1Char(',');
+    s += QString::number(m_lastLayerBuildMs[2]);
+    s += QStringLiteral("] composeMs=");
+    s += QString::number(m_lastComposeMs);
+    s += QStringLiteral(" remapMs=");
+    s += QString::number(m_lastRemapMs);
+    s += QStringLiteral(" syncMs=");
+    s += QString::number(m_lastSyncMs);
+    s += QStringLiteral(" totalMs=");
+    s += QString::number(m_lastBuildTotalMs);
+    s += QStringLiteral(" polishMs=");
+    s += QString::number(m_lastPolishMs);
+    if (includeFirstPaint) {
+        // m_lastFirstPaintMs and m_lastCtorToPaintMs are filled in at call site
+        // before invoking publishBuildSummary(true).
+        s += QStringLiteral(" firstPaintMs=");
+        s += QString::number(m_lastFirstPaintMs);
+        s += QStringLiteral(" ctorToPaintMs=");
+        s += QString::number(m_lastCtorToPaintMs);
+    }
+
+    m_lastBuildSummary = s;
+    qCInfo(lcScreensaver).noquote() << s;
+
+    // Emit from the main thread. updatePolish() is already on the main thread;
+    // updatePaintNode() runs with the main thread blocked at sync — safe to
+    // write members, but the signal must be queued to avoid reentering QML
+    // on the render thread.
+    QMetaObject::invokeMethod(this, [this]() {
+        emit lastBuildSummaryChanged();
+    }, Qt::QueuedConnection);
 }
 
 void MatrixRainItem::initAllLayers() {
