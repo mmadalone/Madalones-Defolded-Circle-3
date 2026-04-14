@@ -34,6 +34,7 @@ class Controller : public QObject {
     Power*   getPower() { return m_power; }
     Wifi*    getWifi() { return m_wifi; }
     TouchSlider* getTouchSlider() { return m_touchSlider; }
+
  private slots:
     void onHapticEnabledChanged(bool enabled);
 

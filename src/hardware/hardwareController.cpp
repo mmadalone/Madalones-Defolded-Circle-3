@@ -57,6 +57,7 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     qmlRegisterSingletonType<Battery>("Battery", 1, 0, "Battery", &Battery::qmlInstance);
     qmlRegisterSingletonType<Wifi>("Wifi", 1, 0, "Wifi", &Wifi::qmlInstance);
     qmlRegisterSingletonType<TouchSlider>("TouchSlider", 1, 0, "TouchSliderProcessor", &TouchSlider::qmlInstance);
+
     QObject::connect(m_config, &Config::hapticEnabledChanged, this, &Controller::onHapticEnabledChanged);
 }
 
