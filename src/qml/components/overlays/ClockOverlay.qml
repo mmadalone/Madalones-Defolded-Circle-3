@@ -12,6 +12,27 @@ Item {
     height: dateText.visible ? (dateText.height + 12 + timeText.height + (ampmText.visible ? ampmText.height + 8 : 0))
                              : timeText.height + (ampmText.visible ? ampmText.height + 8 : 0)
 
+    // Cached date string. The date only changes once per day, but the old
+    // implementation rebuilt the string on every 1Hz `ui.time` tick via
+    // `void(ui.time)` -- ~864k recomputes/day. The Timer below refreshes once
+    // per minute (1440 fires/day, 98% fewer) with `triggeredOnStart: true` so
+    // the string is populated as soon as the overlay becomes visible. Accuracy
+    // is within ~1 minute, which is fine for a date display.
+    property string _cachedDateString: ""
+
+    Timer {
+        running: dateText.visible
+        interval: 60000
+        repeat: true
+        triggeredOnStart: true
+        onTriggered: {
+            var d = new Date();
+            var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+            root._cachedDateString = days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate();
+        }
+    }
+
     // Font selector: "primary" = Poppins (sans), "secondary" = Space Mono (mono)
     function clockFont(size) {
         return ScreensaverConfig.clockFont === "secondary"
@@ -33,13 +54,7 @@ Item {
         }
         colorValue: ScreensaverConfig.clockDateColor
         font: root.clockFont(ScreensaverConfig.clockDateSize)
-        text: {
-            void(ui.time);  // trigger rebinding on time change
-            var d = new Date();
-            var days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-            var months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-            return days[d.getDay()] + ", " + months[d.getMonth()] + " " + d.getDate();
-        }
+        text: root._cachedDateString
     }
 
     // Time

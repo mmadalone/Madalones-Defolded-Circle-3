@@ -816,7 +816,9 @@ int MatrixRainItem::countVisibleQuads() {
 
     // Sort streams by depthFactor ascending (far first) for correct occlusion.
     // Near streams overwrite far streams at shared cells (painter's algorithm).
-    QVector<int> order(streams.size());
+    // Uses the shared member buffer to avoid per-frame heap churn.
+    auto &order = m_sortOrder;
+    order.resize(streams.size());
     std::iota(order.begin(), order.end(), 0);
     if (depthOn) {
         std::sort(order.begin(), order.end(), [&streams](int a, int b) {
@@ -888,13 +890,16 @@ void MatrixRainItem::renderStreamTrails(MatrixRainVertex *verts, quint16 *ixBuf,
     // Depth layers: sort streams far-first so near overwrites far (painter's algorithm).
     // Priority-based cellDrawn ensures near stream glyphs occlude far ones.
     // Per-stream depth color computed once (continuous tint from exact depthFactor).
-    QVector<int> order(streams.size());
+    // Shared member buffers to avoid per-frame heap churn.
+    auto &order = m_sortOrder;
+    order.resize(streams.size());
     std::iota(order.begin(), order.end(), 0);
     // When depth is on, atlas is white — vertex color provides ALL color.
     // Base color for non-depth quads; depth-computed color for depth streams.
     QColor baseColor = GlyphAtlas::resolveColor(m_colorMode, m_color);
     quint32 baseVC = depthOn ? packColor(baseColor) : 0xFFFFFFFF;
-    QVector<quint32> streamColors(streams.size(), baseVC);
+    auto &streamColors = m_streamColorCache;
+    streamColors.fill(baseVC, streams.size());
     if (depthOn) {
         std::sort(order.begin(), order.end(), [&streams](int a, int b) {
             return streams[a].depthFactor < streams[b].depthFactor;
@@ -1822,7 +1827,9 @@ int MatrixRainItem::countVisibleQuadsAllLayers() {
         m_layers[li].cellDrawn.fill(0);
 
         // Sort streams by depthFactor ascending for occlusion
-        QVector<int> order(streams.size());
+        // Shared member buffer to avoid per-frame heap churn.
+        auto &order = m_sortOrder;
+        order.resize(streams.size());
         std::iota(order.begin(), order.end(), 0);
         if (depthOn) {
             std::sort(order.begin(), order.end(), [&streams](int a, int b) {
@@ -1907,11 +1914,14 @@ void MatrixRainItem::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *ver
     float brightMul = m_layers[layerIdx].brightnessMul;
 
     // Sort streams far-first for painter's algorithm within the layer
-    QVector<int> order(streams.size());
+    // Shared member buffers to avoid per-frame heap churn.
+    auto &order = m_sortOrder;
+    order.resize(streams.size());
     std::iota(order.begin(), order.end(), 0);
     QColor baseColor = GlyphAtlas::resolveColor(m_colorMode, m_color);
     quint32 baseVC = depthOn ? packColor(baseColor) : 0xFFFFFFFF;
-    QVector<quint32> streamColors(streams.size(), baseVC);
+    auto &streamColors = m_streamColorCache;
+    streamColors.fill(baseVC, streams.size());
 
     if (depthOn) {
         std::sort(order.begin(), order.end(), [&streams](int a, int b) {

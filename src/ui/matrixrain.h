@@ -522,6 +522,14 @@ public:
     QVector<quint8> m_cellDrawn;  // per-cell depth priority (0=undrawn, 1=far, 2=normal, 3=near)
     quint32 m_baseVertexColor{0xFFFFFFFF};  // packed RGBA for non-depth quads (white when depth off, base color when on)
 
+    // Per-frame scratch buffers reused across render passes to avoid the
+    // malloc+free churn of `QVector<int> order(streams.size())` on every
+    // frame. Used by countVisibleQuads / renderStreamTrails and their
+    // multi-layer variants. Sizes re-grow on demand via resize(); shrink is
+    // in-place so steady-state costs zero allocation.
+    QVector<int>     m_sortOrder;        // painter's-algorithm stream index ordering
+    QVector<quint32> m_streamColorCache; // per-stream packed RGBA for depth mode
+
     // Multi-layer rain (3 independent simulations at different font sizes)
     static constexpr int LAYER_COUNT = 3;
     struct RainLayer {
