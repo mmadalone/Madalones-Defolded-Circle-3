@@ -2393,29 +2393,6 @@ Climate fan</extracomment>
     </message>
 </context>
 <context>
-    <name>MatrixShutoffSettings</name>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="30"/>
-        <source>Shutdown animation</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="35"/>
-        <source>A cascade sweep clears the rain before the display turns off</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="43"/>
-        <source>Duration</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml" line="48"/>
-        <source>Total animation length in milliseconds (%1 ms)</source>
-        <translation type="unfinished"></translation>
-    </message>
-</context>
-<context>
     <name>Media platyer state</name>
     <message>
         <location filename="../../src/ui/entity/mediaPlayer.h" line="116"/>

@@ -16,7 +16,6 @@ Pages to audit (per this fork — upstream settings pages are UC's responsibilit
 - [ ] `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml`
 - [ ] `src/qml/settings/settings/chargingscreen/MatrixAppearance.qml`
 - [ ] `src/qml/settings/settings/chargingscreen/MatrixEffects.qml`
-- [ ] `src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml`
 - [ ] `src/qml/settings/settings/chargingscreen/ChaosSection.qml`
 - [ ] `src/qml/settings/settings/chargingscreen/TapSection.qml`
 - [ ] `src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml`

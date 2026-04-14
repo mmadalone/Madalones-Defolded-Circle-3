@@ -210,19 +210,6 @@ public:
     // animate; second hand fades opacity to 0 during the sweep phase).
     SCRN_STRING(analogShutoffHands, "charging/analogShutoffHands",    "all")
 
-    // === Matrix shutdown ===
-    // Style for the Matrix native screen-off animation. Pure QML — no
-    // simulation modifications. The simulation is paused (running=false)
-    // during the animation; matrixRain.opacity fades 1→0 over the lead
-    // time, then Qt Quick's renderer culls the item entirely (zero GPU
-    // work in the final state). Two presets differ only in the easing
-    // curve of the opacity fade:
-    //   "cascade" (default) — InCubic (slow start, accelerating fade)
-    //   "drain"             — OutCubic (fast start, decelerating fade)
-    SCRN_STRING(matrixShutoffStyle,    "charging/matrixShutoffStyle",    "cascade")
-    // Total fade duration in ms. User-configurable via slider (800-2000).
-    SCRN_INT   (matrixShutoffDuration, "charging/matrixShutoffDuration", 1300)
-
     // === Screen-off animation system (shared across all themes) ===
     // Master on/off + "fire when undocked" gate + shared-overlay style selector.
     // Style values: "fade", "flash", "vignette", "wipe", "theme-native".

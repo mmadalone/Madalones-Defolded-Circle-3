@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-14
+**Last updated:** 2026-04-14 (post-sweep)
 
 ---
 
@@ -79,7 +79,6 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/settings/settings/chargingscreen/MinimalSettings.qml` | Minimal theme clock/date sizes + font + color pickers (extracted from inline 2026-04-14) |
 | `src/qml/settings/settings/chargingscreen/TvStaticSettings.qml` | TV static theme intensity/scanline/chroma/tracking + channel-flash sliders |
 | `src/qml/settings/settings/chargingscreen/AnalogSettings.qml` | Analog theme shutdown-hands picker |
-| `src/qml/settings/settings/chargingscreen/MatrixShutoffSettings.qml` | **ORPHAN** — duration slider for removed matrix cascade screen-off. File exists + is qrc-registered but is not instantiated anywhere; navUpTarget reference dropped 2026-04-14. Scheduled for dead-code sweep along with `matrixShutoffStyle`/`matrixShutoffDuration` SCRN_* entries. |
 | `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` | General screensaver behavior settings (idle timer, tap-to-close, DPAD interactive, debug overlay toggle) |
 
 ### Custom Assets

@@ -25,7 +25,7 @@ These files are touched by our custom code and will likely conflict on any upstr
 | `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages | High |
 | `src/qml/main.qml` | `screensaverActive` property; idle timer DEV mode bypass; `ScreensaverConfig` import; `_nextOpenViaIdleTimer` one-shot flag; custom `Battery`/`Power` handlers for `motionToClose`, `_shouldOpenOnIdle`, Loader `onStatusChanged` flag propagation | Very High |
 | `src/qml/components/ChargingScreen.qml` | Full replacement — theme Loader system, `ButtonNavigation`, screen-off countdown poller, `cancelScreenOffEffect(isWakeFromOff)`, Battery `Connections` for undock baseline reset, belt-and-suspenders scene-graph `update()` on wake, `_openedViaIdleTimer` flag, `postAnimationSafetyTimer` | Very High |
-| `src/qml/settings/settings/ChargingScreen.qml` | Full replacement — screensaver theme selector + sub-pages (GeneralBehavior, MatrixAppearance, MatrixEffects, MatrixShutoffSettings, Chaos, Tap, DirectionGlitch, Message, TvStatic, Analog, Common toggles) | Very High |
+| `src/qml/settings/settings/ChargingScreen.qml` | Full replacement — screensaver theme selector + sub-pages (GeneralBehavior, MatrixAppearance, MatrixEffects, Chaos, Tap, DirectionGlitch, Message, Starfield, Minimal, TvStatic, Analog, Common toggles) | Very High |
 | `src/qml/settings/Settings.qml` | Added "Screensaver" menu entry | Medium |
 | `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle | Low |
 | `src/qml/components/TouchSliderVolume.qml` / `Seek.qml` / `Brightness.qml` / `Position.qml` | Added `applicationWindow.screensaverActive` guard (suppress touchbar during screensaver) | Low |
