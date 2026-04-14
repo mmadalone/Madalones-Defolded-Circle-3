@@ -50,6 +50,19 @@ class ScreensaverConfig : public QObject {
     // both the raw and the transformed NOTIFY signal so QML property
     // bindings on the transformed properties update correctly. See the
     // `Transformed read-only properties` block below for the paired signals.
+    //
+    // IMPORTANT — DO NOT convert these back to SCRN_* macros. They are
+    // hand-written as the fix for a Qt 5.15 MOC signal-to-signal chain bug
+    // from commit 47b6d59: when macro-expanded `Q_SIGNALS` blocks are mixed
+    // with a separate `signals:` block later in the class, MOC silently
+    // fails to route indirect signal emissions through the QML binding
+    // engine. Effect pre-fix: dragging the speed/density/trail/fade/color
+    // sliders had zero effect on the live rain because `speedChanged()`
+    // etc. never reached QML bindings. The dual-emit from hand-written
+    // setters (both raw NOTIFY and transformed NOTIFY in the setter body)
+    // bypasses the MOC quirk. See also SCREENSAVER-IMPLEMENTATION.md 2026-
+    // 04-14 session entry for full context. Any future refactor that
+    // touches these properties MUST preserve the dual-emit pattern.
 
     Q_PROPERTY(QString matrixColor READ matrixColor WRITE setMatrixColor NOTIFY matrixColorChanged)
 public:

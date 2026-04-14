@@ -5,6 +5,18 @@
 
 #pragma once
 
+// IMPORTANT — the getters below read through `m_settings->value()` on every
+// invocation. This is NOT a performance bug to "fix". Qt 5.15's QSettings
+// INI backend parses the file once on construction and holds all values in
+// an in-memory QHash — subsequent `value()` calls are O(1) lock-free hash
+// lookups (~1 µs on ARM64), not disk I/O. A codebase audit flagged this as
+// the "biggest remaining runtime win" on 2026-04-14; a deeper investigation
+// that same day verified the audit's premise was wrong (see the 2026-04-14
+// session entry in SCREENSAVER-IMPLEMENTATION.md titled "Audit item closed:
+// ScreensaverConfig QSettings caching — not worth doing"). Total per-dock
+// cost is ~127 µs one-time at bindToScreensaverConfig() call time, with
+// zero per-frame cost. Do not re-litigate without measuring first.
+//
 // Usage: SCRN_BOOL(glitch, "charging/matrixGlitch", true)
 // Generates:
 //   Q_PROPERTY(bool glitch READ glitch WRITE setGlitch NOTIFY glitchChanged)
