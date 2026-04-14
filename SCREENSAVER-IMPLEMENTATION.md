@@ -1983,3 +1983,139 @@ User confirmed on device:
 - Matrix shutdown settings section removed from Charging Screen settings as expected
 
 Shipped as `v1.2.1`.
+
+---
+
+## 2026-04-13 (later) Session: v1.2.2 path-to-A + post-release polish
+
+Big marathon session consolidating four user-reported regressions with a structural audit into batches 0 and A–G. Ended with v1.2.2 tagged + a handful of post-tag polish commits.
+
+### Shipped as v1.2.2 (batches 0 and A–G)
+
+**Batch 0 — 4 user-reported screensaver bugs + 2 regressions from v1.2.1:**
+
+1. **"Close on wake" toggle ignored on undock** — `main.qml` had two sibling handlers: `Battery.onPowerSupplyChanged(false)` unconditionally called `close()` while `Power.onPowerModeChanged` correctly gated on `ScreensaverConfig.motionToClose`. One-line fix mirrors the existing check so both wake paths honor the same toggle. Template for the fix was the `tapToClose` check at `ChargingScreen.qml:494` — no new state, no new abstractions, just connecting the piece that was disconnected.
+
+2. **Matrix/Starfield wake-black** — this is the follow-up to v1.2.1's wake-black fix and directly **reverses the tech-debt flag from the prior session entry above (line 1967-1975)**. That entry said `MatrixRainItem::resetAfterScreenOff()` was unreachable dead code. It wasn't dead — it was **designed but disconnected**: the C++ side was `Q_INVOKABLE`, the QML `cancelScreenOff()` protocol hook was documented in `BaseTheme.qml:35`, and the dispatch at `ChargingScreen.qml:162-163` was already defensive. The only thing missing was the `cancelScreenOff()` declaration on MatrixTheme and StarfieldTheme themselves. Added `cancelScreenOff()` to both (Matrix calls `matrixRain.resetAfterScreenOff()`, Starfield calls `canvas.requestPaint()`), plus a belt-and-suspenders `themeLoader.item.update()` call in `ChargingScreen.cancelScreenOffEffect()`. Also preemptively removed the latent `!root.displayOff` gates from TvStaticTheme's two Timer bindings — same pattern v1.2.1 fixed for Matrix/Starfield but never applied to TvStatic because users hadn't reported it there yet.
+
+3. **"Idle screensaver OFF" had no effect** — the popup still opened after `idleTimeout` expired even with the toggle disabled. Gate was present on the happy path but missing on the idle-timer fallback path in `main.qml`. Added the same guard.
+
+4. **Display-off gap on undock (3s late start, 7s display-on-after-blackout)** — cascade retimed so animation fires at `displayTimeout` after undock (not earlier), blackout-to-display-off gap now < 2 s.
+
+**Thermal fix** — remote was getting noticeably warm during long docked sessions. `MatrixRainItem::setDisplayOff(true)` was stopping the render output but the internal tick timer was still firing, pegging ~4% of one ARM core at all times. Fixed `setDisplayOff()` to also `m_timer.stop()` and `m_gravity.stopAutoRotation()` during display-off; wake path in `setDisplayOff(false)` restarts both (plus `if (m_running && m_sim.gravityMode()) m_gravity.startAutoRotation();`). Verified cool-running on 10+ minute sustained dock.
+
+**DPAD/touch direction respawn fix** — direction changes were imperatively resetting the sim state instead of routing through `GravityDirection::setDirection()` so the per-stream angle lerp could take over. Now direction changes bend the rain smoothly without respawning.
+
+**Batches A–G (hygiene sweep, full details in plan file):**
+- A: version sync CI gate, credentials scrubbed, 60 MB of build-artifact tree debt purged, `CRITICAL` landmine comment on the Qt 5.15 qmlcachegen binding race in AnalogTheme.
+- B: strict warning flags (`-Wall -Wextra -Werror=format -Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`) with full cascade fixed in every custom `src/ui/*` file. No pragma suppressions.
+- C: `.githooks/pre-commit` + `lupdate` i18n baseline + `docs/UPSTREAM_MERGE.md` playbook + CHANGELOG sync gate.
+- D: clang-tidy in CI via `.github/workflows/tidy.yml`, tolerant baseline, starter ruleset.
+- E: deleted dead `CFG_*` macro family, documented `SCRN_*` as canonical in `STYLE_GUIDE.md §6.6`, added four new QML theme lifecycle tests (`tst_starfield.qml`, `tst_minimal.qml`, `tst_analog.qml`, `tst_tvstatic.qml`).
+- F: GPG release signing (`docs/RELEASE_SIGNING.md`, `scripts/verify-release.sh`), canary deploy with auto-revert (`scripts/deploy-canary.sh`) + local mock UC3 endpoint (`scripts/mock-uc3-api.py`).
+- G: upstream merge rehearsal (fork is strict superset of `upstream/main@0586d45`, zero conflicts), `docs/A11Y_AUDIT.md`, two real translations (de_DE, fr_FR), CycloneDX `sbom.cdx.json`.
+
+### Post-v1.2.2 polish (on `main`, unreleased)
+
+Four additional fixes after the v1.2.2 tag, worth preserving for future debugging sessions:
+
+#### First-boot button lockout fix (`ChargingScreen.qml`, commit `8d9c5ab`)
+
+**Symptom:** on the very first dock after boot, no physical remote button would close the screensaver. Tap worked; every other button was dead.
+
+**Diagnosis:** `onOpened` at `ChargingScreen.qml:289-292` wrapped `buttonNavigation.takeControl()` in an `if (themeLoader.item)` guard with the comment "prevents invisible Popup from consuming keys when the theme fails to render". Sounded defensive, was actually the bug: on first boot, `Popup.onOpened` can fire before the (async) Loader has realized its child item, so `themeLoader.item` is still null at that instant → `takeControl()` is silently skipped → main-app `ButtonNavigation` stays in control → no button handler reachable. Tap worked because it routes through a MouseArea, bypassing ButtonNavigation entirely.
+
+**Fix:** drop the guard; always call `takeControl()` on open. Re-call in `themeLoader.onLoaded` as belt-and-suspenders in case the race ever goes the other way (onOpened fires before onLoaded). Stack push with the same scope is idempotent, so double-calling is safe. The "invisible Popup consuming keys" scenario the guard was guarding against is actually **better** UX with the guard gone — if the theme fails to load, any button press now closes the popup instead of leaving the user stuck on a blank screen with dead buttons.
+
+#### MinimalTheme date rendering (`MinimalTheme.qml`, commit `c76bb1e`)
+
+**Symptom:** date line under the clock was blank on Minimal theme. Reported after users noticed it missing.
+
+**Path of wrong fixes before landing on the right one — this is the interesting part, because it walks through three subtly different Qt QML date-formatting APIs and two of them don't work:**
+
+1. **Original (pre-Batch C):** hardcoded English `days[]` and `months[]` arrays + string concatenation. Worked, but no i18n.
+2. **Batch C replacement:** `Qt.formatDateTime(new Date(), "dddd, MMM d", Qt.locale())`. **Silently returns blank.** The 3rd argument of `Qt.formatDateTime` is documented as `localeFormatOption`, which is a `Locale.FormatType` enum (like `Locale.LongFormat`), NOT a full `Locale` object. Passing `Qt.locale()` in that slot produces no output — the binding evaluates to empty string, Text renders nothing, date line disappears.
+3. **First fix attempt:** `Qt.locale().toString(new Date(), "dddd, MMM d")`. **Renders literal `"[object Object]"`.** The QML `Locale` type has no `toString(date, format)` method, so the call falls through to `Object.prototype.toString()` which returns "[object Object]" verbatim. Visible on the dev env — the user screenshotted it and the literal string was the giveaway.
+4. **Correct fix:** `new Date().toLocaleDateString(Qt.locale(), "dddd, MMM d")`. `Date.toLocaleDateString(locale, format)` is a **Qt QML extension on JS `Date.prototype`** (not the ECMAScript standard `toLocaleDateString`!) that accepts a Qt Locale object plus a Qt date format string and uses the locale's translated day/month names. Works correctly.
+
+**Footgun to remember:** these three APIs look interchangeable but aren't. The order of preference in Qt 5.15 QML for "locale-aware date formatting with a format string" is:
+```
+new Date().toLocaleDateString(Qt.locale(), "dddd, MMM d")  // ✓ correct
+Qt.formatDateTime(new Date(), "dddd, MMM d")               // ✓ works but uses default locale, can't override
+Qt.formatDateTime(new Date(), "dddd, MMM d", Qt.locale())  // ✗ blank output
+Qt.locale().toString(new Date(), "dddd, MMM d")            // ✗ "[object Object]"
+```
+
+#### Subliminal test determinism (`test_matrixrain.cpp`, commit `03ab271`)
+
+**Symptom:** `subliminalStreamWritesGrid` test failed twice in a row on CI on commit `8d9c5ab`, but passed locally. Since `8d9c5ab` only touched `ChargingScreen.qml` (QML) and `test_matrixrain` is pure C++, it clearly wasn't a regression from the commit.
+
+**Diagnosis:** `RainSimulation`'s default constructor seeds `m_rng` from `std::random_device{}()` (`rainsimulation.cpp:45`), so every CI run got different entropy. The test's 5-attempt retry loop (`for attempt in 0..5`) wasn't deterministic — unlucky seeds meant no streams matured enough (`histCount >= minTrail`) for `injectSubliminalStream` to pick a candidate, and 5 failed attempts tripped the `QVERIFY(injected)` assertion. Previous commits passed by luck.
+
+**Fix:** reseed `m_sim.m_rng.seed(42)` and re-initialise streams after `setupItem()` — bypasses `std::random_device` entropy for this one test without changing production behavior. Bumped attempt budget 5 → 30 as belt-and-suspenders. Verified locally: 106/106 tests pass. CI green on subsequent runs.
+
+**Footgun to remember:** any test that loops over random stream state needs either a deterministic seed or a generous attempt budget — `std::random_device` on CI runners produces genuinely unpredictable seeds. Pattern: `item.m_sim.m_rng.seed(<fixed>); item.m_sim.initStreams(...)` after `setupItem()`.
+
+#### CI `tidy.yml` libicu56 fix (commit `1c1c45b`)
+
+The clang-tidy workflow was failing on every push with `lupdate: error while loading shared libraries: libicui18n.so.56: cannot open shared object file`. Root cause: Qt 5.15's `lupdate`/`lrelease` require `libicui18n.so.56`, which Ubuntu 22.04 no longer ships. `qmake` auto-invokes `lupdate` when processing the `.pro` file's `TRANSLATIONS` section, so the whole `clang-tidy` job was failing at the qmake step before ever reaching tidy.
+
+Fix: mirrored the existing libicu56 cache/build/install steps from `build.yml` into `tidy.yml`. Same pattern — download `icu4c-56_2-src.tgz` from the unicode-org releases, build it, install it, `ldconfig`. Cached in GitHub Actions so subsequent runs are fast.
+
+**Footgun to remember:** any new GitHub Actions workflow that runs `qmake` against the project's `remote-ui.pro` file on Ubuntu ≥ 22.04 needs the libicu56 preamble. Don't forget, it'll fail before the interesting job content even starts.
+
+### Mod 2 Avatar — archived on external project directory
+
+Completely stripped from the repo on this session per maintainer decision to keep the release scope clean and stop carrying dormant code. Research preserved losslessly at `/Users/madalone/_Claude Projects/UC-Remote AVATAR Project/`:
+
+- `AVATAR_PLAN.md` — canonical Mod 2 design doc (~95 KB, Phases A–D)
+- `BrailleFont.ttf` — FreeMono subset U+2800-28FF (24 KB)
+- `avatar_preview/` — Docker preview directory
+- `test_braille.qml` / `test_braille_mapper.qml` — standalone QML prototypes
+- `ASCII Base.md`, `ASCII Source.md`, `ASCII_Rick_base.md`, `ASCII_Rick_base_nodrool.md` — braille portrait art references
+- `pre-strip-originals/` — lossless snapshots of every tracked repo file whose avatar sections were edited out (`CUSTOM_FILES.md`, `STYLE_GUIDE.md`, `SCREENSAVER-README.md`, `SCREENSAVER-IMPLEMENTATION.md`, `UPSTREAM_MERGE.md`, `.gitignore`, `glyphatlas.h/.cpp`)
+- `FINDINGS.md` — index + resume-instructions for future Mod 2 work
+
+Things stripped from the repo in this session:
+- Full "Mod 2: Avatar System" section from `docs/CUSTOM_FILES.md`
+- Avatar references from `STYLE_GUIDE.md` (examples, commit messages, mod anatomy, Q_PROPERTY keys)
+- The "Dangling Mod 2 Avatar reference" heads-up block that used to live at the top of this file
+- Avatar bullet from the `.gitignore` Mod 2 block
+- Dormant braille charset support in `glyphatlas.{h,cpp}` (`loadBrailleFont()`, `CHARS_BRAILLE`, `buildBrailleChars()`, programmatic 2×4 dot grid rendering branch, all `charset == "braille"` branches in `build()` and `buildMetricsOnly()`)
+- Avatar comment in `resources/qrc/main.qrc`
+- Tracked prototype files: `ASCII Base.md`, `ASCII Source.md`, `ASCII_Rick_base.md`, `ASCII_Rick_base_nodrool.md`, `test_braille.qml`, `test_braille_mapper.qml`
+
+Post-strip: cross-compile clean, deployed to UC3, matrix rain still renders for ascii/katakana/binary/digits charsets. Zero regression.
+
+### Auto-rotate dev-env vs device quirk (investigated, not fixed)
+
+User reported "auto-rotate works on the UC3 but not in the macOS dev env". After tracing: auto-rotate **does** start correctly in dev env (verified `config.ini` has `matrixGravity=true`, verified `setGravityMode(true)` → `m_gravity.startAutoRotation()` fires in `bindToScreensaverConfig`). The problem is that **every arrow key press in the dev env window silently kills auto-rotate** via `handleDirectionInput()` at `matrixrain.cpp:1188-1203`:
+
+```cpp
+void MatrixRainItem::handleDirectionInput(const QString &action) {
+    ...
+    m_interactiveOverride = true;
+    m_gravity.stopAutoRotation();  // kills auto-rotate
+    ...
+}
+```
+
+On the UC3 device, you aren't physically pressing DPAD buttons while watching the screensaver, so auto-rotate runs uninterrupted. In the dev env, every stray keyboard arrow (navigating out of Settings, tabbing around) gets routed via ChargingScreen.qml's `sendDirection(...)` → `interactiveInput()` → `handleDirectionInput()` → stops the timer. Once killed, auto-rotate only restores via `handleRestoreInput()` (bound to double-tap/triple-tap center gestures), which the user won't trigger by accident in dev.
+
+**Decision: accept as-is.** It's the designed manual-override behavior reacting to unintentional keyboard input. Workaround: in the dev env, enable auto-rotate, close Settings with the mouse only, don't touch keyboard arrows while watching Matrix. This isn't a bug on the device and doesn't need a patch — but it IS a future-debugging footgun worth flagging here in case someone hits the same confusion.
+
+### Files state at session end
+
+- **Tagged release:** `v1.2.2` covers the Batch 0 fixes + batches A–G hygiene sweep (DPAD respawn fix is the tip of the tag at `ca487c9`).
+- **Post-tag on `main`:** avatar cleanup, clang-tidy CI fix, first-boot button lockout, MinimalTheme date fix, subliminal test determinism fix, README/docs refresh for the fork identity + screenshot regeneration, upstream re-check log, install doc pin with the revert-first callout, Jessica acknowledgment in README.
+- **Forum post draft:** `/Users/madalone/_Claude Projects/uc-forum-post.md` — ready to post on unfolded.community.
+
+### Footguns / decisions worth preserving
+
+- `MatrixRainItem::resetAfterScreenOff()` and the `cancelScreenOff()` protocol hook on themes are the correct wake-refresh path. If a new theme ever adds stateful rendering (Canvas, QQuickItem, shader-backed FBO), it MUST declare `cancelScreenOff()` and wire it into its refresh — otherwise the v1.2.1 display-off-gate fix leaves it vulnerable to the same wake-black race that Matrix/Starfield had.
+- `Date.toLocaleDateString(Qt.locale(), format)` is the only locale-aware date formatting API in Qt 5.15 QML that actually works with a format string. Neither of the two alternatives do — see the MinimalTheme section above.
+- `Popup.onOpened` can fire before an async `Loader`'s `onLoaded`. Any code that depends on `themeLoader.item` at `onOpened` time needs either (a) unconditional dispatch that handles null gracefully, (b) re-dispatch in `Loader.onLoaded`, or (c) both. The button-lockout fix used (c).
+- `std::random_device` on CI runners produces genuinely non-deterministic entropy per run. Any test that asserts on random-stream state needs a fixed seed or a very generous retry budget (20+ attempts).
+- CI workflows that `qmake` the project on Ubuntu ≥ 22.04 need the libicu56 cache/build/install preamble — `qmake` auto-invokes `lupdate` via `TRANSLATIONS`, and `lupdate` is dynamically linked against `libicui18n.so.56` which Ubuntu 22.04 doesn't ship.
+- Auto-rotate in dev env: any arrow key press kills it until an explicit restore gesture. Don't file this as a bug; it's the manual-override by design. Future debuggers: test auto-rotate in dev env with MOUSE NAVIGATION ONLY.
+- Mod 2 Avatar research lives at `/Users/madalone/_Claude Projects/UC-Remote AVATAR Project/` — if the user ever wants to resume, start with `FINDINGS.md` there, not `git log`.
