@@ -2119,3 +2119,148 @@ On the UC3 device, you aren't physically pressing DPAD buttons while watching th
 - CI workflows that `qmake` the project on Ubuntu ≥ 22.04 need the libicu56 cache/build/install preamble — `qmake` auto-invokes `lupdate` via `TRANSLATIONS`, and `lupdate` is dynamically linked against `libicui18n.so.56` which Ubuntu 22.04 doesn't ship.
 - Auto-rotate in dev env: any arrow key press kills it until an explicit restore gesture. Don't file this as a bug; it's the manual-override by design. Future debuggers: test auto-rotate in dev env with MOUSE NAVIGATION ONLY.
 - Mod 2 Avatar research lives at `/Users/madalone/_Claude Projects/UC-Remote AVATAR Project/` — if the user ever wants to resume, start with `FINDINGS.md` there, not `git log`.
+
+---
+
+## 2026-04-14 Session: Atlas profiling + settings-freeze fix via deferred Loader
+
+Follow-up session to the v1.2.2 path-to-A work. Started from a broad codebase audit, focused on two observed pain points: (a) the memory-file claim of "~8 s first dock / ~5 s repeat dock" on `buildCombinedAtlas`, and (b) a user-reported UI freeze when opening **Settings → Screensaver**. Shipped as commit `ef72b5c` on `main`.
+
+### Atlas phase-timing instrumentation
+
+Added `QElapsedTimer`-based phase timers around every phase of `MatrixRainItem::buildCombinedAtlas()`: SHA-1 cache key computation, 3× `GlyphAtlas::build()` layer passes (far/mid/near), `QPainter` compose blit into the combined atlas image, UV remap + `clearAtlasImage()` cleanup, and `syncLayerConfig()`. Also wraps the outer `updatePolish()` rebuild block and adds a first-paint timer in `updatePaintNode()` (fires once per `MatrixRainItem` instance, covers ctor-to-first-frame).
+
+Phase results land in `m_lastBuildSummary` (a compact one-line `QString`) + matching `qCInfo(lcScreensaver)` log line. Exposed as `Q_PROPERTY(QString lastBuildSummary READ ... NOTIFY ...)` on `MatrixRainItem`. Rendered on-device via a small green text overlay at the top of `MatrixTheme.qml`, gated behind a new `SCRN_BOOL(debugAtlasOverlay, "charging/debugAtlasOverlay", false)` in `ScreensaverConfig`. The overlay toggle row sits in the General Behavior settings sub-page ("Atlas profiling overlay"), matrix-theme-only.
+
+**Why a Q_PROPERTY rather than just the log line:** `lodgy` on the UC3 doesn't surface `qCInfo` output usefully (see memory `feedback_no_elapsed_timer.md`). The Q_PROPERTY path lets the overlay display the phase times directly on the device. The `qCInfo` log still fires for Docker preview / macOS dev sessions where stdout is reachable.
+
+### Phase breakdown (on-device profiling, UC3 ARM64)
+
+Measured four configurations by photographing the debug overlay on fresh dock cycles. All values in ms.
+
+| Config | buildMs | composeMs | remapMs | totalMs | ctorToPaintMs |
+|---|---|---|---|---|---|
+| rainbow_gradient / katakana / size=39 / layers=on (user's preferred) | [459,635,911] | 1189 | 375 | **3569** | **3699** |
+| rainbow / katakana / size=39 / layers=on | [315,419,586] | 757 | 250 | 2327 | 2468 |
+| rainbow / katakana / size=16 / layers=on | [215,233,275] | 144 | 39 | 906 | 1056 |
+| rainbow / katakana / size=16 / layers=off | [0,255,0] | 0 | 0 | 255 | 443 |
+| any / any / any / **repeat dock** (cache hit) | [0,0,0] | 0 | 0 | **0** | **99–158** |
+
+**Key findings:**
+
+1. **The memory-file "~5 s repeat dock" claim is stale.** Actual repeat-dock ctor-to-first-paint is **99–158 ms** on current code — a 30-50× improvement, probably accumulated silently across v1.2.0 / v1.2.1 / v1.2.2 work. The static in-memory atlas cache in `buildCombinedAtlas()` is doing its job: cache-hit path is near-instant.
+2. **Cold first-dock is ~3.5 s**, not 8 s. Memory file was optimistic by ~2×.
+3. **`composeMs` is the single biggest phase of cold build — 33 % of total for the worst config.** Surprising — the audit had ranked it "-1ms suspect" before measurement. The 3× `QPainter::drawImage` blit composes a ~332 MB combined atlas image on ARM, which is ~66 MB of memcpy through ARM's memory bus plus allocation and eventual `free()` of the source layer atlases.
+4. **Phase cost scales roughly quadratically with font size.** `composeMs` at size=39 is 1189 ms; at size=16 it's 144 ms (8.3× smaller for 2.4× smaller font, matches pixel area ratio). Layer build time scales similarly (2005 → 723 ms). This is why the "turn down fontSize" test probe from the audit was so effective: it's a free ~87 % reduction in cold-dock cost.
+5. **Layers=on cost at size=16 is ~650 ms of overhead** vs layers=off. Mostly the 3× layer builds (215+233+275 = 723 ms) and compose+remap (183 ms).
+
+### Path A decision (ship as-is)
+
+Cold dock happens once per UI restart — a rare event. Repeat docks within a session are already fast. User confirmed preference for `rainbow_gradient + 39 + layers=on` (the slow config) for aesthetic reasons.
+
+**Options evaluated:**
+
+- **Tier B (eliminate compose step)** — render each layer as its own `QSGTexture` with 3 `QSGGeometryNode`s instead of compositing into one. Saves ~1189 ms compose + ~375 ms remap/free. ~1 day of work, medium risk. Gets cold dock to ~2 s.
+- **Tier C (shader-side brightness)** — move brightness computation to the fragment shader via per-vertex alpha, reducing pre-baked brightness variants from 8 to 1. Saves ~83 % of rasterization cost. ~2-3 days, higher risk (touches shader + vertex emission). Gets cold dock to ~400 ms.
+- **Tier D (background thread `buildCombinedAtlas`)** — move the rasterization off the main thread via `QtConcurrent::run`. Doesn't reduce CPU work, only hides it behind a brief "blank screen" on first dock. Ugly UX, acceptable fallback.
+
+**Chosen: none.** The cost/benefit doesn't pencil out. 3-4 days of shader/material work to shave ~3 s off a rare event, when repeat docks (the common case) already run in ~150 ms, is premature optimization. A pro industry dev would ship this and move on. Debug toggle stays in the build for future investigations.
+
+### Settings-freeze fix via deferred Loader
+
+Second pain point from the audit: opening **Settings → Screensaver** produced a visible UI freeze. Root cause in `src/qml/settings/settings/ChargingScreen.qml`: the main `ColumnLayout` unconditionally instantiated **six** theme-dependent sub-pages then gated each with `visible: ScreensaverConfig.theme === "..."`. Qt compiled + bound + laid out every theme's entire settings sub-tree on every page open, even though only one was displayed. The matrix pair alone has > 100 child items across ~15 sliders + color pickers + switches + repeater rectangles.
+
+**Fix:** wrap each theme sub-page in a `Loader` so only the active theme's content exists at any given moment.
+
+```qml
+Loader {
+    id: matrixAppearanceLoader
+    Layout.fillWidth: true
+    active: ScreensaverConfig.theme === "matrix"
+    asynchronous: true
+    visible: status === Loader.Ready
+    sourceComponent: matrixAppearanceComponent
+}
+```
+
+The `visible: status === Loader.Ready` binding does double duty: it hides the item during async load (Qt 5.15 Loader best practice per `doc.qt.io/archives/qt-5.15/qml-qtquick-loader.html`) AND excludes inactive Loaders from the parent `ColumnLayout`'s `spacing: 20` when `status === Null` (so there are no dead gaps between siblings when a theme is off).
+
+**Also in the same refactor:**
+
+- Extracted the two inline theme sections (`starfieldSettings`, `minimalSettings`, ~300 lines total inside `ChargingScreen.qml`) to their own files `StarfieldSettings.qml` and `MinimalSettings.qml` matching the existing pattern of the other four sub-pages. Translation `.ts` files re-generated accordingly.
+- Dropped the orphaned `matrixShutoffSettings.visible ? matrixShutoffSettings.lastFocusItem : ...` branch from `generalBehavior.navUpTarget`. Commit `47b6d59` added `MatrixShutoffSettings.qml` for a matrix cascade screen-off animation; the animation was later ripped out when `MatrixTheme.qml` dropped `providesNativeScreenOff`, but the file, its `matrixShutoffStyle` + `matrixShutoffDuration` SCRN_* config entries, the qrc entry, the translation strings, and the `navUpTarget` reference were all left behind as cruft. The nav-branch cleanup is the only one in this commit; a full dead-code sweep is a separate task.
+
+User confirmed the result on device: "*settings show up correctly now... screensaver menu is back and load is significantly faster*".
+
+### The `required property` + `Loader` trap (burned on first deploy)
+
+First attempt at the Loader refactor used `source: "qrc:/..."` + `onLoaded: item.settingsPage = chargingScreenPage`. Deployed, shipped, user opened settings, and **all sub-page content was invisible**. Matrix theme was hit worst because it has two Loaders (appearance + effects); user reported "all color settings are gone... in matrix all effects and other settings are completely gone!".
+
+**Root cause:** every theme sub-page declares `required property Item settingsPage`. Qt 5.15 enforces `required property` at **construction time** — the property must be bound before the QML component finishes instantiating. Setting `item.settingsPage` in `onLoaded` is too late; the required check fails, the Loader's `item` stays `null`, no content renders. All the cross-references to `loader.item.firstFocusItem` in the focus chain resolve to `null` as well, so the focus chain silently falls through to the fallback branches. The sub-pages appear to have been "deleted" from the user's perspective.
+
+**Fix:** use `sourceComponent:` pointing to an inline `Component { ... }` block declared earlier in the same file, with declarative property bindings on the sub-page:
+
+```qml
+Component {
+    id: matrixAppearanceComponent
+    ChargingScreenComponents.MatrixAppearance {
+        settingsPage: chargingScreenPage
+        Layout.fillWidth: true
+        navUpTarget: commonToggles.lastFocusItem
+        navDownTarget: matrixEffectsLoader.item
+                     ? matrixEffectsLoader.item.firstFocusItem
+                     : generalBehavior.firstFocusItem
+    }
+}
+
+Loader {
+    id: matrixAppearanceLoader
+    ...
+    sourceComponent: matrixAppearanceComponent
+}
+```
+
+`Component { }` allows declarative property binding at construction time, which satisfies the `required property` contract. Cross-references (`matrixEffectsLoader.item?.firstFocusItem`) are declarative ternaries that reactively re-evaluate once the sibling Loader's `item` becomes non-null.
+
+Logged as a feedback memory (`feedback_menu_changes_dev_preview.md`) so future sessions catch it earlier — dev-env preview before UC3 deploy is now the standing rule for menu/UI changes.
+
+### Subtle build-system gotcha: `qrc` changes require `qmake`
+
+On the first local build after adding `StarfieldSettings.qml` + `MinimalSettings.qml` to `resources/qrc/main.qrc`, the macOS native build **failed at link time**:
+
+```
+Undefined symbols for architecture x86_64:
+  "QmlCacheGeneratedCode::_settings_settings_chargingscreen_MinimalSettings_qml::qmlData"
+  "QmlCacheGeneratedCode::_settings_settings_chargingscreen_StarfieldSettings_qml::qmlData"
+```
+
+`qmake` auto-generates `qmlcache_loader.cpp` based on the qrc contents. Editing the qrc without re-running `qmake` leaves `qmlcache_loader.cpp` stale — it expects the new symbols but the Makefile doesn't yet know to emit `.o` files for them via `qmlcachegen`. **Fix: re-run `qmake` after any `resources/qrc/*.qrc` edit**, then `make`. The second rebuild passed cleanly.
+
+Worth memorializing: any future work that touches qrc entries should trigger a full `qmake && make` cycle, not just an incremental `make`.
+
+### UC3 install-persistence quirk (tentative, one observation)
+
+After the successful sourceComponent fix deploy, the user rebooted the remote and reported **the screensaver menu was missing**. Redeploying the same tarball with no code changes restored it. Not enough data to know whether UC3 UI installs reliably survive full reboots or whether there's a specific trigger that loses them. Flagged here as a potential gotcha to watch for — **if it happens again, save as a confident memory**.
+
+### Files modified (commit `ef72b5c`)
+
+- `src/ui/matrixrain.h` + `.cpp` — `QElapsedTimer` phase instrumentation, `lastBuildSummary` Q_PROPERTY, ctor timer for ctor-to-first-paint measurement
+- `src/ui/screensaverconfig.h` — `SCRN_BOOL(debugAtlasOverlay, ...)`
+- `src/qml/components/themes/MatrixTheme.qml` — debug overlay text strip, gated on `ScreensaverConfig.debugAtlasOverlay`
+- `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` — new toggle row, focus chain updated
+- `src/qml/settings/settings/ChargingScreen.qml` — 6× `Loader` wrappers via `sourceComponent:` + inline `Component { }`, dropped dead `matrixShutoffSettings` nav branch, inline `starfieldSettings` and `minimalSettings` blocks removed
+- `src/qml/settings/settings/chargingscreen/StarfieldSettings.qml` *(NEW)* — extracted from inline
+- `src/qml/settings/settings/chargingscreen/MinimalSettings.qml` *(NEW)* — extracted from inline
+- `resources/qrc/main.qrc` — two new entries
+- `resources_qrc_main_qmlcache.qrc` + `resources/translations/*.ts` + `version.txt` — qmake-regenerated artifacts
+
+### Footguns / decisions worth preserving from this session
+
+- **`Loader { source:  ...; onLoaded: item.xxx = ... }` does NOT satisfy `required property`**. Required properties are enforced at construction time. Any sub-page using `required property Item X` must be instantiated via `Loader { sourceComponent: inlineComponent }` with a `Component { TheSubPage { X: value } }` declaration in the parent file. Declarative bindings at construction time are the only way to pass values into a required property.
+- **`Loader.visible: status === Loader.Ready` is the canonical Qt 5.15 idiom** for async-loaded content inside a layout. It both hides the item during async load AND excludes inactive Loaders from the parent `ColumnLayout`'s spacing, preventing dead gaps between siblings when items are conditionally loaded.
+- **`qmake` regeneration is required after any `resources/qrc/*.qrc` change.** Incremental `make` alone will leave `qmlcache_loader.cpp` references dangling and produce a hard-to-read linker error.
+- **`buildCombinedAtlas` compose step is O(atlas_area) and dominates cold-build cost at large font sizes.** If future work needs to make cold-dock instant, Tier B (eliminate compose via per-layer `QSGTexture`s) is the highest-ROI fix — ~1 day of work for ~1.5 s savings at the user's preferred config. Don't bother with Tier C (shader brightness) unless Tier B proves insufficient.
+- **The static in-memory atlas cache in `buildCombinedAtlas` is load-bearing.** It's what makes repeat docks fast. Disk caching was tried twice and failed on UC3 (see `project_atlas_cache.md`). Any future work that changes atlas sizing or content must preserve the `s_cacheKey` SHA-1 match contract.
+- **Translation `.ts` files update in lock-step with QML file moves.** Extracting an inline `ColumnLayout { ... }` to its own `.qml` file moves all its `qsTr()` strings from the parent context to the child context. Running `qmake` on a refactor like this will produce a large `.ts` diff that looks scary but is entirely legitimate — commit it alongside the code.
+- **Lodgy still doesn't surface `qCInfo` output usefully on UC3.** The `lastBuildSummary` Q_PROPERTY + debug overlay pattern is the correct long-term readout path for any future on-device profiling. Don't add new `qCInfo` calls expecting to read them on device.
+- **UC3 "menu changes need dev-env preview"** (new standing rule as of this session): any QML edit under `src/qml/settings/settings/*`, `src/qml/components/*Screen*`, `src/qml/components/themes/*`, or `src/qml/components/overlays/*` must be tested in the macOS dev env OR Docker preview BEFORE deploying to the physical UC3. The first Loader deploy was broken and would have been caught instantly with a dev-env check. Logged as `feedback_menu_changes_dev_preview.md` in auto memory.
