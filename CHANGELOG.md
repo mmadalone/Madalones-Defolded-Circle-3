@@ -6,6 +6,65 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
+
+# Fork releases (Madalone's Defolded Circle 3)
+
+Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
+
+## v1.2.2 — 2026-04-13 — screensaver bug fixes + thermal + hygiene sweep + post-release polish
+
+### Fixed (user-reported Batch 0)
+- **"Close on wake" toggle was ignored on undock** (`main.qml`). The `Battery.onPowerSupplyChanged(false)` handler now honors `ScreensaverConfig.motionToClose` the same way the sibling `Power.onPowerModeChanged` handler already did. Template for the fix was the `tapToClose` check at `ChargingScreen.qml:494` — no new state, no new abstractions, just connecting the piece that was disconnected.
+- **Matrix/Starfield themes sometimes stayed black after the screen-off animation finished.** Root cause: `MatrixRainItem::resetAfterScreenOff()` was a designed-but-disconnected wake-refresh helper. Wired `cancelScreenOff()` into MatrixTheme and StarfieldTheme (both call the helper), plus belt-and-suspenders `themeLoader.item.update()` in `ChargingScreen.cancelScreenOffEffect()`. Also preemptively removed the latent `!root.displayOff` gates from TvStaticTheme's Timer bindings.
+- **"Idle screensaver OFF" toggle had no effect** — popup still opened after `idleTimeout` expired. Added the `_shouldOpenOnIdle()` gate to the idle-timer fallback path in `main.qml`.
+- **Display-off gap on undock**: screen-off animation started ~3 s after undock and display stayed powered on for ~7 s before blanking. Retimed cascade so animation fires at `displayTimeout` after undock; blackout-to-display-off gap is now < 2 s.
+- **First-boot button lockout**: every physical remote button was dead on the first popup open (only tap worked). Root cause: `buttonNavigation.takeControl()` was gated on `themeLoader.item`, which was null when `Popup.onOpened` fired before the async Loader realized its child. Dropped the guard; re-call `takeControl()` in `themeLoader.onLoaded` as belt-and-suspenders.
+- **MinimalTheme date line rendered blank**. Root cause: Batch C had replaced the hardcoded English day/month arrays with `Qt.formatDateTime(new Date(), "dddd, MMM d", Qt.locale())`, which silently returns empty in Qt 5.15 because the 3rd argument is a `Locale.FormatType` enum, not a full `Locale` object. First fix attempt (`Qt.locale().toString(new Date(), "dddd, MMM d")`) rendered literal `"[object Object]"` because the QML `Locale` type has no `toString(date, format)` method. Correct fix: `new Date().toLocaleDateString(Qt.locale(), "dddd, MMM d")` — the Qt QML extension on JS `Date.prototype` that accepts a Qt Locale object plus a Qt date format string.
+
+### Fixed (thermal + render regressions)
+- **Remote getting noticeably warm on long docked sessions.** `MatrixRainItem::setDisplayOff(true)` was stopping render output but the internal tick timer kept firing, pegging ~4% of one ARM core. Fixed by also calling `m_timer.stop()` and `m_gravity.stopAutoRotation()` during display-off; wake path in `setDisplayOff(false)` restarts both.
+- **DPAD/touch direction changes were respawning the rain** instead of bending it smoothly via gravity-lerp. Direction changes now route through `GravityDirection::setDirection()` so the per-stream angle lerp takes over.
+
+### Added (Batches A–G hygiene sweep)
+- **Batch A** — version sync CI gate in `build.yml` (fails when `remote-ui.pro` VERSION ≠ `release.json` ≠ latest git tag); credentials scrubbed from all tracked docs and replaced with `.env.local` references; 60 MB of tracked tarball/Makefile build-artifact tree debt purged; `CRITICAL` landmine comment on `AnalogTheme.qml:120` for the Qt 5.15 qmlcachegen binding race.
+- **Batch B** — strict warning flags enabled project-wide (`-Wall -Wextra -Werror=format -Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`); full cascade fixed in every custom `src/ui/*` file with **no pragma suppressions** — root causes only. Matrix hot-path UV-index bounds tightened with a new negative regression test.
+- **Batch C** — `.githooks/pre-commit` running `cpplint.sh` + `clang-format --dry-run -Werror`; `lupdate` i18n baseline populated across all 8 `.ts` files; new `docs/UPSTREAM_MERGE.md` playbook; CHANGELOG sync gate in CI on tagged commits; `BaseTheme.qml` `cancelScreenOff` doc clarified as the wake-refresh hook.
+- **Batch D** — `clang-tidy` in CI via `.github/workflows/tidy.yml` with a tolerant baseline ruleset (`modernize-*`, `bugprone-*`, `cert-*`, `performance-*`); per-file `NOLINT` comments with reasons for any intentional upstream-compat cases.
+- **Batch E** — dead `CFG_*` macro family deleted from `src/config/config_macros.h` (zero call sites), `SCRN_*` documented as canonical in `STYLE_GUIDE.md` §6.6; four new QML theme lifecycle tests (`tst_starfield.qml`, `tst_minimal.qml`, `tst_analog.qml`, `tst_tvstatic.qml`) covering Starfield, Minimal, Analog, and TV Static beyond the existing Matrix suite.
+- **Batch F** — GPG release signing pipeline (`docs/RELEASE_SIGNING.md`, `scripts/verify-release.sh`, signing step in `build.yml`); canary deploy with auto-revert on health-check failure (`scripts/deploy-canary.sh`); local mock UC3 endpoint (`scripts/mock-uc3-api.py`) so the canary path can be rehearsed without a spare device.
+- **Batch G** — upstream merge rehearsal executed (fork is strict superset of `upstream/main@0586d45`, zero conflicts); `docs/A11Y_AUDIT.md` walkthrough; real translations populated for `de_DE.ts` + `fr_FR.ts`; CycloneDX `sbom.cdx.json` regenerated in CI.
+
+### Chore / cleanup
+- **Mod 2 (Avatar) completely stripped from the repo**. Research preserved losslessly in an external archive at `/Users/madalone/_Claude Projects/UC-Remote AVATAR Project/` with `pre-strip-originals/` snapshots and a `FINDINGS.md` index. Removed: `CUSTOM_FILES.md` Mod 2 section, `STYLE_GUIDE.md` avatar examples, `.gitignore` Mod 2 block, `glyphatlas.{h,cpp}` dormant braille charset support (`loadBrailleFont`, `CHARS_BRAILLE`, `buildBrailleChars`, all `charset == "braille"` branches including the programmatic 2×4 dot grid rendering), `resources/qrc/main.qrc` avatar comment, tracked prototype files (ASCII art references, `test_braille.qml`, `test_braille_mapper.qml`, `AVATAR_PLAN.md`, `BrailleFont.ttf`).
+- **clang-tidy CI workflow** (`.github/workflows/tidy.yml`) was failing on every push because Qt 5.15 `lupdate` requires `libicui18n.so.56` which Ubuntu 22.04 no longer ships. Added the libicu56 cache/build/install preamble mirroring `build.yml`.
+- **`subliminalStreamWritesGrid` test was flaky on CI.** Root cause: `RainSimulation`'s default ctor seeds `m_rng` from `std::random_device{}()`, so each runner got different entropy. Fix: deterministic `m_rng.seed(42)` + bumped attempt budget 5 → 30 as belt-and-suspenders.
+- **GPG signing key rotated** from `82236E0F07904BDC` → `3172A28DABF07621`. The original Batch F key's passphrase was generated inline via `$(openssl rand -base64 32)` and never captured — command substitution consumed it. Regenerated fresh as a passphrase-less key (appropriate for CI-only signing stored in GitHub Secrets).
+- **`README.md` rewritten for fork identity** (no longer the upstream UC README). New sections: five-theme hero table, YouTube Shorts demo link, explicit Matrix-tunability disclosure, "How this was built" (vibecoding loop + audits + testing + safety posture), "Human-reviewed documentation" (AI drafts, maintainer proofs), "With love and thanks" acknowledgment, expanded screen-off animations section, pinned tested firmware range (1.9.x only, maintainer device only), loud revert-first install callout.
+- **`SCREENSAVER-README.md` screenshot tables fully rebuilt** to match current `docs/screenshots/` contents: 5 theme heroes, common toggles, Matrix/Starfield/Minimal/Analog/TV Static settings tables (21 sub-pages total), Power saving → Screen off animations settings page + 9 textual style descriptions.
+
+## v1.2.1 — 2026-04-13 — drop displayOff gate from running binding (fixes wake-black)
+
+### Fixed
+- **Matrix and Starfield rain going black on wake** from any screen-off animation cycle. Root cause was a `running: visible && !isClosing && !displayOff` binding race: on wake, `setRunning(false) → setRunning(true)` fired in the same QML tick as `cancelScreenOffEffect` and `setSpeed`, and Qt does not guarantee binding / notifier / onChanged ordering. The race left the scene graph's first post-wake `updatePaintNode()` submitting an empty geometry node. Fix: drop `!displayOff` from the binding — the sim ticks through display-off at near-zero cost because Qt stops compositing when the display is off.
+- **`holdPauseTimer` was writing `matrixRain.running = false` imperatively from QML**, permanently breaking the running binding on the theme instance. Replaced with new `Q_INVOKABLE pauseTicks()` / `resumeTicks()` C++ methods that stop and start the tick timer without touching `m_running` or the QML property — the binding stays live for future display-off/wake cycles.
+- **`postAnimationSafetyTimer` was closing the popup** when the core's `Low_power` transition didn't fire within `leadMs + 1500ms`. On undocked setups where `Low_power` never fires, this was dumping the user to the home screen on every wake. Changed to set `displayOff = true` instead — popup stays alive.
+
+### Removed
+- **Matrix theme-native cascade animation.** Matrix now falls through to the shared `ScreenOffOverlay` styles same as Starfield and Minimal. The Matrix shutdown animation settings section is gone.
+
+## v1.2.0 — 2026-04-13 — runtime slider wiring + tap master toggle
+
+### Fixed
+- **Matrix animation speed, density, trail length, fade, and color sliders silently having no effect on the live rain.** Root cause: a signal-to-signal `connect` in `ScreensaverConfig`'s ctor didn't route through correctly because the raw `matrix*Changed` signals were declared via macro while the transformed `*Changed` signals were in a separate manual `signals:` block — Qt's MOC + QML binding engine don't trace indirect signal chains. Fixed with the canonical Qt dual-emit pattern: hand-written setters emit both the raw and the transformed NOTIFY signal directly.
+
+### Added
+- Master **"Enable tap effects"** toggle in the Tap section of the Charging Screen settings — single switch that disables every tap effect at once. When off, taps still wake/cancel screen-off animations but produce no visual effect on the rain.
+- Bumped `TICK_MAX_MS` from 150 to 300 so slider value 10 actually maps to a visibly slower tick.
+
+---
+
+# Upstream Unfolded Circle releases
+
 ## v0.71.1 - 2026-03-19
 ### Fixed
 - Adjust color contrast
