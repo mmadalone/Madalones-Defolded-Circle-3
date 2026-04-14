@@ -219,7 +219,7 @@ Because the device is a piece of hardware that belongs to someone, every change 
 
 ## With love and thanks
 
-To **Jessica** — for your patience with my obsession(s) — the plural is deliberate — for tolerating the marathonian sessions that come with them. Not once did you throw the remote across the room, even on cycle number fifteen of *"one more test, I promise"*. None of this exists without you making space for it, and for being the one who makes the coming-up-for-air part worthwhile. None of this exists without you. ❤
+To **Jessica** — for your patience with my obsession(s) — the plural is deliberate — for tolerating the marathonian sessions that come with them. Not once did you throw the remote across the room. None of this exists without you making space for it, and for being the one who makes the coming-up-for-air part worthwhile. None of this exists without you. ❤
 
 ---
 
