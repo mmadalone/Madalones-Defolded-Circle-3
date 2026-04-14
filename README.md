@@ -217,6 +217,12 @@ Because the device is a piece of hardware that belongs to someone, every change 
 
 ---
 
+## With love and thanks
+
+To **Jessica** — for your patience with my obsession(s) — the plural is deliberate — for tolerating the marathonian sessions where I vanished into Qt 5.15 muttering about texture atlases and QML binding races. Not once did you throw the remote across the room, even on cycle number fifteen of *"one more test, I promise"*. None of this exists without you making space for it, and for being the one who makes the coming-up-for-air part worthwhile. None of this exists without you. ❤
+
+---
+
 ## Contributing
 
 [`CONTRIBUTING.md`](CONTRIBUTING.md) covers the workflow, code style (`cpplint.sh` + `.clang-format`), the local pre-commit hook (`.githooks/pre-commit`), and the PR process.
