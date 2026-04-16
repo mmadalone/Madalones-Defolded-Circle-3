@@ -111,3 +111,6 @@ CLAUDE.md
 
 # Test preview binaries (local build artifacts)
 test/matrixrain_preview/matrixrain_preview
+
+# Personal Windows-local Claude Code directives
+.claude-memory/
