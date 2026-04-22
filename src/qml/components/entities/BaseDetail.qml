@@ -3,6 +3,7 @@
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.Layouts 1.15
 
 import Entity.Controller 1.0
 import Haptic 1.0
@@ -11,6 +12,7 @@ import Config 1.0
 
 import Wifi 1.0
 import Wifi.SignalStrength 1.0
+import SoftwareUpdate 1.0
 
 import Integration.Controller 1.0
 
@@ -155,27 +157,165 @@ Rectangle {
         }
     }
 
-    Components.Icon {
-        id: iconIntegrationDisconnected
-        color: colors.red
-        icon: "uc:link-slash"
-        anchors { right: iconClose.left; verticalCenter: iconClose.verticalCenter }
-        size: 40
-        visible: integrationObj.state != "connected" && integrationObj.state != ""
-        z: 1001
-    }
-
-    Loader {
-        id: batteryChipLoader
-        active: Config.showBatteryOnDetailPages
-        visible: active
-        z: 1001
+    RowLayout {
+        id: titleStatusStrip
         anchors {
-            right: iconIntegrationDisconnected.visible ? iconIntegrationDisconnected.left : iconClose.left
-            rightMargin: (!iconIntegrationDisconnected.visible && entityBaseDetailContainer._wifiWarningActive) ? 70 : 10
+            right: iconClose.left
+            rightMargin: 10
             verticalCenter: iconClose.verticalCenter
         }
-        source: "qrc:/components/overlays/BatteryStatusChip.qml"
+        spacing: 5
+        z: 1001
+
+        // 1. Integration loading spinner (ui.isConnecting)
+        Item {
+            id: integrationLoadingIndicator
+
+            Layout.preferredWidth: 40
+            Layout.preferredHeight: 40
+            Layout.alignment: Qt.AlignVCenter
+
+            visible: ui.isConnecting
+
+            property int circleSize: 14
+
+            Rectangle {
+                id: fillCircle
+                width: integrationLoadingIndicator.circleSize; height: integrationLoadingIndicator.circleSize
+                radius: 7
+                color: colors.offwhite
+                x: 0
+                z: 1
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            Rectangle {
+                id: outlineCircle
+                width: integrationLoadingIndicator.circleSize; height: integrationLoadingIndicator.circleSize
+                radius: integrationLoadingIndicator.circleSize/2
+                color: colors.offwhite
+                opacity: 0.3
+                x: 20
+                z: 2
+                anchors.verticalCenter: parent.verticalCenter
+            }
+
+            SequentialAnimation {
+                running: integrationLoadingIndicator.visible
+                loops: Animation.Infinite
+
+                ParallelAnimation {
+                    NumberAnimation { target: fillCircle; properties: "z"; to: 1; duration: 1 }
+                    NumberAnimation { target: outlineCircle; properties: "z"; to: 2; duration: 1 }
+                }
+
+                ParallelAnimation {
+                    NumberAnimation { target: fillCircle; properties: "x"; to: integrationLoadingIndicator.circleSize; easing.type: Easing.OutExpo; duration: 400 }
+                    NumberAnimation { target: outlineCircle; properties: "x"; to: 0; easing.type: Easing.OutExpo; duration: 400 }
+                }
+
+                PauseAnimation { duration: 500 }
+
+                ParallelAnimation {
+                    NumberAnimation { target: fillCircle; properties: "z"; to: 2; duration: 1 }
+                    NumberAnimation { target: outlineCircle; properties: "z"; to: 1; duration: 1 }
+                }
+
+                ParallelAnimation {
+                    NumberAnimation { target: fillCircle; properties: "x"; to: 0; easing.type: Easing.OutExpo; duration: 400 }
+                    NumberAnimation { target: outlineCircle; properties: "x"; to: integrationLoadingIndicator.circleSize; easing.type: Easing.OutExpo; duration: 400 }
+                }
+
+                PauseAnimation { duration: 500 }
+            }
+        }
+
+        // 2. Core-disconnected dot (!ui.coreConnected)
+        Rectangle {
+            Layout.alignment: Qt.AlignVCenter
+
+            width: 12; height: 12
+            radius: 6
+            color: colors.red
+            visible: !ui.coreConnected
+        }
+
+        // 3. Software update indicator
+        Components.Icon {
+            Layout.leftMargin: -10
+            Layout.rightMargin: -10
+
+            icon: "uc:cloud-arrow-down"
+            size: 60
+            color: colors.yellow
+            visible: SoftwareUpdate.updateAvailable
+        }
+
+        // 4. WiFi warning (detail-page wider predicate: NONE || WEAK || disconnected)
+        Components.Icon {
+            id: iconWifiWarning
+
+            Layout.leftMargin: -10
+            Layout.rightMargin: -10
+
+            icon: "uc:wifi"
+            color: colors.offwhite
+            opacity: 0.5
+            size: 60
+            visible: entityBaseDetailContainer._wifiWarningActive
+
+            Components.Icon {
+                size: 60
+                icon: {
+                    switch (Wifi.currentNetwork.signalStrength) {
+                    case SignalStrength.NONE:
+                        return "";
+                    case SignalStrength.WEAK:
+                        return "uc:wifi-weak";
+                    default:
+                        return "";
+                    }
+                }
+                opacity: icon === "" ? 0 : 1
+                anchors.centerIn: parent
+            }
+
+            Rectangle {
+                width: 30
+                height: 2
+                color: colors.red
+                rotation: -45
+                transformOrigin: Item.Center
+                anchors.centerIn: parent
+                visible: !Wifi.isConnected
+            }
+        }
+
+        // 5. Integration-disconnected (per-entity)
+        Components.Icon {
+            id: iconIntegrationDisconnected
+
+            Layout.preferredWidth: visible ? 40 : 0
+            Layout.preferredHeight: 40
+            Layout.alignment: Qt.AlignVCenter
+
+            icon: "uc:link-slash"
+            color: colors.red
+            size: 40
+            visible: integrationObj.state != "connected" && integrationObj.state != ""
+        }
+
+        // 6. Battery chip (rightmost, fixed anchor)
+        Loader {
+            id: batteryChipLoader
+
+            Layout.preferredWidth: (active && item) ? item.implicitWidth : 0
+            Layout.preferredHeight: 40
+            Layout.alignment: Qt.AlignVCenter
+
+            active: Config.showBatteryOnDetailPages
+            source: "qrc:/components/overlays/BatteryStatusChip.qml"
+        }
     }
 
     Rectangle {

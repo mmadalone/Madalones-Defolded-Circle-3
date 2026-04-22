@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-22 (Mod 3 detail-page battery chip)
+**Last updated:** 2026-04-22 (Mod 3 detail-page battery chip + Option A RowLayout consolidation)
 
 ---
 
@@ -116,7 +116,9 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ### Modified Upstream Files
 | File | Modification |
 |------|-------------|
-| `src/qml/components/entities/BaseDetail.qml` | Added `import Config 1.0`. Added `id: iconIntegrationDisconnected` to the existing disconnected-integration icon (no behavior change). Added `Loader` anchored `right: iconIntegrationDisconnected.visible ? iconIntegrationDisconnected.left : iconClose.left`, `z: 1001`, gated on `Config.showBatteryOnDetailPages`. **2026-04-22 Option B hotfix:** added `import Wifi 1.0` + `import Wifi.SignalStrength 1.0`; added `readonly property bool _wifiWarningActive` mirroring the StatusBar / BaseTitle / Activity WiFi-warning predicate; chip Loader `rightMargin` now conditional `(!iconIntegrationDisconnected.visible && _wifiWarningActive) ? 70 : 10` to avoid overlap with the WiFi warning icon in subclass title bars. |
+| `src/qml/components/entities/BaseDetail.qml` | Added `import Config 1.0`, `import QtQuick.Layouts 1.15`, `import Wifi 1.0`, `import Wifi.SignalStrength 1.0`, `import SoftwareUpdate 1.0`. Added `readonly property bool _wifiWarningActive` (single source of truth for the WiFi-warning predicate). **2026-04-22 Option A consolidation:** standalone `iconIntegrationDisconnected` + `batteryChipLoader` blocks replaced by a single `RowLayout` (`id: titleStatusStrip`) anchored `right: iconClose.left; rightMargin: 10; verticalCenter: iconClose.verticalCenter`, `spacing: 5`, `z: 1001`, containing 6 children in L-to-R declaration order: integration loading spinner (animated, `ui.isConnecting`), 12×12 red core-disconnected dot (`!ui.coreConnected`), yellow `uc:cloud-arrow-down` software-update icon (`SoftwareUpdate.updateAvailable`), WiFi warning (detail-page-wider predicate), per-entity `uc:link-slash`, battery chip Loader. All children use `Layout.alignment: Qt.AlignVCenter` + `Layout.preferredWidth` that collapses to 0 when hidden. The battery chip is now the persistent fixed rightmost anchor; warnings shift around it via the Qt Layout solver. Option B's conditional `rightMargin` was removed — the solver handles positioning. |
+| `src/qml/components/entities/BaseTitle.qml` | **2026-04-22 Option A:** deleted the 34-line WiFi warning block (outer `Components.Icon` at lines 39-72 + inner weak-icon overlay + red strikethrough `Rectangle`) and the now-orphaned `import Wifi 1.0` + `import Wifi.SignalStrength 1.0`. `BaseDetail.qml` is now the single source of truth for detail-page WiFi warning rendering. User-authorized deletion per §1.3. |
+| `src/qml/components/entities/activity/deviceclass/Activity.qml` | **2026-04-22 Option A:** deleted the 34-line duplicate WiFi warning block (lines 445-478) from inside the custom title Rectangle + the now-orphaned `import Wifi 1.0` + `import Wifi.SignalStrength 1.0`. Rest of the title block (activity icon, name text, "Tap for more" subtitle, menu-toggle `HapticMouseArea`) unchanged. User-authorized deletion per §1.3. |
 | `src/qml/settings/settings/Ui.qml` | Added "Battery on detail pages" toggle row between `batteryPercentSwitch` and `activityBarSwitch`. Re-wired `KeyNavigation` chain through the new switch. Bumped `Flickable.contentY` clamp 1100 → 1260 to accommodate the added content. |
 | `resources/qrc/main.qrc` | Registered `components/overlays/BatteryStatusChip.qml`. |
 

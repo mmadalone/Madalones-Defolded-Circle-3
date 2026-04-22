@@ -9,8 +9,6 @@ import Entity.Activity 1.0
 import Entity.MediaPlayer 1.0
 import Entity.Controller 1.0
 import Config 1.0
-import Wifi 1.0
-import Wifi.SignalStrength 1.0
 import Power 1.0
 import Power.Modes 1.0
 
@@ -442,40 +440,6 @@ EntityComponents.BaseDetail {
             }
         }
 
-        Components.Icon {
-            icon: "uc:wifi"
-            color: colors.offwhite
-            opacity: 0.5
-            size: 60
-            anchors { right: parent.right; rightMargin: 60; verticalCenter: parent.verticalCenter }
-            visible: !Wifi.isConnected || Wifi.currentNetwork.signalStrength === SignalStrength.NONE ||  Wifi.currentNetwork.signalStrength === SignalStrength.WEAK
-
-            Components.Icon {
-                size: 60
-                icon: {
-                    switch (Wifi.currentNetwork.signalStrength) {
-                    case SignalStrength.NONE:
-                        return "";
-                    case SignalStrength.WEAK:
-                        return "uc:wifi-weak";
-                    default:
-                        return "";
-                    }
-                }
-                opacity: icon === "" ? 0 : 1
-                anchors.centerIn: parent
-            }
-
-            Rectangle {
-                width: 30
-                height: 2
-                color: colors.red
-                rotation: -45
-                transformOrigin: Item.Center
-                anchors.centerIn: parent
-                visible: !Wifi.isConnected
-            }
-        }
     }
 
     PathView {

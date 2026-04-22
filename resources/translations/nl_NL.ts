@@ -108,65 +108,65 @@
 <context>
     <name>Activity</name>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="298"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
         <source>Some devices are not ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="298"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
         <source>%1 is not connected yet. Tap Proceed to continue anyway.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="298"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
         <source>%1 are not connected yet. Tap Proceed to continue anyway.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="298"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
         <source>Proceed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="420"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="418"/>
         <source>Tap to close</source>
         <extracomment>Tap to close menu or tap to see more</extracomment>
         <translation>Tik om te sluiten</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="420"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="418"/>
         <source>Tap for more</source>
         <translation>Tik voor meer</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="556"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="520"/>
         <source>Fix states</source>
         <extracomment>Title referring to fixing device states that might out of sync</extracomment>
         <translation>Staten corrigeren</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="577"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="541"/>
         <source>Quickly access entities included in this activity:</source>
         <translation>Snel toegang krijgen tot entiteiten in deze activiteit:</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="618"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="582"/>
         <source>Back</source>
         <extracomment>Caption to go back</extracomment>
         <translation>Terug</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="658"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="622"/>
         <source>Empty page</source>
         <translation>Lege pagina</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="670"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="634"/>
         <source>You can add UI elements via the Web Configurator</source>
         <translation>Je kunt UI-elementen toevoegen via de Webconfigurator</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="781"/>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="745"/>
         <source>State: %1</source>
         <extracomment>Device state</extracomment>
         <translation>Status: %1</translation>
@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="224"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="364"/>
         <source>Entity unavailable</source>
         <translation>Entiteit niet beschikbaar</translation>
     </message>
