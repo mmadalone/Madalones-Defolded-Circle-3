@@ -30,8 +30,8 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1100) {
-                contentY = 1100;
+            if (contentY > 1260) {
+                contentY = 1260;
             }
         }
 
@@ -127,7 +127,7 @@ Settings.Page {
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: buttonFuncSwitch
-                        KeyNavigation.down: activityBarSwitch
+                        KeyNavigation.down: batteryOnDetailSwitch
                     }
                 }
 
@@ -136,6 +136,55 @@ Settings.Page {
                     wrapMode: Text.WordWrap
                     color: colors.light
                     text: qsTr("Always show the battery percentage next to the icon.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW BATTERY ON DETAIL PAGES **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: batteryOnDetailText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Battery on detail pages")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: batteryOnDetailSwitch
+                        icon: "uc:check"
+                        checked: Config.showBatteryOnDetailPages
+                        trigger: function() {
+                            Config.showBatteryOnDetailPages = !Config.showBatteryOnDetailPages;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: batteryPercentSwitch
+                        KeyNavigation.down: activityBarSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Show a compact battery indicator on entity and activity detail pages.")
                     font: fonts.secondaryFont(24)
                 }
             }
@@ -175,7 +224,7 @@ Settings.Page {
 
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: batteryPercentSwitch
+                        KeyNavigation.up: batteryOnDetailSwitch
                         KeyNavigation.down: mediaComponentSwitch
                     }
                 }

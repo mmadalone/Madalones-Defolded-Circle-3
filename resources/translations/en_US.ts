@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="200"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="224"/>
         <source>Entity unavailable</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4185,31 +4185,41 @@ Tap the QR code to show it on the screen.</source>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
-        <source>Activities on pages</source>
+        <source>Battery on detail pages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
-        <source>Show the running activities and playing media players in the page header.</source>
+        <source>Show a compact battery indicator on entity and activity detail pages.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
-        <source>Zoom media image</source>
+        <source>Activities on pages</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
-        <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
+        <source>Show the running activities and playing media players in the page header.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
+        <source>Zoom media image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
+        <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
         <source>Coverflow in media browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="284"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="333"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4745,7 +4755,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="863"/>
+        <location filename="../../src/config/config.cpp" line="874"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation type="unfinished"></translation>
     </message>

@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="200"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="224"/>
         <source>Entity unavailable</source>
         <translation>Entité indisponible</translation>
     </message>
@@ -4212,31 +4212,41 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
+        <source>Battery on detail pages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
+        <source>Show a compact battery indicator on entity and activity detail pages.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
         <source>Activities on pages</source>
         <translation>Activités sur les pages</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
         <source>Show the running activities and playing media players in the page header.</source>
         <translation>Afficher les activités en cours et les lecteurs multimédia en lecture dans l&apos;en-tête de la page.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
         <source>Zoom media image</source>
         <translation>Zoomer l&apos;image multimédia</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
         <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
         <translation>Zoomer et recadrer les illustrations dans les widgets du lecteur multimédia au lieu de les mettre à l&apos;échelle.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
         <source>Coverflow in media browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="284"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="333"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4815,7 +4825,7 @@ Appuyez et maintenez le bouton vocal et dites la commande.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="863"/>
+        <location filename="../../src/config/config.cpp" line="874"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Erreur lors du chargement de la configuration. Réessayez.</translation>
     </message>

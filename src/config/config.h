@@ -96,6 +96,8 @@ class Config : public QObject {
 
     Q_PROPERTY(int resumeTimeoutWindowSec READ getResumeTimeoutWindowSec WRITE setResumeTimeoutWindowSec NOTIFY resumeTimeoutWindowSecChanged)
 
+    Q_PROPERTY(bool showBatteryOnDetailPages READ getShowBatteryOnDetailPages WRITE setShowBatteryOnDetailPages NOTIFY showBatteryOnDetailPagesChanged)
+
  public:
     explicit Config(core::Api* core, QObject* parent = nullptr);
     ~Config();
@@ -172,6 +174,9 @@ class Config : public QObject {
 
     int getResumeTimeoutWindowSec();
     void setResumeTimeoutWindowSec(int value);
+
+    bool getShowBatteryOnDetailPages();
+    void setShowBatteryOnDetailPages(bool value);
 
     // Charging screen settings moved to ScreensaverConfig (owns its own
     // QSettings scope, uses SCRN_* macros from screensaverconfig_macros.h).
@@ -303,6 +308,7 @@ class Config : public QObject {
     void fillMediaArtworkChanged();
     void mediaCoverflowDefaultChanged();
     void resumeTimeoutWindowSecChanged(int value);
+    void showBatteryOnDetailPagesChanged();
 
 
  public slots:

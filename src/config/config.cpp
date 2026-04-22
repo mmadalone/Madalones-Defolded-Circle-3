@@ -409,6 +409,17 @@ void Config::setShowBatteryPercentage(bool value)
     emit showBatteryPercentageChanged();
 }
 
+bool Config::getShowBatteryOnDetailPages()
+{
+    return m_settings->value("ui/batteryOnDetailPages", true).toBool();
+}
+
+void Config::setShowBatteryOnDetailPages(bool value)
+{
+    m_settings->setValue("ui/batteryOnDetailPages", value);
+    emit showBatteryOnDetailPagesChanged();
+}
+
 bool Config::getEnableActivityBar()
 {
     return m_settings->value("ui/activityBar", true).toBool();

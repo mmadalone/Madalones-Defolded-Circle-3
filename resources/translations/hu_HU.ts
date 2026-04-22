@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="200"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="224"/>
         <source>Entity unavailable</source>
         <translation>Entitás nem elérhető</translation>
     </message>
@@ -4212,31 +4212,41 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
+        <source>Battery on detail pages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
+        <source>Show a compact battery indicator on entity and activity detail pages.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
         <source>Activities on pages</source>
         <translation>Tevékenységek az oldalakon</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
         <source>Show the running activities and playing media players in the page header.</source>
         <translation>Futó tevékenységek és médialejátszók megjelenítése az oldal fejlécében.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
         <source>Zoom media image</source>
         <translation type="unfinished">Zoom media image</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
         <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
         <translation type="unfinished">Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
         <source>Coverflow in media browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="284"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="333"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4815,7 +4825,7 @@ Nyomja meg és tartsa lenyomva a hanggombot, és mondja ki a parancsot.</transla
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="863"/>
+        <location filename="../../src/config/config.cpp" line="874"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Hiba a konfiguráció betöltése közben. Újrapróbálkozás.</translation>
     </message>

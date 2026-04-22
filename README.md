@@ -46,6 +46,9 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
+**UI chrome beyond the screensaver (v1.3.0-pre):**
+- **Battery chip on every detail page** — keeps battery % + charging state visible while inside Activity / Light / Climate / TV / Speaker / sensor detail pages, where the home-screen StatusBar is otherwise covered. Mirrors the StatusBar visual 1:1; user-toggleable via `Settings → UI → Battery on detail pages` (default on).
+
 ---
 
 ## Install

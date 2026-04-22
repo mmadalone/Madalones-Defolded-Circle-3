@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-14 (post-sweep)
+**Last updated:** 2026-04-22 (Mod 3 detail-page battery chip)
 
 ---
 
@@ -20,8 +20,8 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Modification |
 |------|-------------|
 | `src/main.cpp` | Added `#include` for MatrixRain, ScreensaverConfig. `qmlRegisterType<MatrixRainItem>`. Instantiated `ScreensaverConfig` singleton. |
-| `src/config/config.h` | Screensaver properties removed (moved to ScreensaverConfig). Only a redirect comment remains. |
-| `src/config/config.cpp` | Mirror of config.h: screensaver impls removed, redirect comment for moved ScreensaverConfig. |
+| `src/config/config.h` | Screensaver properties removed (moved to ScreensaverConfig). Only a redirect comment remains. Mod 3: added `Q_PROPERTY(bool showBatteryOnDetailPages …)` + getter/setter decl + signal at END of custom blocks. |
+| `src/config/config.cpp` | Mirror of config.h: screensaver impls removed, redirect comment for moved ScreensaverConfig. Mod 3: added `getShowBatteryOnDetailPages()` / `setShowBatteryOnDetailPages()` reading QSettings key `ui/batteryOnDetailPages` (default `true`). |
 | `src/logging.h` | Added `lcScreensaver` logging category declaration. |
 | `src/logging.cpp` | Added `lcScreensaver` logging category definition (uc.ui.screensaver). |
 | `src/hardware/battery.h` | Added `Q_INVOKABLE setPowerSupply()` + `instance()` getter for DEV-mode F12 dock-toggle. |
@@ -103,6 +103,22 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/MainContainer.qml` | Retry timer for ButtonNavigation on startup (~3 lines) — workaround for first-boot focus race. |
 | `src/qml/main.qml` | Added `screensaverActive` property, idle timer DEV mode bypass, ScreensaverConfig import. |
 | `src/qml/settings/settings/Power.qml` | Added "Screen off animations" settings section (~164 lines) — style picker, master toggle, undocked-fire toggle, measured-dim-phase display. |
+
+---
+
+## Mod 3: Detail Page Battery Chip
+
+### Custom QML Files
+| File | Purpose |
+|------|---------|
+| `src/qml/components/overlays/BatteryStatusChip.qml` | Compact battery chip mirroring StatusBar visual (bolt + percentage when charging, 16×30 bar + optional percentage otherwise). Touch-transparent (no MouseArea). Bound directly to `Battery` and `Config` singletons. |
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/qml/components/entities/BaseDetail.qml` | Added `import Config 1.0`. Added `id: iconIntegrationDisconnected` to the existing disconnected-integration icon (no behavior change). Added `Loader` anchored `right: iconIntegrationDisconnected.visible ? iconIntegrationDisconnected.left : iconClose.left`, `z: 1001`, gated on `Config.showBatteryOnDetailPages`. **2026-04-22 Option B hotfix:** added `import Wifi 1.0` + `import Wifi.SignalStrength 1.0`; added `readonly property bool _wifiWarningActive` mirroring the StatusBar / BaseTitle / Activity WiFi-warning predicate; chip Loader `rightMargin` now conditional `(!iconIntegrationDisconnected.visible && _wifiWarningActive) ? 70 : 10` to avoid overlap with the WiFi warning icon in subclass title bars. |
+| `src/qml/settings/settings/Ui.qml` | Added "Battery on detail pages" toggle row between `batteryPercentSwitch` and `activityBarSwitch`. Re-wired `KeyNavigation` chain through the new switch. Bumped `Flickable.contentY` clamp 1100 → 1260 to accommodate the added content. |
+| `resources/qrc/main.qrc` | Registered `components/overlays/BatteryStatusChip.qml`. |
 
 ---
 

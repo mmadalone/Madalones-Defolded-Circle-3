@@ -7,6 +7,11 @@ import QtQuick.Controls 2.15
 import Entity.Controller 1.0
 import Haptic 1.0
 
+import Config 1.0
+
+import Wifi 1.0
+import Wifi.SignalStrength 1.0
+
 import Integration.Controller 1.0
 
 import "qrc:/components" as Components
@@ -75,6 +80,11 @@ Rectangle {
 
     property alias iconClose: iconClose
     property alias buttonNavigation: buttonNavigation
+
+    readonly property bool _wifiWarningActive:
+        !Wifi.isConnected
+        || Wifi.currentNetwork.signalStrength === SignalStrength.NONE
+        || Wifi.currentNetwork.signalStrength === SignalStrength.WEAK
 
     function open(skipAnimation = false) {
         // get the latest entity data from the core
@@ -146,12 +156,26 @@ Rectangle {
     }
 
     Components.Icon {
+        id: iconIntegrationDisconnected
         color: colors.red
         icon: "uc:link-slash"
         anchors { right: iconClose.left; verticalCenter: iconClose.verticalCenter }
         size: 40
         visible: integrationObj.state != "connected" && integrationObj.state != ""
         z: 1001
+    }
+
+    Loader {
+        id: batteryChipLoader
+        active: Config.showBatteryOnDetailPages
+        visible: active
+        z: 1001
+        anchors {
+            right: iconIntegrationDisconnected.visible ? iconIntegrationDisconnected.left : iconClose.left
+            rightMargin: (!iconIntegrationDisconnected.visible && entityBaseDetailContainer._wifiWarningActive) ? 70 : 10
+            verticalCenter: iconClose.verticalCenter
+        }
+        source: "qrc:/components/overlays/BatteryStatusChip.qml"
     }
 
     Rectangle {
