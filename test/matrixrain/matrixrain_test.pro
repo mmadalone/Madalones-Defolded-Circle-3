@@ -13,6 +13,8 @@ macx {
 SOURCES += \
     test_matrixrain.cpp \
     ../../src/ui/matrixrain.cpp \
+    ../../src/ui/matrixrain/layerpipeline.cpp \
+    ../../src/ui/matrixrain/atlasbuilder.cpp \
     ../../src/ui/rainsimulation.cpp \
     ../../src/ui/gravitydirection.cpp \
     ../../src/ui/glitchengine.cpp \
@@ -22,6 +24,8 @@ SOURCES += \
 
 HEADERS += \
     ../../src/ui/matrixrain.h \
+    ../../src/ui/matrixrain/layerpipeline.h \
+    ../../src/ui/matrixrain/atlasbuilder.h \
     ../../src/ui/rainsimulation.h \
     ../../src/ui/gravitydirection.h \
     ../../src/ui/glitchengine.h \

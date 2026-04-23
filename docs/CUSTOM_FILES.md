@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-23 (Mod 1 matrixrain.cpp extraction — LayerPipeline + AtlasBuilder)
+**Last updated:** 2026-04-23 (Mod 1 matrixrain.cpp extraction — LayerPipeline + AtlasBuilder + Palettes singleton + test .pro fixes)
 
 ---
 
@@ -66,6 +66,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/components/themes/MinimalTheme.qml` | Minimal digital clock theme with GradientText |
 | `src/qml/components/themes/AnalogTheme.qml` | UC stock analog clock extracted as theme option |
 | `src/qml/components/themes/TvStaticTheme.qml` | TV static CRT-shader theme with channel-flash + chroma noise |
+| `src/qml/components/themes/Palettes.qml` | QML singleton — single source of truth for shared gradient stops (rainbow / rainbow+ / neon) and battery-level color tiers. Registered via `qmlRegisterSingletonType` in `main.cpp` as `Palettes 1.0`. |
 | `src/qml/components/themes/MatrixTheme_canvas_backup.qml` | Archived Canvas-based prototype (not used) |
 | `src/qml/components/overlays/GradientText.qml` | Reusable solid/rainbow gradient text component |
 | `src/qml/components/overlays/ClockOverlay.qml` | Clock overlay with GradientText, date, 24h, color |

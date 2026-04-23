@@ -155,6 +155,12 @@ class Setup : public QObject {
         s_haptic = new MockHaptic;
         qmlRegisterSingletonType<MockScreensaverConfig>("ScreensaverConfig", 1, 0, "ScreensaverConfig", configProvider);
         qmlRegisterSingletonType<MockHaptic>("Haptic", 1, 0, "Haptic", hapticProvider);
+        // Palettes is pure-QML data (no behaviour), so we register the real
+        // singleton URL — matches src/main.cpp registration. Any settings
+        // page test that transitively pulls GradientText / BatteryOverlay /
+        // MatrixAppearance needs this or the `import Palettes 1.0` fails.
+        qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/components/themes/Palettes.qml")),
+                                 "Palettes", 1, 0, "Palettes");
     }
 
     void qmlEngineAvailable(QQmlEngine *engine) {

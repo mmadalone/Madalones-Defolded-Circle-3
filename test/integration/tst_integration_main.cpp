@@ -59,6 +59,11 @@ public slots:
         s_stubConfig = new StubScreensaverConfig(qApp);
         qmlRegisterSingletonType<StubScreensaverConfig>(
             "ScreensaverConfig", 1, 0, "ScreensaverConfig", stubConfigProvider);
+        // Palettes singleton intentionally NOT registered: integration tests
+        // exercise MatrixRain via the public Q_PROPERTY API only and don't
+        // import any Palettes consumer (GradientText / BatteryOverlay /
+        // MatrixAppearance). If a new test does, register here AND add
+        // RESOURCES += ../../resources/qrc/main.qrc to the .pro.
     }
     void qmlEngineAvailable(QQmlEngine *engine) {
         Q_UNUSED(engine);
