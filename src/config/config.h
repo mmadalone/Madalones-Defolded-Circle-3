@@ -89,14 +89,13 @@ class Config : public QObject {
                    entityButtonFuncInvertedChanged)
 
     Q_PROPERTY(bool showBatteryPercentage READ getShowBatteryPercentage WRITE setShowBatteryPercentage NOTIFY showBatteryPercentageChanged)
+    Q_PROPERTY(bool showBatteryEveryWhere READ getShowBatteryEveryWhere WRITE setShowBatteryEveryWhere NOTIFY showBatteryEveryWhereChanged)
 
     Q_PROPERTY(bool enableActivityBar READ getEnableActivityBar WRITE setEnableActivityBar NOTIFY enableActivityBarChanged)
     Q_PROPERTY(bool fillMediaArtwork READ getFillMediaArtwork WRITE setFillMediaArtwork NOTIFY fillMediaArtworkChanged)
     Q_PROPERTY(bool mediaCoverflowDefault READ getMediaCoverflowDefault WRITE setMediaCoverflowDefault NOTIFY mediaCoverflowDefaultChanged)
 
     Q_PROPERTY(int resumeTimeoutWindowSec READ getResumeTimeoutWindowSec WRITE setResumeTimeoutWindowSec NOTIFY resumeTimeoutWindowSecChanged)
-
-    Q_PROPERTY(bool showBatteryOnDetailPages READ getShowBatteryOnDetailPages WRITE setShowBatteryOnDetailPages NOTIFY showBatteryOnDetailPagesChanged)
 
  public:
     explicit Config(core::Api* core, QObject* parent = nullptr);
@@ -163,6 +162,9 @@ class Config : public QObject {
     bool getShowBatteryPercentage();
     void setShowBatteryPercentage(bool value);
 
+    bool getShowBatteryEveryWhere();
+    void setShowBatteryEveryWhere(bool value);
+
     bool getEnableActivityBar();
     void setEnableActivityBar(bool value);
 
@@ -174,9 +176,6 @@ class Config : public QObject {
 
     int getResumeTimeoutWindowSec();
     void setResumeTimeoutWindowSec(int value);
-
-    bool getShowBatteryOnDetailPages();
-    void setShowBatteryOnDetailPages(bool value);
 
     // Charging screen settings moved to ScreensaverConfig (owns its own
     // QSettings scope, uses SCRN_* macros from screensaverconfig_macros.h).
@@ -304,11 +303,11 @@ class Config : public QObject {
 
     void entityButtonFuncInvertedChanged();
     void showBatteryPercentageChanged();
+    void showBatteryEveryWhereChanged();
     void enableActivityBarChanged();
     void fillMediaArtworkChanged();
     void mediaCoverflowDefaultChanged();
     void resumeTimeoutWindowSecChanged(int value);
-    void showBatteryOnDetailPagesChanged();
 
 
  public slots:

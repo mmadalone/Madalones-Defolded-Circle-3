@@ -30,8 +30,8 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1260) {
-                contentY = 1260;
+            if (contentY > 1100) {
+                contentY = 1100;
             }
         }
 
@@ -127,7 +127,7 @@ Settings.Page {
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: buttonFuncSwitch
-                        KeyNavigation.down: batteryOnDetailSwitch
+                        KeyNavigation.down: batteryEveryWhereSwitch
                     }
                 }
 
@@ -146,7 +146,7 @@ Settings.Page {
                 color: colors.medium
             }
 
-            /** SHOW BATTERY ON DETAIL PAGES **/
+            /** SHOW BATTERY EVERYWHERE **/
             ColumnLayout {
                 Layout.alignment: Qt.AlignCenter
                 Layout.leftMargin: 10
@@ -157,20 +157,20 @@ Settings.Page {
                     spacing: 10
 
                     Text {
-                        id: batteryOnDetailText
+                        id: batteryEveryWhereText
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: colors.offwhite
-                        text: qsTr("Battery on detail pages")
+                        text: qsTr("Show battery indicator everywhere")
                         font: fonts.primaryFont(30)
                     }
 
                     Components.Switch {
-                        id: batteryOnDetailSwitch
+                        id: batteryEveryWhereSwitch
                         icon: "uc:check"
-                        checked: Config.showBatteryOnDetailPages
+                        checked: Config.showBatteryEveryWhere
                         trigger: function() {
-                            Config.showBatteryOnDetailPages = !Config.showBatteryOnDetailPages;
+                            Config.showBatteryEveryWhere = !Config.showBatteryEveryWhere;
                         }
 
                         /** KEYBOARD NAVIGATION **/
@@ -184,7 +184,7 @@ Settings.Page {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: colors.light
-                    text: qsTr("Show a compact battery indicator on entity and activity detail pages.")
+                    text: qsTr("Shows the battery level indicator on all pages and activities.")
                     font: fonts.secondaryFont(24)
                 }
             }
@@ -224,7 +224,7 @@ Settings.Page {
 
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: batteryOnDetailSwitch
+                        KeyNavigation.up: batteryEveryWhereSwitch
                         KeyNavigation.down: mediaComponentSwitch
                     }
                 }

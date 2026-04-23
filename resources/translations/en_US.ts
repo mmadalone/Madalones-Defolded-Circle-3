@@ -6,9 +6,9 @@
     <message>
         <location filename="../../src/qml/components/Profile.qml" line="751"/>
         <location filename="../../src/qml/components/Profile.qml" line="753"/>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="47"/>
         <location filename="../../src/qml/components/SelectWidget.qml" line="48"/>
-        <location filename="../../src/qml/components/SensorWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="49"/>
+        <location filename="../../src/qml/components/SensorWidget.qml" line="60"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="474"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="476"/>
         <location filename="../../src/qml/components/docks/Info.qml" line="326"/>
@@ -29,7 +29,7 @@
 <context>
     <name>Abbreviation for nothing is selected</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="60"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
@@ -785,6 +785,11 @@
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="148"/>
+        <source>Square burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="170"/>
         <source>Square size</source>
         <translation type="unfinished"></translation>
@@ -802,11 +807,6 @@
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="241"/>
         <source>Scatter (burst)</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="148"/>
-        <source>Square burst</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -957,6 +957,12 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="64"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="507"/>
+        <source>Charging only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="84"/>
         <source>Font</source>
         <translation type="unfinished"></translation>
@@ -1004,12 +1010,6 @@ Climate fan</extracomment>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="530"/>
         <source>Text size</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="64"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="507"/>
-        <source>Charging only</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -2427,22 +2427,23 @@ Climate fan</extracomment>
 <context>
     <name>MediaBrowser</name>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="403"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="441"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="433"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="456"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="481"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="519"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="544"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2557,12 +2558,12 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="682"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="707"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="688"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="713"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2582,8 +2583,27 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="402"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="417"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="440"/>
         <source>Could not load media</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MediaComponent</name>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="398"/>
+        <source>All</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="400"/>
+        <source>One</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="441"/>
+        <source>Sources</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -3445,7 +3465,7 @@ no return</source>
 <context>
     <name>SelectWidget</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="299"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="300"/>
         <source>Select an option</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4126,6 +4146,11 @@ Tap the QR code to show it on the screen.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="157"/>
+        <source>Tint</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="184"/>
         <source>— Channel flash —</source>
         <translation type="unfinished"></translation>
@@ -4155,11 +4180,6 @@ Tap the QR code to show it on the screen.</source>
         <source>Flash brightness</source>
         <translation type="unfinished"></translation>
     </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="157"/>
-        <source>Tint</source>
-        <translation type="unfinished"></translation>
-    </message>
 </context>
 <context>
     <name>Ui</name>
@@ -4185,12 +4205,12 @@ Tap the QR code to show it on the screen.</source>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
-        <source>Battery on detail pages</source>
+        <source>Show battery indicator everywhere</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
-        <source>Show a compact battery indicator on entity and activity detail pages.</source>
+        <source>Shows the battery level indicator on all pages and activities.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
