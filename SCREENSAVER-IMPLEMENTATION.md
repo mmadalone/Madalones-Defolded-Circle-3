@@ -17,6 +17,12 @@ Replaced the UC Remote 3's factory analog clock charging screen with a fully con
 
 **Class:** `MatrixRainItem` — QQuickItem subclass registered as `MatrixRain` QML type.
 
+> **2026-04-23 architectural note (audit B → A−):** The renderer was decomposed into the QQuickItem orchestrator (`MatrixRainItem`) plus two pure-C++ collaborator classes owned by-value:
+> - **`LayerPipeline`** (`src/ui/matrixrain/layerpipeline.{h,cpp}`) — owns the multi-depth-plane (3 layers: far / mid / near) subsystem: `RainLayer` state, multi-layer atlas cache, `BuildTimings`, setter fan-outs (`apply*` helpers), and render-thread entry points (`initAllLayers`, `countVisibleQuads`, `renderAll`, `renderMidInteractiveOverlays`). Also hosts the inline render primitives shared with the single-layer path (`MatrixRainVertex`, `emitQuad`, `packColor`, `depthColor`, `depthPriority`, `MAX_EMIT_VERTICES`).
+> - **`AtlasBuilder`** (`src/ui/matrixrain/atlasbuilder.{h,cpp}`) — all-static class wrapping the canonical `AtlasInputs` struct, the SHA-1 `cacheKey` hashing (deduped from prior inline copies in both build paths), and `buildSingle` for the layers-off path. Class-static cache (`s_singleCacheKey` / `s_singleCacheAtlas`) preserves the prior file-static lifetime across `MatrixRainItem` destroy/recreate cycles between docks.
+>
+> `MatrixRainItem` keeps the QSG pipeline (`updatePaintNode`, geometry, material), the simulation tick driver, the `displayOff` gating, the `bindToScreensaverConfig` orchestration (now sliced into 8 domain helpers — `bindAppearance`, `bindDirectionAndGravity`, `bindGlitch`, `bindChaos`, `bindTap`, `bindMessages`, `bindSubliminal`, `bindDepthAndLayers`), all single-layer render helpers, and the public Q_PROPERTY / signal API surface (unchanged). External API is bit-identical to the pre-refactor build — pure internal restructuring.
+
 **Rendering approach:** QSGGeometryNode + texture atlas (single draw call per frame).
 - Pre-renders all glyphs at multiple brightness levels × color variants into a single QImage atlas
 - Uploads once as QSGTexture via `window()->createTextureFromImage()` in `updatePaintNode()`

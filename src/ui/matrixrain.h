@@ -12,6 +12,7 @@
 
 #include "glyphatlas.h"
 #include "gravitydirection.h"
+#include "matrixrain/layerpipeline.h"
 #include "rainsimulation.h"
 
 namespace uc { class ScreensaverConfig; }
@@ -213,7 +214,7 @@ class MatrixRainItem : public QQuickItem {
     bool    subliminalOverlay()  const { return m_sim.subliminalOverlay(); }
     bool    subliminalFlash()    const { return m_sim.subliminalFlash(); }
     bool    depthEnabled()   const { return m_sim.depthEnabled(); }
-    bool    layersEnabled()  const { return m_layersEnabled; }
+    bool    layersEnabled()  const { return m_layerPipeline.enabled(); }
     int     depthIntensity() const { return m_sim.depthIntensity(); }
     bool    depthOverlay()   const { return m_sim.depthOverlay(); }
     bool    gravityMode()      const { return m_sim.gravityMode(); }
@@ -344,23 +345,17 @@ public:
     // layer streams keep spawning independently and the drain effect is invisible.
     void setSpawnSuppress(bool v)  {
         bool changed = m_sim.setSpawnSuppress(v);
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setSpawnSuppress(v);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applySpawnSuppress(v);
         if (changed) { update(); emit spawnSuppressChanged(); }
     }
     void setDrainSpeedMultiplier(qreal v) {
         float f = static_cast<float>(v);
         bool changed = m_sim.setDrainSpeedMultiplier(f);
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setDrainSpeedMultiplier(f);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applyDrainSpeedMultiplier(f);
         if (changed) emit drainSpeedMultiplierChanged(); }
     void setDrainMode(int v) {
         bool changed = m_sim.setDrainMode(v);
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i) m_layers[i].sim.setDrainMode(v);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applyDrainMode(v);
         if (changed) { update(); emit drainModeChanged(); }
     }
 
@@ -507,17 +502,6 @@ public:
     void handleRestoreInput();
     void handleTapInput(const QString &params);
 
-    // Tap effect sub-handlers (called from handleTapInput)
-    void tapBurst(int tapCol, int tapRow, int colorVariants);
-    void tapSquareBurst(int tapCol, int tapRow, int colorVariants);
-    void tapRipple(int tapCol, int tapRow, int colorVariants);
-    void tapWipe(int tapCol, int tapRow, int colorVariants);
-    void tapFlash(int tapCol, int tapRow, int radius);
-    void tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius);
-    void tapSpawn(int tapCol, int tapRow, int colorVariants);
-    void tapMessage(int tapCol, int tapRow, int gridCols, int gridRows,
-                    int colorVariants, float colSp, float rowSp);
-
     // State
     QVector<quint8> m_cellDrawn;  // per-cell depth priority (0=undrawn, 1=far, 2=normal, 3=near)
     quint32 m_baseVertexColor{0xFFFFFFFF};  // packed RGBA for non-depth quads (white when depth off, base color when on)
@@ -530,23 +514,10 @@ public:
     QVector<int>     m_sortOrder;        // painter's-algorithm stream index ordering
     QVector<quint32> m_streamColorCache; // per-stream packed RGBA for depth mode
 
-    // Multi-layer rain (3 independent simulations at different font sizes)
-    static constexpr int LAYER_COUNT = 3;
-    struct RainLayer {
-        RainSimulation sim;
-        GlyphAtlas     atlas;
-        QVector<quint8> cellDrawn;
-        float fontScale{1.0f};
-        float speedScale{1.0f};
-        float densityScale{1.0f};
-        int   trailPct{100};         // percentage of base trailLength
-        float brightnessMul{1.0f};   // atmospheric perspective (far=0.5, near=1.0)
-        bool  isInteractive{false};  // only mid layer gets glitch/message/tap
-    };
-    RainLayer m_layers[LAYER_COUNT];
-    bool  m_layersEnabled{false};
-    bool  m_layersNeedRebuild{false};
-    QImage m_combinedAtlasImage;
+    // Multi-layer rain pipeline (3 depth planes: far, mid, near).
+    // Owns its own RainLayer state, atlas cache, and render helpers.
+    // See src/ui/matrixrain/layerpipeline.h for the public API.
+    LayerPipeline m_layerPipeline;
 
     // Phase-timing instrumentation (Task #1 profiling — NOT shipped to end users).
     // Captures cold-dock-to-first-paint breakdown. qCInfo logging is unreliable
@@ -559,7 +530,11 @@ public:
     qint64        m_lastBuildTotalMs{0}; // buildCombinedAtlas() total (or single-layer equivalent)
     bool          m_lastCacheHit{false};
     qint64        m_lastCacheKeyMs{0};
-    qint64        m_lastLayerBuildMs[LAYER_COUNT]{0, 0, 0};
+    // Per-layer build timings copied from LayerPipeline::timings() into the item
+    // so publishBuildSummary can format them alongside item-owned timings without
+    // reaching back into the pipeline. Slots map to far/mid/near; single-layer
+    // path reports its build under slot [1] for stable log formatting.
+    qint64        m_lastLayerBuildMs[LayerPipeline::LAYER_COUNT]{0, 0, 0};
     qint64        m_lastComposeMs{0};
     qint64        m_lastRemapMs{0};
     qint64        m_lastSyncMs{0};
@@ -567,19 +542,26 @@ public:
     qint64        m_lastCtorToPaintMs{0};
 
     void setLayersEnabled(bool v);
-    void buildCombinedAtlas();
-    void initAllLayers();
     // Format + publish the phase-timing summary string. includeFirstPaint=true
     // when called from updatePaintNode (main thread blocked at sync point),
     // false from updatePolish (first-paint fields will show 0 until the next
     // paint). Writes m_lastBuildSummary and posts a main-thread signal emit.
     void publishBuildSummary(bool includeFirstPaint);
-    int  countVisibleQuadsAllLayers();
-    void renderLayerStreamTrails(int layerIdx, struct MatrixRainVertex *verts, quint16 *ixBuf,
-                                 int &vi, int &ii);
-    void renderLayerResidualCells(int layerIdx, struct MatrixRainVertex *verts, quint16 *ixBuf,
-                                  int &vi, int &ii);
-    void syncLayerConfig();
+
+    // bindToScreensaverConfig is sliced into 8 domain helpers. Each one owns
+    // BOTH the initial-sync setter calls AND the live-binding signal connects
+    // for its group, in the existing order. CRITICAL: the QSignalBlocker scope
+    // around m_batchingUpdates wraps ALL helpers — they MUST be called between
+    // the blocker enter and exit so the bulk sync produces ONE atlas rebuild
+    // at the end, not 60+ individual ones.
+    void bindAppearance(uc::ScreensaverConfig *sc);
+    void bindDirectionAndGravity(uc::ScreensaverConfig *sc);
+    void bindGlitch(uc::ScreensaverConfig *sc);
+    void bindChaos(uc::ScreensaverConfig *sc);
+    void bindTap(uc::ScreensaverConfig *sc);
+    void bindMessages(uc::ScreensaverConfig *sc);
+    void bindSubliminal(uc::ScreensaverConfig *sc);
+    void bindDepthAndLayers(uc::ScreensaverConfig *sc);
 
     QTimer m_timer;
     int    m_glowFade{50};             // residual glow duration (0=none, 100=max persistence)

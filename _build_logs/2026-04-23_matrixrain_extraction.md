@@ -73,17 +73,40 @@ Build: ARM64 cross-compile of current `main`, deployed to UC3 (192.168.2.204), H
 
 ## Edit Log
 
-| # | File | Change | Status |
-|---|------|--------|--------|
-| — | — | (no edits yet — planning phase) | — |
+| # | Phase | File(s) | Status |
+|---|---|---|---|
+| 1 | 1 | `matrixrain.h`, `matrixrain.cpp`, `matrixrain/layerpipeline.h` (scaffold), `remote-ui.pro` | ✅ commit `64c4383` |
+| 2 | 1.5 (side) | `test/matrixrain_preview/docker-compose.yml` (portable mount) | ✅ commit `f0941ff` |
+| 3 | 2 | `matrixrain/layerpipeline.{h,cpp}` (full), `matrixrain.{h,cpp}`, `remote-ui.pro` | ✅ commit `53c5b66` |
+| 4 | 2.5 (side) | `test/matrixrain_preview/matrixrain_preview.pro` (register layerpipeline) | ✅ commit `e370ac4` |
+| 5 | 3 | `matrixrain/atlasbuilder.{h,cpp}` (new), `matrixrain/layerpipeline.{h,cpp}`, `matrixrain.cpp`, both `.pro` files | ✅ commit `f530674` |
+| 6 | 4 | `matrixrain.h`, `matrixrain.cpp` (8 helpers + 36-line orchestrator) | ✅ commit `f835396` |
+| 7 | 5 | `docs/CUSTOM_FILES.md`, `CHANGELOG.md`, `SCREENSAVER-IMPLEMENTATION.md`, this build log | (this commit) |
 
 ## Current State
 
-- Audit complete (in conversation transcript).
-- Top-5 punch list agreed with user.
-- This build log opened.
-- Plan agent dispatched (parallel with this write).
-- Zero source files modified.
+- All 5 phases complete on `refactor/matrixrain-extraction` branch
+- Pre-refactor tag `matrixrain-pre-extraction-2026-04-23` planted on main commit `71934ad`
+- Device validation passed (2026-04-23 ~14:02): user confirmed "all works as expected" — perf parity within ±10% of baseline (cold 566 / wake1 179 / wake2 92 ms), settings spot-checks across MatrixAppearance / MatrixEffects / CommonToggles all live-update, DPAD + Enter + tap interactions functional
+- Docker preview verified after every phase (1 / 2 / 3 / 4)
+- Cross-compile clean throughout (zero new warnings on full firmware build; one pre-existing -Wfloat-equal in `src/main.cpp:55` unrelated to refactor)
+- Ready for squash-merge `refactor/matrixrain-extraction` → `main`
+
+## Final outcomes vs plan targets
+
+| Metric | Pre-refactor | Plan target | Actual | Status |
+|---|---|---|---|---|
+| `matrixrain.cpp` lines | 2055 | ≤ 850 | 1428 | ⚠️ above plan target but a 30% reduction; user accepted the ~850 → 1428 drift in commit message |
+| `layerpipeline.cpp` lines | (n/a) | ≤ 600 | 661 | ⚠️ slight over (10%) |
+| `atlasbuilder.cpp` lines | (n/a) | ≤ 150 | 47 | ✅ way under |
+| `updatePaintNode` body | 214 | ≤ 100 | 164 | ⚠️ above plan target — residual is QSG/texture/geometry boilerplate that doesn't decompose cleanly without making things worse |
+| `bindToScreensaverConfig` body | 172 | ≤ 40 | 36 | ✅ |
+| Q_PROPERTY count on MatrixRainItem | 66 | (no goal) | 66 | ✅ unchanged (preserved per plan constraint) |
+| Cold `ctorToPaintMs` | 566 ms | 510 – 622 ms (±10%) | within | ✅ |
+| Wake1 `ctorToPaintMs` | 179 ms | 161 – 197 ms | within | ✅ |
+| Wake2 `ctorToPaintMs` | 92 ms | 83 – 101 ms | within | ✅ |
+
+The two `matrixrain.cpp` / `updatePaintNode` line-count overruns are documented in commit `53c5b66` as accepted: the residual content is mostly QSG/texture/geometry boilerplate (texture upload, geometry allocation, padding, first-paint instrumentation) that has no clean decomposition target. Further extraction would invent new abstractions for the sake of hitting a number rather than reducing real complexity. Pragmatic A− grade not perfect 100% — acceptable per `STYLE_GUIDE.md` §1.1 spirit ("modular over monolithic" doesn't mean "decompose past the point of utility").
 
 ## Decisions Made
 

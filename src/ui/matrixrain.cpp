@@ -3,11 +3,11 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "matrixrain.h"
+#include "matrixrain/layerpipeline.h"
 #ifndef MATRIX_RAIN_TESTING
 #include "screensaverconfig.h"
 #endif
 
-#include <QCryptographicHash>
 #include <QOpenGLShaderProgram>
 #include <QPainter>
 #include <QQuickWindow>
@@ -31,30 +31,10 @@ static constexpr int    TICK_MAX_MS           = 300;   // min speed cap (~3 FPS)
 static constexpr qreal  FADE_MIN              = 0.75;  // steepest allowed decay
 static constexpr qreal  FADE_MAX              = 0.98;  // gentlest allowed decay
 
-// Multi-layer rain constants (3 depth planes: far, mid, near)
-static constexpr float LAYER_FAR_FONT_SCALE    = 0.65f;
-static constexpr float LAYER_NEAR_FONT_SCALE   = 1.35f;
-static constexpr float LAYER_FAR_SPEED_SCALE   = 0.5f;
-static constexpr float LAYER_NEAR_SPEED_SCALE  = 1.5f;
-static constexpr float LAYER_FAR_DENSITY_SCALE = 0.35f;   // sparse background
-static constexpr float LAYER_NEAR_DENSITY_SCALE = 0.25f;  // few bold foreground streams
-static constexpr int   LAYER_FAR_TRAIL_PCT     = 50;
-static constexpr int   LAYER_NEAR_TRAIL_PCT    = 120;
-static constexpr float LAYER_FAR_BRIGHTNESS    = 0.30f;   // strong atmospheric dimming
-
-// --- Custom vertex format: position + texcoord + RGBA color ---
-// 20 bytes per vertex (vs 16 for TexturedPoint2D).  The 4-byte RGBA is normalized
-// by GL from 0-255 to 0.0-1.0 automatically.  Default white (0xFF) = texture * 1.0 = unchanged.
-struct MatrixRainVertex {
-    float x, y;
-    float tx, ty;
-    unsigned char r, g, b, a;
-
-    void set(float px, float py, float u, float v,
-             unsigned char cr = 0xFF, unsigned char cg = 0xFF, unsigned char cb = 0xFF, unsigned char ca = 0xFF) {
-        x = px; y = py; tx = u; ty = v; r = cr; g = cg; b = cb; a = ca;
-    }
-};
+// MatrixRainVertex, packColor, emitQuad, MAX_EMIT_VERTICES, depthColor,
+// depthPriority all live in src/ui/matrixrain/layerpipeline.h so both the
+// single-layer (this file) and multi-layer (LayerPipeline) render paths
+// can share them. Included via matrixrain.h transitively.
 
 static const QSGGeometry::AttributeSet &matrixRainAttributes() {
     static QSGGeometry::Attribute attrs[] = {
@@ -161,11 +141,6 @@ class MatrixRainNode : public QSGGeometryNode {
     }
 };
 
-// Pack a QColor into quint32 RGBA (R<<24|G<<16|B<<8|A) for vertex color.
-static inline quint32 packColor(const QColor &c) {
-    return (quint32(c.red()) << 24) | (quint32(c.green()) << 16) | (quint32(c.blue()) << 8) | 0xFF;
-}
-
 MatrixRainItem::MatrixRainItem(QQuickItem *parent)
     : QQuickItem(parent)
 {
@@ -176,10 +151,7 @@ MatrixRainItem::MatrixRainItem(QQuickItem *parent)
     connect(&m_gravity, &GravityDirection::directionChanged, this, [this](float dx, float dy) {
         if (m_sim.gravityMode()) {
             m_sim.setGravityDirection(dx, dy);
-            if (m_layersEnabled) {
-                for (int i = 0; i < LAYER_COUNT; ++i)
-                    m_layers[i].sim.setGravityDirection(dx, dy);
-            }
+            if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityDirection(dx, dy);
         }
     });
 
@@ -204,7 +176,7 @@ MatrixRainItem::MatrixRainItem(QQuickItem *parent)
 
     // Phase-timing instrumentation: start the wall-clock from construction so
     // we can measure ctor-to-first-paint (the repeat-dock path is dominated by
-    // QML lifecycle + first render, NOT by buildCombinedAtlas which cache-hits).
+    // QML lifecycle + first render, NOT by LayerPipeline::build which cache-hits).
     m_ctorTimer.start();
 }
 
@@ -243,90 +215,62 @@ void MatrixRainItem::bindToScreensaverConfig() {
     if (!sc) return;
 
     // Batch updates: suppress polish()/update() in individual setters during
-    // initial sync. Each setter independently calls polish()+update() which would
-    // trigger 5+ sequential atlas rebuilds. Batching does ONE rebuild at the end.
+    // the bulk initial sync. Without batching, each setter independently calls
+    // polish()+update() — 60+ sequential atlas rebuilds. With batching, ONE
+    // rebuild at the end. The QSignalBlocker scope MUST surround ALL helper
+    // calls — they each do initial-sync setter calls then signal connects.
     {
         const QSignalBlocker blocker(this);
         m_batchingUpdates = true;
 
-        // --- Initial sync: apply all current config values ---
-        setColor(sc->color());
-        setColorMode(sc->colorMode());
-        setSpeed(sc->speed());
-        setDensity(sc->density());
-        setTrailLength(sc->trailLength());
-        setFontSize(sc->fontSize());
-        setCharset(sc->charset());
-        setFadeRate(sc->fadeRate());
-        setGlow(sc->glow());
-        setGlowFade(sc->glowFade());
-        setDepthGlow(sc->depthGlow());
-        setDepthGlowMin(sc->depthGlowMin());
-        setInvertTrail(sc->invertTrail());
-        setDirection(sc->direction());
-        setGravityMode(sc->gravityMode());
-        setAutoRotateSpeed(sc->autoRotateSpeed());
-        setAutoRotateBend(sc->autoRotateBend());
-        setGlitch(sc->glitch());
-        setGlitchRate(sc->glitchRate());
-        setGlitchFlash(sc->glitchFlash());
-        setGlitchStutter(sc->glitchStutter());
-        setGlitchReverse(sc->glitchReverse());
-        setGlitchDirection(sc->glitchDirection());
-        setGlitchDirRate(sc->glitchDirRate());
-        setGlitchDirMask(sc->glitchDirMask());
-        setGlitchDirFade(sc->glitchDirFade());
-        setGlitchDirSpeed(sc->glitchDirSpeed());
-        setGlitchDirLength(sc->glitchDirLength());
-        setGlitchRandomColor(sc->glitchRandomColor());
-        setGlitchChaos(sc->glitchChaos());
-        setGlitchChaosFrequency(sc->glitchChaosFrequency());
-        setGlitchChaosSurge(sc->glitchChaosSurge());
-        setGlitchChaosScramble(sc->glitchChaosScramble());
-        setGlitchChaosFreeze(sc->glitchChaosFreeze());
-        setGlitchChaosScatter(sc->glitchChaosScatter());
-        setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst());
-        setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize());
-        setGlitchChaosRipple(sc->glitchChaosRipple());
-        setGlitchChaosWipe(sc->glitchChaosWipe());
-        setTapBurstCount(sc->tapBurstCount());
-        setTapBurstLength(sc->tapBurstLength());
-        setTapSpawnCount(sc->tapSpawnCount());
-        setTapSpawnLength(sc->tapSpawnLength());
-        setTapSquareBurstSize(sc->tapSquareBurstSize());
-        setGlitchChaosIntensity(sc->glitchChaosIntensity());
-        setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
-        setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
-        setMessagesEnabled(sc->messagesEnabled());
-        setMessages(sc->messages());
-        setMessageInterval(sc->messageInterval());
-        setMessageRandom(sc->messageRandom());
-        setMessageDirection(sc->messageDirection());
-        setMessageFlash(sc->messageFlash());
-        setMessagePulse(sc->messagePulse());
-        setSubliminal(sc->subliminal());
-        setSubliminalInterval(sc->subliminalInterval());
-        setSubliminalDuration(sc->subliminalDuration());
-        setSubliminalStream(sc->subliminalStream());
-        setSubliminalOverlay(sc->subliminalOverlay());
-        setSubliminalFlash(sc->subliminalFlash());
-        setDepthEnabled(sc->depthEnabled());
-        setDepthIntensity(sc->depthIntensity());
-        setDepthOverlay(sc->depthOverlay());
-        setLayersEnabled(sc->layersEnabled());
+        bindAppearance(sc);
+        bindDirectionAndGravity(sc);
+        bindGlitch(sc);
+        bindChaos(sc);
+        bindTap(sc);
+        bindMessages(sc);
+        bindSubliminal(sc);
+        bindDepthAndLayers(sc);
 
         m_batchingUpdates = false;
     }
-    // One rebuild for all batched changes (instead of 5+ individual rebuilds)
+    // One rebuild for all batched changes (instead of 60+ individual rebuilds).
+    // m_needsAtlasRebuild drives updatePolish to dispatch into either
+    // LayerPipeline::build (layered) or AtlasBuilder::buildSingle (single-layer).
     m_needsAtlasRebuild = true;
     m_needsReinit = true;
-    if (m_layersEnabled) m_layersNeedRebuild = true;
     polish();
     update();
 
-    // --- Live binding: connect ScreensaverConfig signals to our setters ---
-    // Core appearance (transformed)
-    connect(sc, &uc::ScreensaverConfig::colorChanged,       this, [this, sc]() { setColor(sc->color()); });
+    qCDebug(lcScreensaver) << "Bound to ScreensaverConfig — live config updates enabled";
+#endif  // !MATRIX_RAIN_TESTING
+}
+
+#ifndef MATRIX_RAIN_TESTING
+// --- ScreensaverConfig binding helpers ---
+// Each helper owns BOTH the initial-sync setter calls AND the live-binding
+// signal connects for its property group, in the original order. Called
+// strictly between bindToScreensaverConfig's m_batchingUpdates=true/false
+// scope so initial-sync setters don't trigger 60+ individual atlas rebuilds.
+
+void MatrixRainItem::bindAppearance(uc::ScreensaverConfig *sc) {
+    // Initial sync: core appearance (atlas-affecting + simulation-forwarded)
+    setColor(sc->color());
+    setColorMode(sc->colorMode());
+    setSpeed(sc->speed());
+    setDensity(sc->density());
+    setTrailLength(sc->trailLength());
+    setFontSize(sc->fontSize());
+    setCharset(sc->charset());
+    setFadeRate(sc->fadeRate());
+    setGlow(sc->glow());
+    setGlowFade(sc->glowFade());
+    setDepthGlow(sc->depthGlow());
+    setDepthGlowMin(sc->depthGlowMin());
+    setInvertTrail(sc->invertTrail());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::colorChanged,        this, [this, sc]() { setColor(sc->color()); });
     connect(sc, &uc::ScreensaverConfig::colorModeChanged,    this, [this, sc]() { setColorMode(sc->colorMode()); });
     connect(sc, &uc::ScreensaverConfig::speedChanged,        this, [this, sc]() { setSpeed(sc->speed()); });
     connect(sc, &uc::ScreensaverConfig::densityChanged,      this, [this, sc]() { setDensity(sc->density()); });
@@ -334,53 +278,117 @@ void MatrixRainItem::bindToScreensaverConfig() {
     connect(sc, &uc::ScreensaverConfig::fontSizeChanged,     this, [this, sc]() { setFontSize(sc->fontSize()); });
     connect(sc, &uc::ScreensaverConfig::charsetChanged,      this, [this, sc]() { setCharset(sc->charset()); });
     connect(sc, &uc::ScreensaverConfig::fadeRateChanged,     this, [this, sc]() { setFadeRate(sc->fadeRate()); });
-
-    // Visual effects
-    connect(sc, &uc::ScreensaverConfig::glowChanged,        this, [this, sc]() { setGlow(sc->glow()); });
-    connect(sc, &uc::ScreensaverConfig::glowFadeChanged,    this, [this, sc]() { setGlowFade(sc->glowFade()); });
-    connect(sc, &uc::ScreensaverConfig::depthGlowChanged,   this, [this, sc]() { setDepthGlow(sc->depthGlow()); });
+    connect(sc, &uc::ScreensaverConfig::glowChanged,         this, [this, sc]() { setGlow(sc->glow()); });
+    connect(sc, &uc::ScreensaverConfig::glowFadeChanged,     this, [this, sc]() { setGlowFade(sc->glowFade()); });
+    connect(sc, &uc::ScreensaverConfig::depthGlowChanged,    this, [this, sc]() { setDepthGlow(sc->depthGlow()); });
     connect(sc, &uc::ScreensaverConfig::depthGlowMinChanged, this, [this, sc]() { setDepthGlowMin(sc->depthGlowMin()); });
     connect(sc, &uc::ScreensaverConfig::invertTrailChanged,  this, [this, sc]() { setInvertTrail(sc->invertTrail()); });
+}
 
-    // Direction / gravity
-    connect(sc, &uc::ScreensaverConfig::directionChanged,    this, [this, sc]() { setDirection(sc->direction()); });
-    // gravityMode NOT connected here — MatrixTheme.qml manages it via localGravity (DPAD override)
-    connect(sc, &uc::ScreensaverConfig::autoRotateSpeedChanged, this, [this, sc]() { setAutoRotateSpeed(sc->autoRotateSpeed()); });
-    connect(sc, &uc::ScreensaverConfig::autoRotateBendChanged,  this, [this, sc]() { setAutoRotateBend(sc->autoRotateBend()); });
+void MatrixRainItem::bindDirectionAndGravity(uc::ScreensaverConfig *sc) {
+    // Initial sync. gravityMode is initial-synced but NOT live-bound —
+    // MatrixTheme.qml manages it via localGravity (DPAD override pattern).
+    setDirection(sc->direction());
+    setGravityMode(sc->gravityMode());
+    setAutoRotateSpeed(sc->autoRotateSpeed());
+    setAutoRotateBend(sc->autoRotateBend());
 
-    // Glitch
-    connect(sc, &uc::ScreensaverConfig::glitchChanged,              this, [this, sc]() { setGlitch(sc->glitch()); });
-    connect(sc, &uc::ScreensaverConfig::glitchRateChanged,          this, [this, sc]() { setGlitchRate(sc->glitchRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchFlashChanged,         this, [this, sc]() { setGlitchFlash(sc->glitchFlash()); });
-    connect(sc, &uc::ScreensaverConfig::glitchStutterChanged,       this, [this, sc]() { setGlitchStutter(sc->glitchStutter()); });
-    connect(sc, &uc::ScreensaverConfig::glitchReverseChanged,       this, [this, sc]() { setGlitchReverse(sc->glitchReverse()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirectionChanged,     this, [this, sc]() { setGlitchDirection(sc->glitchDirection()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirRateChanged,       this, [this, sc]() { setGlitchDirRate(sc->glitchDirRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirMaskChanged,       this, [this, sc]() { setGlitchDirMask(sc->glitchDirMask()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirFadeChanged,       this, [this, sc]() { setGlitchDirFade(sc->glitchDirFade()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirSpeedChanged,      this, [this, sc]() { setGlitchDirSpeed(sc->glitchDirSpeed()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirLengthChanged,     this, [this, sc]() { setGlitchDirLength(sc->glitchDirLength()); });
-    connect(sc, &uc::ScreensaverConfig::glitchRandomColorChanged,   this, [this, sc]() { setGlitchRandomColor(sc->glitchRandomColor()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosChanged,         this, [this, sc]() { setGlitchChaos(sc->glitchChaos()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosFrequencyChanged, this, [this, sc]() { setGlitchChaosFrequency(sc->glitchChaosFrequency()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosSurgeChanged,    this, [this, sc]() { setGlitchChaosSurge(sc->glitchChaosSurge()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScrambleChanged, this, [this, sc]() { setGlitchChaosScramble(sc->glitchChaosScramble()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosFreezeChanged,   this, [this, sc]() { setGlitchChaosFreeze(sc->glitchChaosFreeze()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterChanged,     this, [this, sc]() { setGlitchChaosScatter(sc->glitchChaosScatter()); });
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::directionChanged,        this, [this, sc]() { setDirection(sc->direction()); });
+    // gravityMode NOT connected here — see comment above
+    connect(sc, &uc::ScreensaverConfig::autoRotateSpeedChanged,  this, [this, sc]() { setAutoRotateSpeed(sc->autoRotateSpeed()); });
+    connect(sc, &uc::ScreensaverConfig::autoRotateBendChanged,   this, [this, sc]() { setAutoRotateBend(sc->autoRotateBend()); });
+}
+
+void MatrixRainItem::bindGlitch(uc::ScreensaverConfig *sc) {
+    // Initial sync: glitch micro-effects (per-stream flash/stutter/reverse + direction trails)
+    setGlitch(sc->glitch());
+    setGlitchRate(sc->glitchRate());
+    setGlitchFlash(sc->glitchFlash());
+    setGlitchStutter(sc->glitchStutter());
+    setGlitchReverse(sc->glitchReverse());
+    setGlitchDirection(sc->glitchDirection());
+    setGlitchDirRate(sc->glitchDirRate());
+    setGlitchDirMask(sc->glitchDirMask());
+    setGlitchDirFade(sc->glitchDirFade());
+    setGlitchDirSpeed(sc->glitchDirSpeed());
+    setGlitchDirLength(sc->glitchDirLength());
+    setGlitchRandomColor(sc->glitchRandomColor());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::glitchChanged,            this, [this, sc]() { setGlitch(sc->glitch()); });
+    connect(sc, &uc::ScreensaverConfig::glitchRateChanged,        this, [this, sc]() { setGlitchRate(sc->glitchRate()); });
+    connect(sc, &uc::ScreensaverConfig::glitchFlashChanged,       this, [this, sc]() { setGlitchFlash(sc->glitchFlash()); });
+    connect(sc, &uc::ScreensaverConfig::glitchStutterChanged,     this, [this, sc]() { setGlitchStutter(sc->glitchStutter()); });
+    connect(sc, &uc::ScreensaverConfig::glitchReverseChanged,     this, [this, sc]() { setGlitchReverse(sc->glitchReverse()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirectionChanged,   this, [this, sc]() { setGlitchDirection(sc->glitchDirection()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirRateChanged,     this, [this, sc]() { setGlitchDirRate(sc->glitchDirRate()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirMaskChanged,     this, [this, sc]() { setGlitchDirMask(sc->glitchDirMask()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirFadeChanged,     this, [this, sc]() { setGlitchDirFade(sc->glitchDirFade()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirSpeedChanged,    this, [this, sc]() { setGlitchDirSpeed(sc->glitchDirSpeed()); });
+    connect(sc, &uc::ScreensaverConfig::glitchDirLengthChanged,   this, [this, sc]() { setGlitchDirLength(sc->glitchDirLength()); });
+    connect(sc, &uc::ScreensaverConfig::glitchRandomColorChanged, this, [this, sc]() { setGlitchRandomColor(sc->glitchRandomColor()); });
+}
+
+void MatrixRainItem::bindChaos(uc::ScreensaverConfig *sc) {
+    // Initial sync: chaos macro-effects (periodic bursts: surge/scramble/freeze/scatter/squareBurst/ripple/wipe)
+    setGlitchChaos(sc->glitchChaos());
+    setGlitchChaosFrequency(sc->glitchChaosFrequency());
+    setGlitchChaosSurge(sc->glitchChaosSurge());
+    setGlitchChaosScramble(sc->glitchChaosScramble());
+    setGlitchChaosFreeze(sc->glitchChaosFreeze());
+    setGlitchChaosScatter(sc->glitchChaosScatter());
+    setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst());
+    setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize());
+    setGlitchChaosRipple(sc->glitchChaosRipple());
+    setGlitchChaosWipe(sc->glitchChaosWipe());
+    setGlitchChaosIntensity(sc->glitchChaosIntensity());
+    setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
+    setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::glitchChaosChanged,                this, [this, sc]() { setGlitchChaos(sc->glitchChaos()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosFrequencyChanged,       this, [this, sc]() { setGlitchChaosFrequency(sc->glitchChaosFrequency()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosSurgeChanged,           this, [this, sc]() { setGlitchChaosSurge(sc->glitchChaosSurge()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosScrambleChanged,        this, [this, sc]() { setGlitchChaosScramble(sc->glitchChaosScramble()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosFreezeChanged,          this, [this, sc]() { setGlitchChaosFreeze(sc->glitchChaosFreeze()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterChanged,         this, [this, sc]() { setGlitchChaosScatter(sc->glitchChaosScatter()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstChanged,     this, [this, sc]() { setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst()); });
     connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstSizeChanged, this, [this, sc]() { setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosRippleChanged,        this, [this, sc]() { setGlitchChaosRipple(sc->glitchChaosRipple()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosWipeChanged,          this, [this, sc]() { setGlitchChaosWipe(sc->glitchChaosWipe()); });
-    connect(sc, &uc::ScreensaverConfig::tapBurstCountChanged,              this, [this, sc]() { setTapBurstCount(sc->tapBurstCount()); });
-    connect(sc, &uc::ScreensaverConfig::tapBurstLengthChanged,            this, [this, sc]() { setTapBurstLength(sc->tapBurstLength()); });
-    connect(sc, &uc::ScreensaverConfig::tapSpawnCountChanged,              this, [this, sc]() { setTapSpawnCount(sc->tapSpawnCount()); });
-    connect(sc, &uc::ScreensaverConfig::tapSpawnLengthChanged,            this, [this, sc]() { setTapSpawnLength(sc->tapSpawnLength()); });
-    connect(sc, &uc::ScreensaverConfig::tapSquareBurstSizeChanged,         this, [this, sc]() { setTapSquareBurstSize(sc->tapSquareBurstSize()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosIntensityChanged, this, [this, sc]() { setGlitchChaosIntensity(sc->glitchChaosIntensity()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterRateChanged,   this, [this, sc]() { setGlitchChaosScatterRate(sc->glitchChaosScatterRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged, this, [this, sc]() { setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosRippleChanged,          this, [this, sc]() { setGlitchChaosRipple(sc->glitchChaosRipple()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosWipeChanged,            this, [this, sc]() { setGlitchChaosWipe(sc->glitchChaosWipe()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosIntensityChanged,       this, [this, sc]() { setGlitchChaosIntensity(sc->glitchChaosIntensity()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterRateChanged,     this, [this, sc]() { setGlitchChaosScatterRate(sc->glitchChaosScatterRate()); });
+    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged,   this, [this, sc]() { setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
+}
 
-    // Messages
+void MatrixRainItem::bindTap(uc::ScreensaverConfig *sc) {
+    // Initial sync: tap effect counts/lengths (effect mix is QML-side via interactiveInput tap:...)
+    setTapBurstCount(sc->tapBurstCount());
+    setTapBurstLength(sc->tapBurstLength());
+    setTapSpawnCount(sc->tapSpawnCount());
+    setTapSpawnLength(sc->tapSpawnLength());
+    setTapSquareBurstSize(sc->tapSquareBurstSize());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::tapBurstCountChanged,      this, [this, sc]() { setTapBurstCount(sc->tapBurstCount()); });
+    connect(sc, &uc::ScreensaverConfig::tapBurstLengthChanged,     this, [this, sc]() { setTapBurstLength(sc->tapBurstLength()); });
+    connect(sc, &uc::ScreensaverConfig::tapSpawnCountChanged,      this, [this, sc]() { setTapSpawnCount(sc->tapSpawnCount()); });
+    connect(sc, &uc::ScreensaverConfig::tapSpawnLengthChanged,     this, [this, sc]() { setTapSpawnLength(sc->tapSpawnLength()); });
+    connect(sc, &uc::ScreensaverConfig::tapSquareBurstSizeChanged, this, [this, sc]() { setTapSquareBurstSize(sc->tapSquareBurstSize()); });
+}
+
+void MatrixRainItem::bindMessages(uc::ScreensaverConfig *sc) {
+    // Initial sync
+    setMessagesEnabled(sc->messagesEnabled());
+    setMessages(sc->messages());
+    setMessageInterval(sc->messageInterval());
+    setMessageRandom(sc->messageRandom());
+    setMessageDirection(sc->messageDirection());
+    setMessageFlash(sc->messageFlash());
+    setMessagePulse(sc->messagePulse());
+
+    // Live binding
     connect(sc, &uc::ScreensaverConfig::messagesEnabledChanged,  this, [this, sc]() { setMessagesEnabled(sc->messagesEnabled()); });
     connect(sc, &uc::ScreensaverConfig::messagesChanged,         this, [this, sc]() { setMessages(sc->messages()); });
     connect(sc, &uc::ScreensaverConfig::messageIntervalChanged,  this, [this, sc]() { setMessageInterval(sc->messageInterval()); });
@@ -388,26 +396,40 @@ void MatrixRainItem::bindToScreensaverConfig() {
     connect(sc, &uc::ScreensaverConfig::messageDirectionChanged, this, [this, sc]() { setMessageDirection(sc->messageDirection()); });
     connect(sc, &uc::ScreensaverConfig::messageFlashChanged,     this, [this, sc]() { setMessageFlash(sc->messageFlash()); });
     connect(sc, &uc::ScreensaverConfig::messagePulseChanged,     this, [this, sc]() { setMessagePulse(sc->messagePulse()); });
-
-    // Subliminal
-    connect(sc, &uc::ScreensaverConfig::subliminalChanged,          this, [this, sc]() { setSubliminal(sc->subliminal()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalIntervalChanged,  this, [this, sc]() { setSubliminalInterval(sc->subliminalInterval()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalDurationChanged,  this, [this, sc]() { setSubliminalDuration(sc->subliminalDuration()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalStreamChanged,    this, [this, sc]() { setSubliminalStream(sc->subliminalStream()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalOverlayChanged,   this, [this, sc]() { setSubliminalOverlay(sc->subliminalOverlay()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalFlashChanged,     this, [this, sc]() { setSubliminalFlash(sc->subliminalFlash()); });
-
-    // 3D depth parallax
-    connect(sc, &uc::ScreensaverConfig::depthEnabledChanged,   this, [this, sc]() { setDepthEnabled(sc->depthEnabled()); });
-    connect(sc, &uc::ScreensaverConfig::depthIntensityChanged,  this, [this, sc]() { setDepthIntensity(sc->depthIntensity()); });
-    connect(sc, &uc::ScreensaverConfig::depthOverlayChanged,    this, [this, sc]() { setDepthOverlay(sc->depthOverlay()); });
-
-    // Rain layers (multi-grid depth)
-    connect(sc, &uc::ScreensaverConfig::layersEnabledChanged,  this, [this, sc]() { setLayersEnabled(sc->layersEnabled()); });
-
-    qCDebug(lcScreensaver) << "Bound to ScreensaverConfig — live config updates enabled";
-#endif  // !MATRIX_RAIN_TESTING
 }
+
+void MatrixRainItem::bindSubliminal(uc::ScreensaverConfig *sc) {
+    // Initial sync
+    setSubliminal(sc->subliminal());
+    setSubliminalInterval(sc->subliminalInterval());
+    setSubliminalDuration(sc->subliminalDuration());
+    setSubliminalStream(sc->subliminalStream());
+    setSubliminalOverlay(sc->subliminalOverlay());
+    setSubliminalFlash(sc->subliminalFlash());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::subliminalChanged,         this, [this, sc]() { setSubliminal(sc->subliminal()); });
+    connect(sc, &uc::ScreensaverConfig::subliminalIntervalChanged, this, [this, sc]() { setSubliminalInterval(sc->subliminalInterval()); });
+    connect(sc, &uc::ScreensaverConfig::subliminalDurationChanged, this, [this, sc]() { setSubliminalDuration(sc->subliminalDuration()); });
+    connect(sc, &uc::ScreensaverConfig::subliminalStreamChanged,   this, [this, sc]() { setSubliminalStream(sc->subliminalStream()); });
+    connect(sc, &uc::ScreensaverConfig::subliminalOverlayChanged,  this, [this, sc]() { setSubliminalOverlay(sc->subliminalOverlay()); });
+    connect(sc, &uc::ScreensaverConfig::subliminalFlashChanged,    this, [this, sc]() { setSubliminalFlash(sc->subliminalFlash()); });
+}
+
+void MatrixRainItem::bindDepthAndLayers(uc::ScreensaverConfig *sc) {
+    // Initial sync: 3D depth parallax + multi-grid depth (rain layers)
+    setDepthEnabled(sc->depthEnabled());
+    setDepthIntensity(sc->depthIntensity());
+    setDepthOverlay(sc->depthOverlay());
+    setLayersEnabled(sc->layersEnabled());
+
+    // Live binding
+    connect(sc, &uc::ScreensaverConfig::depthEnabledChanged,   this, [this, sc]() { setDepthEnabled(sc->depthEnabled()); });
+    connect(sc, &uc::ScreensaverConfig::depthIntensityChanged, this, [this, sc]() { setDepthIntensity(sc->depthIntensity()); });
+    connect(sc, &uc::ScreensaverConfig::depthOverlayChanged,   this, [this, sc]() { setDepthOverlay(sc->depthOverlay()); });
+    connect(sc, &uc::ScreensaverConfig::layersEnabledChanged,  this, [this, sc]() { setLayersEnabled(sc->layersEnabled()); });
+}
+#endif  // !MATRIX_RAIN_TESTING
 
 void MatrixRainItem::geometryChanged(const QRectF &n, const QRectF &o) {
     QQuickItem::geometryChanged(n, o);
@@ -415,91 +437,14 @@ void MatrixRainItem::geometryChanged(const QRectF &n, const QRectF &o) {
 }
 
 void MatrixRainItem::tick() {
-    if (m_layersEnabled) {
+    if (m_layerPipeline.enabled()) {
         // Sync config every tick — cheap (setters guard on value change) and ensures
         // all inline header setters (trailLength, glow, glitch, message, etc.) propagate.
-        syncLayerConfig();
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            m_layers[i].sim.advanceSimulation(m_layers[i].atlas);
+        m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
+        m_layerPipeline.advanceTick();
     }
     m_sim.advanceSimulation(m_atlas);  // always advance primary sim (keeps config state valid)
     update();
-}
-
-// quint16 index limit: 16383 quads × 4 vertices = 65532 < 65535.
-// Enforced here AND in RainSimulation::initStreams (MAX_QUADS grid cap).
-static constexpr int MAX_EMIT_VERTICES = 16383 * 4;
-
-// Emit one textured+colored quad (2 triangles, 4 vertices, 6 indices).
-// color is packed RGBA: R<<24 | G<<16 | B<<8 | A.  Default 0xFFFFFFFF (white) = unchanged.
-static inline void emitQuad(MatrixRainVertex *verts, quint16 *ixBuf,
-                            int &vi, int &ii,
-                            float x, float y, float w, float h,
-                            float u0, float v0, float u1, float v1,
-                            quint32 color = 0xFFFFFFFF) {
-    if (vi + 4 > MAX_EMIT_VERTICES) return;  // quint16 overflow guard
-    unsigned char cr = static_cast<unsigned char>((color >> 24) & 0xFF);
-    unsigned char cg = static_cast<unsigned char>((color >> 16) & 0xFF);
-    unsigned char cb = static_cast<unsigned char>((color >>  8) & 0xFF);
-    unsigned char ca = static_cast<unsigned char>( color        & 0xFF);
-    verts[vi+0].set(x,   y,   u0, v0, cr, cg, cb, ca);
-    verts[vi+1].set(x+w, y,   u1, v0, cr, cg, cb, ca);
-    verts[vi+2].set(x+w, y+h, u1, v1, cr, cg, cb, ca);
-    verts[vi+3].set(x,   y+h, u0, v1, cr, cg, cb, ca);
-    quint16 base = static_cast<quint16>(vi);
-    ixBuf[ii++] = base; ixBuf[ii++] = base+1; ixBuf[ii++] = base+2;
-    ixBuf[ii++] = base; ixBuf[ii++] = base+2; ixBuf[ii++] = base+3;
-    vi += 4;
-}
-
-// Compute continuous depth tint from depthFactor (0.6=far to 1.4=near).
-// Returns packed RGBA (R<<24|G<<16|B<<8|A).
-// Uses lerp toward target colors: far→dim teal, near→bright chartreuse.
-// Additive (not multiplicative) so channels that are 0 in the base CAN gain color.
-static quint32 depthColor(float depthFactor, const QColor &baseColor, int depthIntensity) {
-    float t = qBound(-1.0f, (depthFactor - 1.0f) / 0.4f, 1.0f);  // [-1,+1]
-    float intNorm = (qBound(10, depthIntensity, 100) - 10) / 90.0f;
-
-    float br = static_cast<float>(baseColor.redF());
-    float bg = static_cast<float>(baseColor.greenF());
-    float bb = static_cast<float>(baseColor.blueF());
-
-    // Target colors for max depth shift
-    static constexpr float farR = 0.0f,  farG = 0.55f, farB = 0.65f;   // teal
-    static constexpr float nearR = 0.5f, nearG = 1.0f,  nearB = 0.0f;  // chartreuse
-
-    float r, g, b;
-    if (t < 0.0f) {
-        // Far: lerp base → teal, then apply atmospheric dimming
-        float lerp = -t * intNorm;  // 0 at normal, 1 at farthest+maxIntensity
-        float dim = 1.0f - (-t) * (0.30f + 0.25f * intNorm);  // 0.45–0.70
-        r = (br + (farR - br) * lerp) * dim;
-        g = (bg + (farG - bg) * lerp) * dim;
-        b = (bb + (farB - bb) * lerp) * dim;
-    } else {
-        // Near: lerp base → chartreuse, slight brightness boost
-        float lerp = t * intNorm;
-        float boost = 1.0f + t * 0.08f * intNorm;
-        r = (br + (nearR - br) * lerp) * boost;
-        g = (bg + (nearG - bg) * lerp) * boost;
-        b = (bb + (nearB - bb) * lerp) * boost;
-    }
-
-    r = qBound(0.0f, r, 1.0f);
-    g = qBound(0.0f, g, 1.0f);
-    b = qBound(0.0f, b, 1.0f);
-
-    auto cr = static_cast<unsigned char>(r * 255.0f + 0.5f);
-    auto cg = static_cast<unsigned char>(g * 255.0f + 0.5f);
-    auto cb = static_cast<unsigned char>(b * 255.0f + 0.5f);
-    return (quint32(cr) << 24) | (quint32(cg) << 16) | (quint32(cb) << 8) | 0xFF;
-}
-
-// Depth priority: far=1, normal=2, near=3. Higher priority overwrites lower.
-static inline quint8 depthPriority(float depthFactor) {
-    if (depthFactor < 0.93f) return 1;
-    if (depthFactor > 1.07f) return 3;
-    return 2;
 }
 
 void MatrixRainItem::updatePolish() {
@@ -509,47 +454,65 @@ void MatrixRainItem::updatePolish() {
         QElapsedTimer polishTimer;
         polishTimer.start();
 
-        if (m_layersEnabled) {
-            buildCombinedAtlas();
+        if (m_layerPipeline.enabled()) {
+            // Multi-layer build: delegate atlas + sync to LayerPipeline,
+            // copy phase timings into item fields for publishBuildSummary.
+            AtlasInputs inputs;
+            inputs.color          = m_color;
+            inputs.colorMode      = m_colorMode;
+            inputs.fontSize       = m_fontSize;
+            inputs.charset        = m_sim.charset();
+            inputs.fadeRate       = m_fadeRate;
+            inputs.depthEnabled   = m_sim.depthEnabled();
+            inputs.depthIntensity = m_sim.depthIntensity();
+
+            BuildTimings t;
+            m_layerPipeline.build(inputs, t);
+
+            // Measure sync separately — build() leaves syncMs at 0; caller stamps
+            // it so per-tick sync (also a syncLayerConfig call but not timed) and
+            // build-time sync share one accounting path.
+            QElapsedTimer syncTimer;
+            syncTimer.start();
+            m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
+            t.syncMs = syncTimer.elapsed();
+            t.totalMs += t.syncMs;
+            m_layerPipeline.clearNeedsRebuild();
+
+            m_lastCacheHit         = t.cacheHit;
+            m_lastCacheKeyMs       = t.cacheKeyMs;
+            m_lastLayerBuildMs[0]  = t.layerBuildMs[0];
+            m_lastLayerBuildMs[1]  = t.layerBuildMs[1];
+            m_lastLayerBuildMs[2]  = t.layerBuildMs[2];
+            m_lastComposeMs        = t.composeMs;
+            m_lastRemapMs          = t.remapMs;
+            m_lastSyncMs           = t.syncMs;
+            m_lastBuildTotalMs     = t.totalMs;
         } else {
-            // Single-layer in-memory cache (same pattern as buildCombinedAtlas)
-            // Instrumented inline so we capture cache-key + build phases for the
-            // default (layers-off) path too.
-            QElapsedTimer singleTimer;
-            singleTimer.start();
-            m_lastLayerBuildMs[0] = m_lastLayerBuildMs[1] = m_lastLayerBuildMs[2] = 0;
-            m_lastComposeMs = 0;
-            m_lastRemapMs = 0;
-            m_lastSyncMs = 0;
+            // Single-layer build: delegate to AtlasBuilder which owns the
+            // class-static cache + cache-key hashing (deduped with LayerPipeline).
+            // Build under the mid slot [1] so the phase-timing log format stays
+            // stable across layers-on/off.
+            AtlasInputs inputs;
+            inputs.color          = m_color;
+            inputs.colorMode      = m_colorMode;
+            inputs.fontSize       = m_fontSize;
+            inputs.charset        = m_sim.charset();
+            inputs.fadeRate       = m_fadeRate;
+            inputs.depthEnabled   = m_sim.depthEnabled();
+            inputs.depthIntensity = m_sim.depthIntensity();
 
-            static QByteArray s_singleCacheKey;
-            static GlyphAtlas s_singleCacheAtlas;
+            AtlasBuildResult r = AtlasBuilder::buildSingle(m_atlas, inputs);
 
-            QCryptographicHash h(QCryptographicHash::Sha1);
-            h.addData(m_color.name(QColor::HexArgb).toUtf8());
-            h.addData(m_colorMode.toUtf8());
-            h.addData(QByteArray::number(m_fontSize));
-            h.addData(m_sim.charset().toUtf8());
-            h.addData(QByteArray::number(static_cast<double>(m_fadeRate), 'g', 10));
-            h.addData(QByteArray::number(static_cast<int>(m_sim.depthEnabled())));
-            QByteArray cacheKey = h.result();
-            m_lastCacheKeyMs = singleTimer.elapsed();
-
-            if (cacheKey == s_singleCacheKey && s_singleCacheAtlas.isBuilt()) {
-                m_atlas = s_singleCacheAtlas;
-                m_lastCacheHit = true;
-            } else {
-                const qint64 tBeforeBuild = singleTimer.elapsed();
-                m_atlas.build(m_color, m_colorMode, m_fontSize, m_sim.charset(), m_fadeRate,
-                              m_sim.depthEnabled(), m_sim.depthIntensity());
-                // Single-layer path reports the build under the mid slot [1]
-                // so the log line format stays stable across layers-on/off.
-                m_lastLayerBuildMs[1] = singleTimer.elapsed() - tBeforeBuild;
-                s_singleCacheKey = cacheKey;
-                s_singleCacheAtlas = m_atlas;
-                m_lastCacheHit = false;
-            }
-            m_lastBuildTotalMs = singleTimer.elapsed();
+            m_lastLayerBuildMs[0] = 0;
+            m_lastLayerBuildMs[1] = r.rasterMs;
+            m_lastLayerBuildMs[2] = 0;
+            m_lastComposeMs       = 0;
+            m_lastRemapMs         = 0;
+            m_lastSyncMs          = 0;
+            m_lastCacheHit        = r.cacheHit;
+            m_lastCacheKeyMs      = r.cacheKeyMs;
+            m_lastBuildTotalMs    = r.totalMs;
         }
 
         m_lastPolishMs = polishTimer.elapsed();
@@ -575,10 +538,10 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     // Atlas build happens in updatePolish() (main thread).
     // initStreams stays here — lightweight grid math, safe at sync point.
     if (m_needsReinit) {
-        if (m_layersEnabled) {
+        if (m_layerPipeline.enabled()) {
             // Layers mode: check that at least the mid layer atlas is built
-            if (m_layers[1].atlas.glyphW() > 0) {
-                initAllLayers();
+            if (m_layerPipeline.atlasReady()) {
+                m_layerPipeline.initAllLayers(width(), height());
                 m_sim.initStreams(width(), height(), m_atlas);  // keep single-layer sim in sync
                 m_needsReinit = false;
             }
@@ -591,7 +554,7 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     }
 
     // Guard: need valid geometry and at least one atlas
-    bool hasAtlas = m_layersEnabled ? (m_layers[1].atlas.glyphCount() > 0) : (m_atlas.glyphCount() > 0);
+    bool hasAtlas = m_layerPipeline.enabled() ? (m_layerPipeline.midAtlas().glyphCount() > 0) : (m_atlas.glyphCount() > 0);
     if (width() <= 0 || height() <= 0 || !hasAtlas) {
         delete oldNode;
         return nullptr;
@@ -616,7 +579,8 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     auto *mat = static_cast<MatrixRainMaterial *>(node->material());
     if (m_atlasDirty) {
         // Use combined atlas image when layers enabled, single atlas otherwise
-        const QImage &uploadImage = m_layersEnabled ? m_combinedAtlasImage : m_atlas.atlasImage();
+        const QImage &uploadImage = m_layerPipeline.enabled()
+            ? m_layerPipeline.combinedAtlasImage() : m_atlas.atlasImage();
         auto *tex = window()->createTextureFromImage(uploadImage, QQuickWindow::TextureHasAlphaChannel);
         if (!tex) {
             qCWarning(lcScreensaver) << "GPU texture creation failed — will retry next frame";
@@ -627,8 +591,8 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
         mat->setTexture(tex);
         if (oldTex) delete oldTex;  // delete AFTER new texture is set
         m_atlasDirty = false;
-        if (m_layersEnabled)
-            m_combinedAtlasImage = QImage();
+        if (m_layerPipeline.enabled())
+            m_layerPipeline.clearCombinedAtlasImage();
         else
             m_atlas.clearAtlasImage();
         node->markDirty(QSGNode::DirtyMaterial);
@@ -641,9 +605,9 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
 
     int quadCount;
 
-    if (m_layersEnabled) {
+    if (m_layerPipeline.enabled()) {
         // Multi-layer path: count quads across all 3 layers
-        quadCount = countVisibleQuadsAllLayers();
+        quadCount = m_layerPipeline.countVisibleQuads(m_glowFade);
     } else {
         // Single-layer path: existing code
         int gridCols = m_sim.gridCols();
@@ -674,95 +638,19 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     auto *ixBuf = geo->indexDataAsUShort();
     int vi = 0, ii = 0;
 
-    if (m_layersEnabled) {
-        // Multi-layer rendering: far → mid → near (painter's algorithm across layers)
-        // Reset cellDrawn for each layer's rendering pass
-        for (int li = 0; li < LAYER_COUNT; ++li)
-            m_layers[li].cellDrawn.fill(0);
-
-        // Render all 3 layers: stream trails per layer.
-        // Residual glow only on mid layer — far/near add too much visual noise.
-        for (int li = 0; li < LAYER_COUNT; ++li) {
-            renderLayerStreamTrails(li, verts, ixBuf, vi, ii);
-            if (m_layers[li].isInteractive)
-                renderLayerResidualCells(li, verts, ixBuf, vi, ii);
-        }
-
-        // Mid layer (interactive) gets glitch trails, message flash, message overlay
-        {
-            const int midIdx = 1;
-            RainSimulation &midSim = m_layers[midIdx].sim;
-            const GlyphAtlas &midAtlas = m_layers[midIdx].atlas;
-            int gridCols = midSim.gridCols(), gridRows = midSim.gridRows();
-            float colSp = (gridCols > 1) ? static_cast<float>(width()) / static_cast<float>(gridCols) : static_cast<float>(midAtlas.glyphW());
-            float rowSp = (gridRows > 1) ? static_cast<float>(height()) / static_cast<float>(gridRows) : static_cast<float>(midAtlas.glyphH());
-            float gw = static_cast<float>(midAtlas.glyphW()), gh = static_cast<float>(midAtlas.glyphH());
-
-            // Render glitch trails using mid layer's sim and atlas
-            const auto &charGrid = midSim.charGrid();
-            const auto &glitchTrails = midSim.glitchTrails();
-            for (const auto &gt : glitchTrails) {
-                for (int step = 0; step < gt.length; ++step) {
-                    int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
-                    if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-                    int gridIdx = c * gridRows + r;
-                    if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
-                    int glyphIdx = charGrid[gridIdx];
-                    if (glyphIdx < 0) continue;
-                    int cv = qMin(gt.colorVariant, qMax(0, midAtlas.colorVariants() - 1));
-                    int uvIdx = glyphIdx * midAtlas.brightnessLevels() * midAtlas.colorVariants()
-                              + cv * midAtlas.brightnessLevels();
-                    if (uvIdx < 0 || uvIdx >= midAtlas.glyphUVs().size()) continue;
-                    const QRectF &uv = midAtlas.glyphUVs()[uvIdx];
-                    emitQuad(verts, ixBuf, vi, ii,
-                             c * colSp, r * rowSp, gw, gh,
-                             static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                             static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                             m_baseVertexColor);
-                }
-            }
-
-            // Render message flash
-            const auto &messageBright = midSim.messageBright();
-            const auto &messageColor = midSim.messageColor();
-            bool simMessagePulse = midSim.messagePulse();
-            for (int idx = 0; idx < messageBright.size(); ++idx) {
-                if (messageBright[idx] <= 0) continue;
-                int c = idx / gridRows, r = idx % gridRows;
-                if (c >= gridCols || r >= gridRows) continue;
-                int glyphIdx = charGrid[idx];
-                if (glyphIdx < 0) continue;
-                int cv = (idx < messageColor.size()) ? qMin(messageColor[idx], qMax(0, midAtlas.colorVariants() - 1)) : 0;
-                int bright = (simMessagePulse && (messageBright[idx] % 4 < 2))
-                    ? qMin(2, midAtlas.brightnessLevels() - 1) : 0;
-                int uvIdx = glyphIdx * midAtlas.brightnessLevels() * midAtlas.colorVariants()
-                          + cv * midAtlas.brightnessLevels() + bright;
-                if (uvIdx < 0 || uvIdx >= midAtlas.glyphUVs().size()) continue;
-                const QRectF &uv = midAtlas.glyphUVs()[uvIdx];
-                emitQuad(verts, ixBuf, vi, ii,
-                         c * colSp, r * rowSp, gw, gh,
-                         static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                         static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                         m_baseVertexColor);
-            }
-
-            // Render message overlay
-            const auto &messageOverlay = midSim.messageOverlay();
-            for (const auto &mc : messageOverlay) {
-                if (mc.glyphIdx < 0) continue;
-                int uvIdx = mc.glyphIdx * midAtlas.brightnessLevels() * midAtlas.colorVariants()
-                          + qMin(mc.colorVariant, qMax(0, midAtlas.colorVariants() - 1)) * midAtlas.brightnessLevels();
-                if (simMessagePulse && (mc.framesLeft % 4 < 2))
-                    uvIdx += qMin(2, midAtlas.brightnessLevels() - 1);
-                if (uvIdx < 0 || uvIdx >= midAtlas.glyphUVs().size()) continue;
-                const QRectF &uv = midAtlas.glyphUVs()[uvIdx];
-                emitQuad(verts, ixBuf, vi, ii,
-                         mc.px, mc.py, gw, gh,
-                         static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                         static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                         m_baseVertexColor);
-            }
-        }
+    if (m_layerPipeline.enabled()) {
+        // Multi-layer rendering: far → mid → near (painter's algorithm across layers).
+        // Stream trails per layer + residual glow on mid + glitch/message overlays on
+        // mid — all encapsulated in LayerPipeline::renderAll. Per-frame scratch
+        // buffers (m_sortOrder, m_streamColorCache) are passed by reference so the
+        // single-layer render path below can share them — same allocator, no heap
+        // churn at the sync point.
+        m_layerPipeline.renderAll(verts, ixBuf, vi, ii,
+                                  width(), height(),
+                                  m_baseVertexColor,
+                                  m_sortOrder, m_streamColorCache,
+                                  m_glowFade,
+                                  m_color, m_colorMode);
     } else {
         // Single-layer rendering path (unchanged)
         int gridCols = m_sim.gridCols();
@@ -793,7 +681,7 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     // instance. ctorToPaintMs captures the full "item constructed → first
     // frame out the door" path, which on the repeat-dock path is dominated
     // by QML binding cascade + ScreensaverConfig getters + initStreams +
-    // GPU texture upload (NOT buildCombinedAtlas, which cache-hits instantly).
+    // GPU texture upload (NOT LayerPipeline::build, which cache-hits instantly).
     if (!m_firstPaintDone) {
         m_lastFirstPaintMs  = paintTimer.elapsed();
         m_lastCtorToPaintMs = m_ctorTimer.elapsed();
@@ -1139,11 +1027,7 @@ void MatrixRainItem::resumeTicks() {
 
 void MatrixRainItem::resetAfterScreenOff() {
     m_sim.resetAfterScreenOff(m_atlas);
-    if (m_layersEnabled) {
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            m_layers[i].sim.resetAfterScreenOff(m_layers[i].atlas);
-        }
-    }
+    if (m_layerPipeline.enabled()) m_layerPipeline.applyResetAfterScreenOff();
     // Defensive: bypass the QML running-binding race. When cancelScreenOff
     // calls this on wake, the running binding (depends on root.displayOff)
     // SHOULD have already fired setRunning(true) — but property propagation
@@ -1159,32 +1043,26 @@ void MatrixRainItem::resetAfterScreenOff() {
 // Complex simulation-forwarding setters (trivial ones are inline in header)
 void MatrixRainItem::setSpeed(qreal s) {
     if (m_sim.setSpeed(s)) {
-        if (m_layersEnabled) syncLayerConfig();
+        if (m_layerPipeline.enabled()) m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
         if (m_running) m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
         emit speedChanged();
     }
 }
 void MatrixRainItem::setDensity(qreal density) {
     if (m_sim.setDensity(density)) {
-        if (m_layersEnabled) syncLayerConfig();
+        if (m_layerPipeline.enabled()) m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
         m_needsReinit = true; update(); emit densityChanged();
     }
 }
 void MatrixRainItem::setDirection(const QString &dir) {
     if (m_sim.setDirection(dir)) {
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i)
-                m_layers[i].sim.setDirection(dir);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applyDirection(dir);
         m_needsReinit = true; update(); emit directionChanged();
     }
 }
 void MatrixRainItem::setGravityMode(bool g) {
     if (m_sim.setGravityMode(g)) {
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i)
-                m_layers[i].sim.setGravityMode(g);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityMode(g);
         if (g) {
             m_gravity.startAutoRotation();
         } else {
@@ -1211,10 +1089,7 @@ void MatrixRainItem::setAutoRotateBend(int v) {
     // Map 5-100% to 0.02-0.75 lerp rate
     float lerpRate = 0.02f + (v - 5) * 0.00768f;
     m_sim.setGravityLerpRate(lerpRate);
-    if (m_layersEnabled) {
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            m_layers[i].sim.setGravityLerpRate(lerpRate);
-    }
+    if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityLerpRate(lerpRate);
     emit autoRotateBendChanged();
 }
 bool MatrixRainItem::gravityAvailable() const {
@@ -1250,10 +1125,7 @@ void MatrixRainItem::handleDirectionInput(const QString &action) {
     }
     if (!m_sim.gravityMode()) {
         m_sim.setGravityMode(true);
-        if (m_layersEnabled) {
-            for (int i = 0; i < LAYER_COUNT; ++i)
-                m_layers[i].sim.setGravityMode(true);
-        }
+        if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityMode(true);
     }
     m_interactiveOverride = true;
     m_gravity.stopAutoRotation();
@@ -1268,16 +1140,13 @@ void MatrixRainItem::handleDirectionInput(const QString &action) {
     if (action == QLatin1String("up-right"))   { dx =  1.0f; dy = -1.0f; }
     if (action == QLatin1String("down-right")) { dx =  1.0f; dy =  1.0f; }
     m_sim.setGravityDirection(dx, dy);
-    if (m_layersEnabled) {
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            m_layers[i].sim.setGravityDirection(dx, dy);
-    }
+    if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityDirection(dx, dy);
 }
 
 void MatrixRainItem::handleEnterInput() {
     // When layers enabled, route chaos/flash to mid layer (interactive)
-    RainSimulation &enterSim = m_layersEnabled ? m_layers[1].sim : m_sim;
-    const GlyphAtlas &enterAtlas = m_layersEnabled ? m_layers[1].atlas : m_atlas;
+    RainSimulation &enterSim = m_layerPipeline.enabled() ? m_layerPipeline.midSim() : m_sim;
+    const GlyphAtlas &enterAtlas = m_layerPipeline.enabled() ? m_layerPipeline.midAtlas() : m_atlas;
     if (enterAtlas.glyphCount() <= 0) return;
     if (enterSim.glitch() && enterSim.glitchChaos()) {
         enterSim.triggerChaosBurst(enterAtlas.glyphCount(), enterAtlas.colorVariants());
@@ -1310,10 +1179,7 @@ void MatrixRainItem::handleRestoreInput() {
             m_gravity.startAutoRotation();
         } else {
             m_sim.setGravityMode(false);
-            if (m_layersEnabled) {
-                for (int i = 0; i < LAYER_COUNT; ++i)
-                    m_layers[i].sim.setGravityMode(false);
-            }
+            if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityMode(false);
             m_needsReinit = true;
             update();
         }
@@ -1382,8 +1248,8 @@ void MatrixRainItem::handleTapInput(const QString &params) {
         !doSquareBurst && !doRipple && !doWipe) return;
 
     // When layers enabled, route tap effects to mid layer (interactive)
-    RainSimulation &tapSim = m_layersEnabled ? m_layers[1].sim : m_sim;
-    const GlyphAtlas &tapAtlas = m_layersEnabled ? m_layers[1].atlas : m_atlas;
+    RainSimulation &tapSim = m_layerPipeline.enabled() ? m_layerPipeline.midSim() : m_sim;
+    const GlyphAtlas &tapAtlas = m_layerPipeline.enabled() ? m_layerPipeline.midAtlas() : m_atlas;
 
     int gridCols = tapSim.gridCols();
     int gridRows = tapSim.gridRows();
@@ -1407,45 +1273,6 @@ void MatrixRainItem::handleTapInput(const QString &params) {
     if (doMessage)     tapSim.tapMessage(tapCol, tapRow, colorVariants, colSp, rowSp,
                                          tapAtlas.messageStepW(), tapAtlas.messageGlyphOffset(),
                                          tapAtlas.glyphW(), static_cast<float>(width()), tapSim.charset());
-}
-
-// --- Tap effect sub-handlers — delegate to RainSimulation ---
-
-void MatrixRainItem::tapBurst(int tapCol, int tapRow, int colorVariants) {
-    m_sim.tapBurst(tapCol, tapRow, colorVariants);
-}
-
-void MatrixRainItem::tapSquareBurst(int tapCol, int tapRow, int colorVariants) {
-    m_sim.tapSquareBurst(tapCol, tapRow, colorVariants);
-}
-
-void MatrixRainItem::tapRipple(int tapCol, int tapRow, int colorVariants) {
-    m_sim.tapRipple(tapCol, tapRow, colorVariants);
-}
-
-void MatrixRainItem::tapWipe(int tapCol, int tapRow, int colorVariants) {
-    m_sim.tapWipe(tapCol, tapRow, colorVariants);
-}
-
-void MatrixRainItem::tapFlash(int tapCol, int tapRow, int radius) {
-    m_sim.tapFlash(tapCol, tapRow, radius);
-}
-
-void MatrixRainItem::tapScramble(int tapCol, int tapRow, int gridCols, int gridRows, int radius) {
-    Q_UNUSED(gridCols); Q_UNUSED(gridRows);
-    m_sim.tapScramble(tapCol, tapRow, radius, m_atlas.glyphCount());
-}
-
-void MatrixRainItem::tapSpawn(int tapCol, int tapRow, int colorVariants) {
-    m_sim.tapSpawn(tapCol, tapRow, colorVariants);
-}
-
-void MatrixRainItem::tapMessage(int tapCol, int tapRow, int gridCols, int gridRows,
-                                int colorVariants, float colSp, float rowSp) {
-    Q_UNUSED(gridCols); Q_UNUSED(gridRows);
-    m_sim.tapMessage(tapCol, tapRow, colorVariants, colSp, rowSp,
-                     m_atlas.messageStepW(), m_atlas.messageGlyphOffset(),
-                     m_atlas.glyphW(), static_cast<float>(width()), m_sim.charset());
 }
 
 // --- Enter button state machine ---
@@ -1493,19 +1320,13 @@ void MatrixRainItem::setRunning(bool r) {
             m_timer.stop();
             if (m_interactiveOverride) {
                 m_sim.setGravityMode(false);
-                if (m_layersEnabled) {
-                    for (int i = 0; i < LAYER_COUNT; ++i)
-                        m_layers[i].sim.setGravityMode(false);
-                }
+                if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityMode(false);
                 m_interactiveOverride = false;
             }
             m_autoRotateWasActive = false;
             m_slowOverride = false;
             m_sim.clearSubliminalCells();
-            if (m_layersEnabled) {
-                for (int i = 0; i < LAYER_COUNT; ++i)
-                    m_layers[i].sim.clearSubliminalCells();
-            }
+            if (m_layerPipeline.enabled()) m_layerPipeline.applyClearSubliminalCells();
             m_gravity.stopAutoRotation();
         }
         emit runningChanged();
@@ -1537,140 +1358,19 @@ void MatrixRainItem::setDisplayOff(bool off) {
     }
 }
 
-// --- Multi-layer rain methods ---
+// --- Multi-layer rain orchestration ---
+// Implementation of the 3 depth planes (build, sync, render) lives in
+// src/ui/matrixrain/layerpipeline.cpp. MatrixRainItem retains only the
+// orchestration: setEnabled flag, atlas-rebuild signaling, init reset.
 
 void MatrixRainItem::setLayersEnabled(bool v) {
-    if (m_layersEnabled == v) return;
-    m_layersEnabled = v;
+    if (m_layerPipeline.enabled() == v) return;
+    m_layerPipeline.setEnabled(v);
     m_needsAtlasRebuild = true;
     m_needsReinit = true;
-    m_layersNeedRebuild = true;
     polish();
     update();
     emit layersEnabledChanged();
-}
-
-void MatrixRainItem::buildCombinedAtlas() {
-    // Phase-timing instrumentation. Captures: cache-key hash, 3× GlyphAtlas::build,
-    // QImage composition, UV remap, syncLayerConfig. Results land in m_last*Ms
-    // members for the Q_PROPERTY debug overlay + qCInfo log line.
-    QElapsedTimer phaseTimer;
-    phaseTimer.start();
-    m_lastLayerBuildMs[0] = m_lastLayerBuildMs[1] = m_lastLayerBuildMs[2] = 0;
-    m_lastComposeMs = 0;
-    m_lastRemapMs = 0;
-    m_lastSyncMs = 0;
-
-    // Configure layer scaling constants: [far, mid, near]
-    static constexpr float fontScales[]     = {LAYER_FAR_FONT_SCALE, 1.0f, LAYER_NEAR_FONT_SCALE};
-    static constexpr float speedScales[]    = {LAYER_FAR_SPEED_SCALE, 1.0f, LAYER_NEAR_SPEED_SCALE};
-    static constexpr float densityScales[]  = {LAYER_FAR_DENSITY_SCALE, 1.0f, LAYER_NEAR_DENSITY_SCALE};
-    static constexpr int   trailPcts[]      = {LAYER_FAR_TRAIL_PCT, 100, LAYER_NEAR_TRAIL_PCT};
-    static constexpr float brightnessMuls[] = {LAYER_FAR_BRIGHTNESS, 1.0f, 1.0f};
-    static constexpr bool  interactive[]    = {false, true, false};
-
-    for (int i = 0; i < LAYER_COUNT; ++i) {
-        m_layers[i].fontScale     = fontScales[i];
-        m_layers[i].speedScale    = speedScales[i];
-        m_layers[i].densityScale  = densityScales[i];
-        m_layers[i].trailPct      = trailPcts[i];
-        m_layers[i].brightnessMul = brightnessMuls[i];
-        m_layers[i].isInteractive = interactive[i];
-    }
-
-    // --- In-memory atlas cache (survives QML destroy/recreate between docks) ---
-    static QByteArray  s_cacheKey;
-    static QImage      s_cacheImage;
-    static GlyphAtlas  s_cacheAtlases[LAYER_COUNT];
-
-    QCryptographicHash h(QCryptographicHash::Sha1);
-    h.addData(m_color.name(QColor::HexArgb).toUtf8());
-    h.addData(m_colorMode.toUtf8());
-    h.addData(QByteArray::number(m_fontSize));
-    h.addData(m_sim.charset().toUtf8());
-    h.addData(QByteArray::number(static_cast<double>(m_fadeRate), 'g', 10));
-    h.addData(QByteArray::number(static_cast<int>(m_sim.depthEnabled())));
-    QByteArray cacheKey = h.result();
-    m_lastCacheKeyMs = phaseTimer.elapsed();
-
-    if (cacheKey == s_cacheKey && !s_cacheImage.isNull()) {
-        // Cache hit — restore atlases (metrics + remapped UVs), skip rasterization entirely
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            m_layers[i].atlas = s_cacheAtlases[i];
-        m_combinedAtlasImage = s_cacheImage;
-        m_lastCacheHit = true;
-    } else {
-        m_lastCacheHit = false;
-        // Cache miss — full QPainter rasterization
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            const qint64 tBefore = phaseTimer.elapsed();
-            int layerFontSize = qMax(8, qRound(m_fontSize * m_layers[i].fontScale));
-            m_layers[i].atlas.build(m_color, m_colorMode, layerFontSize, m_sim.charset(), m_fadeRate,
-                                    m_sim.depthEnabled(), m_sim.depthIntensity());
-            m_lastLayerBuildMs[i] = phaseTimer.elapsed() - tBefore;
-        }
-
-        const qint64 tBeforeCompose = phaseTimer.elapsed();
-
-        // Compose combined image from individual layer atlases
-        int maxW = 0, sumH = 0;
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            maxW = qMax(maxW, m_layers[i].atlas.atlasImage().width());
-            sumH += m_layers[i].atlas.atlasImage().height();
-        }
-        if (maxW <= 0 || sumH <= 0) {
-            qCWarning(lcScreensaver) << "Layer atlas build failed — zero dimensions, using fallback";
-            QImage fallback(1, 1, QImage::Format_ARGB32_Premultiplied);
-            fallback.fill(Qt::black);
-            m_combinedAtlasImage = fallback;
-            syncLayerConfig();
-            m_layersNeedRebuild = false;
-            m_lastBuildTotalMs = phaseTimer.elapsed();
-            return;
-        }
-        QImage combined(maxW, sumH, QImage::Format_ARGB32_Premultiplied);
-        combined.fill(Qt::transparent);
-        QPainter p(&combined);
-        int yOff = 0;
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            p.drawImage(0, yOff, m_layers[i].atlas.atlasImage());
-            yOff += m_layers[i].atlas.atlasImage().height();
-        }
-        p.end();
-        m_lastComposeMs = phaseTimer.elapsed() - tBeforeCompose;
-
-        const qint64 tBeforeRemap = phaseTimer.elapsed();
-
-        // Remap UVs and clear individual images
-        int combinedW = 0, combinedH = 0;
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            combinedW = qMax(combinedW, m_layers[i].atlas.atlasW());
-            combinedH += m_layers[i].atlas.atlasH();
-        }
-        int yOffset = 0;
-        for (int i = 0; i < LAYER_COUNT; ++i) {
-            m_layers[i].atlas.remapUVs(yOffset, combinedW, combinedH);
-            yOffset += m_layers[i].atlas.atlasH();
-        }
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            m_layers[i].atlas.clearAtlasImage();
-
-        // Store in cache (atlases now have metrics + remapped UVs, no images)
-        s_cacheKey = cacheKey;
-        s_cacheImage = combined;
-        for (int i = 0; i < LAYER_COUNT; ++i)
-            s_cacheAtlases[i] = m_layers[i].atlas;
-
-        m_combinedAtlasImage = combined;
-        m_lastRemapMs = phaseTimer.elapsed() - tBeforeRemap;
-    }
-
-    const qint64 tBeforeSync = phaseTimer.elapsed();
-    // Forward simulation config to each layer
-    syncLayerConfig();
-    m_layersNeedRebuild = false;
-    m_lastSyncMs = phaseTimer.elapsed() - tBeforeSync;
-    m_lastBuildTotalMs = phaseTimer.elapsed();
 }
 
 void MatrixRainItem::publishBuildSummary(bool includeFirstPaint) {
@@ -1685,7 +1385,7 @@ void MatrixRainItem::publishBuildSummary(bool includeFirstPaint) {
     s += QStringLiteral(" size=");
     s += QString::number(m_fontSize);
     s += QStringLiteral(" layers=");
-    s += m_layersEnabled ? QStringLiteral("on") : QStringLiteral("off");
+    s += m_layerPipeline.enabled() ? QStringLiteral("on") : QStringLiteral("off");
     s += QStringLiteral(" cache=");
     s += m_lastCacheHit ? QStringLiteral("hit") : QStringLiteral("miss");
     s += QStringLiteral(" keyMs=");
@@ -1725,331 +1425,4 @@ void MatrixRainItem::publishBuildSummary(bool includeFirstPaint) {
     QMetaObject::invokeMethod(this, [this]() {
         emit lastBuildSummaryChanged();
     }, Qt::QueuedConnection);
-}
-
-void MatrixRainItem::initAllLayers() {
-    for (int i = 0; i < LAYER_COUNT; ++i) {
-        m_layers[i].sim.initStreams(width(), height(), m_layers[i].atlas);
-        int cells = m_layers[i].sim.gridCols() * m_layers[i].sim.gridRows();
-        m_layers[i].cellDrawn.resize(cells);
-        m_layers[i].cellDrawn.fill(0);
-    }
-}
-
-void MatrixRainItem::syncLayerConfig() {
-    for (int i = 0; i < LAYER_COUNT; ++i) {
-        RainSimulation &ls = m_layers[i].sim;
-        // Speed and density scaled per layer
-        ls.setSpeed(m_sim.speed() * static_cast<qreal>(m_layers[i].speedScale));
-        ls.setDensity(m_sim.density() * static_cast<qreal>(m_layers[i].densityScale));
-        // Trail length scaled by percentage
-        ls.setTrailLength(m_sim.trailLength() * m_layers[i].trailPct / 100);
-        // Forward common config
-        ls.setDirection(m_sim.direction());
-        ls.setCharset(m_sim.charset());
-        ls.setGlow(m_sim.glow());
-        ls.setInvertTrail(m_sim.invertTrail());
-        ls.setDepthEnabled(m_sim.depthEnabled());
-        ls.setDepthIntensity(m_sim.depthIntensity());
-        ls.setDepthOverlay(m_sim.depthOverlay());
-        // Gravity
-        ls.setGravityMode(m_sim.gravityMode());
-        ls.setGravityLerpRate(0.02f + (m_autoRotateBend - 5) * 0.00768f);
-
-        if (m_layers[i].isInteractive) {
-            // Mid layer gets all glitch/message/subliminal settings
-            ls.setGlitch(m_sim.glitch());
-            ls.setGlitchRate(m_sim.glitchRate());
-            ls.setGlitchFlash(m_sim.glitchFlash());
-            ls.setGlitchStutter(m_sim.glitchStutter());
-            ls.setGlitchReverse(m_sim.glitchReverse());
-            ls.setGlitchDirection(m_sim.glitchDirection());
-            ls.setGlitchDirRate(m_sim.glitchDirRate());
-            ls.setGlitchDirMask(m_sim.glitchDirMask());
-            ls.setGlitchDirFade(m_sim.glitchDirFade());
-            ls.setGlitchDirSpeed(m_sim.glitchDirSpeed());
-            ls.setGlitchDirLength(m_sim.glitchDirLength());
-            ls.setGlitchRandomColor(m_sim.glitchRandomColor());
-            ls.setGlitchChaos(m_sim.glitchChaos());
-            ls.setGlitchChaosFrequency(m_sim.glitchChaosFrequency());
-            ls.setGlitchChaosSurge(m_sim.glitchChaosSurge());
-            ls.setGlitchChaosScramble(m_sim.glitchChaosScramble());
-            ls.setGlitchChaosFreeze(m_sim.glitchChaosFreeze());
-            ls.setGlitchChaosScatter(m_sim.glitchChaosScatter());
-            ls.setGlitchChaosSquareBurst(m_sim.glitchChaosSquareBurst());
-            ls.setGlitchChaosSquareBurstSize(m_sim.glitchChaosSquareBurstSize());
-            ls.setGlitchChaosRipple(m_sim.glitchChaosRipple());
-            ls.setGlitchChaosWipe(m_sim.glitchChaosWipe());
-            ls.setGlitchChaosIntensity(m_sim.glitchChaosIntensity());
-            ls.setGlitchChaosScatterRate(m_sim.glitchChaosScatterRate());
-            ls.setGlitchChaosScatterLength(m_sim.glitchChaosScatterLength());
-            ls.setMessagesEnabled(m_sim.messagesEnabled());
-            ls.setMessages(m_sim.messages());
-            ls.setMessageInterval(m_sim.messageInterval());
-            ls.setMessageRandom(m_sim.messageRandom());
-            ls.setMessageDirection(m_sim.messageDirection());
-            ls.setMessageFlash(m_sim.messageFlash());
-            ls.setMessagePulse(m_sim.messagePulse());
-            ls.setSubliminal(m_sim.subliminal());
-            ls.setSubliminalInterval(m_sim.subliminalInterval());
-            ls.setSubliminalDuration(m_sim.subliminalDuration());
-            ls.setSubliminalStream(m_sim.subliminalStream());
-            ls.setSubliminalOverlay(m_sim.subliminalOverlay());
-            ls.setSubliminalFlash(m_sim.subliminalFlash());
-            ls.setTapBurstCount(m_sim.tapBurstCount());
-            ls.setTapBurstLength(m_sim.tapBurstLength());
-            ls.setTapSpawnCount(m_sim.tapSpawnCount());
-            ls.setTapSpawnLength(m_sim.tapSpawnLength());
-            ls.setTapSquareBurstSize(m_sim.tapSquareBurstSize());
-        } else {
-            // Non-interactive layers: disable glitch, messages, subliminal
-            ls.setGlitch(false);
-            ls.setGlitchChaos(false);
-            ls.setMessagesEnabled(false);
-            ls.setSubliminal(false);
-        }
-    }
-}
-
-int MatrixRainItem::countVisibleQuadsAllLayers() {
-    int totalQuads = 0;
-
-    for (int li = 0; li < LAYER_COUNT; ++li) {
-        RainSimulation &ls = m_layers[li].sim;
-        int gridCols = ls.gridCols(), gridRows = ls.gridRows();
-        const auto &streams = ls.streams();
-        bool depthOn = ls.depthEnabled();
-        const GlyphAtlas &la = m_layers[li].atlas;
-
-        // Reset cellDrawn for this layer
-        int cellCount = gridCols * gridRows;
-        m_layers[li].cellDrawn.resize(cellCount);
-        m_layers[li].cellDrawn.fill(0);
-
-        // Sort streams by depthFactor ascending for occlusion
-        // Shared member buffer to avoid per-frame heap churn.
-        auto &order = m_sortOrder;
-        order.resize(streams.size());
-        std::iota(order.begin(), order.end(), 0);
-        if (depthOn) {
-            std::sort(order.begin(), order.end(), [&streams](int a, int b) {
-                return streams[a].depthFactor < streams[b].depthFactor;
-            });
-        }
-
-        // Count stream trail quads
-        for (int si : order) {
-            const auto &s = streams[si];
-            if (!s.active) continue;
-            quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-            for (int step = 0; step < s.trailLength; ++step) {
-                int c, r;
-                s.trailPos(step, c, r);
-                if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-                int cellIdx = c * gridRows + r;
-                if (m_layers[li].cellDrawn[cellIdx] >= prio) continue;
-                m_layers[li].cellDrawn[cellIdx] = prio;
-                totalQuads++;
-            }
-        }
-
-        // Residual glow quads (interactive/mid layer only)
-        if (m_layers[li].isInteractive) {
-            const auto &cellAge = ls.cellAge();
-            int bmapSize2 = la.brightnessMap().size();
-            int maxGlowAge2 = (m_glowFade <= 0) ? 0 : qMin(bmapSize2, qMax(4, bmapSize2 * m_glowFade / 100));
-            for (int i = 0; i < cellAge.size(); ++i) {
-                if (m_layers[li].cellDrawn[i] == 0 && cellAge[i] < maxGlowAge2)
-                    totalQuads++;
-            }
-        }
-
-        // Interactive layer (mid): glitch trails, message flash, message overlay
-        if (m_layers[li].isInteractive) {
-            const auto &glitchTrails = ls.glitchTrails();
-            for (const auto &gt : glitchTrails) {
-                for (int step = 0; step < gt.length; ++step) {
-                    int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
-                    if (c >= 0 && c < gridCols && r >= 0 && r < gridRows)
-                        totalQuads++;
-                }
-            }
-            const auto &messageBright = ls.messageBright();
-            for (int i = 0; i < messageBright.size(); ++i) {
-                if (messageBright[i] > 0) totalQuads++;
-            }
-            const auto &overlay = ls.messageOverlay();
-            for (const auto &mc : overlay) {
-                if (mc.glyphIdx < 0) continue;
-                int uvIdx = mc.glyphIdx * la.brightnessLevels() * la.colorVariants()
-                          + qMin(mc.colorVariant, qMax(0, la.colorVariants() - 1)) * la.brightnessLevels();
-                if (uvIdx >= 0 && uvIdx < la.glyphUVs().size())
-                    totalQuads++;
-            }
-        }
-    }
-
-    return totalQuads;
-}
-
-void MatrixRainItem::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *verts, quint16 *ixBuf,
-                                             int &vi, int &ii) {
-    RainSimulation &ls = m_layers[layerIdx].sim;
-    const GlyphAtlas &la = m_layers[layerIdx].atlas;
-    int gridCols = ls.gridCols(), gridRows = ls.gridRows();
-    if (gridCols <= 0 || gridRows <= 0) return;
-
-    float colSp = static_cast<float>(width()) / static_cast<float>(gridCols);
-    float rowSp = static_cast<float>(height()) / static_cast<float>(gridRows);
-    float gw = static_cast<float>(la.glyphW()), gh = static_cast<float>(la.glyphH());
-
-    const auto &streams = ls.streams();
-    const auto &charGrid = ls.charGrid();
-    const auto &glitchBright = ls.glitchBright();
-    const auto &messageBright = ls.messageBright();
-    bool simGlow = ls.glow(), simInvertTrail = ls.invertTrail(), simMessagePulse = ls.messagePulse();
-    const auto &bmap = la.brightnessMap();
-    int bmapSize = bmap.size(), blevels = la.brightnessLevels();
-    bool depthOn = ls.depthEnabled();
-    float brightMul = m_layers[layerIdx].brightnessMul;
-
-    // Sort streams far-first for painter's algorithm within the layer
-    // Shared member buffers to avoid per-frame heap churn.
-    auto &order = m_sortOrder;
-    order.resize(streams.size());
-    std::iota(order.begin(), order.end(), 0);
-    QColor baseColor = GlyphAtlas::resolveColor(m_colorMode, m_color);
-    quint32 baseVC = depthOn ? packColor(baseColor) : 0xFFFFFFFF;
-    auto &streamColors = m_streamColorCache;
-    streamColors.fill(baseVC, streams.size());
-
-    if (depthOn) {
-        std::sort(order.begin(), order.end(), [&streams](int a, int b) {
-            return streams[a].depthFactor < streams[b].depthFactor;
-        });
-        for (int i = 0; i < streams.size(); ++i)
-            streamColors[i] = depthColor(streams[i].depthFactor, baseColor, ls.depthIntensity());
-    }
-
-    // Apply per-layer brightness attenuation to vertex colors
-    if (brightMul < 1.0f) {
-        for (int i = 0; i < streamColors.size(); ++i) {
-            unsigned char cr = static_cast<unsigned char>(((streamColors[i] >> 24) & 0xFF) * brightMul);
-            unsigned char cg = static_cast<unsigned char>(((streamColors[i] >> 16) & 0xFF) * brightMul);
-            unsigned char cb = static_cast<unsigned char>(((streamColors[i] >>  8) & 0xFF) * brightMul);
-            streamColors[i] = (quint32(cr) << 24) | (quint32(cg) << 16) | (quint32(cb) << 8) | 0xFF;
-        }
-    }
-
-    for (int si : order) {
-        const auto &s = streams[si];
-        if (!s.active) continue;
-        quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int step = 0; step < s.trailLength; ++step) {
-            int c, r;
-            s.trailPos(step, c, r);
-            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-            int cellIdx = c * gridRows + r;
-            if (m_layers[layerIdx].cellDrawn[cellIdx] >= prio) continue;
-            m_layers[layerIdx].cellDrawn[cellIdx] = prio;
-
-            int dist = SimContext::trailDist(step, s.trailLength, simInvertTrail);
-            int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
-            if (dist == 0 && simGlow) bright = 0;
-
-            if (s.flashFrames > 0) {
-                bright = 0;
-            } else {
-                int gridIdx = c * gridRows + r;
-                if (gridIdx >= 0 && gridIdx < glitchBright.size() && glitchBright[gridIdx] >= 0)
-                    bright = glitchBright[gridIdx];
-            }
-
-            int gridIdx = c * gridRows + r;
-            if (gridIdx >= 0 && gridIdx < messageBright.size() && messageBright[gridIdx] > 0) {
-                bright = (simMessagePulse && (messageBright[gridIdx] % 4 < 2))
-                    ? qMin(2, blevels - 1) : 0;
-            }
-
-            // Depth layers: brightness attenuation for far streams
-            float cx = c * colSp, cy = r * rowSp;
-            if (depthOn) {
-                if (s.depthFactor < 0.93f)
-                    cx += colSp * 0.35f;
-                if (s.depthFactor < 0.93f) {
-                    int minBright = blevels * 2 / 5;
-                    bright = qMax(bright, minBright);
-                }
-                float fadeMod = 1.0f;
-                if (s.depthFactor < 0.93f) fadeMod = 0.7f;
-                else if (s.depthFactor > 1.07f) fadeMod = 1.3f;
-                bright = qBound(0, static_cast<int>(bright * fadeMod), blevels - 1);
-            }
-
-            if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
-            int glyphIdx = charGrid[gridIdx];
-            if (glyphIdx < 0) continue;
-            int cv = qMin(s.colorVariant, qMax(0, la.colorVariants() - 1));
-            int uvIdx = glyphIdx * blevels * la.colorVariants() + cv * blevels + bright;
-            if (uvIdx < 0 || uvIdx >= la.glyphUVs().size()) continue;
-
-            const QRectF &uv = la.glyphUVs()[uvIdx];
-            emitQuad(verts, ixBuf, vi, ii,
-                     cx, cy, gw, gh,
-                     static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                     static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                     streamColors[si]);
-        }
-    }
-}
-
-void MatrixRainItem::renderLayerResidualCells(int layerIdx, MatrixRainVertex *verts, quint16 *ixBuf,
-                                              int &vi, int &ii) {
-    RainSimulation &ls = m_layers[layerIdx].sim;
-    const GlyphAtlas &la = m_layers[layerIdx].atlas;
-    int gridCols = ls.gridCols(), gridRows = ls.gridRows();
-    if (gridCols <= 0 || gridRows <= 0) return;
-
-    float colSp = static_cast<float>(width()) / static_cast<float>(gridCols);
-    float rowSp = static_cast<float>(height()) / static_cast<float>(gridRows);
-    float gw = static_cast<float>(la.glyphW()), gh = static_cast<float>(la.glyphH());
-    float brightMul = m_layers[layerIdx].brightnessMul;
-
-    const auto &charGrid = ls.charGrid();
-    const auto &cellAge = ls.cellAge();
-    const auto &bmap = la.brightnessMap();
-    int bmapSize = bmap.size(), blevels = la.brightnessLevels();
-
-    // Compute base vertex color for residual cells (with layer brightness attenuation)
-    quint32 residualColor = m_baseVertexColor;
-    if (brightMul < 1.0f) {
-        unsigned char cr = static_cast<unsigned char>(((residualColor >> 24) & 0xFF) * brightMul);
-        unsigned char cg = static_cast<unsigned char>(((residualColor >> 16) & 0xFF) * brightMul);
-        unsigned char cb = static_cast<unsigned char>(((residualColor >>  8) & 0xFF) * brightMul);
-        residualColor = (quint32(cr) << 24) | (quint32(cg) << 16) | (quint32(cb) << 8) | 0xFF;
-    }
-
-    int maxGlowAge = (m_glowFade <= 0) ? 0 : qMin(bmapSize, qMax(4, bmapSize * m_glowFade / 100));
-    for (int idx = 0; idx < cellAge.size(); ++idx) {
-        if (m_layers[layerIdx].cellDrawn[idx] > 0) continue;
-        int age = cellAge[idx];
-        if (age >= maxGlowAge) continue;
-
-        int c = idx / gridRows, r = idx % gridRows;
-        if (c >= gridCols) continue;
-
-        int glyphIdx = charGrid[idx];
-        if (glyphIdx < 0) continue;
-        int bright = bmap[age];
-        int baseCV = la.hasDepthVariants() ? la.depthVariantBase() : 0;
-        int uvIdx = glyphIdx * blevels * la.colorVariants() + baseCV * blevels + bright;
-        if (uvIdx < 0 || uvIdx >= la.glyphUVs().size()) continue;
-
-        const QRectF &uv = la.glyphUVs()[uvIdx];
-        emitQuad(verts, ixBuf, vi, ii,
-                 c * colSp, r * rowSp, gw, gh,
-                 static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                 static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                 residualColor);
-    }
 }

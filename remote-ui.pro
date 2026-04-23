@@ -72,7 +72,7 @@ REMOTE_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += APP_VERSION=\\\"$$REMOTE_VERSION\\\"
 
 # Custom firmware version — keep in sync with deploy/release.json
-VERSION = 1.3.0-pre
+VERSION = 1.3.0
 
 # build timestamp
 BUILDDATE=$$system(date +"%Y-%m-%dT%H:%M:%S")
@@ -157,6 +157,8 @@ HEADERS += \
     src/ui/glitchengine.h \
     src/ui/messageengine.h \
     src/ui/glyphatlas.h \
+    src/ui/matrixrain/layerpipeline.h \
+    src/ui/matrixrain/atlasbuilder.h \
     src/util.h \
     src/voice.h
 
@@ -225,6 +227,8 @@ SOURCES += \
         src/ui/glitchengine.cpp \
         src/ui/messageengine.cpp \
         src/ui/glyphatlas.cpp \
+        src/ui/matrixrain/layerpipeline.cpp \
+        src/ui/matrixrain/atlasbuilder.cpp \
         src/util.cpp \
         src/voice.cpp
 

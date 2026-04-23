@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-22 (Mod 3 detail-page battery chip + Option A RowLayout consolidation)
+**Last updated:** 2026-04-23 (Mod 1 matrixrain.cpp extraction — LayerPipeline + AtlasBuilder)
 
 ---
 
@@ -29,7 +29,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/inputController.cpp` | DEV F12 dock-toggle event filter, `touchDetected` signal emit, idle-timer reset wiring. ~40 lines. |
 | `src/ui/entity/mediaPlayer.cpp` | Bugfix: re-download image when URL is present but image data is empty (2-line change). |
 | `src/qml/components/entities/media_player/ImageLoader.qml` | Same image-re-download bugfix on the QML side. |
-| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas). |
+| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas, matrixrain/layerpipeline, matrixrain/atlasbuilder). |
 | `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages. |
 
 ---
@@ -39,8 +39,12 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ### Custom C++ Files
 | File | Purpose | ~Lines |
 |------|---------|--------|
-| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | ~200 |
-| `src/ui/matrixrain.cpp` | QSG rendering, vertex buffer, atlas upload, stream iteration | ~500 |
+| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | ~600 |
+| `src/ui/matrixrain.cpp` | QSG rendering, vertex buffer, atlas upload, single-layer stream iteration, ScreensaverConfig binding orchestration | ~1430 |
+| `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | ~245 |
+| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache | ~660 |
+| `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | ~65 |
+| `src/ui/matrixrain/atlasbuilder.cpp` | Class-static single-layer cache (`s_singleCacheKey`, `s_singleCacheAtlas`), `buildSingle`, `cacheKey` | ~50 |
 | `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | ~150 |
 | `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management | ~400 |
 | `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow | ~100 |

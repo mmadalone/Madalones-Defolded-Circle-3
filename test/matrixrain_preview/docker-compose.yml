@@ -4,7 +4,10 @@ services:
     ports:
       - "5909:5900"
     volumes:
-      - /Users/madalone/_Claude Projects/UC-Remote-UI:/app/sources
+      # Relative path resolves against the compose file location
+      # (test/matrixrain_preview/) — portable across Mac/Linux/Windows.
+      # Replaced 2026-04-23 stale macOS absolute path post-Windows migration.
+      - ../..:/app/sources
     environment:
       - QT_QPA_PLATFORM=xcb
       - LIBGL_ALWAYS_SOFTWARE=1
