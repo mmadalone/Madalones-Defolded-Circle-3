@@ -202,14 +202,18 @@ EntityComponents.BaseDetail {
     overrideConfig: {
         "VOLUME_UP": {
             "pressed": function() {
-                entityObj.volumeUp();
-                volume.start(entityObj);
+                if (entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
+                    entityObj.volumeUp();
+                    volume.start(entityObj);
+                }
             }
         },
         "VOLUME_DOWN": {
             "pressed": function() {
-                entityObj.volumeDown();
-                volume.start(entityObj, false);
+                if (entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
+                    entityObj.volumeDown();
+                    volume.start(entityObj, false);
+                }
             }
         },
         "MUTE": {

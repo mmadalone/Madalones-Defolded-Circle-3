@@ -111,6 +111,23 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 
 ---
 
+## v1.4.1 upstream bug-fix: volume OSD feature-check guards
+
+Root-cause fix for a bug where the volume OSD (`VolumeOverlay.qml`) would fire even when the media-player entity had removed `MediaPlayerFeatures.Volume_up_down` from its advertised capability set. `Activity.qml` correctly gated its VOLUME_UP/DOWN handlers; the 7 other call sites did not. Fix wraps each handler with the same `hasFeature()` pattern — no new imports, no behaviour change for entities that legitimately advertise volume control.
+
+### Modified Upstream Files (bug-fix only)
+| File | Modification |
+|------|-------------|
+| `src/qml/components/Page.qml` | Wrapped home-screen fallback VOLUME_UP + VOLUME_DOWN `volume.start(mediaComponentEntity, ...)` call sites with `if (mediaComponentEntity.hasFeature(MediaPlayerFeatures.Volume_up_down)) { ... }`. |
+| `src/qml/components/entities/media_player/MediaBrowser.qml` | Same guard wrapping VOLUME_UP + VOLUME_DOWN handlers in the media browser's own `defaultConfig`. |
+| `src/qml/components/entities/media_player/deviceclass/Receiver.qml` | Same guard on VOLUME_UP + VOLUME_DOWN overrides. |
+| `src/qml/components/entities/media_player/deviceclass/Speaker.qml` | Same. |
+| `src/qml/components/entities/media_player/deviceclass/Tv.qml` | Same. |
+| `src/qml/components/entities/media_player/deviceclass/Streaming_box.qml` | Same. |
+| `src/qml/components/entities/media_player/deviceclass/Set_top_box.qml` | Same. |
+
+---
+
 ## Mod 3: Detail Page Battery Chip
 
 **v1.4.0 update (2026-04-23 — upstream v0.72.0 merge):** UC independently shipped the same feature as "Show battery indicator everywhere" with a different property name and layout approach. **Option B rebase** applied: adopted upstream's public API (`Config.showBatteryEveryWhere`, QSettings key `ui/batteryEveryWhere`, Settings → UI toggle wording) while keeping our superior Option A chain-anchoring `RowLayout` in `BaseDetail.qml`. One-shot migration helper (`main.cpp::migrateLegacySettings`) preserves v1.3.0 user state. Upstream's inline battery `Row` additions in `BaseTitle.qml` / `Activity.qml` were rejected during merge — we already render the chip via `BatteryStatusChip.qml` through a Loader in the consolidated status strip, accepting both would duplicate renders. Post-merge, `Ui.qml` is now byte-identical to upstream (our toggle was replaced by upstream's; dropped from the table below). Config property / QSettings key / toggle row no longer count as our custom additions on `config.h` / `config.cpp` / `Ui.qml`.

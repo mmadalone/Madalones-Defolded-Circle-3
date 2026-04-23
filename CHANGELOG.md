@@ -11,6 +11,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.1 — 2026-04-24 — volume OSD guard fix (root-cause for kodi-integration `suppress_volume_overlay`)
+
+### Fixed
+- **Volume OSD bypassed entity feature advertising in 7 of 8 call sites** — upstream bug. `Activity.qml`'s VOLUME_UP/DOWN handlers correctly check `entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)` before calling `volume.start()`; every other handler (`Page.qml` home-screen fallback, `MediaBrowser.qml`, and the 5 media-player deviceclass overrides `Receiver` / `Speaker` / `Tv` / `Streaming_box` / `Set_top_box`) called `volume.start()` unconditionally. Net effect: any media-player entity would fire the OSD on VOLUME_UP/DOWN even if the driver had removed the `Volume_up_down` feature from its capability set. This broke the contract that integration drivers could suppress volume UI by removing the feature. **Specific user impact:** the `madalone/integration-kodi-patch` fork's `suppress_volume_overlay` toggle (introduced in `v1.18.13-madalone.1` patch 6) correctly strips `Features.VOLUME` / `VOLUME_UP_DOWN` / `MUTE*` from the entity, but the OSD still appeared because remote-ui's call sites weren't checking the feature flag before rendering. Wrapped all 7 unguarded `volume.start()` call sites with the same `hasFeature(MediaPlayerFeatures.Volume_up_down)` guard `Activity.qml` already uses — 14 edits across 7 files, no new imports needed (each file already imports `Entity.MediaPlayer 1.0`). Now integration-declared volume capability is honoured consistently across all media-player UI paths, whether the user is on the home page, inside a detail view, in any media_player deviceclass skin, or navigating the media browser. **No config or settings changes** — the fix is purely respecting existing upstream semantics. Upstream-contributable: if you're reading this and you maintain `unfoldedcircle/remote-ui`, these are the same ~14 guards needed in stock. Files touched: `src/qml/components/Page.qml`, `src/qml/components/entities/media_player/MediaBrowser.qml`, `src/qml/components/entities/media_player/deviceclass/Receiver.qml` / `Speaker.qml` / `Tv.qml` / `Streaming_box.qml` / `Set_top_box.qml`.
+
+---
+
 ## v1.4.0 — 2026-04-23 — upstream v0.72.0 merge (Option B rebase) + detail-page WiFi predicate fix
 
 ### Merged from upstream (`unfoldedcircle/remote-ui` "v0.72.0", commit `c76ff05`)
