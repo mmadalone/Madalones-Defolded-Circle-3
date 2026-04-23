@@ -9,6 +9,7 @@ import Haptic 1.0
 
 import "qrc:/components" as Components
 import ScreensaverConfig 1.0
+import Palettes 1.0
 
 ColumnLayout {
     id: root
@@ -88,14 +89,7 @@ ColumnLayout {
                 border { color: ScreensaverConfig.colorMode === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "rainbow" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.25; color: "#ffbf00" }
-                        GradientStop { position: 0.5; color: "#00ff41" }
-                        GradientStop { position: 0.75; color: "#0000ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
+                    gradient: Palettes.rainbow
                 }
                 Text { anchors.centerIn: parent; text: "Rainbow"; color: colors.offwhite; font: fonts.secondaryFont(18) }
                 Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "rainbow" }
@@ -107,20 +101,7 @@ ColumnLayout {
                 border { color: ScreensaverConfig.colorMode === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "rainbow_gradient" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.1; color: "#ff8000" }
-                        GradientStop { position: 0.2; color: "#ffff00" }
-                        GradientStop { position: 0.3; color: "#80ff00" }
-                        GradientStop { position: 0.4; color: "#00ff80" }
-                        GradientStop { position: 0.5; color: "#00ffff" }
-                        GradientStop { position: 0.6; color: "#0080ff" }
-                        GradientStop { position: 0.7; color: "#0000ff" }
-                        GradientStop { position: 0.8; color: "#8000ff" }
-                        GradientStop { position: 0.9; color: "#ff00ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
+                    gradient: Palettes.rainbowPlus
                 }
                 Text { anchors.centerIn: parent; text: "Rainbow+"; color: colors.offwhite; font: fonts.secondaryFont(18) }
                 Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "rainbow_gradient" }
@@ -132,20 +113,7 @@ ColumnLayout {
                 border { color: ScreensaverConfig.colorMode === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.colorMode === "neon" ? 3 : 1 }
                 Rectangle {
                     anchors.fill: parent; anchors.margins: 1; radius: 7
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff8080" }
-                        GradientStop { position: 0.1; color: "#ffd080" }
-                        GradientStop { position: 0.2; color: "#ffff80" }
-                        GradientStop { position: 0.3; color: "#d0ff80" }
-                        GradientStop { position: 0.4; color: "#80ffd0" }
-                        GradientStop { position: 0.5; color: "#80ffff" }
-                        GradientStop { position: 0.6; color: "#80d0ff" }
-                        GradientStop { position: 0.7; color: "#8080ff" }
-                        GradientStop { position: 0.8; color: "#d080ff" }
-                        GradientStop { position: 0.9; color: "#ff80ff" }
-                        GradientStop { position: 1.0; color: "#ff8080" }
-                    }
+                    gradient: Palettes.neon
                 }
                 Text { anchors.centerIn: parent; text: "Neon"; color: colors.offwhite; font: fonts.secondaryFont(18) }
                 Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.colorMode = "neon" }

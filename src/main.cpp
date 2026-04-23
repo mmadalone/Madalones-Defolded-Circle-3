@@ -74,6 +74,8 @@ int main(int argc, char *argv[]) {
     engine.addImportPath("qrc:/keyboard");
 
     qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
+    qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/components/themes/Palettes.qml")),
+                             "Palettes", 1, 0, "Palettes");
 
     QCoreApplication::setOrganizationName("Unfolded Circle");
     QCoreApplication::setOrganizationDomain("uc.io");

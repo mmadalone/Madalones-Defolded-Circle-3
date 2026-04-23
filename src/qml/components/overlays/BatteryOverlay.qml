@@ -5,6 +5,7 @@ import QtQuick 2.15
 
 import Battery 1.0
 import ScreensaverConfig 1.0
+import Palettes 1.0
 
 import "qrc:/components" as Components
 
@@ -13,15 +14,9 @@ Item {
     width: childrenRect.width
     height: 70
 
-    // Color based on charge level
-    readonly property color batteryColor: {
-        var level = Battery.level;
-        if (level >= 86) return "#00ff41";      // Full — green
-        if (level >= 61) return "#7fff00";      // Good — light green
-        if (level >= 31) return "#ffd700";      // Medium — yellow
-        if (level >= 16) return "#ff8c00";      // Low — orange
-        return "#ff3333";                        // Critical — red
-    }
+    // Battery-level color tier (5 thresholds: full / good / medium / low / critical).
+    // Tier mapping centralised in the Palettes singleton.
+    readonly property color batteryColor: Palettes.batteryColor(Battery.level)
 
     Components.Icon {
         id: icon
