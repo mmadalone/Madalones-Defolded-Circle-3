@@ -13,7 +13,8 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 ## [Unreleased] — on `main`, post-v1.3.0
 
-_(no entries yet — next changes land here)_
+### Fixed
+- **Detail-page WiFi warning icon stayed visible on subjectively-good WiFi.** When Mod 3 Option A consolidated the detail-page status icons into `BaseDetail.qml`'s `RowLayout`, the WiFi-warning predicate inherited from the pre-consolidation `BaseTitle.qml` / `Activity.qml` blocks was preserved as `!Wifi.isConnected || signalStrength === NONE || signalStrength === WEAK` — wider than the home-screen `StatusBar.qml:252` predicate (`NONE only`, no WEAK). UC3's embedded WiFi reports `WEAK` for signals that are subjectively fine in practice, so detail pages showed the warning permanently while the home StatusBar correctly hid it. Aligned BaseDetail to StatusBar's narrower predicate — both surfaces now warn only on disconnect or true `NONE` signal. Single-line predicate fix in `BaseDetail.qml:_wifiWarningActive`; no anchor / RowLayout changes; no other consumers of the predicate exist.
 
 ## v1.3.0 — 2026-04-23 — settings-freeze fix + atlas profiling overlay + dead-code sweep + hot-path polish + detail-page battery chip (Mod 3) + matrixrain.cpp subsystem extraction (audit B → A−)
 

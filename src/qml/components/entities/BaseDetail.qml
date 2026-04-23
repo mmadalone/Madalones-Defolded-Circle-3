@@ -83,10 +83,16 @@ Rectangle {
     property alias iconClose: iconClose
     property alias buttonNavigation: buttonNavigation
 
+    // WiFi warning predicate aligned with StatusBar.qml:252 (the home-screen
+    // reference). Drops the WEAK condition that earlier inherited from the
+    // pre-Mod-3 detail-page implementations — UC3's embedded WiFi reports
+    // WEAK for signals that are subjectively fine, producing a permanently-
+    // visible warning even when the home StatusBar correctly hides it.
+    // Now: detail pages and home screen behave identically (warn only on
+    // disconnect or NONE signal).
     readonly property bool _wifiWarningActive:
         !Wifi.isConnected
         || Wifi.currentNetwork.signalStrength === SignalStrength.NONE
-        || Wifi.currentNetwork.signalStrength === SignalStrength.WEAK
 
     function open(skipAnimation = false) {
         // get the latest entity data from the core
