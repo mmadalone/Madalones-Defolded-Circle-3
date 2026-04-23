@@ -137,6 +137,26 @@ Current fork base: **`v0.71.1`** (tracked via the `upstream` remote). Next upstr
 
 Log each rehearsal here so "last known merge state" is always at a glance.
 
+### 2026-04-23 — v0.72.0 merge (first real upstream-advance under this playbook) → shipped as v1.4.0
+
+- **Trigger:** upstream `unfoldedcircle/remote-ui` advanced `main` with commit `c76ff05` (subject: `v0.72.0 changes` — UC no longer git-tags releases; version lives in commit subject only).
+- **Fetch result:** `git fetch upstream --tags` — 1 new commit on `upstream/main` since the 2026-04-13 rehearsal.
+- **Divergence (pre-merge):**
+  - `git rev-list --count HEAD..upstream/main` → **1 commit behind upstream**
+  - `git rev-list --count upstream/main..HEAD` → **135 commits ahead of upstream**
+  - Merge base: `0586d45` (our old upstream pin = `v0.71.1`)
+- **Upstream scope:** 12 files, +433/-93 lines. Three functional changes: (a) media browse press-and-hold + new shuffle/repeat/browse/sources controls row in `MediaComponent.qml`, (b) smarter media-browse error handling in `MediaBrowser.qml`, (c) **UC independently shipped the same feature as our Mod 3** ("Show battery indicator everywhere") with different property name + layout approach.
+- **CI red-herring:** upstream's own aarch64 CI for `c76ff05` failed — investigation revealed it was a GitHub Actions deprecation (`actions/upload-artifact@v3` sunset), not a code defect. Our workflows already use `@v4`. Source compiles cleanly on our Docker toolchain.
+- **Conflict surface:** 5 files with real conflicts (`config.h`, `config.cpp`, `BaseTitle.qml`, `Activity.qml deviceclass`, `Ui.qml`, `en_US.ts`). `config.h` auto-merged with both our `showBatteryOnDetailPages` AND upstream's `showBatteryEveryWhere` coexisting — required manual removal of our leftover decls.
+- **Resolution strategy (Option B rebase):** adopt upstream's public API (`showBatteryEveryWhere`, QSettings key `ui/batteryEveryWhere`, upstream's Settings toggle wording) while keeping our superior Option A chain-anchoring `RowLayout` in `BaseDetail.qml`. Reject upstream's inline battery `Row` in `BaseTitle.qml` / `Activity.qml` (would duplicate the chip we already render via `BatteryStatusChip.qml` Loader). Accept-theirs on MediaComponent, MediaBrowser, SelectWidget, SensorWidget, icons, translations.
+- **QSettings migration:** one-shot `migrateLegacySettings()` helper added to `src/main.cpp` — carries legacy `ui/batteryOnDetailPages` value (v1.3.0 default `true`) forward into `ui/batteryEveryWhere` (upstream default `false`). Ensures v1.3.0 users who accepted the default chip-visible state don't silently lose it on upgrade.
+- **Icons:** initial Explore-agent read flagged that upstream removed `uc:heat` / `uc:brightness` / `uc:list` / `uc:bluetooth` / `uc:battery-low`. Independent verification showed this was a dedup — upstream's JSON had duplicate keys across primary + aliases sections; only the aliases-section copies were removed. All 5 icon names still resolve post-merge. Two icons (`uc:list` / `uc:heat`) get different glyphs (visual change only).
+- **Branch workflow:** merged on `rehearsal/upstream-2026-04-23`; rollback tag `pre-v0.72.0-merge-2026-04-23` set on main pre-merge. Promoted via `git checkout main && git merge --no-ff rehearsal/upstream-2026-04-23` + `git tag v1.4.0` + `git push origin main v1.4.0`.
+- **Validation checklist outcome:** canary deploy via `scripts/deploy-canary.sh` healthy at elapsed 0s. On-device smoke test: media browser works, battery chip works (confirming Mod 3 Option B rebase + migration), screensaver works, no errors in Logdy or `/api/system/logs`. About-screen UI version display shows stale `0.38.4-32-g1266974` instead of `1.4.0` — pre-existing upstream quirk unrelated to this merge (binary correctly compiled with `DAPP_VERSION=\"1.4.0\"`, but `softwareUpdate.h`'s inline `getUiVersion()` apparently isn't the source the screen reads from — out-of-scope investigation).
+- **Divergence (post-merge):** 135 commits ahead (our custom work preserved) + the merge commit itself. Next upstream-advance will restart the counter.
+- **Follow-up:** `v1.4.1` shipped same day — fixed 7 unguarded `volume.start()` call sites upstream (unblocks per-device `suppress_volume_overlay` toggles in integration drivers). See `_build_logs/2026-04-24_v1.4.1_osd_guards.md` for that log.
+- **Conclusion:** first successful non-trivial upstream merge under this playbook. Option B rebase pattern established for future merges where upstream and our fork collide on feature semantics.
+
 ### 2026-04-13 — safety re-check before broader distribution
 
 - **Trigger:** Maintainer asked "should we contrast our build with upstream before anyone else's UC3 installs it?" — quick re-check to confirm upstream hasn't moved since the Batch G rehearsal earlier in the day.
