@@ -1,4 +1,7 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Added "Screensaver" menu entry; made the
+// 10-item menu scrollable on touch and auto-scrolling on DPAD so the
+// bottom entry ("Factory reset") isn't clipped off the viewport.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -41,18 +44,24 @@ Settings.Page {
                                              });
     }
 
-    Flow {
-        width: parent.width
-        anchors { top: topNavigation.bottom }
+    // Direct ListView (no Flow wrapper). Bound to the viewport so the 10-item
+    // menu scrolls instead of clipping the bottom ("Factory reset") item;
+    // interactive: true gives touch-scroll; highlightRangeMode + preferredHighlight
+    // band keeps the DPAD-selected item in the middle band so the view auto-scrolls
+    // as DPAD navigation moves through items.
+    ListView {
+        id: menu
+        anchors { top: topNavigation.bottom; left: parent.left; right: parent.right; bottom: parent.bottom }
+        clip: true
 
-        ListView {
-            id: menu
-            width: parent.width; height: childrenRect.height
+        interactive: true
+        boundsBehavior: Flickable.StopAtBounds
+        highlightMoveDuration: 200
+        highlightRangeMode: ListView.ApplyRange
+        preferredHighlightBegin: height / 3
+        preferredHighlightEnd: 2 * height / 3
 
-            interactive: false
-            highlightMoveDuration: 200
-
-            model: [
+        model: [
                 {
                     itemTitle: QT_TR_NOOP("Display & Brightness"),
                     page: "Display",
@@ -110,8 +119,7 @@ Settings.Page {
                 }
             ]
 
-            delegate: menuItem
-        }
+        delegate: menuItem
     }
 
     Component {
