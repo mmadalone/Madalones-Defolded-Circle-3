@@ -33,6 +33,7 @@ Thumbs.db
 *.rc
 /.qmake.cache
 /.qmake.stash
+_NOTES.md
 
 # qtcreator generated files
 *.pro.user*
@@ -114,3 +115,6 @@ test/matrixrain_preview/matrixrain_preview
 
 # Personal Windows-local Claude Code directives
 .claude-memory/
+
+# Device validation photos (UC3 screen captures from baseline / regression checks)
+WhatsApp Image*.jpeg
