@@ -6,9 +6,9 @@
     <message>
         <location filename="../../src/qml/components/Profile.qml" line="751"/>
         <location filename="../../src/qml/components/Profile.qml" line="753"/>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="47"/>
         <location filename="../../src/qml/components/SelectWidget.qml" line="48"/>
-        <location filename="../../src/qml/components/SensorWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="49"/>
+        <location filename="../../src/qml/components/SensorWidget.qml" line="60"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="474"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="476"/>
         <location filename="../../src/qml/components/docks/Info.qml" line="326"/>
@@ -29,7 +29,7 @@
 <context>
     <name>Abbreviation for nothing is selected</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="60"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
@@ -821,13 +821,6 @@
     </message>
 </context>
 <context>
-    <name>ChargingScreen</name>
-    <message>
-        <source>Tap to close</source>
-        <translation type="obsolete">Koppints a bezáráshoz</translation>
-    </message>
-</context>
-<context>
     <name>Climate</name>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
@@ -1567,10 +1560,6 @@ Climate fan</extracomment>
 </context>
 <context>
     <name>GeneralBehavior</name>
-    <message>
-        <source>Tap to close</source>
-        <translation type="obsolete">Koppints a bezáráshoz</translation>
-    </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="37"/>
         <source>Double-tap to close</source>
@@ -2563,39 +2552,59 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="402"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="417"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="440"/>
         <source>Could not load media</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="403"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="441"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="433"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="456"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="481"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="519"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="544"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="682"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="707"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="688"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="713"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MediaComponent</name>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="398"/>
+        <source>All</source>
+        <translation type="unfinished">Összes</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="400"/>
+        <source>One</source>
+        <translation type="unfinished">Egy</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="441"/>
+        <source>Sources</source>
+        <translation type="unfinished">Források</translation>
     </message>
 </context>
 <context>
@@ -3459,7 +3468,7 @@ nem lehetséges</translation>
 <context>
     <name>SelectWidget</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="299"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="300"/>
         <source>Select an option</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4024,13 +4033,6 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
     </message>
 </context>
 <context>
-    <name>TouchSlider</name>
-    <message>
-        <source>Not supported</source>
-        <translation type="vanished">Nem támogatott</translation>
-    </message>
-</context>
-<context>
     <name>TouchSliderBrightness</name>
     <message>
         <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="56"/>
@@ -4212,12 +4214,12 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
-        <source>Battery on detail pages</source>
+        <source>Show battery indicator everywhere</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
-        <source>Show a compact battery indicator on entity and activity detail pages.</source>
+        <source>Shows the battery level indicator on all pages and activities.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4297,18 +4299,6 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>Voice</name>
     <message>
-        <source>Voice control</source>
-        <translation type="vanished">Hangvezérlés</translation>
-    </message>
-    <message>
-        <source>Disabling voice control will still let you use voice dictation with integrations.
-
-Press and hold the voice button and say the command.</source>
-        <translation type="vanished">A hangvezérlés letiltása továbbra is lehetővé teszi a hangdiktálás használatát az integrációkkal.
-
-Nyomja meg és tartsa lenyomva a hanggombot, és mondja ki a parancsot.</translation>
-    </message>
-    <message>
         <location filename="../../src/qml/settings/settings/Voice.qml" line="64"/>
         <source>Microphone</source>
         <translation>Mikrofon</translation>
@@ -4354,10 +4344,6 @@ Nyomja meg és tartsa lenyomva a hanggombot, és mondja ki a parancsot.</transla
         <location filename="../../src/qml/settings/settings/Voice.qml" line="229"/>
         <source>Play speech response from Voice Assistant when supported.</source>
         <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Disabling the microphone will completely turn it off. You won’t be able to use voice control or dictation with integrations</source>
-        <translation type="vanished">A mikrofon letiltása teljesen kikapcsolja. Integrációkkal nem fog tudni hangvezérlést vagy diktálást használni</translation>
     </message>
 </context>
 <context>
@@ -4446,30 +4432,6 @@ Nyomja meg és tartsa lenyomva a hanggombot, és mondja ki a parancsot.</transla
         <location filename="../../src/qml/components/VoiceOverlay.qml" line="309"/>
         <source>It’s taking longer than expected. Please try your request again.</source>
         <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Set brightness %1%</source>
-        <translation type="vanished">Fényerő beállítása %1%</translation>
-    </message>
-    <message>
-        <source>Entity was not recognised</source>
-        <translation type="vanished">Az entitást nem ismerték fel</translation>
-    </message>
-    <message>
-        <source>Found %1 similar entities. Please select one to use</source>
-        <translation type="vanished">%1 hasonló entitást találtunk. Kérjük, válasszon egyet a használatra</translation>
-    </message>
-    <message>
-        <source>You can say commands like</source>
-        <translation type="vanished">Olyan parancsokat mondhat mint</translation>
-    </message>
-    <message>
-        <source>“Turn on the Living room lights”
-“Start activity Watch TV”
-“Set Kitchen radiator temperature to 24º”</source>
-        <translation type="vanished">&quot;Kapcsolja be a nappali világítását&quot;&apos;
-„Tevékenység indítása TV-nézés”
-„A konyhai radiátor hőmérsékletének beállítása 24 fokra”</translation>
     </message>
 </context>
 <context>
@@ -4861,14 +4823,6 @@ Nyomja meg és tartsa lenyomva a hanggombot, és mondja ki a parancsot.</transla
 </context>
 <context>
     <name>uc::Voice</name>
-    <message>
-        <source>Command was not recognised</source>
-        <translation type="vanished">Nem ismert parancs</translation>
-    </message>
-    <message>
-        <source>Entity was not recognised</source>
-        <translation type="vanished">Az entitást nem ismerték fel</translation>
-    </message>
     <message>
         <location filename="../../src/voice.cpp" line="150"/>
         <source>The service is temporarily unavailable.</source>

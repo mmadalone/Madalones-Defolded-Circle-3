@@ -409,15 +409,15 @@ void Config::setShowBatteryPercentage(bool value)
     emit showBatteryPercentageChanged();
 }
 
-bool Config::getShowBatteryOnDetailPages()
+bool Config::getShowBatteryEveryWhere()
 {
-    return m_settings->value("ui/batteryOnDetailPages", true).toBool();
+    return m_settings->value("ui/batteryEveryWhere", false).toBool();
 }
 
-void Config::setShowBatteryOnDetailPages(bool value)
+void Config::setShowBatteryEveryWhere(bool value)
 {
-    m_settings->setValue("ui/batteryOnDetailPages", value);
-    emit showBatteryOnDetailPagesChanged();
+    m_settings->setValue("ui/batteryEveryWhere", value);
+    emit showBatteryEveryWhereChanged();
 }
 
 bool Config::getEnableActivityBar()
@@ -1064,7 +1064,5 @@ void Config::setCountryNameAsSelectedLanguage() {
         }
     }
 }
-
-// Charging screen settings — moved to ScreensaverConfig (src/ui/screensaverconfig.{h,cpp})
 
 }  // namespace uc

@@ -11,10 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
-## [Unreleased] — on `main`, post-v1.3.0
+## v1.4.0 — 2026-04-23 — upstream v0.72.0 merge (Option B rebase) + detail-page WiFi predicate fix
+
+### Merged from upstream (`unfoldedcircle/remote-ui` "v0.72.0", commit `c76ff05`)
+
+- **Press-and-hold media browse + new media controls row.** `MediaComponent.qml` adds a press-and-hold gesture on album art that opens the media browser (feature-gated on `Browse_media`/`Search_media` capability). When the component is tall enough (height ≥ 320px), a 4-icon controls row appears at the bottom: shuffle toggle, repeat cycle (OFF/ALL/ONE with active-state badge), browser shortcut, source picker. Each icon feature-gates itself against driver capabilities so hidden icons don't leave empty slots. Clean win — we hadn't touched this file.
+
+- **Smarter media-browse error handling** in `MediaBrowser.qml`. Error codes now dispatch by semantic: `404` → empty "no results" state (previously showed a jarring retry modal for legitimate zero-result searches), `408` / `503` → retryable warning notification, other errors → non-retryable warning then close cleanly. Pagination falls back to `incoming.length >= pageLimit` when backends don't return `pagination.count`. Coverflow: non-focused fallback icons shrink from `0.5×` → `0.3×` art size for sharper focal hierarchy. Bottom text strip moves to `bottomMargin: 10` (from 30) and subtitle left-aligns with capitalized-first typography. Accept-theirs.
+
+- **UC independently shipped our Mod 3 feature** as "Show battery indicator everywhere" — same user-visible behavior, different property name (`showBatteryEveryWhere` vs our `showBatteryOnDetailPages`) and layout approach (plain `Row` anchored at `rightMargin: 60` vs our `RowLayout` chain-anchoring 6 status icons in `BaseDetail.qml`). Adopted via **Option B rebase**: took their public API (property, QSettings key `ui/batteryEveryWhere`, Settings → UI toggle wording) and kept our superior Option A chain-anchoring layout. Their inline battery `Row` additions in `BaseTitle.qml` / `Activity.qml deviceclass` rejected during merge resolution — we already render the chip via `BatteryStatusChip.qml` through a Loader in the consolidated status strip, and accepting both would cause duplicate renders. `BatteryStatusChip.qml` retained as the reusable, touch-transparent primitive. Upstream's layout handles 2 icons statically; ours handles 6 via Qt's Layout solver adaptively — keeping ours costs one point of divergence per merge on 4 files but buys the overlap handling and future-proofs against additional status indicators.
+
+- **One-shot QSettings migration** (`main.cpp::migrateLegacySettings`) carries the legacy `ui/batteryOnDetailPages` value (v1.3.0 default `true`) forward into `ui/batteryEveryWhere` (upstream default `false`) on first v1.4.0 boot. Without this, v1.3.0 users who accepted the chip default would silently lose it on upgrade — preservation semantics honour §1.3 "Never remove features without asking." Legacy key is removed after the one-shot copy. Function runs once after `setApplicationName` and before `Config` is constructed so `QSettings` resolves to the right file.
+
+- **Minor layout polish** — `SelectWidget.qml` gains `clip: true` + `Layout.fillWidth` hints; `SensorWidget.qml` gains `clip: true` + `Layout.maximumWidth`. Both accept-theirs.
+
+- **Icon set refresh** (`icons.otf` + `icon-mapping.json`) — upstream deduplicated JSON entries (removed duplicate keys that existed in an aliases section alongside primary definitions). All icon names our QML references still resolve after the merge — zero dangling references. Two icons render with different glyphs: `uc:list` `` → ``, `uc:heat` `` → ``. Functional behavior unchanged.
+
+- **Translation refresh** — upstream's `en_US.ts` updated with new strings for the MediaComponent / MediaBrowser / battery-everywhere changes. All 8 locale `.ts` files regenerated via `lupdate` post-merge to keep them in sync with the current source.
 
 ### Fixed
 - **Detail-page WiFi warning icon stayed visible on subjectively-good WiFi.** When Mod 3 Option A consolidated the detail-page status icons into `BaseDetail.qml`'s `RowLayout`, the WiFi-warning predicate inherited from the pre-consolidation `BaseTitle.qml` / `Activity.qml` blocks was preserved as `!Wifi.isConnected || signalStrength === NONE || signalStrength === WEAK` — wider than the home-screen `StatusBar.qml:252` predicate (`NONE only`, no WEAK). UC3's embedded WiFi reports `WEAK` for signals that are subjectively fine in practice, so detail pages showed the warning permanently while the home StatusBar correctly hid it. Aligned BaseDetail to StatusBar's narrower predicate — both surfaces now warn only on disconnect or true `NONE` signal. Single-line predicate fix in `BaseDetail.qml:_wifiWarningActive`; no anchor / RowLayout changes; no other consumers of the predicate exist.
+
+### Changed (internal — breaking for any external Config consumer)
+- ⚠️ **`Config.showBatteryOnDetailPages` Q_PROPERTY removed**; adopt upstream's `showBatteryEveryWhere`. Sole internal call site (`BaseDetail.qml:322` Loader `active:` binding) updated atomically in the same commit. No external consumers confirmed via grep — no test coverage existed for this property.
+- ⚠️ **QSettings key renamed** `ui/batteryOnDetailPages` → `ui/batteryEveryWhere`. One-shot migration handles v1.3.0 user data.
+- **Settings → UI toggle wording** changes to upstream's phrasing: "Battery on detail pages" → "Show battery indicator everywhere"; helper text "Show a compact battery indicator on entity and activity detail pages." → "Shows the battery level indicator on all pages and activities." Both translatable — locale files regenerated.
 
 ## v1.3.0 — 2026-04-23 — settings-freeze fix + atlas profiling overlay + dead-code sweep + hot-path polish + detail-page battery chip (Mod 3) + matrixrain.cpp subsystem extraction (audit B → A−)
 

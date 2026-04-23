@@ -319,7 +319,7 @@ Rectangle {
             Layout.preferredHeight: 40
             Layout.alignment: Qt.AlignVCenter
 
-            active: Config.showBatteryOnDetailPages
+            active: Config.showBatteryEveryWhere
             source: "qrc:/components/overlays/BatteryStatusChip.qml"
         }
     }

@@ -6,9 +6,9 @@
     <message>
         <location filename="../../src/qml/components/Profile.qml" line="751"/>
         <location filename="../../src/qml/components/Profile.qml" line="753"/>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="47"/>
         <location filename="../../src/qml/components/SelectWidget.qml" line="48"/>
-        <location filename="../../src/qml/components/SensorWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="49"/>
+        <location filename="../../src/qml/components/SensorWidget.qml" line="60"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="474"/>
         <location filename="../../src/qml/components/SettingsNew.qml" line="476"/>
         <location filename="../../src/qml/components/docks/Info.qml" line="326"/>
@@ -29,7 +29,7 @@
 <context>
     <name>Abbreviation for nothing is selected</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="59"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="60"/>
         <source>None</source>
         <translation type="unfinished"></translation>
     </message>
@@ -821,13 +821,6 @@
     </message>
 </context>
 <context>
-    <name>ChargingScreen</name>
-    <message>
-        <source>Tap to close</source>
-        <translation type="obsolete">Tik om te sluiten</translation>
-    </message>
-</context>
-<context>
     <name>Climate</name>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
@@ -1567,10 +1560,6 @@ Climate fan</extracomment>
 </context>
 <context>
     <name>GeneralBehavior</name>
-    <message>
-        <source>Tap to close</source>
-        <translation type="obsolete">Tik om te sluiten</translation>
-    </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="37"/>
         <source>Double-tap to close</source>
@@ -2563,39 +2552,59 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="402"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="417"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="440"/>
         <source>Could not load media</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="403"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="441"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="418"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="433"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="456"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="481"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="519"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="544"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="682"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="707"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="688"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="713"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MediaComponent</name>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="398"/>
+        <source>All</source>
+        <translation type="unfinished">Alles</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="400"/>
+        <source>One</source>
+        <translation type="unfinished">Een</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="441"/>
+        <source>Sources</source>
+        <translation type="unfinished">Bronnen</translation>
     </message>
 </context>
 <context>
@@ -3458,7 +3467,7 @@ terugkeer</translation>
 <context>
     <name>SelectWidget</name>
     <message>
-        <location filename="../../src/qml/components/SelectWidget.qml" line="299"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="300"/>
         <source>Select an option</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4022,13 +4031,6 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
     </message>
 </context>
 <context>
-    <name>TouchSlider</name>
-    <message>
-        <source>Not supported</source>
-        <translation type="vanished">Niet ondersteund</translation>
-    </message>
-</context>
-<context>
     <name>TouchSliderBrightness</name>
     <message>
         <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="56"/>
@@ -4210,12 +4212,12 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
-        <source>Battery on detail pages</source>
+        <source>Show battery indicator everywhere</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
-        <source>Show a compact battery indicator on entity and activity detail pages.</source>
+        <source>Shows the battery level indicator on all pages and activities.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4295,18 +4297,6 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
 <context>
     <name>Voice</name>
     <message>
-        <source>Voice control</source>
-        <translation type="vanished">Spraakbesturing</translation>
-    </message>
-    <message>
-        <source>Disabling voice control will still let you use voice dictation with integrations.
-
-Press and hold the voice button and say the command.</source>
-        <translation type="vanished">Het uitschakelen van spraakbesturing laat je nog steeds spraakdictatie met integraties gebruiken.
-
-Houd de spreekknop ingedrukt en spreek het commando uit.</translation>
-    </message>
-    <message>
         <location filename="../../src/qml/settings/settings/Voice.qml" line="64"/>
         <source>Microphone</source>
         <translation>Microfoon</translation>
@@ -4352,10 +4342,6 @@ Houd de spreekknop ingedrukt en spreek het commando uit.</translation>
         <location filename="../../src/qml/settings/settings/Voice.qml" line="229"/>
         <source>Play speech response from Voice Assistant when supported.</source>
         <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Disabling the microphone will completely turn it off. You won’t be able to use voice control or dictation with integrations</source>
-        <translation type="vanished">Het uitschakelen van de microfoon schakelt deze volledig uit. Je zult geen spraakbesturing of dictatie met integraties kunnen gebruiken.</translation>
     </message>
 </context>
 <context>
@@ -4444,30 +4430,6 @@ Houd de spreekknop ingedrukt en spreek het commando uit.</translation>
         <location filename="../../src/qml/components/VoiceOverlay.qml" line="309"/>
         <source>It’s taking longer than expected. Please try your request again.</source>
         <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <source>Set brightness %1%</source>
-        <translation type="vanished">Stel helderheid %1% in</translation>
-    </message>
-    <message>
-        <source>Entity was not recognised</source>
-        <translation type="vanished">Entiteit niet herkend</translation>
-    </message>
-    <message>
-        <source>Found %1 similar entities. Please select one to use</source>
-        <translation type="vanished">%1 soortgelijke entiteiten gevonden. Selecteer er één om te gebruiken.</translation>
-    </message>
-    <message>
-        <source>You can say commands like</source>
-        <translation type="vanished">Je kunt commando&apos;s zeggen zoals</translation>
-    </message>
-    <message>
-        <source>“Turn on the Living room lights”
-“Start activity Watch TV”
-“Set Kitchen radiator temperature to 24º”</source>
-        <translation type="vanished">“Zet de lampen in de woonkamer aan”
-“Start activiteit TV kijken”
-“Stel de temperatuur van de keukenradiator in op 24º”</translation>
     </message>
 </context>
 <context>
@@ -4859,14 +4821,6 @@ Houd de spreekknop ingedrukt en spreek het commando uit.</translation>
 </context>
 <context>
     <name>uc::Voice</name>
-    <message>
-        <source>Command was not recognised</source>
-        <translation type="vanished">Commando niet herkend</translation>
-    </message>
-    <message>
-        <source>Entity was not recognised</source>
-        <translation type="vanished">Entiteit niet herkend</translation>
-    </message>
     <message>
         <location filename="../../src/voice.cpp" line="150"/>
         <source>The service is temporarily unavailable.</source>

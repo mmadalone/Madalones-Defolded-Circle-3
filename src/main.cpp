@@ -6,6 +6,7 @@
 #include <QQmlApplicationEngine>
 #include <QScreen>
 #include <QQuickWindow>
+#include <QSettings>
 
 #include "config/config.h"
 #include "core/core.h"
@@ -30,6 +31,20 @@ void sigHandler(int s) {
     qApp->quit();
 }
 #endif
+
+// One-shot QSettings migration for the v1.3.0 -> v1.4.0 upgrade path.
+// Mod 3 shipped showBatteryOnDetailPages (default true). Upstream v0.72.0
+// introduced showBatteryEveryWhere (default false) which replaces it.
+// Carry the legacy value forward so users who accepted the old default
+// don't silently lose the battery chip on upgrade.
+static void migrateLegacySettings() {
+    QSettings settings;
+    if (!settings.contains("ui/batteryEveryWhere")) {
+        bool legacyValue = settings.value("ui/batteryOnDetailPages", true).toBool();
+        settings.setValue("ui/batteryEveryWhere", legacyValue);
+    }
+    settings.remove("ui/batteryOnDetailPages");
+}
 
 int main(int argc, char *argv[]) {
     bool ok;
@@ -80,6 +95,8 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationName("Unfolded Circle");
     QCoreApplication::setOrganizationDomain("uc.io");
     QCoreApplication::setApplicationName("remote-ui");
+
+    migrateLegacySettings();
 
     QScreen *screen = QGuiApplication::primaryScreen();
     qCDebug(lcApp()) << "Screen Width" << screen->geometry().width();
