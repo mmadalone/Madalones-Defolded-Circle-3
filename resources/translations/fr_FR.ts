@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="364"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="370"/>
         <source>Entity unavailable</source>
         <translation>Entité indisponible</translation>
     </message>
@@ -354,17 +354,17 @@
 <context>
     <name>BatteryOverlay</name>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="41"/>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="36"/>
         <source>100% - Fully charged</source>
         <translation>100% - Complètement chargé</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="43"/>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
         <source>%1% - Charging</source>
         <translation>%1% - En charge</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="44"/>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="39"/>
         <source>%1%</source>
         <translation>%1%</translation>
     </message>
@@ -2264,57 +2264,57 @@ Climate fan</extracomment>
 <context>
     <name>MatrixAppearance</name>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="36"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="37"/>
         <source>Color</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="167"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="135"/>
         <source>Characters</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="214"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="182"/>
         <source>Font size</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="241"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="209"/>
         <source>Animation speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="268"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="236"/>
         <source>Column density</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="295"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="263"/>
         <source>Trail length</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="322"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="290"/>
         <source>Trail fade</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="350"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="318"/>
         <source>Auto-rotate</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="376"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="344"/>
         <source>Rotation speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="403"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="371"/>
         <source>Trail bend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="432"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="400"/>
         <source>Direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3508,52 +3508,52 @@ non-retour</translation>
 <context>
     <name>Settings</name>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="57"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="66"/>
         <source>Display &amp; Brightness</source>
         <translation>Affichage &amp; Luminosité</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="62"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="71"/>
         <source>User interface</source>
         <translation>Interface utilisateur</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="67"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="76"/>
         <source>Screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="77"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="86"/>
         <source>Sound &amp; Haptic</source>
         <translation>Son &amp; Haptique</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="82"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="91"/>
         <source>Voice Control</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="87"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="96"/>
         <source>Power Saving</source>
         <translation>Économie d&apos;énergie</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="92"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="101"/>
         <source>Wifi &amp; Bluetooth</source>
         <translation>Wifi &amp; Bluetooth</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="97"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="106"/>
         <source>Localisation</source>
         <translation>Localisation</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="102"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="111"/>
         <source>Administrator PIN</source>
         <translation>PIN administrateur</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/Settings.qml" line="107"/>
+        <location filename="../../src/qml/settings/Settings.qml" line="116"/>
         <source>Factory reset</source>
         <translation>Rétablir la configuration d&apos;usine</translation>
     </message>
