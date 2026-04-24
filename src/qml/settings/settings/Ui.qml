@@ -30,8 +30,8 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1100) {
-                contentY = 1100;
+            if (contentY > 1260) {
+                contentY = 1260;
             }
         }
 
@@ -323,6 +323,7 @@ Settings.Page {
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: mediaComponentSwitch
+                        KeyNavigation.down: volumeOverlaySwitch
                     }
                 }
 
@@ -331,6 +332,54 @@ Settings.Page {
                     wrapMode: Text.WordWrap
                     color: colors.light
                     text: qsTr("Use coverflow as the default view when opening the media browser.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW VOLUME OVERLAY **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: volumeOverlayText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show volume overlay")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: volumeOverlaySwitch
+                        icon: "uc:check"
+                        checked: Config.showVolumeOverlay
+                        trigger: function() {
+                            Config.showVolumeOverlay = !Config.showVolumeOverlay;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: mediaCoverflowSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Display volume indicator overlay when volume keys are pressed.")
                     font: fonts.secondaryFont(24)
                 }
             }

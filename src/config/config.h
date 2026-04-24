@@ -90,6 +90,7 @@ class Config : public QObject {
 
     Q_PROPERTY(bool showBatteryPercentage READ getShowBatteryPercentage WRITE setShowBatteryPercentage NOTIFY showBatteryPercentageChanged)
     Q_PROPERTY(bool showBatteryEveryWhere READ getShowBatteryEveryWhere WRITE setShowBatteryEveryWhere NOTIFY showBatteryEveryWhereChanged)
+    Q_PROPERTY(bool showVolumeOverlay READ getShowVolumeOverlay WRITE setShowVolumeOverlay NOTIFY showVolumeOverlayChanged)
 
     Q_PROPERTY(bool enableActivityBar READ getEnableActivityBar WRITE setEnableActivityBar NOTIFY enableActivityBarChanged)
     Q_PROPERTY(bool fillMediaArtwork READ getFillMediaArtwork WRITE setFillMediaArtwork NOTIFY fillMediaArtworkChanged)
@@ -164,6 +165,9 @@ class Config : public QObject {
 
     bool getShowBatteryEveryWhere();
     void setShowBatteryEveryWhere(bool value);
+
+    bool getShowVolumeOverlay();
+    void setShowVolumeOverlay(bool value);
 
     bool getEnableActivityBar();
     void setEnableActivityBar(bool value);
@@ -304,6 +308,7 @@ class Config : public QObject {
     void entityButtonFuncInvertedChanged();
     void showBatteryPercentageChanged();
     void showBatteryEveryWhereChanged();
+    void showVolumeOverlayChanged();
     void enableActivityBarChanged();
     void fillMediaArtworkChanged();
     void mediaCoverflowDefaultChanged();

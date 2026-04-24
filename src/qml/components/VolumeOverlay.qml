@@ -16,6 +16,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtGraphicalEffects 1.0
 
+import Config 1.0
 import Entity.Controller 1.0
 import Entity.Activity 1.0
 import Entity.MediaPlayer 1.0
@@ -41,6 +42,8 @@ Popup {
     signal done
 
     function start(entity, up = true) {
+        if (!Config.showVolumeOverlay) return;
+
         volume.up = up;
         volume.entity = entity;
         volume.supportsVolumeSet = true;

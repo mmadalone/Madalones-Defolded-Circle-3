@@ -420,6 +420,17 @@ void Config::setShowBatteryEveryWhere(bool value)
     emit showBatteryEveryWhereChanged();
 }
 
+bool Config::getShowVolumeOverlay()
+{
+    return m_settings->value("ui/showVolumeOverlay", true).toBool();
+}
+
+void Config::setShowVolumeOverlay(bool value)
+{
+    m_settings->setValue("ui/showVolumeOverlay", value);
+    emit showVolumeOverlayChanged();
+}
+
 bool Config::getEnableActivityBar()
 {
     return m_settings->value("ui/activityBar", true).toBool();
