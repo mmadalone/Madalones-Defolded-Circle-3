@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.6 — Quiet boot hygiene pass)
+**Last updated:** 2026-04-24 (v1.4.7 — TouchSlider screensaver guard completeness)
 
 ---
 
@@ -100,10 +100,10 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/settings/Settings.qml` | Added "Screensaver" menu entry. |
 | `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle. |
 | `src/qml/components/TouchSlider.qml` | Added `applicationWindow.screensaverActive` guard to suppress during screensaver (base shared component; the 4 specific variants below have the same guard). **v1.4.5:** null-guard added at top of `startSetup()` — if `entityObj` is null, log warn + set `active=false` + clear `sliderLoader.source` + return (prevents TypeError at line 44). Loader `y:` binding at line 161 now uses ternary `sliderLoader.item ? ui.height - sliderLoader.item.height : 0` to guard against null `item` during source="" transitions. Same null-guard recipe as v1.4.3 MediaBrowser. |
-| `src/qml/components/TouchSliderVolume.qml` | Added `applicationWindow.screensaverActive` guard to suppress during screensaver. |
-| `src/qml/components/TouchSliderSeek.qml` | Same screensaverActive guard. |
-| `src/qml/components/TouchSliderBrightness.qml` | Same screensaverActive guard. |
-| `src/qml/components/TouchSliderPosition.qml` | Same screensaverActive guard. |
+| `src/qml/components/TouchSliderVolume.qml` | Added `applicationWindow.screensaverActive` guard to suppress during screensaver. **v1.4.7:** guard extended to `onTouchXChanged` and `onTouchReleased` (was press-only — XChanged was accumulating stale `targetVolume`, Released was committing it via `entityObj.setVolume()`, so Kodi volume got overwritten every time the user adjusted screensaver speed). |
+| `src/qml/components/TouchSliderSeek.qml` | Same screensaverActive guard. **v1.4.7:** extended to XChanged + Released, same reason. |
+| `src/qml/components/TouchSliderBrightness.qml` | Same screensaverActive guard. **v1.4.7:** extended to XChanged + Released, same reason. |
+| `src/qml/components/TouchSliderPosition.qml` | Same screensaverActive guard. **v1.4.7:** extended to XChanged + Released, same reason. |
 | `src/qml/components/LoadingFirst.qml` | Skip splash animation in DEV mode (UC_MODEL=DEV). ~8 lines. |
 | `src/qml/MainContainer.qml` | Retry timer for ButtonNavigation on startup (~3 lines) — workaround for first-boot focus race. |
 | `src/qml/main.qml` | Added `screensaverActive` property, idle timer DEV mode bypass, ScreensaverConfig import. |
