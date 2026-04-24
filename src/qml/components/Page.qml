@@ -335,8 +335,8 @@ ListView {
                                                 triggerCommand(mapping.entity_id, mapping.cmd_id, mapping.params);
                                             }
                                         } else if (entity.type === EntityTypes.Media_player) {
+                                            mediaComponentEntity.volumeUp();
                                             if (mediaComponentEntity.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
-                                                mediaComponentEntity.volumeUp();
                                                 volume.start(mediaComponentEntity);
                                             }
                                         }
@@ -355,8 +355,8 @@ ListView {
                                                 triggerCommand(mapping.entity_id, mapping.cmd_id, mapping.params);
                                             }
                                         } else if (entity.type === EntityTypes.Media_player) {
+                                            mediaComponentEntity.volumeDown();
                                             if (mediaComponentEntity.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
-                                                mediaComponentEntity.volumeDown();
                                                 volume.start(mediaComponentEntity, false);
                                             }
                                         }

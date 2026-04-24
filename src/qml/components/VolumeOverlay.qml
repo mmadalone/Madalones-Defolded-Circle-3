@@ -43,6 +43,7 @@ Popup {
 
     function start(entity, up = true) {
         if (!Config.showVolumeOverlay) return;
+        if (entity && entity.hideVolumeOverlay) return;
 
         volume.up = up;
         volume.entity = entity;

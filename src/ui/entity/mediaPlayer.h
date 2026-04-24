@@ -276,6 +276,7 @@ class MediaPlayer : public Base {
 
     // options
     Q_PROPERTY(int volumeSteps READ getVolumeSteps CONSTANT)
+    Q_PROPERTY(bool hideVolumeOverlay READ getHideVolumeOverlay NOTIFY hideVolumeOverlayChanged)
 
  public:
     explicit MediaPlayer(const QString &id, QVariantMap nameI18n, const QString &language, const QString &icon,
@@ -303,7 +304,8 @@ class MediaPlayer : public Base {
     QStringList getSearchMediaClasses() { return m_searchMediaClasses; }
 
     // options
-    int getVolumeSteps() { return m_volumeSteps; }
+    int  getVolumeSteps()       { return m_volumeSteps; }
+    bool getHideVolumeOverlay() { return m_hideVolumeOverlay; }
 
     QString getStateInfo() override { return m_mediaTitle; }
 
@@ -379,6 +381,7 @@ class MediaPlayer : public Base {
     void sendCommand(MediaPlayerCommands::Enum cmd);
     void sendSimpleCommand(QString command);
     bool updateAttribute(const QString &attribute, QVariant data) override;
+    bool updateOptions(QVariant data) override;
 
     void onLanguageChangedTypeSpecific() override;
 
@@ -414,6 +417,7 @@ class MediaPlayer : public Base {
     void mediaIdChanged();
     void mediaPlaylistChanged();
     void searchMediaClassesChanged();
+    void hideVolumeOverlayChanged();
     void browseMediaResult(QVariantMap media, QVariantMap pagination);
     void searchMediaResult(QVariantList items, QVariantMap pagination);
     void mediaBrowseError(int code, QString message);
@@ -441,6 +445,7 @@ class MediaPlayer : public Base {
     // options
     int         m_volumeSteps;
     QStringList m_simpleCommands;
+    bool        m_hideVolumeOverlay = false;
 
     static QVariantMap browseItemToVariant(const core::BrowseMediaItem &item);
     static QVariantMap paginationToVariant(const core::Pagination &p);

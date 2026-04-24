@@ -59,6 +59,10 @@ MediaPlayer::MediaPlayer(const QString &id, QVariantMap nameI18n, const QString 
         m_simpleCommands = options.value("simple_commands").toStringList();
     }
 
+    if (options.contains("hide_volume_overlay")) {
+        m_hideVolumeOverlay = options.value("hide_volume_overlay").toBool();
+    }
+
             // setup position timer
     m_positionTimer.setInterval(1000);
     m_positionTimer.setTimerType(Qt::VeryCoarseTimer);
@@ -538,6 +542,22 @@ void MediaPlayer::sendSimpleCommand(QString command)
     }
 
     Base::sendCommand(command);
+}
+
+bool MediaPlayer::updateOptions(QVariant data) {
+    bool        ok      = false;
+    QVariantMap options = data.toMap();
+
+    if (options.contains("hide_volume_overlay")) {
+        bool newHide = options.value("hide_volume_overlay").toBool();
+        if (m_hideVolumeOverlay != newHide) {
+            m_hideVolumeOverlay = newHide;
+            ok = true;
+            emit hideVolumeOverlayChanged();
+        }
+    }
+
+    return ok;
 }
 
 bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {

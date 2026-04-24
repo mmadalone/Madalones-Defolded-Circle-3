@@ -211,6 +211,31 @@ Popup {
         entityObj.browseMedia(page.pageMediaId, page.pageMediaType, page.pageLimit, page.requestedPage);
     }
 
+    // ----------- page-scroll helpers (CHANNEL_UP/DOWN in MediaBrowser = PgUp/PgDn) -----------
+    function pageScrollIncrement(lv) {
+        // Estimate items-per-page from visible area. Items have uniform height in MediaBrowser.
+        var itemCount = (currentPage ? (currentPage.displayItems || []).length : 0) || lv.count || 1;
+        var itemHeight = lv.contentHeight / Math.max(1, itemCount);
+        if (itemHeight <= 0) return 5;   // defensive fallback
+        return Math.max(1, Math.floor(lv.height / itemHeight));
+    }
+    function pageScrollUp() {
+        var page = currentPage; if (!page || !page.pageListView) return;
+        var lv = page.pageListView;
+        var newIndex = Math.max(0, lv.currentIndex - pageScrollIncrement(lv));
+        lv.currentIndex = newIndex;
+        lv.positionViewAtIndex(newIndex, ListView.Beginning);
+    }
+    function pageScrollDown() {
+        var page = currentPage; if (!page || !page.pageListView) return;
+        var lv = page.pageListView;
+        var items = page.displayItems || [];
+        var newIndex = Math.min(items.length - 1, lv.currentIndex + pageScrollIncrement(lv));
+        if (newIndex < 0) return;
+        lv.currentIndex = newIndex;
+        lv.positionViewAtIndex(newIndex, ListView.Beginning);
+    }
+
     onOpened: {
         if (!entityObj) {
             console.warn("MediaBrowser: opened with null entityObj — aborting");
@@ -338,19 +363,55 @@ Popup {
             },
             "VOLUME_UP": {
                 "pressed": function() {
+                    entityObj.volumeUp();
                     if (entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
-                        entityObj.volumeUp();
                         volume.start(entityObj);
                     }
                 }
             },
             "VOLUME_DOWN": {
                 "pressed": function() {
+                    entityObj.volumeDown();
                     if (entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)) {
-                        entityObj.volumeDown();
                         volume.start(entityObj, false);
                     }
                 }
+            },
+            "MUTE": {
+                "pressed": function() { entityObj.muteToggle(); }
+            },
+            "STOP": {
+                "pressed": function() {
+                    if (entityObj.hasFeature(MediaPlayerFeatures.Stop)) {
+                        entityObj.stop();
+                    }
+                }
+            },
+            "NEXT": {
+                "pressed": function() {
+                    if (entityObj.hasFeature(MediaPlayerFeatures.Fast_forward)) {
+                        entityObj.fastForward();
+                    } else if (entityObj.hasFeature(MediaPlayerFeatures.Next)) {
+                        entityObj.next();
+                    }
+                }
+            },
+            "PREV": {
+                "pressed": function() {
+                    if (entityObj.hasFeature(MediaPlayerFeatures.Rewind)) {
+                        entityObj.rewind();
+                    } else if (entityObj.hasFeature(MediaPlayerFeatures.Previous)) {
+                        entityObj.previous();
+                    }
+                }
+            },
+            "CHANNEL_UP": {
+                "pressed":        function() { mediaBrowser.pageScrollUp(); },
+                "pressed_repeat": function() { mediaBrowser.pageScrollUp(); }
+            },
+            "CHANNEL_DOWN": {
+                "pressed":        function() { mediaBrowser.pageScrollDown(); },
+                "pressed_repeat": function() { mediaBrowser.pageScrollDown(); }
             },
             "BACK": {
                 "pressed": function() {
