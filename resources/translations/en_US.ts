@@ -2427,23 +2427,24 @@ Climate fan</extracomment>
 <context>
     <name>MediaBrowser</name>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="422"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="445"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="273"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="449"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="472"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="437"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="464"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="485"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="520"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="548"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="583"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2558,12 +2559,12 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="711"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="746"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="717"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="752"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2583,8 +2584,9 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="421"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="444"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="272"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="448"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="471"/>
         <source>Could not load media</source>
         <translation type="unfinished"></translation>
     </message>

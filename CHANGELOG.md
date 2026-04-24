@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.3 — 2026-04-24 — MediaBrowser hotfix (null-guard + inline loading + watchdog)
+
+### Fixed
+- **MediaBrowser unescapable loading loop (critical).** When `MediaBrowser.qml::onOpened` was called with a transiently-null `entityObj` binding (QML entity-resolution race), line 225's `entityObj.browseMedia(...)` threw a TypeError mid-handler. `buttonNavigation.takeControl()` at line 226 never ran → hardware HOME/BACK keys stopped working in the browser. Meanwhile `pageLoading: true` was already set at line 218, triggering the global `LoadingScreen` which blocks all UI input for up to 3 minutes via `inputController.blockInput(true)` + `timeOutTimer{interval: 180000}`. Net effect: user stuck in a 3-minute blackout with the rotating loading animation burning CPU at 60 fps (thermal risk on repeated entry — reproduced during v1.4.2 smoke testing, required hard reboot). Fix: null-guard `entityObj` at the top of `onOpened` — if null, log a warning and close the popup immediately via `Qt.callLater(close)`. Root cause analysis captured from a complete logdy trace of the live incident (2026-04-24T08:15:50Z); known upstream behaviour previously documented in `.claude-memory/project_media_browser_close_loop.md` ("X button dead, remote restart only escape") — now with a fix that prevents the trap instead of requiring a hardware reboot.
+- **MediaBrowser no longer invokes the global `LoadingScreen`.** Replaced `loading.start()` / `loading.stop()` calls with a local `BusyIndicator` inside the popup's `contentItem`. Identical visual loading UX, but no `inputController.blockInput(true)`, so the popup's X close button, hardware BACK, and hardware HOME remain interactive at all times during browse loading. ~30 other callers of `LoadingScreen` across the codebase (Settings / Wifi / docks / integrations / profiles / groups / onboarding) are unaffected — their paths are genuinely blocking operations where input-block is the correct UX.
+- **15-second local watchdog timer on `MediaBrowser`.** If `pageLoading` stays true for 15 s without a response, the popup auto-closes with the standard "Could not load media" warning notification. Belt-and-suspenders recovery for the "Kodi didn't respond" case, independent of the null-guard fix above. Watchdog is declarative (`running: isLoading`), auto-arms and auto-cancels from the existing `isLoading` binding — no manual start/stop calls to forget. 15 s is 15× the empirical worst-case Kodi browseMedia response on a healthy LAN (<1 s); aggressive enough to keep the device recoverable in under a log cycle, vs the old 180 s LoadingScreen timeout which was 180× expected worst case and kept the device in a compute-pinned state.
+
+### Architectural note
+- **No changes to `LoadingScreen.qml`**. It remains the correct component for the blocking paths it was designed for (Wifi setup, profile switch, dock configure, etc. — operations where a user shouldn't be able to interact while the device is in an in-between state). The bug was specifically that `MediaBrowser`, which is an INTERACTIVE browsing surface, inappropriately depended on it. Fix removes that dependency at the one right place.
+- **Zero changes to upstream semantics for volume, battery, OSD, or any v1.4.0–v1.4.2 feature.** This is a strict hotfix. Feature work deferred to v1.4.4 (volume split-guard refactor + MediaBrowser media-button expansion).
+
+---
+
 ## v1.4.2 — 2026-04-24 — Settings → UI toggle to suppress volume OSD popup
 
 ### Added

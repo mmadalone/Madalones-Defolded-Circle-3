@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.2 — Config.showVolumeOverlay toggle for volume OSD suppression)
+**Last updated:** 2026-04-24 (v1.4.3 — MediaBrowser hotfix: null-guard + inline loading + watchdog)
 
 ---
 
@@ -137,6 +137,17 @@ User-facing complement to v1.4.1's feature-check fix. Adds a `Config.showVolumeO
 |------|-------------|
 | `src/qml/components/VolumeOverlay.qml` | Added `import Config 1.0`. Added one-line early-return guard at the top of `start(entity, up = true)`: `if (!Config.showVolumeOverlay) return;`. Short-circuits before any side-effect (no property writes, no `hideTimer.restart()`, no `volume.open()`). Rest of the 199-line Popup unchanged. |
 | `src/qml/settings/settings/Ui.qml` | Re-added to modified-upstream after v1.4.0's rebase had it byte-identical to upstream. Appended new "Show volume overlay" toggle block below "Coverflow in media browser"; added `KeyNavigation.down: volumeOverlaySwitch` to the previously-dangling `mediaCoverflowSwitch`; bumped `Flickable.contentY` clamp 1100 → 1260 for the extra ~160 px (restores v1.3.0 value). |
+
+---
+
+## v1.4.3: MediaBrowser robustness hotfix
+
+Fixes a latent upstream bug where a null `entityObj` binding race at open-time caused the MediaBrowser Popup to enter an unescapable loading loop (3-minute global input block via `LoadingScreen`'s `inputController.blockInput(true)` + `timeOutTimer{180 s}`, with continuous 60 fps animation = thermal risk). Root cause captured from live logdy trace 2026-04-24T08:15:50Z; symptom previously known in memory as `project_media_browser_close_loop.md` ("X button dead, remote restart only escape"). v1.4.3 fixes all three failure modes at the right layer.
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/qml/components/entities/media_player/MediaBrowser.qml` | Three targeted changes: **(1) null-guard in `onOpened`** — if `entityObj` is null, log a warning and `Qt.callLater(close)` before touching `browseNav` / `pageLoading` state (prevents the TypeError that triggered the original stuck-state). **(2) Replace `loading.start()` / `loading.stop()` calls with a local `BusyIndicator`** — standard `QtQuick.Controls 2.15`, id `inlineLoading`, centered in `contentItem`, `running: <flag>`. Popup no longer invokes `inputController.blockInput(true)` — X close button / hardware HOME / hardware BACK stay responsive at all times during browse loading. **(3) 15-second `loadingWatchdog` Timer** (`running: isLoading`, declarative property binding) — auto-closes with the standard "Could not load media" warning notification if browse stays pending past the watchdog window. Zero changes to `LoadingScreen.qml` (still used correctly by ~30 unrelated callers across the codebase: Settings / Wifi / docks / integrations / profiles / groups / onboarding). |
 
 ---
 
