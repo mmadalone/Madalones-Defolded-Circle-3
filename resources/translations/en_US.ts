@@ -2427,144 +2427,144 @@ Climate fan</extracomment>
 <context>
     <name>MediaBrowser</name>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="298"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="510"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="533"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="304"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="516"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="539"/>
         <source>An error occurred while loading media content.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="525"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="531"/>
         <source>Retry</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="581"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="587"/>
         <source>Browse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="644"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="650"/>
         <source>Search…</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="185"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="191"/>
         <source>Track</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="167"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="173"/>
         <source>Album</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="170"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="176"/>
         <source>Artist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="181"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="187"/>
         <source>Playlist</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="177"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="183"/>
         <source>Genre</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="182"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="188"/>
         <source>Podcast</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="175"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="181"/>
         <source>Episode</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="183"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="189"/>
         <source>Radio</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="171"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="177"/>
         <source>Channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="168"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="174"/>
         <source>App</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="169"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="175"/>
         <source>Apps</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="172"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="178"/>
         <source>Channels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="173"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="179"/>
         <source>Composer</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="174"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="180"/>
         <source>Directory</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="176"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="182"/>
         <source>Game</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="178"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="184"/>
         <source>Image</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="179"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="185"/>
         <source>Movie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="180"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="186"/>
         <source>Music</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="184"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="190"/>
         <source>Season</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="186"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="192"/>
         <source>TV Show</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="187"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="193"/>
         <source>URL</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="188"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="194"/>
         <source>Video</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="807"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="813"/>
         <source>No results</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="813"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="819"/>
         <source>Try something else.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2584,9 +2584,9 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="297"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="509"/>
-        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="532"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="303"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="515"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="538"/>
         <source>Could not load media</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2594,17 +2594,17 @@ Climate fan</extracomment>
 <context>
     <name>MediaComponent</name>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="401"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="404"/>
         <source>All</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="403"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="406"/>
         <source>One</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="444"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="447"/>
         <source>Sources</source>
         <translation type="unfinished"></translation>
     </message>
