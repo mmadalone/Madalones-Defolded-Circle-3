@@ -47,7 +47,10 @@ Rectangle {
     property string entityId
     property QtObject entityObj
 
-    readonly property int controlsContainerHeight: mediaComponent.height >= 320 ? 80 : 0
+    readonly property int controlsContainerHeight:
+        (Config.showShuffleButton || Config.showRepeatButton
+         || Config.showMediaBrowserButton || Config.showMediaSourceButton)
+        && mediaComponent.height >= 320 ? 80 : 0
     property double mediaInfoHeight: mediaTitle.implicitHeight + mediaArtist.implicitHeight + progressContainer.implicitHeight + controlsContainerHeight + 60
 
     property bool isComponentHorizontal: mediaComponent.height < 260

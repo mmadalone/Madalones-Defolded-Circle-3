@@ -63,18 +63,18 @@ Popup {
     readonly property bool isLoading: (currentPage ? currentPage.pageLoading : false) || searchLoading
 
     // ----------- play menu helper -----------
-    function buildPlayMenu(mediaId, mediaType, actions) {
+    function buildPlayMenu(mediaId, mediaType, actions, thumbnail) {
         var all = !actions || actions.length === 0;
         var items = [];
         if (all || actions.indexOf("PLAY_NOW") >= 0)
             items.push({ title: qsTr("Play now"),     icon: "uc:play",
-                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t); }; })(mediaId, mediaType) });
+                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, undefined, th); }; })(mediaId, mediaType, thumbnail) });
         if (all || actions.indexOf("PLAY_NEXT") >= 0)
             items.push({ title: qsTr("Play next"),    icon: "uc:forward-step",
-                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t, "PLAY_NEXT"); }; })(mediaId, mediaType) });
+                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, "PLAY_NEXT", th); }; })(mediaId, mediaType, thumbnail) });
         if (all || actions.indexOf("ADD_TO_QUEUE") >= 0)
             items.push({ title: qsTr("Add to queue"), icon: "uc:album-circle-plus",
-                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t, "ADD_TO_QUEUE"); }; })(mediaId, mediaType) });
+                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, "ADD_TO_QUEUE", th); }; })(mediaId, mediaType, thumbnail) });
         return items;
     }
 
@@ -146,7 +146,7 @@ Popup {
         entityObj.searchMedia(query.trim(), "", "", selectedMediaClasses, defaultPageLimit, 1);
     }
 
-    function requestPlayMedia(mediaId, mediaType, action) {
+    function requestPlayMedia(mediaId, mediaType, action, thumbnail) {
         pendingPlayMediaId = mediaId || "";
         if (action === "PLAY_NEXT")
             pendingPlayIcon = "uc:forward-step";
@@ -155,6 +155,12 @@ Popup {
         else
             pendingPlayIcon = "uc:play";
         pendingPlayFeedback.restart();
+
+        // Hand browse-time thumbnail to the entity as an immediate preview; the
+        // integration's later Media_image_url update replaces it with real art
+        // (or the preview is preserved by the placeholder guard in C++).
+        if (entityObj && thumbnail)
+            entityObj.setPreviewImage(thumbnail);
 
         if (action)
             entityObj.playMedia(mediaId, mediaType, action);
@@ -353,7 +359,7 @@ Popup {
                     var item = page.displayItems[page.pageListView.currentIndex];
                     if (!item) return;
                     if (item.can_browse) mediaBrowser.browseInto(item.media_id, item.media_type, item.title, item.thumbnail);
-                    else if (item.can_play) mediaBrowser.requestPlayMedia(item.media_id, item.media_type);
+                    else if (item.can_play) mediaBrowser.requestPlayMedia(item.media_id, item.media_type, undefined, item.thumbnail);
                 }
             },
             "PLAY": {
@@ -940,10 +946,10 @@ Popup {
                                             var mediaId   = pageContainer.media_id;
                                             var mediaType = pageContainer.media_type;
                                             popupMenu.title     = pageContainer.title || "";
-                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, pageContainer.play_media_action);
+                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, pageContainer.play_media_action, pageContainer.thumbnail);
                                             popupMenu.open();
                                         } else {
-                                            mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type);
+                                            mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, undefined, pageContainer.thumbnail);
                                         }
                                     }
                                 }
@@ -955,7 +961,7 @@ Popup {
 
                                 Components.HapticMouseArea {
                                     anchors.fill: parent
-                                    onClicked: { if (pageContainer) mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, "SHUFFLE") }
+                                    onClicked: { if (pageContainer) mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, "SHUFFLE", pageContainer.thumbnail) }
                                 }
                             }
                         }
@@ -973,7 +979,7 @@ Popup {
                             if (modelData.can_browse)
                                 mediaBrowser.browseInto(modelData.media_id, modelData.media_type, modelData.title, modelData.thumbnail);
                             else if (modelData.can_play)
-                                mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type);
+                                mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail);
                         }
                     }
 
@@ -1062,7 +1068,7 @@ Popup {
 
                             Components.HapticMouseArea {
                                 anchors.fill: parent
-                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type)
+                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail)
                             }
                         }
 
@@ -1096,7 +1102,7 @@ Popup {
 
                             Components.HapticMouseArea {
                                 anchors.fill: parent
-                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type)
+                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail)
                             }
                         }
 
@@ -1306,10 +1312,10 @@ Popup {
                                             var mediaId   = item.media_id;
                                             var mediaType = item.media_type;
                                             popupMenu.title     = item.title || "";
-                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, item.play_media_action);
+                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, item.play_media_action, item.thumbnail);
                                             popupMenu.open();
                                         } else {
-                                            mediaBrowser.requestPlayMedia(item.media_id, item.media_type);
+                                            mediaBrowser.requestPlayMedia(item.media_id, item.media_type, undefined, item.thumbnail);
                                         }
                                     }
                                 }

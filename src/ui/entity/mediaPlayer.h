@@ -367,6 +367,7 @@ class MediaPlayer : public Base {
 
     Q_INVOKABLE void playMedia(const QString &mediaId, const QString &mediaType,
                                const QString &action = QString());
+    Q_INVOKABLE void setPreviewImage(const QString &thumbnailUrl);
     Q_INVOKABLE void clearPlaylist();
     Q_INVOKABLE void browseMedia(const QString &mediaId = QString(),
                                  const QString &mediaType = QString(),
@@ -454,9 +455,12 @@ class MediaPlayer : public Base {
     QTimer m_positionTimer;
 
     QNetworkAccessManager m_nam;
-    void                  getMediaImageColor(QString imageUrl);
+    void                  getMediaImageColor(QString imageUrl, bool isPreview = false);
     void                  clearMediaImageState();
+    void                  applyMediaImageUrl(const QString &newImageUrl, bool isPreview);
+    static bool           isKodiDefaultPlaceholder(const QString &url);
     int                   m_mediaImageDownloadTries = 0;
+    bool                  m_mediaImageIsPreview = false;
 
     QColor                computeAverageImageColor(QImage image);
 

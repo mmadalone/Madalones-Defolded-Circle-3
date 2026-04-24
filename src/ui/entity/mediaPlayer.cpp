@@ -451,7 +451,7 @@ QVariantMap MediaPlayer::paginationToVariant(const core::Pagination &p) {
     return map;
 }
 
-void MediaPlayer::getMediaImageColor(QString imageUrl) {
+void MediaPlayer::getMediaImageColor(QString imageUrl, bool isPreview) {
     if (imageUrl.isEmpty()) {
         clearMediaImageState();
         return;
@@ -475,6 +475,7 @@ void MediaPlayer::getMediaImageColor(QString imageUrl) {
     qCInfo(lcMediaPlayer()) << "Starting image download with timeout:" << IMAGE_REQUEST_TIMEOUT_MS;
     QNetworkReply *reply = m_nam.get(request);
     reply->setProperty("mediaImageUrl", imageUrl);
+    reply->setProperty("isPreview", isPreview);
 
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::error),
             this, &MediaPlayer::onNetworkError);
@@ -491,6 +492,94 @@ void MediaPlayer::clearMediaImageState() {
         m_mediaImageColor = defaultColor;
         emit mediaImageColorChanged();
     }
+
+    m_mediaImageIsPreview = false;
+}
+
+bool MediaPlayer::isKodiDefaultPlaceholder(const QString &url) {
+    // Kodi skin-level fallback images returned by Player.GetItem when no real art
+    // exists. Substring match catches both plain ("DefaultVideo.png") and
+    // URL-encoded ("image%3A%2F%2FDefaultVideo.png%2F") forms.
+    static constexpr const char *defaults[] = {
+        "DefaultVideo.png",       "DefaultAudio.png",
+        "DefaultVideoCover.png",  "DefaultMovies.png",
+        "DefaultMovieTitle.png",  "DefaultTVShows.png",
+        "DefaultTVShowTitle.png", "DefaultPlaylist.png",
+        "DefaultFolder.png",      "DefaultFile.png",
+        "DefaultPicture.png",     "DefaultProgram.png",
+    };
+    for (auto d : defaults) {
+        if (url.contains(QLatin1String(d), Qt::CaseInsensitive)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void MediaPlayer::applyMediaImageUrl(const QString &newImageUrl, bool isPreview) {
+    m_mediaImageUrl = newImageUrl;
+    emit mediaImageUrlChanged();
+
+    m_mediaImageDownloadTries = 0;
+
+    const bool isBase64 = newImageUrl.startsWith("data:image/", Qt::CaseInsensitive)
+                          && newImageUrl.contains(";base64,");
+    if (!isBase64) {
+        // HTTP path — flag flip deferred until onNetworkRequestFinished success,
+        // threaded via reply property so a failed real-URL fetch can preserve an
+        // earlier preview (flag still reflects the currently-displayed image).
+        getMediaImageColor(m_mediaImageUrl, isPreview);
+    } else {
+        // Base64 data URI — m_mediaImage is written synchronously here, so the
+        // flag must flip synchronously too.
+        m_mediaImage          = newImageUrl;
+        m_mediaImageIsPreview = isPreview;
+        emit mediaImageChanged();
+
+        const QString    base64Data = newImageUrl.section(",", 1);
+        const QByteArray imageData  = QByteArray::fromBase64(base64Data.toLatin1());
+        QImage           img;
+        img.loadFromData(imageData);
+        m_mediaImageColor = computeAverageImageColor(img);
+        emit mediaImageColorChanged();
+    }
+}
+
+void MediaPlayer::setPreviewImage(const QString &thumbnailUrl) {
+    if (thumbnailUrl.isEmpty()) {
+        return;
+    }
+
+    // Only accept schemes QNetworkAccessManager can actually fetch: http(s) or
+    // base64 image data URI. UC3's internal "icon://" fallback (MediaBrowser
+    // shows it as an icon-name, not a URL) and Kodi's internal "image://" scheme
+    // both produce ProtocolUnknownError + 3-retry burn if passed through.
+    const bool isHttp = thumbnailUrl.startsWith("http://",  Qt::CaseInsensitive)
+                     || thumbnailUrl.startsWith("https://", Qt::CaseInsensitive);
+    const bool isBase64Image = thumbnailUrl.startsWith("data:image/", Qt::CaseInsensitive)
+                            && thumbnailUrl.contains(";base64,");
+    if (!isHttp && !isBase64Image) {
+        qCDebug(lcMediaPlayer()) << "setPreviewImage: skipping unfetchable scheme"
+                                 << thumbnailUrl.left(48);
+        return;
+    }
+
+    // Skip a placeholder thumbnail — it's no better than what the integration
+    // would later push, and would just mark m_mediaImageIsPreview unnecessarily.
+    if (isKodiDefaultPlaceholder(thumbnailUrl)) {
+        qCDebug(lcMediaPlayer()) << "setPreviewImage: skipping placeholder thumbnail";
+        return;
+    }
+
+    // Idempotent if same URL already loaded — still mark preview so a later
+    // placeholder swap is guarded.
+    if (m_mediaImageUrl == thumbnailUrl && !m_mediaImage.isEmpty()) {
+        m_mediaImageIsPreview = true;
+        return;
+    }
+
+    qCDebug(lcMediaPlayer()) << "setPreviewImage: applying browse thumbnail as preview";
+    applyMediaImageUrl(thumbnailUrl, /*isPreview=*/true);
 }
 
 QColor MediaPlayer::computeAverageImageColor(QImage image) {
@@ -604,6 +693,7 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
                 emit mediaImageChanged();
                 m_mediaImageColor = QColor(255,255,255);
                 emit mediaImageColorChanged();
+                m_mediaImageIsPreview = false;
 
                         //                getMediaImageColor(m_mediaImageUrl);
 
@@ -673,31 +763,21 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
             break;
         }
         case MediaPlayerAttributes::Media_image_url: {
-            QString newImageUrl = data.toString();
+            const QString newImageUrl = data.toString();
+
+            // Preview-preserve guard: once a browse-time preview is set, swallow
+            // empty or Kodi-default-placeholder updates rather than blanking the
+            // thumbnail the user already saw in MediaBrowser.
+            if (m_mediaImageIsPreview && !m_mediaImage.isEmpty()
+                && (newImageUrl.isEmpty() || isKodiDefaultPlaceholder(newImageUrl))) {
+                qCDebug(lcMediaPlayer()) << "Media_image_url: preserving preview over placeholder";
+                break;
+            }
 
             // Re-download if URL changed OR if we have a URL but the image data is missing
             if (m_mediaImageUrl != newImageUrl || (!newImageUrl.isEmpty() && m_mediaImage.isEmpty())) {
-                m_mediaImageUrl = newImageUrl;
+                applyMediaImageUrl(newImageUrl, /*isPreview=*/false);
                 ok = true;
-                emit mediaImageUrlChanged();
-
-                m_mediaImageDownloadTries = 0;
-
-                bool isBase64 = newImageUrl.startsWith("data:image/", Qt::CaseInsensitive) && newImageUrl.contains(";base64,");
-
-                if (!isBase64) {
-                    getMediaImageColor(m_mediaImageUrl);
-                } else {
-                    m_mediaImage = newImageUrl;
-                    emit mediaImageChanged();
-
-                    QString base64Data = newImageUrl.section(",", 1);
-                    QByteArray imageData = QByteArray::fromBase64(base64Data.toLatin1());
-                    QImage img;
-                    img.loadFromData(imageData);
-                    m_mediaImageColor = computeAverageImageColor(img);
-                    emit mediaImageColorChanged();
-                }
             }
             break;
         }
@@ -889,13 +969,20 @@ void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
                                              << m_mediaImageUrl;
 
         if (m_mediaImageDownloadTries >= 3) {
-            clearMediaImageState();
+            if (m_mediaImageIsPreview && !m_mediaImage.isEmpty()) {
+                qCDebug(lcMediaPlayer()) << "Real-URL fetch failed, preserving preview";
+            } else {
+                clearMediaImageState();
+            }
             reply->deleteLater();
             return;
         } else {
-            QTimer::singleShot(1000, this, [this, replyImageUrl] {
+            // Carry the preview-intent of this failed reply into the retry so
+            // a retried preview fetch stays flagged as a preview on success.
+            const bool retryIsPreview = reply->property("isPreview").toBool();
+            QTimer::singleShot(1000, this, [this, replyImageUrl, retryIsPreview] {
                 if (replyImageUrl == m_mediaImageUrl) {
-                    getMediaImageColor(replyImageUrl);
+                    getMediaImageColor(replyImageUrl, retryIsPreview);
                 }
             });
         }
@@ -915,6 +1002,11 @@ void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
         if (!byteArray.isEmpty()) {
             m_mediaImage = QString("data:image/png;base64,");
             m_mediaImage.append(QString::fromLatin1(byteArray.toBase64().data()));
+            // Flag reflects the intent tagged on this reply at fetch time
+            // (see getMediaImageColor). Preserves correctness when a preview
+            // fetch and a real-URL fetch race — whichever completes last and
+            // matches m_mediaImageUrl wins, and its intent sticks.
+            m_mediaImageIsPreview = reply->property("isPreview").toBool();
             emit mediaImageChanged();
 
             m_mediaImageColor = computeAverageImageColor(image);
