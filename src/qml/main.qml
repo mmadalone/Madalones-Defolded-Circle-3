@@ -17,6 +17,7 @@ import SoundEffects 1.0
 import SoftwareUpdate 1.0
 import Entity.Controller 1.0
 import Integration.Controller 1.0
+import TouchSlider 1.0
 
 import "qrc:/components" as Components
 import "qrc:/settings/softwareupdate" as Softwareupdate

@@ -3,6 +3,8 @@
 
 #include "soundEffects.h"
 
+#include <QFileInfo>
+
 #include "../logging.h"
 
 namespace uc {
@@ -12,7 +14,16 @@ SoundEffects *SoundEffects::s_instance = nullptr;
 
 SoundEffects::SoundEffects(int volume, bool enabled, const QString &effectsDir, hw::HardwareModel::Enum model,
                            QObject *parent)
-    : QObject(parent), m_effectsDir(effectsDir), m_model(model), m_volume(volume), m_enabled(enabled) {
+    : QObject(parent),
+      m_effectsDir(effectsDir),
+      m_effectClick(nullptr),
+      m_effectClickLow(nullptr),
+      m_effectConfirm(nullptr),
+      m_effectError(nullptr),
+      m_effectBatteryCharge(nullptr),
+      m_model(model),
+      m_volume(volume),
+      m_enabled(enabled) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 }
@@ -51,24 +62,34 @@ void SoundEffects::play(SoundEffects::SoundEffect effect) {
 
     switch (effect) {
         case Click:
-            m_effectClick->setVolume(qreal(m_volume) / 100);
-            m_effectClick->play();
+            if (m_effectClick) {
+                m_effectClick->setVolume(qreal(m_volume) / 100);
+                m_effectClick->play();
+            }
             break;
         case ClickLow:
-            m_effectClickLow->setVolume(qreal(m_volume) / 100);
-            m_effectClickLow->play();
+            if (m_effectClickLow) {
+                m_effectClickLow->setVolume(qreal(m_volume) / 100);
+                m_effectClickLow->play();
+            }
             break;
         case Confirm:
-            m_effectConfirm->setVolume(qreal(m_volume) / 100);
-            m_effectConfirm->play();
+            if (m_effectConfirm) {
+                m_effectConfirm->setVolume(qreal(m_volume) / 100);
+                m_effectConfirm->play();
+            }
             break;
         case Error:
-            m_effectError->setVolume(qreal(m_volume) / 100);
-            m_effectError->play();
+            if (m_effectError) {
+                m_effectError->setVolume(qreal(m_volume) / 100);
+                m_effectError->play();
+            }
             break;
         case BatteryCharge:
-            m_effectBatteryCharge->setVolume(qreal(m_volume) / 100);
-            m_effectBatteryCharge->play();
+            if (m_effectBatteryCharge) {
+                m_effectBatteryCharge->setVolume(qreal(m_volume) / 100);
+                m_effectBatteryCharge->play();
+            }
     }
 }
 
@@ -82,20 +103,31 @@ QObject *SoundEffects::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) 
 }
 
 void SoundEffects::createEffects(const QAudioDeviceInfo &deviceInfo) {
-    m_effectClick = new QSoundEffect(deviceInfo, this);
-    m_effectClick->setSource(QUrl::fromLocalFile(m_effectsDir + QStringLiteral("/click.wav")));
+    // Skip all effect creation if the path is unset. Prevents
+    // "QSoundEffect(qaudio): Error decoding source file:///*.wav" warnings
+    // when UC_SOUND_EFFECTS_PATH isn't in the environment (dev env, or
+    // a partially-configured firmware). play() null-checks each pointer.
+    if (m_effectsDir.isEmpty()) {
+        qCDebug(lcUi()) << "UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup";
+        return;
+    }
 
-    m_effectClickLow = new QSoundEffect(deviceInfo, this);
-    m_effectClickLow->setSource(QUrl::fromLocalFile(m_effectsDir + QStringLiteral("/click_lo.wav")));
+    auto makeEffect = [&](const QString &filename) -> QSoundEffect * {
+        const QString path = m_effectsDir + QStringLiteral("/") + filename;
+        if (!QFileInfo::exists(path)) {
+            qCDebug(lcUi()) << "Sound effect file missing, skipping:" << path;
+            return nullptr;
+        }
+        auto *effect = new QSoundEffect(deviceInfo, this);
+        effect->setSource(QUrl::fromLocalFile(path));
+        return effect;
+    };
 
-    m_effectConfirm = new QSoundEffect(deviceInfo, this);
-    m_effectConfirm->setSource(QUrl::fromLocalFile(m_effectsDir + QStringLiteral("/confirm.wav")));
-
-    m_effectError = new QSoundEffect(deviceInfo, this);
-    m_effectError->setSource(QUrl::fromLocalFile(m_effectsDir + QStringLiteral("/error.wav")));
-
-    m_effectBatteryCharge = new QSoundEffect(deviceInfo, this);
-    m_effectBatteryCharge->setSource(QUrl::fromLocalFile(m_effectsDir + QStringLiteral("/zap_future.wav")));
+    m_effectClick         = makeEffect(QStringLiteral("click.wav"));
+    m_effectClickLow      = makeEffect(QStringLiteral("click_lo.wav"));
+    m_effectConfirm       = makeEffect(QStringLiteral("confirm.wav"));
+    m_effectError         = makeEffect(QStringLiteral("error.wav"));
+    m_effectBatteryCharge = makeEffect(QStringLiteral("zap_future.wav"));
 }
 
 }  // namespace ui

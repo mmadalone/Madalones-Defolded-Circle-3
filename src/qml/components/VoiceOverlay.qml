@@ -673,6 +673,7 @@ Popup {
                     return "";
                 }
             }
+            return "";
         }
 
         color: colors.light

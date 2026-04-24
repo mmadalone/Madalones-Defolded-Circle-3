@@ -854,6 +854,12 @@ void MediaPlayer::onNetworkError(QNetworkReply::NetworkError error) {
         return;
     }
 
+    // Cancels are routine supersession events (new artwork URL arrives before
+    // the previous fetch finishes), not failures — filter from logs.
+    if (error == QNetworkReply::OperationCanceledError) {
+        return;
+    }
+
     qCWarning(lcMediaPlayer()) << "Image download network error:"
                                << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
                                << error << reply->errorString();
@@ -868,6 +874,14 @@ void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
     }
 
     if (reply->error()) {
+        // Cancels are supersession events, not failures — don't log, don't
+        // consume the retry budget (would cause spurious exhaustion on rapid
+        // entity re-subscribes post-boot).
+        if (reply->error() == QNetworkReply::OperationCanceledError) {
+            reply->deleteLater();
+            return;
+        }
+
         m_mediaImageDownloadTries++;
         qCWarning(lcMediaPlayer()).nospace() << "Image download failed "
                                              << m_mediaImageDownloadTries << "/3 ("
