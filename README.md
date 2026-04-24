@@ -14,7 +14,7 @@ Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero
 
 ## Features
 
-**Themes (v1.2.2):**
+**Themes (v1.4.8):**
 - **Matrix rain** — 3-layer depth with per-cell residual glow, 108 tunable properties, 6 color modes (green / blue / red / amber / white / purple + rainbow / rainbow-gradient / neon), 4 charsets (ASCII / binary / digits / katakana), full glitch engine (flash, stutter, reverse, direction trails, chaos bursts), message overlay with pulse/flash effects. **⚠ 108 tunables is enough rope to make it look stunning, subtle, chaotic, or downright unreadable.** Every combination is legitimate and intended — the defaults are a conservative starting point, but every slider, toggle, and colour picker is exposed because the point of the mod is to let you push it wherever you want.
   - **Auto-rotate** — optional continuous 360° direction sweep with smooth curved trails. Coprime-gravity spawn guarantees every row and column is visited on the way round — no dead zones. The rotation speed is a slider, so the sweep is **as slow or as fast as you want**: glacial-and-hypnotic on a docked remote, or a blur at the top end.
   - **Manual direction control** — 8-way DPAD or touch zones override auto-rotate at any time and bend the rain via gravity-lerp (no respawn on direction change).
@@ -46,8 +46,12 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0-pre):**
-- **Battery chip on every detail page** — keeps battery % + charging state visible while inside Activity / Light / Climate / TV / Speaker / sensor detail pages, where the home-screen StatusBar is otherwise covered. Mirrors the StatusBar visual 1:1; user-toggleable via `Settings → UI → Battery on detail pages` (default on).
+**UI chrome beyond the screensaver (v1.3.0 → v1.4.8):**
+- **Battery chip on every detail page** (v1.3.0) — keeps battery % + charging state visible while inside Activity / Light / Climate / TV / Speaker / sensor detail pages, where the home-screen StatusBar is otherwise covered. Mirrors the StatusBar visual 1:1. Upstream UC independently shipped the same feature in v0.72.0 as "Show battery indicator everywhere"; v1.4.0 adopted their public API (`Config.showBatteryEveryWhere`, QSettings key `ui/batteryEveryWhere`, `Settings → UI` toggle) while keeping our superior chain-anchoring `RowLayout` that handles 6 status indicators adaptively. Fresh-install default is upstream's `false`; v1.3.0 upgraders retain `true` via one-shot QSettings migration.
+- **Volume OSD suppression** (v1.4.2) — `Settings → UI → Show volume overlay` disables the volume indicator that appears on VOLUME_UP / VOLUME_DOWN without disabling the underlying commands. Single guard in `VolumeOverlay.qml::start()` covers all 16 call sites. Complemented in v1.4.4 by per-entity `hideVolumeOverlay` (integrations can opt individual devices in via ucapi `options["hide_volume_overlay"]`).
+- **MediaBrowser button suppression** (v1.4.8) — four global toggles in `Settings → UI` to hide individual icons on the media player controls row: `Show shuffle button`, `Show repeat button`, `Show media browser button`, `Show source picker button`. Operates at the display layer; AND-chained with existing `entityObj.hasFeature(...)` checks so a Config-disabled button hides unconditionally but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits without also breaking the corresponding command — UC-side config toggles solve this at the right layer.
+- **Quiet boot** (v1.4.6) — boot-log warning count reduced ~177 → ~4 via targeted fixes (image-download cancel filter, VoiceOverlay binding terminator, missing TouchSlider QML import, QSoundEffect missing-file guard). Not user-visible but makes logdy debugging sessions far more readable.
+- **Touchbar isolation + sensitivity tuning** (v1.4.7, v1.4.8) — physical touch slider is fully isolated while the screensaver owns it (prior partial isolation could still commit volume / seek / brightness changes to the media_player entity on release — fixed in v1.4.7). Screensaver's own touchbar speed / density control sensitivity tuned ~3× less sensitive in v1.4.8 so a full parameter sweep takes ~270 px of slider travel instead of ~90 px.
 
 ---
 
@@ -70,15 +74,15 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.2.2/remote-ui-v1.2.2-UCR2-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.2.2/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.8/remote-ui-v1.4.8-UCR2-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.8/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.2.2-UCR2-static.tar.gz remote-ui.hash
+./scripts/verify-release.sh remote-ui-v1.4.8-UCR2-static.tar.gz remote-ui.hash
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.2.2-UCR2-static.tar.gz" \
+    --form "file=@remote-ui-v1.4.8-UCR2-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -150,9 +154,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.2.2-UCR2-static.tar.gz \
+    remote-ui-v1.4.8-UCR2-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.2.2-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.8-UCR2-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -237,6 +241,24 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.4.8** (2026-04-24) — Touchbar sensitivity tuning (~3× less sensitive) + 4 global `Settings → UI` toggles to hide individual shuffle / repeat / media-browser / source-picker icons on the media player controls row. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits to hide just one icon; UC-side toggles solve at the display layer. AND-chained with entity feature checks — never unhides a button the entity chose not to expose.
+
+**v1.4.7** (2026-04-24) — TouchSlider screensaver guard completeness. Physical slider touches during the screensaver were bleeding through to the active media_player entity (volume / seek / brightness / position commits on release) because the `screensaverActive` guard was only on `onTouchPressed` — `onTouchXChanged` and `onTouchReleased` ran ungated in all 4 TouchSlider variants. Fix: same guard added to both handlers across all 4 variants. 8 one-liners.
+
+**v1.4.6** (2026-04-24) — Quiet boot hygiene pass. Boot-log warning count reduced ~177 → ~4 via targeted fixes: `QNetworkReply::OperationCanceledError` filter at both `mediaPlayer.cpp` log sites (eliminates 167× per-boot image-cancel flood), terminal `return ""` in `VoiceOverlay.qml:666` JS binding, missing `import TouchSlider 1.0` added to `main.qml` (also unmasked a silently-broken slider-to-idle-reset wiring), file-existence guard in `soundEffects.cpp::createEffects()` (eliminates 5× QSoundEffect decode warnings when env var is unset).
+
+**v1.4.4** (2026-04-24) — MediaBrowser full hardware-button coverage (MUTE / STOP / NEXT / PREV / CHANNEL_UP / CHANNEL_DOWN as context-aware page-scroll) + 14-site volume split-guard refactor (separates command dispatch from OSD display) + new per-entity `hideVolumeOverlay` flag on MediaPlayer, ingested from ucapi `options["hide_volume_overlay"]`.
+
+**v1.4.3** (2026-04-24) — MediaBrowser unescapable-loading-loop hotfix. `onOpened` null-guard + replace global `LoadingScreen` with inline `BusyIndicator` (no input-block) + 15 s watchdog timer. Prevents the 3-minute lockout the pre-v1.4.3 upstream had when a transiently-null `entityObj` binding race hit mid-open.
+
+**v1.4.2** (2026-04-24) — `Config.showVolumeOverlay` global user-preference toggle (default on). Suppresses the volume OSD without disabling VOLUME_UP / VOLUME_DOWN commands. Single early-return guard in `VolumeOverlay.qml::start()` covers all 16 call sites.
+
+**v1.4.1** (2026-04-24) — Volume OSD feature-check guards at 7 previously-unguarded call sites (`Page.qml`, `MediaBrowser.qml`, 5 deviceclass files). Upstream bug: `volume.start()` was firing unconditionally even when the entity had removed `Volume_up_down` from its feature set. Fix adds the same `hasFeature(...)` check `Activity.qml` already had. Upstream-contributable.
+
+**v1.4.0** (2026-04-23) — Upstream `v0.72.0` merge (press-and-hold album art → media browse, smarter error handling, UC's independently-shipped "Show battery indicator everywhere"). Option B rebase: adopted upstream's public API, kept our superior chain-anchoring `RowLayout` for 6 status indicators in `BaseDetail.qml`. One-shot QSettings migration preserves v1.3.0 user state (`ui/batteryOnDetailPages` → `ui/batteryEveryWhere`).
+
+**v1.3.0** (2026-04-23) — Mod 1 architectural cleanup (matrixrain.cpp 2055 → ~1430 lines via `LayerPipeline` + `AtlasBuilder` extraction, 8 dead `tap*()` wrappers deleted) + Mod 3 detail-page battery chip + atlas profiling overlay + dead-code sweep + Settings → Screensaver open-freeze fix (deferred Loaders) + hot-path render allocation removal.
 
 **v1.2.2** (2026-04-13) — 5 screensaver bug fixes, thermal sim-pause, DPAD respawn fix, strict warning flags, clang-tidy CI, i18n baseline, macro cleanup, release signing + canary deploy scripts, upstream merge rehearsal, SBOM, a11y audit checklist.
 

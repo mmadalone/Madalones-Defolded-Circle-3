@@ -180,7 +180,7 @@ Clock and battery overlay controls — show/hide, font, color, size, charging-on
 - Enter: single tap = chaos burst, double-tap = restore direction, hold = slow motion
 - DPAD interactive toggle (enable/disable all DPAD controls)
 - Direction persistence — remembers last DPAD direction between sessions (toggleable)
-- Touchbar speed — swipe the touchbar to adjust animation speed (toggleable, visible when DPAD is on)
+- Touchbar speed — swipe the touchbar to adjust animation speed (toggleable, visible when DPAD is on). Sensitivity tuned ~3× less twitchy in v1.4.8 — full 10→100 sweep now takes ~270 px of slider travel instead of ~90 px.
 - When DPAD interactive is OFF, all DPAD buttons dismiss the screensaver
 
 ### TV Static
@@ -240,7 +240,7 @@ All other themes (Matrix, Starfield, Analog, Minimal) use the Tier 1 shared over
 - **Any physical button dismisses** — all remote buttons close the screensaver unconditionally
 - **Idle screensaver** — activate screensaver after configurable idle timeout (15-55s) when undocked
 - **Display power gating** — animation pauses when display is off, resumes on wake
-- **Touchbar isolation** — volume, seek, brightness, and position sliders are suppressed while the screensaver is active. Touchbar is used for screensaver controls (Matrix: speed, Starfield: density).
+- **Touchbar isolation** — volume, seek, brightness, and position sliders are fully suppressed while the screensaver is active. Touchbar is used for screensaver controls (Matrix: speed, Starfield: density). *Completeness fixed in v1.4.7:* prior isolation was press-only — the XChanged and Released handlers in the 4 TouchSlider variants were still committing stale values to the active media_player entity (most visibly: Kodi volume getting overwritten on release every time you adjusted screensaver speed). All three handlers now bail when `screensaverActive` is true.
 
 ## Settings Reference
 
@@ -391,7 +391,39 @@ For build instructions, see [BUILD.md](BUILD.md).
 - **Added** master "Enable tap effects" toggle in the Tap section of the Charging Screen settings.
 - **Bumped** `TICK_MAX_MS` from 150 to 300 so slider value 10 actually maps to a visibly slower tick.
 
-See [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md) for detailed session logs.
+---
+
+### v1.3.x — v1.4.x (2026-04-23 → 2026-04-24)
+
+**v1.3.0** — Mod 1 architectural cleanup + atlas profiling overlay + detail-page battery chip + Settings → Screensaver open-freeze fix.
+- **Refactored** `matrixrain.cpp` from 2055 → ~1430 lines. Extracted `LayerPipeline` (multi-layer depth-plane subsystem, ~660 lines) and `AtlasBuilder` (single-layer atlas + canonical SHA-1 cache-key, ~115 lines) as pure-C++ collaborators on `MatrixRainItem`. Zero observable behavior change, `updatePaintNode` slimmed 214 → 164 lines. Deleted 8 dead `tap*()` wrappers verified zero-call-site by plan agent.
+- **Fixed** Settings → Screensaver page stalling on open. Root cause: `ChargingScreen.qml` (the settings page) was unconditionally instantiating all six theme sub-pages on every open, then gating visibility — Qt compiled + laid out every theme's full settings UI regardless. Wrapped each sub-page in `Loader { active: theme === "..." ; asynchronous: true }` — only the currently-selected theme's sub-page exists at any moment.
+- **Added** atlas profiling overlay toggle in Matrix → General Behavior. Shows live per-phase build timings (`cache=hit|miss`, per-layer `buildMs`, `composeMs`, `remapMs`, `totalMs`, `firstPaintMs`, `ctorToPaintMs`) — useful for on-device profiling without needing log capture.
+- **Performance** — `ClockOverlay` date string recomputation 864k/day → 1440/day (98% reduction) via minute-cadence Timer + cached property. Matrix render hot path: `countVisibleQuads` / `renderStreamTrails` / multi-layer variants promoted their two per-frame scratch `QVector`s to shared `MatrixRainItem` members, saving ~200-500 µs/frame on dense scenes.
+
+**v1.4.0** (2026-04-23) — upstream `v0.72.0` merge (Option B rebase)
+- Brought in upstream's press-and-hold media browse gesture, 4-icon MediaComponent controls row (shuffle / repeat / browser / source), smarter media-browse error handling. UC independently shipped our Mod 3 battery-chip feature as "Show battery indicator everywhere" — adopted their public API, kept our superior Option A chain-anchoring `RowLayout` that handles 6 status indicators adaptively. One-shot QSettings migration (`main.cpp::migrateLegacySettings`) carries v1.3.0 user state forward (`ui/batteryOnDetailPages` → `ui/batteryEveryWhere`).
+
+**v1.4.1–v1.4.5** (2026-04-24) — volume OSD / MediaBrowser / TouchSlider hardening
+- **v1.4.1** — volume OSD feature-check guards at 7 previously-unguarded call sites (upstream bug). `volume.start()` was firing unconditionally even when the entity had removed `Volume_up_down` from its feature set. Added `hasFeature(...)` guards matching `Activity.qml`'s existing pattern across `Page.qml` + `MediaBrowser.qml` + 5 deviceclass files. Upstream-contributable.
+- **v1.4.2** — `Config.showVolumeOverlay` user-preference toggle (`Settings → UI → Show volume overlay`, default on). Single early-return guard in `VolumeOverlay.qml::start()` covers all 16 call sites.
+- **v1.4.3** — MediaBrowser unescapable-loading-loop hotfix. Pre-fix: a null `entityObj` race threw a TypeError mid-`onOpened`, `buttonNavigation.takeControl()` never ran, hardware keys went dead, `pageLoading: true` triggered global `LoadingScreen` with `inputController.blockInput(true)` and a 180 s timeout = 3-minute hard lockout + thermal risk. Fix: null-guard + replace `LoadingScreen` call with inline `BusyIndicator` + 15 s watchdog.
+- **v1.4.4** — MediaBrowser full hardware-button coverage (MUTE / STOP / NEXT / PREV / CHANNEL_UP/DOWN as context-aware page-scroll) + 14-site volume split-guard refactor (command dispatch decoupled from OSD display) + new per-entity `hideVolumeOverlay` flag on MediaPlayer entity, ingested from ucapi `options["hide_volume_overlay"]`.
+- **v1.4.5** — `TouchSlider.qml` null-guard. `startSetup()` top + Loader `y:` binding both hardened against null `entityObj` / null Loader-`item` during rapid card re-activation / source-clear transitions.
+
+**v1.4.6** (2026-04-24) — quiet boot hygiene pass
+- Boot-log warning count reduced ~177 → ~4 via four targeted fixes: `QNetworkReply::OperationCanceledError` filter at both `mediaPlayer.cpp` log sites (eliminates 167× per-boot image-cancel flood — these were supersession events, not failures), terminal `return ""` in `VoiceOverlay.qml:666` JS binding, missing `import TouchSlider 1.0` added to `main.qml` (also unmasked a silently-broken slider-to-idle-reset wiring that had been silently no-op'd via `ignoreUnknownSignals: true`), file-existence guard in `soundEffects.cpp::createEffects()` via new `makeEffect` lambda + null-checks in `play()` switch (eliminates 5× QSoundEffect decode warnings when `UC_SOUND_EFFECTS_PATH` is unset). Explicitly deferred: 2 cosmetic log-level downgrades (Empty ID getIcon, translation remove) — not worth the +1 drift each.
+
+**v1.4.7** (2026-04-24) — TouchSlider screensaver guard completeness
+- Physical slider touches during the screensaver were bleeding through to the active media_player entity — volume/seek/brightness/position writes were still committing on release. Root cause: the `applicationWindow.screensaverActive` early-return guard across all 4 TouchSlider*.qml variants was only on `onTouchPressed`. `onTouchXChanged` ran ungated (accumulated `targetVolume += Math.sign(rawDelta)` against stale state), and `onTouchReleased` ran ungated (`entityObj.setVolume(sliderContainer.targetVolume)` committed the stale target). Added the same guard to both handlers in all 4 variants — 8 one-liners, zero new drift.
+
+**v1.4.8** (2026-04-24) — touchbar sensitivity /3 + media-button suppression toggles
+- **Changed** screensaver touchbar speed/density control from 1:1 pixel-to-unit scaling to ~1:3. Raw delta now goes through `scaledDelta = delta / 3` before applying — full 10→100 sweep takes ~270 px of slider travel instead of ~90 px. Minimum 3 px dead zone unchanged.
+- **Added** 4 new global Config toggles in `Settings → UI` to hide individual icons on the MediaComponent 4-icon controls row: `Show shuffle button` / `Show repeat button` / `Show media browser button` / `Show source picker button`. Q_PROPERTY + QSettings-backed (`ui/show*Button`, default `true` preserves upstream behavior on upgrade). AND-chained with existing `entityObj.hasFeature(...)` checks — a Config-disabled button always hides, but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits to hide a single button (stripping also disables the command); UC-side toggles solve at the display layer.
+
+---
+
+See [SCREENSAVER-IMPLEMENTATION.md](SCREENSAVER-IMPLEMENTATION.md) for detailed session logs and `_build_logs/` for per-release session notes.
 
 ## Roadmap
 
