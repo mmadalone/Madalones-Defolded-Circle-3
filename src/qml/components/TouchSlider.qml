@@ -28,6 +28,16 @@ Popup {
     property var requiredCoverFeaturesForPosition: [CoverFeatures.Position]
 
     function startSetup() {
+        // Null-guard: entityObj binding can race during rapid navigation / card re-activation.
+        // Without this, startSetup() throws TypeError on entityObj.type (line below) — aborts
+        // the handler mid-flight and leaves touchSlider.active in stale state. v1.4.5 fix.
+        if (!entityObj) {
+            console.warn("TouchSlider: startSetup called with null entityObj — suppressing");
+            touchSlider.active = false;
+            sliderLoader.source = "";
+            return;
+        }
+
         // Suppress touch slider while screensaver is active
         if (applicationWindow.screensaverActive) {
             touchSlider.active = false;
@@ -158,7 +168,9 @@ Popup {
         id: sliderLoader
         width: ui.width; height: 300
         x: 0
-        y: ui.height - sliderLoader.item.height
+        // Null-guard: sliderLoader.item is null when source="" is set (v1.4.5 startSetup null-guard
+        // branch, or the "Disabled on this hardware" branch). Previously the binding threw TypeError.
+        y: sliderLoader.item ? ui.height - sliderLoader.item.height : 0
         active: touchSlider.active
 
 
