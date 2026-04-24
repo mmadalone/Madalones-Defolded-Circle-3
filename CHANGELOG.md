@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.8 — 2026-04-24 — Touchbar speed sensitivity tuning + media-button suppression toggles
+
+Two independent additive changes bundled:
+
+### Changed
+- **Screensaver touchbar speed/density sensitivity tuned ~3× less sensitive.** Matrix + Starfield touchbar-speed control in `ChargingScreen.qml` was mapping 1 touchbar pixel to 1 unit of speed/density — a full 10→100 sweep happened over ~90 px, which felt twitchy in practice. Inserted a `scaledDelta = delta / 3` factor between the raw touchbar delta and the speed/density update, so the full range now sweeps over ~270 px. Minimum-movement dead zone (`abs(delta) < 3`) unchanged. If this new feel turns out to be too slow in practice, the knob is a single constant — easy to re-tune.
+
+### Added
+- **Four new global toggles to hide shuffle / repeat / media-browser / source-picker icons on the media player controls row** (`Settings → UI`). Parallel to the v1.4.2 `Config.showVolumeOverlay` pattern — global Q_PROPERTY + QSettings-backed, default `true` (preserves upstream behavior on upgrade), one-line `visible:` binding at each icon in `MediaComponent.qml`. Motivation: the Kodi integration fork cannot selectively strip individual `MediaPlayerFeatures` bits to hide just one of these icons (e.g., Kodi's native play-queue covers shuffle/repeat well enough that the remote-ui duplicates feel cluttered, but the browser button is useful to keep). UC-side config toggles solve the scope problem by operating at the display layer, not the feature-capability layer.
+  - `Config.showShuffleButton` (QSettings key `ui/showShuffleButton`, default `true`) — hides the shuffle toggle icon when off.
+  - `Config.showRepeatButton` (QSettings key `ui/showRepeatButton`, default `true`) — hides the repeat-mode cycle icon + its active-state badge when off.
+  - `Config.showMediaBrowserButton` (QSettings key `ui/showMediaBrowserButton`, default `true`) — hides the media-browser shortcut icon when off. **Does not affect** the press-and-hold gesture on album art that upstream v0.72.0 added (same-purpose entry point, still gated on `Browse_media`/`Search_media` features — call this out in the Settings helper text).
+  - `Config.showMediaSourceButton` (QSettings key `ui/showMediaSourceButton`, default `true`) — hides the source-picker icon when off.
+  - **QtQuick.Layouts collapse semantics:** invisible children of the 4-icon RowLayout don't consume horizontal space (`Layout.fillWidth: true` on the 3 remaining visible icons redistributes the row automatically). No layout churn, no empty slots, no `Layout.preferredWidth: visible ? N : 0` gymnastics needed — matches the existing browser/source icons' `visible:` gating on MediaPlayerFeatures, which already relied on the same collapse behavior.
+- **4 new Switch rows in `Settings → UI`** ("Show shuffle button" / "Show repeat button" / "Show media browser button" / "Show source picker button"), chained into `KeyNavigation.up`/`.down` below the existing "Show volume overlay" row. `Flickable.contentY` clamp bumped 1260 → 1900 for the ~640 px of added content (4 × ~160 px per toggle, same scaling as v1.4.2).
+
+### Architectural note
+- **Zero impact on upstream feature-capability semantics.** Integrations still advertise `Shuffle` / `Repeat` / `Browse_media` / `Search_media` / `Select_source` features as they always did; the existing `entityObj.hasFeature(...)` checks on browser/source icons remain in place and are AND-chained with the new Config toggle. A Config-disabled button hides regardless of feature advertising; a Config-enabled button still respects the entity's actual capabilities. The global master is strictly additive — it never *unhides* a button the entity chose not to expose.
+- **Companion Kodi-patch note:** The Kodi integration fork (`integration-kodi-patch`) does not need any changes for this — the new toggles operate entirely on the remote-ui side, no ucapi `options` ingest, no new entity property. Contrast with v1.4.4's per-entity `hideVolumeOverlay` which required a two-repo contract; these four toggles were deliberately scoped as global UC-side preferences because per-entity granularity isn't needed (user's stated preference: "I don't want the browser button at all, everywhere" — a whole-UI preference, not a per-device one).
+
+---
+
 ## v1.4.7 — 2026-04-24 — TouchSlider screensaver guard completeness fix
 
 ### Fixed

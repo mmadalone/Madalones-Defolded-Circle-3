@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.7 — TouchSlider screensaver guard completeness)
+**Last updated:** 2026-04-24 (v1.4.8 — Touchbar sensitivity + media-button toggles)
 
 ---
 
@@ -172,6 +172,25 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.4.8: Touchbar sensitivity tuning + media-button suppression toggles
+
+Two independent additive changes bundled.
+
+**Touchbar sensitivity** (1 file, 2 edits): `src/qml/components/ChargingScreen.qml` screensaver touchbar speed/density control scaled by `/ 3` — was 1:1 pixel-to-unit (twitchy at the physical slider size), now ~1:3 so the full 10→100 sweep happens over ~270 px instead of ~90 px.
+
+**Media-button suppression toggles** (parallel to v1.4.2 `Config.showVolumeOverlay` pattern): 4 new global Q_PROPERTYs in `Config` (`showShuffleButton` / `showRepeatButton` / `showMediaBrowserButton` / `showMediaSourceButton`), default `true` — one-line `visible:` bindings at each icon in `MediaComponent.qml`, four `Settings → UI` Switch rows for discoverability. Motivation: Kodi integration fork can't selectively strip individual `MediaPlayerFeatures` bits to hide just one of the 4 controls-row icons — UC-side config toggles solve it at the display layer. Invisible children of the RowLayout collapse automatically via `Layout.fillWidth: true` (same mechanism upstream's browser/source `visible:` gates relied on). Global master is strictly additive to `entityObj.hasFeature(...)` checks on browser/source icons — never unhides a button the entity chose not to expose.
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/qml/components/ChargingScreen.qml` | **Extended by v1.4.8.** Touchbar speed/density handler (lines ~645-667, previously added in v1.2.0 and refined through v1.4.x) now scales `delta` by `/ 3` before applying to `ScreensaverConfig.matrixSpeed` / `ScreensaverConfig.starfieldDensity`. Minimum-movement 3 px dead zone unchanged. One new local `scaledDelta` var, one new comment — zero architectural impact. |
+| `src/config/config.h` | **Extended by v1.4.8** (in addition to v1.4.2 `showVolumeOverlay`). 4 new `Q_PROPERTY(bool show{Shuffle,Repeat,MediaBrowser,MediaSource}Button ...)` declarations adjacent to `showVolumeOverlay`, 4 getter + 4 setter method decls in the Q_PROPERTY methods block, 4 NOTIFY signal decls. Follows identical naming/placement pattern as the v1.4.2 additions. |
+| `src/config/config.cpp` | **Extended by v1.4.8.** 4 getter (`m_settings->value("ui/show*Button", true).toBool()`) + 4 setter (`m_settings->setValue(...); emit ...Changed();`) implementations appended directly after `setShowVolumeOverlay()`. Identical shape to the v1.4.2 `getShowVolumeOverlay` / `setShowVolumeOverlay` pair. |
+| `src/qml/components/entities/activity/MediaComponent.qml` | **Newly modified by v1.4.8.** Added `import Config 1.0` alongside existing imports. Added `visible: Config.showShuffleButton` to the shuffle `Components.Icon` and `visible: Config.showRepeatButton` to the repeat `Components.Icon` (neither had a `visible:` binding previously — upstream's 4-icon row relied on the parent Rectangle's `visible: controlsContainerHeight > 0 && mediaTitle.visible` gate). Modified the existing `visible:` bindings on the browser and source-picker icons: browser now reads `Config.showMediaBrowserButton && (entityObj.hasFeature(Browse_media) \|\| entityObj.hasFeature(Search_media))`; source-picker now reads `Config.showMediaSourceButton && entityObj.hasFeature(Select_source) && entityObj.sourceList.length !== 0`. Global toggle AND-chains with existing feature-capability checks — never forces a hidden button visible. |
+| `src/qml/settings/settings/Ui.qml` | **Extended by v1.4.8** (in addition to v1.4.2 `showVolumeOverlay` toggle row). 4 new `ColumnLayout` toggle rows appended below the volumeOverlay row, each preceded by a divider `Rectangle` and built on the exact volumeOverlay template — label + Switch + helper Text, wired to the 4 new Config properties. `volumeOverlaySwitch` given a `KeyNavigation.down: shuffleButtonSwitch` (previously terminal); KeyNavigation chain extends through shuffle → repeat → mediaBrowser → mediaSource (terminal). `Flickable.contentY` clamp bumped 1260 → 1900 for the ~640 px of added content (4 × ~160 px per toggle, same scaling as v1.4.2's 1100 → 1260). |
 
 ---
 
