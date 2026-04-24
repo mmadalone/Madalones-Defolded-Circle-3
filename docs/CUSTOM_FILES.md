@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-23 (Mod 1 matrixrain.cpp extraction — LayerPipeline + AtlasBuilder + Palettes singleton + test .pro fixes)
+**Last updated:** 2026-04-24 (v1.4.2 — Config.showVolumeOverlay toggle for volume OSD suppression)
 
 ---
 
@@ -20,8 +20,8 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Modification |
 |------|-------------|
 | `src/main.cpp` | Added `#include` for MatrixRain, ScreensaverConfig. `qmlRegisterType<MatrixRainItem>`. Instantiated `ScreensaverConfig` singleton. v1.4.0: added `<QSettings>` include + `migrateLegacySettings()` helper (carries v1.3.0's `ui/batteryOnDetailPages` forward into upstream's `ui/batteryEveryWhere`) called once at startup after `setApplicationName`. |
-| `src/config/config.h` | Screensaver properties removed (moved to ScreensaverConfig). Only a redirect comment remains. |
-| `src/config/config.cpp` | Mirror of config.h: screensaver impls removed, redirect comment for moved ScreensaverConfig. |
+| `src/config/config.h` | Screensaver properties removed (moved to ScreensaverConfig). Only a redirect comment remains. v1.4.2: added `showVolumeOverlay` Q_PROPERTY + getter/setter decls + signal. |
+| `src/config/config.cpp` | Mirror of config.h: screensaver impls removed, redirect comment for moved ScreensaverConfig. v1.4.2: added `getShowVolumeOverlay` / `setShowVolumeOverlay` (QSettings key `ui/showVolumeOverlay`, default `true`). |
 | `src/logging.h` | Added `lcScreensaver` logging category declaration. |
 | `src/logging.cpp` | Added `lcScreensaver` logging category definition (uc.ui.screensaver). |
 | `src/hardware/battery.h` | Added `Q_INVOKABLE setPowerSupply()` + `instance()` getter for DEV-mode F12 dock-toggle. |
@@ -125,6 +125,18 @@ Root-cause fix for a bug where the volume OSD (`VolumeOverlay.qml`) would fire e
 | `src/qml/components/entities/media_player/deviceclass/Tv.qml` | Same. |
 | `src/qml/components/entities/media_player/deviceclass/Streaming_box.qml` | Same. |
 | `src/qml/components/entities/media_player/deviceclass/Set_top_box.qml` | Same. |
+
+---
+
+## v1.4.2: Volume OSD suppression toggle
+
+User-facing complement to v1.4.1's feature-check fix. Adds a `Config.showVolumeOverlay` QSettings-backed toggle (`ui/showVolumeOverlay`, default `true`) so users can globally suppress the volume OSD popup regardless of entity feature advertising. Implementation is a single early-return guard in `VolumeOverlay.qml::start()` — one suppression point for all 16 volume-key call sites. Settings exposed in `Settings → UI → "Show volume overlay"`.
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/qml/components/VolumeOverlay.qml` | Added `import Config 1.0`. Added one-line early-return guard at the top of `start(entity, up = true)`: `if (!Config.showVolumeOverlay) return;`. Short-circuits before any side-effect (no property writes, no `hideTimer.restart()`, no `volume.open()`). Rest of the 199-line Popup unchanged. |
+| `src/qml/settings/settings/Ui.qml` | Re-added to modified-upstream after v1.4.0's rebase had it byte-identical to upstream. Appended new "Show volume overlay" toggle block below "Coverflow in media browser"; added `KeyNavigation.down: volumeOverlaySwitch` to the previously-dangling `mediaCoverflowSwitch`; bumped `Flickable.contentY` clamp 1100 → 1260 for the extra ~160 px (restores v1.3.0 value). |
 
 ---
 

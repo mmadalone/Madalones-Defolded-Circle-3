@@ -4247,8 +4247,18 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="333"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="334"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="360"/>
+        <source>Show volume overlay</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="382"/>
+        <source>Display volume indicator overlay when volume keys are pressed.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4786,7 +4796,7 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="874"/>
+        <location filename="../../src/config/config.cpp" line="885"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fähler bim Lade vo de Konfiguration. Versuechs nomol.</translation>
     </message>

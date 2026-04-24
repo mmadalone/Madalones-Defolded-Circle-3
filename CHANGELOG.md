@@ -11,6 +11,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.2 — 2026-04-24 — Settings → UI toggle to suppress volume OSD popup
+
+### Added
+- **`Config.showVolumeOverlay`** (`Q_PROPERTY` in `src/config/config.h`, QSettings key `ui/showVolumeOverlay`, default `true` — preserves current behaviour on upgrade). Users can now globally disable the volume OSD that appears when pressing volume keys, without disabling the underlying volume commands themselves. Implementation is a single early-return guard at the top of `VolumeOverlay.qml::start()` — one suppression point covers all 16 call sites (8 files × VOLUME_UP + VOLUME_DOWN), architecturally orthogonal to v1.4.1's `hasFeature(Volume_up_down)` feature-advertising fix (that one checks the entity; this one is a user preference). Guard fires before any side effect (no property writes, no `hideTimer.restart()`, no `volume.open()`), so a disabled toggle produces zero OSD-related activity. Exposed as the final toggle in `Settings → UI` ("Show volume overlay") after "Coverflow in media browser", wired into the `KeyNavigation` chain. `Flickable.contentY` clamp bumped 1100 → 1260 for the ~160 px of added content (restores v1.3.0's value before the v1.4.0 rebase reverted it to upstream's 1100).
+
+### Deprecation (downstream coordination)
+- The `madalone/integration-kodi-patch` fork's `suppress_volume_overlay` (introduced `v1.18.13-madalone.1`, commit `d8cb60e`) stripped `VOLUME*` features from the Kodi entity to hide the OSD. Post-v1.4.1 that became a semantic flaw — hiding the OSD that way now also blocks actual volume control. `Config.showVolumeOverlay` supersedes it at the correct architectural layer (user preference, not entity capability). See `integration-kodi-patch/PLAN_v1.18.13-madalone.2.md` item #6 for the Kodi-side rework (ships after this tag).
+
+---
+
 ## v1.4.1 — 2026-04-24 — volume OSD guard fix (root-cause for kodi-integration `suppress_volume_overlay`)
 
 ### Fixed
