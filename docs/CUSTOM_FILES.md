@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.3 — MediaBrowser hotfix: null-guard + inline loading + watchdog)
+**Last updated:** 2026-04-24 (v1.4.4 — MediaBrowser button expansion + volume split-guard + per-entity OSD flag)
 
 ---
 
@@ -148,6 +148,30 @@ Fixes a latent upstream bug where a null `entityObj` binding race at open-time c
 | File | Modification |
 |------|-------------|
 | `src/qml/components/entities/media_player/MediaBrowser.qml` | Three targeted changes: **(1) null-guard in `onOpened`** — if `entityObj` is null, log a warning and `Qt.callLater(close)` before touching `browseNav` / `pageLoading` state (prevents the TypeError that triggered the original stuck-state). **(2) Replace `loading.start()` / `loading.stop()` calls with a local `BusyIndicator`** — standard `QtQuick.Controls 2.15`, id `inlineLoading`, centered in `contentItem`, `running: <flag>`. Popup no longer invokes `inputController.blockInput(true)` — X close button / hardware HOME / hardware BACK stay responsive at all times during browse loading. **(3) 15-second `loadingWatchdog` Timer** (`running: isLoading`, declarative property binding) — auto-closes with the standard "Could not load media" warning notification if browse stays pending past the watchdog window. Zero changes to `LoadingScreen.qml` (still used correctly by ~30 unrelated callers across the codebase: Settings / Wifi / docks / integrations / profiles / groups / onboarding). |
+
+---
+
+## v1.4.4: MediaBrowser button expansion + volume split-guard + per-entity OSD flag
+
+Three coupled behavior changes: full hardware-button coverage in MediaBrowser, split-guard refactor of the v1.4.1 volume call sites, and a new per-entity `hideVolumeOverlay` flag that integrations can set via ucapi `options` to suppress the volume OSD on a device-by-device basis. This is the remote-ui half of a two-repo contract — the companion Kodi integration-patch release (`v1.18.13-madalone.2`) reworks `suppress_volume_overlay` to set the new flag instead of stripping `VOLUME_UP_DOWN` features (the original architectural mistake that broke Kodi's actual volume control).
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/ui/entity/mediaPlayer.h` | **Newly modified by this fork as of v1.4.4.** Adds `Q_PROPERTY(bool hideVolumeOverlay ...)` (in the `// options` block alongside existing `volumeSteps`), the companion getter `getHideVolumeOverlay()`, a `hideVolumeOverlayChanged()` signal, an `m_hideVolumeOverlay = false` member, and declares `bool updateOptions(QVariant data) override;` to enable runtime option hot-updates (Base class stub was a no-op — this override was missing entity-wide, bonus fix). |
+| `src/ui/entity/mediaPlayer.cpp` | **Newly modified by this fork as of v1.4.4** (in addition to the existing 2-line image-redownload bugfix already listed in Shared Infrastructure). Adds constructor options ingest (`m_hideVolumeOverlay = options.value("hide_volume_overlay", false).toBool();` alongside the existing `volume_steps` / `simple_commands` reads) and the `MediaPlayer::updateOptions(QVariant)` implementation that emits `hideVolumeOverlayChanged()` on flip. |
+| `src/qml/components/VolumeOverlay.qml` | Second guard added inside `start(entity, up)`: `if (entity && entity.hideVolumeOverlay) return;` — placed after v1.4.2's `if (!Config.showVolumeOverlay) return;` global master. Precedence: OSD is hidden if EITHER says hide. Null-guard on `entity` is defensive (start() is a public function). |
+| `src/qml/components/entities/media_player/MediaBrowser.qml` | Four additions. (1) Six new action-map entries in `buttonNavigation.defaultConfig`: `MUTE` (unguarded), `STOP` (gated on `MediaPlayerFeatures.Stop`), `NEXT` (prefers `Fast_forward` → falls back to `Next`), `PREV` (prefers `Rewind` → falls back to `Previous`), `CHANNEL_UP` / `CHANNEL_DOWN` (with `pressed` + `pressed_repeat`, delegating to the new helpers below). (2) Three helper functions near `loadMore` — `pageScrollIncrement(lv)` computes items-per-page from `contentHeight` / item count, `pageScrollUp()` / `pageScrollDown()` call `positionViewAtIndex(newIndex, ListView.Beginning)` for snap-to-item page jumps. (3) Split-guard of existing `VOLUME_UP` / `VOLUME_DOWN` action-map entries: command (`volumeUp/Down()`) extracted outside the `hasFeature` block; only `volume.start()` stays gated. (4) No null-guard edits — v1.4.3's `onOpened` null-guard ensures `takeControl()` never runs when `entityObj` is null, so all new handlers inherit that protection transitively. |
+| `src/qml/components/Page.qml` | Split-guard refactor at the two volume call sites (`VOLUME_UP` / `VOLUME_DOWN` in the Media_player branch ~lines 337-342 and 357-362): `mediaComponentEntity.volumeUp/Down()` extracted outside the `hasFeature` block; `volume.start(mediaComponentEntity)` stays gated. Activity-branch path (via `triggerCommand`) unchanged — it was already unconditional. |
+| `src/qml/components/entities/media_player/deviceclass/Tv.qml` | Split-guard refactor of the `VOLUME_UP` / `VOLUME_DOWN` entries in `overrideConfig` (~lines 203-218). Same pattern as Page.qml. |
+| `src/qml/components/entities/media_player/deviceclass/Set_top_box.qml` | Same split-guard refactor (~lines 203-218). |
+| `src/qml/components/entities/media_player/deviceclass/Streaming_box.qml` | Same split-guard refactor (~lines 203-218). |
+| `src/qml/components/entities/media_player/deviceclass/Receiver.qml` | Same split-guard refactor (~lines 203-218). |
+| `src/qml/components/entities/media_player/deviceclass/Speaker.qml` | Same split-guard refactor (~lines 203-218). |
+
+**Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
+
+**Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
 
 ---
 
