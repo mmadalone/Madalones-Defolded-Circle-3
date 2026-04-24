@@ -11,6 +11,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.5 — 2026-04-24 — TouchSlider null-guard (startSetup + Loader binding)
+
+### Fixed
+- **Two latent `TouchSlider.qml` null-deref TypeErrors** surfaced in v1.4.4 deploy logdy trace (2026-04-24T10:32:40.760Z, single occurrence during a Settings → HOME navigation). `qrc:/components/TouchSlider.qml:44: TypeError: Value is null and could not be converted to an object` thrown inside `startSetup()` when `entityObj` was null (binding race during rapid card re-activation). `qrc:/components/TouchSlider.qml:161: TypeError: Cannot read property 'height' of null` thrown by the `sliderLoader` Loader's `y:` binding when `sliderLoader.item` became null post-`source=""`. Same class of bug v1.4.3 fixed for MediaBrowser's `onOpened` — identical null-guard recipe applied: (1) at the top of `startSetup()`, if `entityObj` is null, log a warn breadcrumb, set `touchSlider.active = false`, clear `sliderLoader.source`, and return before the first dereference; (2) the Loader's `y:` binding now evaluates `sliderLoader.item ? ui.height - sliderLoader.item.height : 0` — safe zero fallback when item is null, binding re-evaluates cleanly once a valid source is set again. Pre-existing robustness issue, not caused by v1.4.4.
+
+### Architectural note
+- **Zero impact on screensaver touchbar-speed control.** The matrix- and starfield-theme dpad-touchbar-speed feature uses the C++ `TouchSliderProcessor` singleton (`src/hardware/touchSlider.*`) directly via `onTouchPressed` / `onTouchXChanged` signals in `ChargingScreen.qml:631-650` — a completely different code path that never goes through `TouchSlider.qml`'s `startSetup()`. Confirmed via codebase trace: only the entity-Popup path is affected.
+- **Zero behavior change for valid entities.** The null-guard recovery branch sets `active = false` and clears `source` — identical side effects to the existing "Disabled on this hardware" branch at lines 37-42. Only previously-throwing edge case (null entity during rapid navigation) is now silent-recovered.
+
+---
+
 ## v1.4.4 — 2026-04-24 — MediaBrowser button expansion + volume split-guard + per-entity OSD flag
 
 ### Added
