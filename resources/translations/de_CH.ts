@@ -2594,17 +2594,17 @@ Climate fan</extracomment>
 <context>
     <name>MediaComponent</name>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="398"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="401"/>
         <source>All</source>
         <translation type="unfinished">Aui</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="400"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="403"/>
         <source>One</source>
         <translation type="unfinished">Eis</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="441"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="444"/>
         <source>Sources</source>
         <translation type="unfinished">Quellä</translation>
     </message>
@@ -4259,8 +4259,48 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="382"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="383"/>
         <source>Display volume indicator overlay when volume keys are pressed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="409"/>
+        <source>Show shuffle button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="432"/>
+        <source>Show the shuffle toggle on the media player controls row.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="458"/>
+        <source>Show repeat button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="481"/>
+        <source>Show the repeat-mode toggle on the media player controls row.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="507"/>
+        <source>Show media browser button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="530"/>
+        <source>Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="556"/>
+        <source>Show source picker button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="578"/>
+        <source>Show the source picker button on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
 </context>
@@ -4790,7 +4830,7 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="848"/>
+        <location filename="../../src/qml/main.qml" line="849"/>
         <source>Done</source>
         <translation>Fertig</translation>
     </message>
@@ -4798,7 +4838,7 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="885"/>
+        <location filename="../../src/config/config.cpp" line="929"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fähler bim Lade vo de Konfiguration. Versuechs nomol.</translation>
     </message>
