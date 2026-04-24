@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.5 — TouchSlider null-guard: startSetup + Loader binding)
+**Last updated:** 2026-04-24 (v1.4.6 — Quiet boot hygiene pass)
 
 ---
 
@@ -172,6 +172,22 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.4.6: Quiet boot hygiene pass
+
+Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis. None are v1.4.5 regressions — all pre-date v1.4.4 and had gone uncaptured due to logdy reconnection timing on UI restarts. Boot-log warning count drops from ~177 to ≤ 4 (94% reduction); one of the four fixes is also a silently-broken functional wiring repair, not just cosmetic.
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/ui/entity/mediaPlayer.cpp` | **Newly extended by v1.4.6** (in addition to the Shared-Infrastructure image-redownload bugfix and the v1.4.4 `hideVolumeOverlay` options ingest). Added `QNetworkReply::OperationCanceledError` filter at **two** log sites: (a) early-return in `onNetworkError()` before the WARN log (this is the source of the 167× per-boot "Image download network error: 0 QNetworkReply::OperationCanceledError" flood), and (b) early-return in `onNetworkRequestFinished()` error branch before the retry-counter bump + WARN log (cancels are supersession events, not failures — counting them against the 3-retry budget was a latent correctness bug). Idiomatic Qt handling per the QNetworkReply docs (cancels also include `setTransferTimeout()` timeouts). No behavior change for honest 4xx/5xx/timeout/network errors. |
+| `src/qml/components/VoiceOverlay.qml` | **Newly modified by v1.4.6.** Added terminal `return "";` fallback after the outer `if` in `assistantProfileNameText.text:` JS binding (around line 677). Without it, when `voice.voiceEntityObj` is null (common during the voice-session entity-resolution window), the function fell off the end returning `undefined`, producing a `qrc:/components/VoiceOverlay.qml:666: Unable to assign [undefined] to QString` warning on every voice session open. Defensive — visual output was already empty (undefined rendered as "") so user-visible behavior is unchanged. |
+| `src/qml/main.qml` | **Extended by v1.4.6** (in addition to the existing screensaver plumbing). Added `import TouchSlider 1.0` to the singleton-imports block. Line 507's `Connections { target: TouchSliderProcessor }` had been referencing a singleton whose module import was missing — `ignoreUnknownSignals: true` silently masked the failure, meaning the "physical slider resets idle timer" wiring (comment at line 502-505) had never actually been connected on UC3. Fixing the import should surface `TouchSlider::touchPressed` signal delivery; if the signal doesn't fire on physical slider contact at the hardware level, the feature will remain silently broken (follow-up investigation needed at that point). |
+| `src/ui/soundEffects.cpp` | **Newly modified by v1.4.6.** Added `#include <QFileInfo>`; initialized all 5 `QSoundEffect*` members to `nullptr` in the ctor init list; added empty-path guard + file-existence guard in `createEffects()` (new `makeEffect` lambda skips `setSource` when the path is empty or the file doesn't exist, logs at DEBUG) and null-guards around every `m_effect*->setVolume()` / `->play()` call in `play()`'s switch. Prevents 5× "QSoundEffect(qaudio): Error decoding source file:///*.wav" warnings when `UC_SOUND_EFFECTS_PATH` env var is unset (dev env) or firmware-provided sound files are missing. Matches Qt docs recommendation for QSoundEffect lifecycle (verify source path / status before playback). Happy-path behavior unchanged when the env var is set and wav files exist. |
+
+**Out of scope (explicitly deferred):** Warnings 5 (`uc.ui.resources: Empty ID passed to getIcon()`, 2×/boot, cosmetic) and 6 (`uc.app.i18n: Failed to remove translation`, 1×/boot, first-boot-only) are pure log-level-downgrade candidates with +1 upstream drift each and no functional value — skipped to honor `CLAUDE.md` §10 ("Minimize the diff against upstream to ease future merges"). Warning 7 (`Cannot find EGLConfig`) is Qt 5.15 internal and out of reach.
 
 ---
 
