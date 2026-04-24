@@ -212,6 +212,11 @@ Popup {
     }
 
     onOpened: {
+        if (!entityObj) {
+            console.warn("MediaBrowser: opened with null entityObj — aborting");
+            Qt.callLater(close);
+            return;
+        }
         coverFlowMode = Config.mediaCoverflowDefault;
         browseNav.clear();
         browseNav.push(levelPage, {
@@ -240,14 +245,36 @@ Popup {
             startLoadingScreen.start();
         } else {
             startLoadingScreen.stop();
-            loading.stop();
+            inlineLoading.running = false;
         }
     }
 
     Timer {
         id: startLoadingScreen
         repeat: false; interval: 500; running: false
-        onTriggered: loading.start()
+        onTriggered: inlineLoading.running = true
+    }
+
+    Timer {
+        id: loadingWatchdog
+        repeat: false
+        interval: 15000
+        running: isLoading
+        onTriggered: {
+            console.warn("MediaBrowser: browseMedia timed out after 15 s — closing");
+            inlineLoading.running = false;
+            var page = browseNav.currentItem;
+            if (page) {
+                page.pageLoading = false;
+                page.pageLoadingMore = false;
+            }
+            ui.createActionableWarningNotification(
+                qsTr("Could not load media"),
+                qsTr("An error occurred while loading media content."),
+                "uc:warning"
+            );
+            mediaBrowser.close();
+        }
     }
 
     Timer {
@@ -400,7 +427,7 @@ Popup {
         }
 
         function onMediaBrowseError(code, message) {
-            loading.stop();
+            inlineLoading.running = false;
             var page = browseNav.currentItem; if (!page) return;
             page.pageLoading     = false;
             page.pageLoadingMore = false;
@@ -458,6 +485,14 @@ Popup {
     contentItem: Rectangle {
         color: colors.black
         radius: ui.cornerRadiusLarge
+
+        BusyIndicator {
+            id: inlineLoading
+            anchors.centerIn: parent
+            width: 80; height: 80
+            running: false
+            z: 100
+        }
 
         // ----------- header -----------
         Item {
