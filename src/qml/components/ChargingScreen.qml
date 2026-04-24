@@ -644,9 +644,12 @@ Popup {
 
             if (Math.abs(delta) < 3) return;  // minimum 3px movement
 
+            // v1.4.8: tune sensitivity down (was 1:1 pixel-to-unit, now ~1:3)
+            var scaledDelta = delta / 3;
+
             if (ScreensaverConfig.theme === "starfield") {
                 // Starfield: touchbar adjusts density
-                var newDensity = Math.round(ScreensaverConfig.starfieldDensity - delta);
+                var newDensity = Math.round(ScreensaverConfig.starfieldDensity - scaledDelta);
                 newDensity = Math.max(10, Math.min(100, newDensity));
                 if (newDensity !== ScreensaverConfig.starfieldDensity) {
                     ScreensaverConfig.starfieldDensity = newDensity;
@@ -656,7 +659,7 @@ Popup {
                 }
             } else {
                 // Matrix: touchbar adjusts speed
-                var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - delta);
+                var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - scaledDelta);
                 newSpeed = Math.max(10, Math.min(100, newSpeed));
                 if (newSpeed !== ScreensaverConfig.matrixSpeed) {
                     ScreensaverConfig.matrixSpeed = newSpeed;

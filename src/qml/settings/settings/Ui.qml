@@ -30,8 +30,8 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1260) {
-                contentY = 1260;
+            if (contentY > 1900) {
+                contentY = 1900;
             }
         }
 
@@ -372,6 +372,7 @@ Settings.Page {
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: mediaCoverflowSwitch
+                        KeyNavigation.down: shuffleButtonSwitch
                     }
                 }
 
@@ -380,6 +381,201 @@ Settings.Page {
                     wrapMode: Text.WordWrap
                     color: colors.light
                     text: qsTr("Display volume indicator overlay when volume keys are pressed.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW SHUFFLE BUTTON **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: shuffleButtonText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show shuffle button")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: shuffleButtonSwitch
+                        icon: "uc:check"
+                        checked: Config.showShuffleButton
+                        trigger: function() {
+                            Config.showShuffleButton = !Config.showShuffleButton;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: volumeOverlaySwitch
+                        KeyNavigation.down: repeatButtonSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Show the shuffle toggle on the media player controls row.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW REPEAT BUTTON **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: repeatButtonText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show repeat button")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: repeatButtonSwitch
+                        icon: "uc:check"
+                        checked: Config.showRepeatButton
+                        trigger: function() {
+                            Config.showRepeatButton = !Config.showRepeatButton;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: shuffleButtonSwitch
+                        KeyNavigation.down: mediaBrowserButtonSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Show the repeat-mode toggle on the media player controls row.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW MEDIA BROWSER BUTTON **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: mediaBrowserButtonText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show media browser button")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: mediaBrowserButtonSwitch
+                        icon: "uc:check"
+                        checked: Config.showMediaBrowserButton
+                        trigger: function() {
+                            Config.showMediaBrowserButton = !Config.showMediaBrowserButton;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: repeatButtonSwitch
+                        KeyNavigation.down: mediaSourceButtonSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW MEDIA SOURCE BUTTON **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: mediaSourceButtonText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show source picker button")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: mediaSourceButtonSwitch
+                        icon: "uc:check"
+                        checked: Config.showMediaSourceButton
+                        trigger: function() {
+                            Config.showMediaSourceButton = !Config.showMediaSourceButton;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: mediaBrowserButtonSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Show the source picker button on the media player controls row.")
                     font: fonts.secondaryFont(24)
                 }
             }

@@ -431,6 +431,50 @@ void Config::setShowVolumeOverlay(bool value)
     emit showVolumeOverlayChanged();
 }
 
+bool Config::getShowShuffleButton()
+{
+    return m_settings->value("ui/showShuffleButton", true).toBool();
+}
+
+void Config::setShowShuffleButton(bool value)
+{
+    m_settings->setValue("ui/showShuffleButton", value);
+    emit showShuffleButtonChanged();
+}
+
+bool Config::getShowRepeatButton()
+{
+    return m_settings->value("ui/showRepeatButton", true).toBool();
+}
+
+void Config::setShowRepeatButton(bool value)
+{
+    m_settings->setValue("ui/showRepeatButton", value);
+    emit showRepeatButtonChanged();
+}
+
+bool Config::getShowMediaBrowserButton()
+{
+    return m_settings->value("ui/showMediaBrowserButton", true).toBool();
+}
+
+void Config::setShowMediaBrowserButton(bool value)
+{
+    m_settings->setValue("ui/showMediaBrowserButton", value);
+    emit showMediaBrowserButtonChanged();
+}
+
+bool Config::getShowMediaSourceButton()
+{
+    return m_settings->value("ui/showMediaSourceButton", true).toBool();
+}
+
+void Config::setShowMediaSourceButton(bool value)
+{
+    m_settings->setValue("ui/showMediaSourceButton", value);
+    emit showMediaSourceButtonChanged();
+}
+
 bool Config::getEnableActivityBar()
 {
     return m_settings->value("ui/activityBar", true).toBool();

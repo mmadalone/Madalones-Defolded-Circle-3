@@ -9,6 +9,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
+import Config 1.0
 import Entity.Controller 1.0
 import Entity.MediaPlayer 1.0
 import Haptic 1.0
@@ -365,6 +366,7 @@ Rectangle {
             size: 60
             color: entityObj.shuffleIsOn ? colors.offwhite : colors.light
             icon: "uc:shuffle"
+            visible: Config.showShuffleButton
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -378,6 +380,7 @@ Rectangle {
             size: 60
             color: entityObj.repeatMode === MediaPlayerRepeatMode.OFF ? colors.light : colors.offwhite
             icon: "uc:repeat"
+            visible: Config.showRepeatButton
 
             Rectangle {
                 width: repeatText.implicitWidth + 20
@@ -419,7 +422,7 @@ Rectangle {
             size: 60
             color: colors.offwhite
             icon: "uc:album-collection"
-            visible: entityObj.hasFeature(MediaPlayerFeatures.Browse_media) || entityObj.hasFeature(MediaPlayerFeatures.Search_media)
+            visible: Config.showMediaBrowserButton && (entityObj.hasFeature(MediaPlayerFeatures.Browse_media) || entityObj.hasFeature(MediaPlayerFeatures.Search_media))
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -433,7 +436,7 @@ Rectangle {
             size: 60
             color: colors.offwhite
             icon: "uc:grid-2"
-            visible: entityObj.hasFeature(MediaPlayerFeatures.Select_source) && entityObj.sourceList.length !== 0
+            visible: Config.showMediaSourceButton && entityObj.hasFeature(MediaPlayerFeatures.Select_source) && entityObj.sourceList.length !== 0
 
             Components.HapticMouseArea {
                 anchors.fill: parent

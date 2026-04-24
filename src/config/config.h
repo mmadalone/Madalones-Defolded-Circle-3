@@ -91,6 +91,10 @@ class Config : public QObject {
     Q_PROPERTY(bool showBatteryPercentage READ getShowBatteryPercentage WRITE setShowBatteryPercentage NOTIFY showBatteryPercentageChanged)
     Q_PROPERTY(bool showBatteryEveryWhere READ getShowBatteryEveryWhere WRITE setShowBatteryEveryWhere NOTIFY showBatteryEveryWhereChanged)
     Q_PROPERTY(bool showVolumeOverlay READ getShowVolumeOverlay WRITE setShowVolumeOverlay NOTIFY showVolumeOverlayChanged)
+    Q_PROPERTY(bool showShuffleButton READ getShowShuffleButton WRITE setShowShuffleButton NOTIFY showShuffleButtonChanged)
+    Q_PROPERTY(bool showRepeatButton READ getShowRepeatButton WRITE setShowRepeatButton NOTIFY showRepeatButtonChanged)
+    Q_PROPERTY(bool showMediaBrowserButton READ getShowMediaBrowserButton WRITE setShowMediaBrowserButton NOTIFY showMediaBrowserButtonChanged)
+    Q_PROPERTY(bool showMediaSourceButton READ getShowMediaSourceButton WRITE setShowMediaSourceButton NOTIFY showMediaSourceButtonChanged)
 
     Q_PROPERTY(bool enableActivityBar READ getEnableActivityBar WRITE setEnableActivityBar NOTIFY enableActivityBarChanged)
     Q_PROPERTY(bool fillMediaArtwork READ getFillMediaArtwork WRITE setFillMediaArtwork NOTIFY fillMediaArtworkChanged)
@@ -168,6 +172,18 @@ class Config : public QObject {
 
     bool getShowVolumeOverlay();
     void setShowVolumeOverlay(bool value);
+
+    bool getShowShuffleButton();
+    void setShowShuffleButton(bool value);
+
+    bool getShowRepeatButton();
+    void setShowRepeatButton(bool value);
+
+    bool getShowMediaBrowserButton();
+    void setShowMediaBrowserButton(bool value);
+
+    bool getShowMediaSourceButton();
+    void setShowMediaSourceButton(bool value);
 
     bool getEnableActivityBar();
     void setEnableActivityBar(bool value);
@@ -309,6 +325,10 @@ class Config : public QObject {
     void showBatteryPercentageChanged();
     void showBatteryEveryWhereChanged();
     void showVolumeOverlayChanged();
+    void showShuffleButtonChanged();
+    void showRepeatButtonChanged();
+    void showMediaBrowserButtonChanged();
+    void showMediaSourceButtonChanged();
     void enableActivityBarChanged();
     void fillMediaArtworkChanged();
     void mediaCoverflowDefaultChanged();
