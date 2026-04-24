@@ -76,6 +76,9 @@ Item {
         function onTouchXChanged(x) {
             console.log("Touch x: ", x);
 
+            // Suppress during screensaver (touchbar owned by theme for density/speed)
+            if (applicationWindow.screensaverActive) return;
+
             // if entity is unavalable we do nothing
             if (!entityObj.enabled) {
                 return;
@@ -107,6 +110,9 @@ Item {
 
         function onTouchReleased() {
             console.log("Touch released");
+
+            // Suppress during screensaver (touchbar owned by theme for density/speed)
+            if (applicationWindow.screensaverActive) return;
 
             // if entity is unavalable we do nothing
             if (!entityObj.enabled) {
