@@ -46,12 +46,13 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0 → v1.4.8):**
+**UI chrome beyond the screensaver (v1.3.0 → v1.4.9):**
 - **Battery chip on every detail page** (v1.3.0) — keeps battery % + charging state visible while inside Activity / Light / Climate / TV / Speaker / sensor detail pages, where the home-screen StatusBar is otherwise covered. Mirrors the StatusBar visual 1:1. Upstream UC independently shipped the same feature in v0.72.0 as "Show battery indicator everywhere"; v1.4.0 adopted their public API (`Config.showBatteryEveryWhere`, QSettings key `ui/batteryEveryWhere`, `Settings → UI` toggle) while keeping our superior chain-anchoring `RowLayout` that handles 6 status indicators adaptively. Fresh-install default is upstream's `false`; v1.3.0 upgraders retain `true` via one-shot QSettings migration.
 - **Volume OSD suppression** (v1.4.2) — `Settings → UI → Show volume overlay` disables the volume indicator that appears on VOLUME_UP / VOLUME_DOWN without disabling the underlying commands. Single guard in `VolumeOverlay.qml::start()` covers all 16 call sites. Complemented in v1.4.4 by per-entity `hideVolumeOverlay` (integrations can opt individual devices in via ucapi `options["hide_volume_overlay"]`).
-- **MediaBrowser button suppression** (v1.4.8) — four global toggles in `Settings → UI` to hide individual icons on the media player controls row: `Show shuffle button`, `Show repeat button`, `Show media browser button`, `Show source picker button`. Operates at the display layer; AND-chained with existing `entityObj.hasFeature(...)` checks so a Config-disabled button hides unconditionally but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits without also breaking the corresponding command — UC-side config toggles solve this at the right layer.
+- **MediaBrowser button suppression** (v1.4.9) — four global toggles in `Settings → UI` to hide individual icons on the media player controls row: `Show shuffle button`, `Show repeat button`, `Show media browser button`, `Show source picker button`. Operates at the display layer; AND-chained with existing `entityObj.hasFeature(...)` checks so a Config-disabled button hides unconditionally but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits without also breaking the corresponding command — UC-side config toggles solve this at the right layer.
 - **Quiet boot** (v1.4.6) — boot-log warning count reduced ~177 → ~4 via targeted fixes (image-download cancel filter, VoiceOverlay binding terminator, missing TouchSlider QML import, QSoundEffect missing-file guard). Not user-visible but makes logdy debugging sessions far more readable.
 - **Touchbar isolation + sensitivity tuning** (v1.4.7, v1.4.8) — physical touch slider is fully isolated while the screensaver owns it (prior partial isolation could still commit volume / seek / brightness changes to the media_player entity on release — fixed in v1.4.7). Screensaver's own touchbar speed / density control sensitivity tuned ~3× less sensitive in v1.4.8 so a full parameter sweep takes ~270 px of slider travel instead of ~90 px.
+- **MediaBrowser → player-widget thumbnail preview handoff** (v1.4.9) — tapping an item in the MediaBrowser popup now passes its browse-time thumbnail to the `MediaPlayer` entity as an immediate preview, rendering on the widget before the integration's `Player.GetItem` art response arrives. Bridges the "blank player widget post-tap" gap for library content that integrations CAN surface. Scheme-filter on `setPreviewImage` rejects unfetchable `icon://` / `image://` / non-image-data URIs at entry to avoid `ProtocolUnknownError` retry-burn when the integration falls back to an icon-name. Paired with empty controls-bar auto-collapse: when all four v1.4.9 button toggles are off, the 80 px controls row collapses instead of reserving an empty gap under the progress bar. Coverage of unscraped library content depends on the integration's browse response — separate integration-side work tracks the `art.thumb` / `Files.GetDirectory` vs `VideoLibrary.GetMovies` resolution gap.
 
 ---
 
@@ -74,15 +75,15 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.8/remote-ui-v1.4.8-UCR2-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.8/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.9/remote-ui-v1.4.9-UCR2-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.9/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.4.8-UCR2-static.tar.gz remote-ui.hash
+./scripts/verify-release.sh remote-ui-v1.4.9-UCR2-static.tar.gz remote-ui.hash
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.4.8-UCR2-static.tar.gz" \
+    --form "file=@remote-ui-v1.4.9-UCR2-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -154,9 +155,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.4.8-UCR2-static.tar.gz \
+    remote-ui-v1.4.9-UCR2-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.8-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.9-UCR2-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -241,6 +242,8 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.4.9** (2026-04-24) — MediaBrowser → player-widget thumbnail preview handoff (new `Q_INVOKABLE MediaPlayer::setPreviewImage(QString)`, threaded through all 10 `requestPlayMedia` call sites in `MediaBrowser.qml` + the `buildPlayMenu` helper; preview-preserve guard in `updateAttribute(Media_image_url)` swallows empty / 12 canonical Kodi-default-placeholder URLs post-preview; flag lifetime threaded via `reply->setProperty("isPreview", ...)` so real-URL fetch failures preserve the preview instead of blanking). Scheme filter on `setPreviewImage` rejects unfetchable `icon://` / `image://` / non-image data URIs at entry — pre-filter, unscraped items burned 3 × 1 s retries on `icon://uc:video`; post-filter zero retry noise (confirmed in logdy). Empty controls-bar auto-collapse: `controlsContainerHeight` in `MediaComponent.qml:50` evaluates to 0 when all four v1.4.8 button Configs are false, so the 80 px RowLayout collapses cleanly instead of reserving an empty gap under the progress bar. Pure FW-side; zero ucapi contract change; companion integration-side art-resolution fix tracked separately.
 
 **v1.4.8** (2026-04-24) — Touchbar sensitivity tuning (~3× less sensitive) + 4 global `Settings → UI` toggles to hide individual shuffle / repeat / media-browser / source-picker icons on the media player controls row. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits to hide just one icon; UC-side toggles solve at the display layer. AND-chained with entity feature checks — never unhides a button the entity chose not to expose.
 
