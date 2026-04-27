@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.10: wire up entityAdded signal so MsgEventTypes::NEW events populate m_entities.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -154,6 +156,7 @@ class EntityController : public QObject {
     void onLanguageChanged(QString language);
     void onUnitSystemChanged(Config::UnitSystems unitSystem);
     void onEntityChanged(const QString& entityId, core::Entity entity);
+    void onEntityAdded(core::Entity entity);
 
     void onEntityDeleted(const QString& entityId);
 

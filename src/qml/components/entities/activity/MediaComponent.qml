@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.10: load+entityLoaded fallback so the media_player entity is fetched if not already in m_entities.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -61,11 +63,25 @@ Rectangle {
     property alias mediaImage: mediaImage
     property alias aspectFit: mediaImage.aspectFit
 
-    Component.onCompleted: {
+    function ensureEntityLoaded() {
         entityObj = EntityController.get(entityId);
+        if (!entityObj && entityId)
+            EntityController.load(entityId);
     }
 
-    onEntityIdChanged: entityObj = EntityController.get(entityId)
+    Component.onCompleted: ensureEntityLoaded()
+
+    onEntityIdChanged: ensureEntityLoaded()
+
+    Connections {
+        target: EntityController
+        ignoreUnknownSignals: true
+
+        function onEntityLoaded(success, loadedId) {
+            if (success && loadedId === mediaComponent.entityId)
+                mediaComponent.entityObj = EntityController.get(loadedId);
+        }
+    }
 
     Connections {
         target: entityObj

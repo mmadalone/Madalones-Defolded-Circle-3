@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.10: connect entityAdded signal + late-load fallback for entity_change on unloaded entities.
+
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "entityController.h"
@@ -153,6 +155,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     QObject::connect(m_core, &core::Api::disconnected, this, &EntityController::onCoreDisconnected);
 
     QObject::connect(m_core, &core::Api::entityChanged, this, &EntityController::onEntityChanged);
+    QObject::connect(m_core, &core::Api::entityAdded, this, &EntityController::onEntityAdded);
     QObject::connect(m_core, &core::Api::entityDeleted, this, &EntityController::onEntityDeleted);
     QObject::connect(m_core, &core::Api::reloadEntities, this, &EntityController::onCoreConnected);
 }
@@ -426,8 +429,28 @@ void EntityController::setAllEntitiesAvailable(bool value) {
     }
 }
 
+void EntityController::onEntityAdded(core::Entity entity) {
+    // ucapi MsgEventTypes::NEW path — fires when an integration creates an entity at runtime
+    // (e.g., post-reinstall, post-discovery). Upstream emitted core::Api::entityAdded but
+    // never connected it; subsequent CHANGE events for the same entity then silently dropped
+    // through the m_entities-empty guard in onEntityChanged. Routing it through addEntityObject
+    // closes that hole — addEntityObject is idempotent (early-return when already loaded), so
+    // it's safe even if a NEW arrives for an entity already in the map.
+    qCDebug(lcEntityController()) << "Entity added (NEW event):" << entity.id;
+    addEntityObject(entity);
+}
+
 void EntityController::onEntityChanged(const QString& entityId, core::Entity entity) {
     if (!m_entities.contains(entityId)) {
+        // Late entity_change for an unloaded entity. With the entityAdded wiring above this
+        // should now be rare, but kept as a backstop for: (a) integrations that emit CHANGE
+        // without a prior NEW (spec violation but observed in practice), and (b) reconnect
+        // races where m_entities was just cleared in onCoreConnected. Trigger a fetch so the
+        // current core-side state lands; addEntityObject populates m_entities and the next
+        // entity_change applies normally. Multiple in-flight loads for the same id are safe
+        // (addEntityObject short-circuits after the first response inserts).
+        qCWarning(lcEntityController()) << "Late entity_change for unloaded entity, fetching:" << entityId;
+        load(entityId);
         return;
     }
 
