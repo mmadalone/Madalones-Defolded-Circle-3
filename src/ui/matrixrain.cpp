@@ -562,7 +562,7 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
 
     // Start timer after first render (properties are set, atlas is built)
     if (!m_timer.isActive() && m_running) {
-        m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+        startTimerAtSpeed();
     }
 
     MatrixRainNode *node = static_cast<MatrixRainNode *>(oldNode);
@@ -1019,9 +1019,26 @@ void MatrixRainItem::setCharset(const QString &c) {
     if (m_sim.setCharset(c)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit charsetChanged(); }
 }
 
+// --- Timer-start helpers (gated on !m_displayOff) ---
+// These wrap m_timer.start() so no callsite (chaos burst, slowdown, speed change,
+// resume, first-render, etc.) can resurrect ticks while the screen is off.
+// AP-UC-08 guard: keep zero CPU/GPU when displayOff is true. The only direct
+// m_timer.start() that survives lives in setDisplayOff(false)'s wake path,
+// where m_displayOff has just been cleared and the helper would no-op anyway.
+
+void MatrixRainItem::startTimerAtSpeed() {
+    if (m_displayOff) return;
+    m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+}
+
+void MatrixRainItem::startTimerAt(int intervalMs) {
+    if (m_displayOff) return;
+    m_timer.start(intervalMs);
+}
+
 void MatrixRainItem::resumeTicks() {
     if (m_running && !m_timer.isActive()) {
-        m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+        startTimerAtSpeed();
     }
 }
 
@@ -1044,7 +1061,7 @@ void MatrixRainItem::resetAfterScreenOff() {
 void MatrixRainItem::setSpeed(qreal s) {
     if (m_sim.setSpeed(s)) {
         if (m_layerPipeline.enabled()) m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
-        if (m_running) m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+        if (m_running) startTimerAtSpeed();
         emit speedChanged();
     }
 }
@@ -1160,7 +1177,7 @@ void MatrixRainItem::handleSlowInput(bool hold) {
         // Always 3x slower than current speed — no cap, so slow is visible at any speed setting
         m_slowOverride = true;
         int normalInterval = qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS);
-        m_timer.start(normalInterval * 3);
+        startTimerAt(normalInterval * 3);
     } else {
         m_slowOverride = false;
         // Resume at normal speed — also handles recovery from setRunning(false) pause
@@ -1168,7 +1185,7 @@ void MatrixRainItem::handleSlowInput(bool hold) {
             m_running = true;
             emit runningChanged();
         }
-        m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+        startTimerAtSpeed();
     }
 }
 
@@ -1186,7 +1203,7 @@ void MatrixRainItem::handleRestoreInput() {
         m_autoRotateWasActive = false;
     }
     m_slowOverride = false;
-    if (m_running) m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+    if (m_running) startTimerAtSpeed();
 }
 
 void MatrixRainItem::handleTapInput(const QString &params) {
@@ -1313,7 +1330,7 @@ void MatrixRainItem::setRunning(bool r) {
     if (m_running != r) {
         m_running = r;
         if (r) {
-            m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+            startTimerAtSpeed();
             if (m_sim.gravityMode() && !m_interactiveOverride)
                 m_gravity.startAutoRotation();
         } else {

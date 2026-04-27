@@ -563,6 +563,13 @@ public:
     void bindSubliminal(uc::ScreensaverConfig *sc);
     void bindDepthAndLayers(uc::ScreensaverConfig *sc);
 
+    // Timer-start helpers — both early-return if m_displayOff so chaos bursts,
+    // slowdown effects, speed changes, or any other callsite can't resurrect
+    // the tick timer while the screen is off. Direct m_timer.start() remains
+    // only at setDisplayOff(false)'s wake path (m_displayOff just cleared).
+    void startTimerAtSpeed();
+    void startTimerAt(int intervalMs);
+
     QTimer m_timer;
     int    m_glowFade{50};             // residual glow duration (0=none, 100=max persistence)
     bool   m_depthGlow{false};        // glow cells shrink with age for depth illusion

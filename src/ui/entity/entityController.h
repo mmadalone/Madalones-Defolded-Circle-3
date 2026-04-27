@@ -1,5 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
 // Copyright (c) 2026 madalone. v1.4.10: wire up entityAdded signal so MsgEventTypes::NEW events populate m_entities.
+// Copyright (c) 2026 madalone. v1.4.11: clearEntitiesDeferred() on core disconnect/connect to plug per-reconnect entity QObject leak.
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -159,6 +160,13 @@ class EntityController : public QObject {
     void onEntityAdded(core::Entity entity);
 
     void onEntityDeleted(const QString& entityId);
+
+    /// @brief Defer deletion of all currently-loaded entity QObjects and clear m_entities.
+    /// 100 ms defer matches onEntityDeleted precedent — gives QML bindings time to unbind
+    /// cleanly. Called from onCoreConnected and onCoreDisconnected to plug the per-reconnect
+    /// slow leak (entities are children of EntityController, so plain m_entities.clear()
+    /// removes the map entry but leaves the QObject alive with stale signal connections).
+    void clearEntitiesDeferred();
 
     void onPowerModeChanged(core::PowerEnums::PowerMode powerMode);
     void onResumeTimeoutWindowSecChanged(int value);

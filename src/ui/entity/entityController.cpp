@@ -1,5 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
 // Copyright (c) 2026 madalone. v1.4.10: connect entityAdded signal + late-load fallback for entity_change on unloaded entities.
+// Copyright (c) 2026 madalone. v1.4.11: clearEntitiesDeferred() helper — schedules deleteLater on stale entity QObjects with 100ms defer to plug slow leak on reconnect.
 
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -315,15 +316,34 @@ QObject* EntityController::qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngi
     return obj;
 }
 
-void EntityController::onCoreConnected() {
+void EntityController::clearEntitiesDeferred() {
+    // Plain m_entities.clear() removes the map entry but leaves the entity QObject alive
+    // (it's a child of this EntityController per addEntityObject). Over a long uptime
+    // with flaky network, every reconnect leaks N entity objects + their slot connections
+    // against an entity-id that's no longer in the map. Schedule deleteLater on each so
+    // the QObjects actually free, and defer 100 ms so QML bindings have a frame to unbind
+    // (matches the precedent at onEntityDeleted line 523). Capture stale pointers by value
+    // — they stay alive until the timer fires; `this` as the timer context auto-cancels
+    // if the controller dies first (children would die via parent-child destruction anyway).
+    if (m_entities.isEmpty()) return;
+    const auto stale = m_entities.values();
+    QTimer::singleShot(100, this, [stale] {
+        for (auto* entity : stale) {
+            if (entity) entity->deleteLater();
+        }
+    });
     m_entities.clear();
+}
+
+void EntityController::onCoreConnected() {
+    clearEntitiesDeferred();
     m_activities.clear();
     emit activitiesChanged();
 }
 
 void EntityController::onCoreDisconnected() {
     setAllEntitiesAvailable(false);
-    m_entities.clear();
+    clearEntitiesDeferred();
 
     m_activities.clear();
     emit activitiesChanged();
