@@ -175,6 +175,31 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 
 ---
 
+## v1.4.11: Audit-driven hardening — timer displayOff gate + entity-leak deferred-delete + toolchain digest pin
+
+Three audit-driven fixes from the v1.4.10-baseline codebase audit. **Drift increase: zero** — all three changes touch files already in the modified-upstream / custom-file manifests.
+
+### Modified Upstream Files
+| File | Modification |
+|------|-------------|
+| `src/ui/entity/entityController.h` | **Further extended by v1.4.11** (in addition to v1.4.10's `onEntityAdded` slot decl). Adds `void clearEntitiesDeferred();` private helper declaration alongside existing `onEntityChanged` / `onEntityAdded` / `onEntityDeleted`. Doc comment notes the per-reconnect leak the helper plugs and the 100 ms defer rationale (matches `onEntityDeleted:520-530` precedent). |
+| `src/ui/entity/entityController.cpp` | **Further extended by v1.4.11** (in addition to v1.4.10's `entityAdded` connect + late-load fallback). New `EntityController::clearEntitiesDeferred()` (~10 lines) iterates `m_entities.values()`, captures pointers by value into a lambda, schedules `deleteLater()` on each via `QTimer::singleShot(100, this, ...)`, then `m_entities.clear()`. Both `onCoreConnected()` and `onCoreDisconnected()` updated to call the helper instead of bare `m_entities.clear()`. Plain clear was the bug — entity QObjects are children of `EntityController` so they survive the map clear with stale signal connections; over long uptime with flaky network, every reconnect leaked N entity QObjects + their slot wirings. `this` as the timer's context object auto-cancels the lambda if the controller dies first (children would die via Qt parent-child destruction anyway). No other behavior changes; v1.4.10's `onEntityAdded` and `onEntityChanged` backstop preserved verbatim. |
+
+### Custom Files (further modified)
+| File | Modification |
+|------|-------------|
+| `src/ui/matrixrain.h` | Adds two private helper declarations (`void startTimerAtSpeed()` and `void startTimerAt(int intervalMs)`) just above `QTimer m_timer;` member. Block comment notes the AP-UC-08 (§7.5 — zero CPU/GPU when screen off) rationale and that the only direct `m_timer.start()` left is `setDisplayOff(false)`'s wake path. |
+| `src/ui/matrixrain.cpp` | Two helper implementations near `resumeTicks()` (~6 lines each), both early-return on `m_displayOff` then call `m_timer.start(...)` with either the sim-speed-derived interval or a caller-provided one. Replaced 7 direct `m_timer.start(...)` callsites: `updatePaintNode` first-render guard (line 565), `resumeTicks()`, `setSpeed()`, `handleSlowInput(true)` slowdown (uses `startTimerAt(normalInterval * 3)` to preserve the 3× interval), `handleSlowInput(false)` slowdown release, `handleRestoreInput()`, `setRunning(true)`. The `setDisplayOff(false)` wake path at line ~1367 keeps its direct `m_timer.start()` (helper would behave identically since `m_displayOff` was just cleared the previous line — kept as direct call to flag it as the canonical wake path). Existing `if (m_running)` guards at the per-callsite level preserved verbatim — helper adds a second gate, doesn't replace the first. |
+
+### Build / Tooling
+| File | Modification |
+|------|-------------|
+| `BUILD.md` | Toolchain image pinned by digest. Was `unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest`; now `unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6`. Added an inline rotation cookbook (`docker pull` → `docker inspect --format '{{index .RepoDigests 0}}'` → replace digest, commit as `[chore] toolchain:`). `CLAUDE.md:105` still references `:latest` — informational divergence flagged in the v1.4.11 CHANGELOG entry. |
+
+**Intentionally NOT modified:** `setDisplayOff(false)`'s direct `m_timer.start()` call at the wake path — the helper would no-op because `m_displayOff` was just cleared on the previous line, so behavior is identical either way; kept direct as documentation of the canonical wake transition. `CLAUDE.md` toolchain reference — the actual build path uses `BUILD.md`; if the user wants the doc synced, that's a one-line follow-up.
+
+---
+
 ## v1.4.10: entity_change apply gap fix — NEW events now populate m_entities
 
 Pre-existing latent upstream bug: `core::Api::entityAdded` signal is emitted by `processEntityChange` for `MsgEventTypes::NEW` events at `core.cpp:2142`, but no consumer was ever connected to it (verified via grep). After an integration uninstall→reinstall cycle, the integration's NEW events re-create entities in the core, the wire delivers them to the firmware, the core-API GET shows the populated state — but `EntityController::onEntityChanged()` then hits the `m_entities.contains(entityId)` early-return at `entityController.cpp:430` for every subsequent CHANGE and silently drops the update. User-visible: blank artwork / stale title / frozen state on the activity card until close+reopen (which works because `Activity.qml`'s `includedEntityItem` delegate calls `EntityController.load(entityId)`).
