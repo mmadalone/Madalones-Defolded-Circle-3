@@ -2594,17 +2594,17 @@ Climate fan</extracomment>
 <context>
     <name>MediaComponent</name>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="404"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="420"/>
         <source>All</source>
         <translation type="unfinished">Aui</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="406"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="422"/>
         <source>One</source>
         <translation type="unfinished">Eis</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="447"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="463"/>
         <source>Sources</source>
         <translation type="unfinished">Quellä</translation>
     </message>
@@ -5173,22 +5173,22 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="618"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="641"/>
         <source>%1 is not responding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="619"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="642"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="652"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="675"/>
         <source>Error sending the command</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="653"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="676"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation type="unfinished"></translation>
     </message>
