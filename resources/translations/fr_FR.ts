@@ -5174,22 +5174,22 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="641"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="661"/>
         <source>%1 is not responding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="642"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="662"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="675"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="695"/>
         <source>Error sending the command</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="676"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="696"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation type="unfinished"></translation>
     </message>
