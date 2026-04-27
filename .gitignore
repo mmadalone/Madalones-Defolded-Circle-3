@@ -118,3 +118,9 @@ test/matrixrain_preview/matrixrain_preview
 
 # Device validation photos (UC3 screen captures from baseline / regression checks)
 WhatsApp Image*.jpeg
+
+# Wire-capture diagnostics from cross-session debugging (reproducible — keep narrative in CHANGELOG / build logs)
+_diag_capture_*.log
+
+# MCP / harness telemetry from prior Claude Code sessions
+/logs/
