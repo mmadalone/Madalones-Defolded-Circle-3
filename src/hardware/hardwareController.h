@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. ActivitySessionKeeper integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -7,6 +8,7 @@
 
 #include "../config/config.h"
 #include "../core/core.h"
+#include "activitySessionKeeper.h"
 #include "battery.h"
 #include "haptic.h"
 #include "hardwareModel.h"
@@ -34,6 +36,7 @@ class Controller : public QObject {
     Power*   getPower() { return m_power; }
     Wifi*    getWifi() { return m_wifi; }
     TouchSlider* getTouchSlider() { return m_touchSlider; }
+    ActivitySessionKeeper* getActivitySessionKeeper() { return m_activitySessionKeeper; }
 
  private slots:
     void onHapticEnabledChanged(bool enabled);
@@ -48,6 +51,7 @@ class Controller : public QObject {
     Power*   m_power;
     Wifi*    m_wifi;
     TouchSlider* m_touchSlider;
+    ActivitySessionKeeper* m_activitySessionKeeper;
 };
 
 }  // namespace hw

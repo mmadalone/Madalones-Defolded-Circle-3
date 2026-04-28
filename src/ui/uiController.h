@@ -107,6 +107,7 @@ class Controller : public QObject {
 
     InputController* getInputController() { return &m_inputController; }
     Notification*    getNotification() { return &m_notification; }
+    EntityController* getEntityController() { return m_entityController; }   // madalone: ActivitySessionKeeper wiring
 
  public:
     // QML accesible methods

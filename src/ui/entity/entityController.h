@@ -144,6 +144,9 @@ class EntityController : public QObject {
     void unitSystemChanged(Config::UnitSystems unitSystem);
     void activityStartedRunning(QString entityId);
     void voiceAssistantCommandError(QString entityId, int code);
+    // madalone: ActivitySessionKeeper hooks
+    void mediaPlayerStateChanged(QString entityId, int newState);
+    void entityCommandIssued(QString entityId, QString command);
 
  public slots:
     /**

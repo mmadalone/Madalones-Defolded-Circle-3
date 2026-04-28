@@ -173,6 +173,14 @@ class Config : public QObject {
     bool getShowVolumeOverlay();
     void setShowVolumeOverlay(bool value);
 
+    // madalone: ActivitySessionKeeper preferences
+    bool getSessionKeeperEnabled();
+    void setSessionKeeperEnabled(bool value);
+    int  getSessionKeeperIdleSec();
+    void setSessionKeeperIdleSec(int seconds);
+    bool getSessionKeeperRequireAc();
+    void setSessionKeeperRequireAc(bool value);
+
     bool getShowShuffleButton();
     void setShowShuffleButton(bool value);
 
@@ -325,6 +333,10 @@ class Config : public QObject {
     void showBatteryPercentageChanged();
     void showBatteryEveryWhereChanged();
     void showVolumeOverlayChanged();
+    // madalone: ActivitySessionKeeper preferences
+    void sessionKeeperEnabledChanged();
+    void sessionKeeperIdleSecChanged();
+    void sessionKeeperRequireAcChanged();
     void showShuffleButtonChanged();
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();

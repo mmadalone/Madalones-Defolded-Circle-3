@@ -194,6 +194,7 @@ class Api : public QObject {
 
     // power mode
     int getPowerMode();
+    int setPowerMode(PowerEnums::PowerMode mode);  // madalone: keeper feature; firmware resets standby_timeout_sec on transition to NORMAL
 
  public:
     /**

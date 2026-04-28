@@ -11,12 +11,14 @@
 #include "config/config.h"
 #include "core/core.h"
 #include "dock/dockController.h"
+#include "hardware/activitySessionKeeper.h"  // madalone: keeper wiring
 #include "hardware/hardwareController.h"
 #include "hardware/hardwareModel.h"
 #include "integration/integrationController.h"
 #include "logging.h"
 #include "softwareupdate/softwareUpdate.h"
 #include "translation/translation.h"
+#include "ui/entity/entityController.h"  // madalone: keeper wiring
 #include "ui/uiController.h"
 #include "ui/matrixrain.h"
 #include "ui/screensaverconfig.h"
@@ -142,6 +144,32 @@ int main(int argc, char *argv[]) {
     QObject::connect(&config, &uc::Config::languageChanged, &translation, &uc::ui::Translation::onLanguageChanged);
     QObject::connect(&config, &uc::Config::languageChanged, &integrationController,
                      &uc::integration::IntegrationController::onLanguageChanged);
+
+    // madalone: ActivitySessionKeeper wiring (v1.4.14).
+    // Config preference changes → keeper state. Initial sync after wiring.
+    auto* keeper = hwController.getActivitySessionKeeper();
+    auto* entityController = uiController.getEntityController();
+
+    QObject::connect(&config, &uc::Config::sessionKeeperEnabledChanged, keeper, [keeper, &config] {
+        keeper->setEnabled(config.getSessionKeeperEnabled());
+    });
+    QObject::connect(&config, &uc::Config::sessionKeeperIdleSecChanged, keeper, [keeper, &config] {
+        keeper->setIdleTimeoutSec(config.getSessionKeeperIdleSec());
+    });
+    QObject::connect(&config, &uc::Config::sessionKeeperRequireAcChanged, keeper, [keeper, &config] {
+        keeper->setRequireAcPower(config.getSessionKeeperRequireAc());
+    });
+    // EntityController activity → keeper.
+    QObject::connect(entityController, &uc::ui::EntityController::mediaPlayerStateChanged, keeper,
+                     &uc::hw::ActivitySessionKeeper::onMediaPlayerStateChanged);
+    QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, keeper,
+                     &uc::hw::ActivitySessionKeeper::onEntityCommandIssued);
+    // Initial state push — neither Config::*Changed nor Battery::powerSupplyChanged
+    // emit on startup, so the keeper would otherwise never know its starting state.
+    keeper->setIdleTimeoutSec(config.getSessionKeeperIdleSec());
+    keeper->setRequireAcPower(config.getSessionKeeperRequireAc());
+    keeper->onPowerSupplyChanged(hwController.getBattery()->getPowerSupply());
+    keeper->setEnabled(config.getSessionKeeperEnabled());  // last — triggers evaluateSession after others are set
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 

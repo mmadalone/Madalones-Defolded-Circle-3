@@ -399,8 +399,14 @@ void EntityController::addEntityObject(core::Entity entity) {
                             });
                     });
 
+                // madalone: forward state changes to ActivitySessionKeeper. Wired in main.cpp.
+                QObject::connect(mediaPlayer, &entity::Base::stateChanged, this,
+                                 [this](QString id, int newState) { emit mediaPlayerStateChanged(id, newState); });
+
                 if (mediaPlayer->getState() == entity::MediaPlayerStates::Playing) {
                     onAddToActivities(entity.id);
+                    // madalone: bootstrap keeper if entity loads already-Playing.
+                    emit mediaPlayerStateChanged(entity.id, entity::MediaPlayerStates::Playing);
                 }
             }
         }
@@ -576,6 +582,10 @@ void EntityController::refreshEntity(const QString &entityId)
 }
 
 void EntityController::onEntityCommand(const QString& entityId, const QString& command, QVariantMap params) {
+    // madalone: notify ActivitySessionKeeper of user-initiated traffic.
+    // Keeper itself filters via curated allowlist; we emit unconditionally.
+    emit entityCommandIssued(entityId, command);
+
     pendingCommand pendingCmd;
     pendingCmd.entityId = entityId;
     pendingCmd.command = command;

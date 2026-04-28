@@ -801,6 +801,15 @@ int Api::getPowerSavingCfg() {
     return sendRequest(RequestTypes::get_power_saving_cfg);
 }
 
+// madalone: ActivitySessionKeeper sends this every ~270 s while a session is active.
+// Probe (2026-04-28) confirmed PUT /api/system/power?power_mode=NORMAL resets standby_timeout_sec
+// to its configured max (typ. 300) on each LOW_POWER/IDLE → NORMAL transition.
+int Api::setPowerMode(PowerEnums::PowerMode mode) {
+    QVariantMap msgData;
+    msgData.insert("power_mode", Util::convertEnumToString(mode));
+    return sendRequest(RequestTypes::set_power_mode, msgData);
+}
+
 int Api::setPowerSavingCfg(int wakeupSensitivity, int displayOffSec, int standbySec) {
     QVariantMap msgData;
     msgData.insert("wakeup_sensitivity", wakeupSensitivity);

@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. ActivitySessionKeeper integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "hardwareController.h"
@@ -35,6 +36,11 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     m_wifi = new Wifi(m_core, this);
     m_power = new Power(m_core, this);
     m_battery = new Battery(m_core, this);
+    m_activitySessionKeeper = new ActivitySessionKeeper(m_core, this);
+
+    // Bridge Battery → keeper for AC-power changes.
+    QObject::connect(m_battery, &Battery::powerSupplyChanged, m_activitySessionKeeper,
+                     &ActivitySessionKeeper::onPowerSupplyChanged);
 
     switch (model) {
         case HardwareModel::UCR2:
@@ -57,6 +63,8 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     qmlRegisterSingletonType<Battery>("Battery", 1, 0, "Battery", &Battery::qmlInstance);
     qmlRegisterSingletonType<Wifi>("Wifi", 1, 0, "Wifi", &Wifi::qmlInstance);
     qmlRegisterSingletonType<TouchSlider>("TouchSlider", 1, 0, "TouchSliderProcessor", &TouchSlider::qmlInstance);
+    qmlRegisterSingletonType<ActivitySessionKeeper>("ActivitySessionKeeper", 1, 0, "ActivitySessionKeeper",
+                                                    &ActivitySessionKeeper::qmlInstance);
 
     QObject::connect(m_config, &Config::hapticEnabledChanged, this, &Controller::onHapticEnabledChanged);
 }
@@ -68,6 +76,7 @@ Controller::~Controller() {
     m_power = nullptr;
     m_wifi = nullptr;
     m_touchSlider = nullptr;
+    m_activitySessionKeeper = nullptr;
 }
 
 void Controller::onHapticEnabledChanged(bool enabled) {

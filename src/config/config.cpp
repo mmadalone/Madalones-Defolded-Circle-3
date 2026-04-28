@@ -431,6 +431,40 @@ void Config::setShowVolumeOverlay(bool value)
     emit showVolumeOverlayChanged();
 }
 
+// madalone: ActivitySessionKeeper preferences (purely UI-side, QSettings-backed).
+bool Config::getSessionKeeperEnabled()
+{
+    return m_settings->value("power/sessionKeeperEnabled", false).toBool();
+}
+
+void Config::setSessionKeeperEnabled(bool value)
+{
+    m_settings->setValue("power/sessionKeeperEnabled", value);
+    emit sessionKeeperEnabledChanged();
+}
+
+int Config::getSessionKeeperIdleSec()
+{
+    return m_settings->value("power/sessionKeeperIdleSec", 60).toInt();
+}
+
+void Config::setSessionKeeperIdleSec(int seconds)
+{
+    m_settings->setValue("power/sessionKeeperIdleSec", seconds);
+    emit sessionKeeperIdleSecChanged();
+}
+
+bool Config::getSessionKeeperRequireAc()
+{
+    return m_settings->value("power/sessionKeeperRequireAc", true).toBool();
+}
+
+void Config::setSessionKeeperRequireAc(bool value)
+{
+    m_settings->setValue("power/sessionKeeperRequireAc", value);
+    emit sessionKeeperRequireAcChanged();
+}
+
 bool Config::getShowShuffleButton()
 {
     return m_settings->value("ui/showShuffleButton", true).toBool();

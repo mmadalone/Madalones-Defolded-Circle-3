@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. Adds "Screen off animations" section (shared screensaver shutdown effect).
+// Copyright (c) 2026 madalone. Adds "Screen off animations" section (shared screensaver shutdown effect) + Active Session Keeper section.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -58,6 +58,99 @@ Settings.Page {
             spacing: 20
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
+
+            /** ACTIVE SESSION KEEPER (madalone) **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Keep awake while watching/listening")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: sessionKeeperSwitch
+                        icon: "uc:check"
+                        checked: Config.sessionKeeperEnabled
+                        trigger: function() { Config.sessionKeeperEnabled = !Config.sessionKeeperEnabled; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Prevents the 5-minute sleep timer from firing while a media player is actively playing or while you've recently pressed media-control buttons. Sends a periodic ping to the firmware. Complementary to \"Keep WiFi connected in standby\" — that handles the post-sleep recovery; this avoids sleeping at all.")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Item {
+                    Layout.fillWidth: true
+                    Layout.preferredHeight: childrenRect.height + 40
+                    visible: Config.sessionKeeperEnabled
+
+                    Text {
+                        id: idleTimeoutLabel
+                        width: parent.width
+                        wrapMode: Text.WordWrap
+                        color: colors.light
+                        text: qsTr("Idle timeout after last button: %1 seconds").arg(Config.sessionKeeperIdleSec)
+                        font: fonts.secondaryFont(24)
+                    }
+
+                    Components.Slider {
+                        height: 60
+                        from: 30
+                        to: 300
+                        stepSize: 30
+                        value: Config.sessionKeeperIdleSec
+                        lowValueText: qsTr("%1 s").arg(from)
+                        highValueText: qsTr("%1 s").arg(to)
+                        live: true
+                        anchors { top: idleTimeoutLabel.bottom; topMargin: 10 }
+                        onValueChanged: { Config.sessionKeeperIdleSec = value; }
+                        onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                    }
+                }
+
+                RowLayout {
+                    spacing: 10
+                    visible: Config.sessionKeeperEnabled
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Only when on charger or dock")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: sessionKeeperRequireAcSwitch
+                        icon: "uc:check"
+                        checked: Config.sessionKeeperRequireAc
+                        trigger: function() { Config.sessionKeeperRequireAc = !Config.sessionKeeperRequireAc; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
 
             //** WAKE ON WLAN **/
             ColumnLayout {

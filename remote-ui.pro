@@ -94,6 +94,7 @@ HEADERS += \
     src/dock/configuredDocks.h \
     src/dock/discoveredDocks.h \
     src/dock/dockController.h \
+    src/hardware/activitySessionKeeper.h \
     src/hardware/battery.h \
     src/hardware/haptic.h \
     src/hardware/hardwareController.h \
@@ -169,6 +170,7 @@ SOURCES += \
         src/dock/configuredDocks.cpp \
         src/dock/discoveredDocks.cpp \
         src/dock/dockController.cpp \
+        src/hardware/activitySessionKeeper.cpp \
         src/hardware/battery.cpp \
         src/hardware/haptic.cpp \
         src/hardware/hardwareController.cpp \
