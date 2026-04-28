@@ -678,7 +678,9 @@ ApplicationWindow {
                         idleScreensaverTimer.restart();
                     }
                     // madalone (v1.4.15): rearm screensaver while docked after configurable timeout.
-                    if (root._shouldOpenOnIdle() && Battery.powerSupply && HwInfo.modelNumber !== "DEV") {
+                    // NOT gated on _shouldOpenOnIdle() — the docked-rearm slider is always-visible
+                    // and operates independently of the idleEnabled toggle (per user feedback v1.4.15a).
+                    if (Battery.powerSupply && HwInfo.modelNumber !== "DEV") {
                         dockedRearmTimer.interval = ScreensaverConfig.reopenWhileDockedSec * 1000;
                         dockedRearmTimer.restart();
                     }

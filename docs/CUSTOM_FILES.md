@@ -3,7 +3,9 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-24 (v1.4.9 — MediaBrowser thumbnail preview handoff)
+**Last updated:** 2026-04-29 (v1.4.16 — post-v1.4.15 polish round)
+
+> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.16 lives in CHANGELOG.md and the new "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
 ---
 
@@ -300,3 +302,39 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis. N
 | `matrix-charging-screen-nofont.tar.gz` | Archived build (no font) |
 | `matrix-charging-screen-pre-refactor.tar.gz` | Archived pre-refactor build |
 | `matrix-nofont.tar.gz` | Archived matrix build |
+
+---
+
+## v1.4.12+ deltas (summary table)
+
+Full prose lives in `CHANGELOG.md` and the per-Mod sections in `CLAUDE.md`. Use this table as a "where did this file change" lookup.
+
+| Release | Custom files added | Upstream files modified |
+|---------|--------------------|-------------------------|
+| **v1.4.12** Mod 4 WiFi UX bundle (W1–W6, W10) | — | `src/hardware/wifi.{h,cpp}`, `src/qml/components/StatusBar.qml`, `src/qml/settings/settings/WifiInfo.qml`, `src/qml/settings/settings/Wifi.qml`, `src/qml/onboarding/Wifi.qml` |
+| **v1.4.13** W9 onboarding nuclear-cleanup fix | — | `src/hardware/wifi.{h,cpp}`, `src/qml/onboarding/Wifi.qml` |
+| **v1.4.14** Mod 5 Active Session Keeper | `src/hardware/activitySessionKeeper.{h,cpp}` (new custom files) | `src/core/core.{h,cpp}` (added `setPowerMode`), `src/hardware/hardwareController.{h,cpp}` (singleton wiring), `src/main.cpp` (signal hookup), `src/ui/entity/entityController.{h,cpp}` (2 new signals + chokepoint emit + media-player state forward), `src/ui/uiController.h` (`getEntityController()` accessor), `src/qml/settings/settings/Power.qml` (3 new rows), `src/config/config.{h,cpp}` (3 new Q_PROPERTYs), `remote-ui.pro` (register new custom files) |
+| **v1.4.15** UI polish (Power slider overflow, WifiInfo back-arrow, screensaver docked-rearm) | — | `src/qml/settings/settings/Power.qml` (preferredHeight fix), `src/qml/settings/settings/WifiInfo.qml` (Flickable + back arrow + drop bottom Close), `src/ui/screensaverconfig.h` (new `reopenWhileDockedSec` SCRN_INT macro), `src/qml/main.qml` (new `dockedRearmTimer` + 3 handler edits), `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` (new slider section). Also: backfilled `src/config/config.h` Q_PROPERTYs for v1.4.14's `sessionKeeper*` (had landed in source after the v1.4.14 commit was tagged). |
+| **v1.4.16** Post-v1.4.15 polish round (slider thinning, docked-rearm gate fix, WifiInfo button placement, label clipping fix) | — | `src/qml/settings/settings/Power.qml` (revert preferredHeight 140 → height 60, drop low/high labels), `src/qml/settings/settings/WifiInfo.qml` (fold buttons back into Flickable), `src/qml/main.qml` (drop `_shouldOpenOnIdle()` gate from docked rearm path), `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` (label clip fix, min 30→5s, slider thinning) |
+
+### Cumulative drift since v1.4.11 baseline
+
+**Custom files added:** 2 (`src/hardware/activitySessionKeeper.{h,cpp}`)
+
+**Upstream files now modified (cumulative):**
+- `src/hardware/wifi.{h,cpp}` — Mod 4
+- `src/core/core.{h,cpp}` — Mod 5 (`setPowerMode`)
+- `src/hardware/hardwareController.{h,cpp}` — Mod 5 keeper singleton wiring
+- `src/main.cpp` — Mod 5 keeper hookup + previous mods
+- `src/ui/entity/entityController.{h,cpp}` — Mod 5 keeper hookup signals
+- `src/ui/uiController.h` — Mod 5 `getEntityController()` accessor
+- `src/qml/main.qml` — Mod 1 docked-rearm timer
+- `src/qml/components/StatusBar.qml` — Mod 4 always-visible bar
+- `src/qml/settings/settings/Power.qml` — Mod 5 keeper UI
+- `src/qml/settings/settings/WifiInfo.qml` — Mod 4 diagnostics + back arrow
+- `src/qml/settings/settings/Wifi.qml` — Mod 4 displayOff gate
+- `src/qml/onboarding/Wifi.qml` — Mod 4 displayOff gate + W9 onboarding fix
+- `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` — Mod 1 docked-rearm slider
+- `src/ui/screensaverconfig.h` — Mod 1 `reopenWhileDockedSec` SCRN_INT
+- `src/config/config.{h,cpp}` — Mod 5 keeper QSettings preferences
+- `remote-ui.pro` — Mod 5 custom-file registration

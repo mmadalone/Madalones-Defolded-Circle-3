@@ -112,8 +112,9 @@ Popup {
     Rectangle {
         id: infoContainer
         width: ui.width
-        // madalone: cap at viewport-60; reserves room for the always-visible action button block at the bottom.
-        height: Math.min(infoFlickable.contentHeight + buttonsColumn.implicitHeight + 30, parent.height - 60)
+        // madalone (v1.4.15b): cap at viewport-60. Action buttons now live INSIDE the Flickable
+        // at the bottom of scrollable content (per user feedback) — no separate pinned buttons block.
+        height: Math.min(infoFlickable.contentHeight + 20, parent.height - 60)
         color: colors.dark
         radius: ui.cornerRadiusSmall
         anchors.bottom: parent.bottom
@@ -137,11 +138,11 @@ Popup {
             }
         }
 
-        // madalone: Flickable holds the diagnostic rows only; action buttons stay anchored
-        // at the bottom (always visible) so users always have a Close affordance.
+        // madalone (v1.4.15b): Flickable now holds diagnostic rows AND action buttons —
+        // buttons are at the bottom of scrollable content (user scrolls to find them).
         Flickable {
             id: infoFlickable
-            anchors { top: parent.top; topMargin: 60; left: parent.left; right: parent.right; bottom: buttonsColumn.top; bottomMargin: 10 }
+            anchors { top: parent.top; topMargin: 60; left: parent.left; right: parent.right; bottom: parent.bottom; bottomMargin: 10 }
             contentHeight: infoColumn.implicitHeight + 20
             contentWidth: width
             flickableDirection: Flickable.VerticalFlick
@@ -418,20 +419,8 @@ Popup {
                 }
             }
 
-            Item {
-                height: 1
-            }
-            }   // ColumnLayout (infoColumn)
-        }       // Flickable (infoFlickable)
-
-        // madalone: action buttons live OUTSIDE the Flickable so they're always
-        // visible regardless of how tall the diagnostics scroll content gets.
-        ColumnLayout {
-            id: buttonsColumn
-            spacing: 20
-            width: parent.width - 40
-            anchors { bottom: parent.bottom; bottomMargin: 10; horizontalCenter: parent.horizontalCenter }
-
+            // madalone (v1.4.15b): action buttons folded back into Flickable per user feedback.
+            // User scrolls through diagnostics to reach them at the bottom.
             Components.Button {
                 Layout.fillWidth: true
                 text: Wifi.isConnected ? qsTr("Disconnect") : qsTr("Connect")
@@ -468,7 +457,11 @@ Popup {
                     ui.setTimeOut(500, ()=>{ Wifi.getAllWifiNetworks(); });
                 }
             }
-            // madalone (v1.4.15): bottom "Close" button removed — back arrow at top-left supersedes it.
-        }
+
+            Item {
+                height: 1
+            }
+            }   // ColumnLayout (infoColumn)
+        }       // Flickable (infoFlickable)
     }           // Rectangle (infoContainer)
 }               // Popup (wifiInfo)

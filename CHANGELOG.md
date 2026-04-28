@@ -11,6 +11,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.16 — 2026-04-29 — Post-v1.4.15 polish round (slider thinning, docked-rearm functional, WifiInfo button placement)
+
+### Fixed
+- **Settings → Power "Keep awake" slider — too thick.** v1.4.15's `Layout.preferredHeight: 140` (chosen to fit pressed-state `lowValueText`/`highValueText` overflow) made the slider visually heavy. Dropped the from/to value labels entirely (the current value is already shown in the section title above), reverted to `height: 60` to match the existing `idleTimeoutSlider` pattern in `GeneralBehavior.qml`. No more overflow into "Only when on charger or dock".
+- **Screensaver docked-rearm — feature didn't fire.** v1.4.15's `onClosed` handler wrapped the new docked-rearm path in `_shouldOpenOnIdle()` (which requires `ScreensaverConfig.idleEnabled === true`), but the slider was always-visible per user spec. So the slider showed but the rearm only worked when the user happened to also have "Idle screensaver" on. Removed the `_shouldOpenOnIdle()` gate — docked rearm now fires whenever docked + non-DEV, regardless of the idle toggle.
+- **Settings → Screensaver → docked-rearm slider label clipped.** "Re-run after dismissal while docked" was truncating to "Re-run after dismissal while do" at the available column width. Shortened to "Run after dismissal while docked".
+- **Settings → Screensaver → docked-rearm slider min was 30 s.** Lowered to 5 s; step from 10 s to 5 s. Range now 5–120 s.
+- **Settings → WiFi → tap connected network — buttons "pinned to the middle of the screen".** v1.4.14's split-the-buttons-out-of-Flickable design made them always visible but visually placed them at the bottom of the popup container (which is roughly mid-screen on UC3's 480×850 viewport). Folded them back into the Flickable's `ColumnLayout` at the bottom of scrollable content; user scrolls through diagnostics to reach Disconnect/Reconnect/Delete at the bottom. Back-arrow stays at top-left as the always-visible close affordance.
+
+### Architectural note
+- **Drift increase: zero.** All four modified files (`main.qml`, `Power.qml`, `WifiInfo.qml`, `GeneralBehavior.qml`) were already in v1.4.15's diff; this is pure polish on top.
+- **Translation impact:** one string changed: "Re-run after dismissal while docked" → "Run after dismissal while docked". Other v1.4.15 strings unchanged.
+- **Verification:** all four fixes physically tap-tested by user on the device.
+- **No re-bump of other version-pinned files** (BUILD.md toolchain digest, etc.).
+
+---
+
 ## v1.4.15 — 2026-04-29 — UI polish: Power slider overflow, WifiInfo back-arrow, docked-rearm screensaver timer
 
 ### Fixed

@@ -310,7 +310,7 @@ ColumnLayout {
 
         Text {
             Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Re-run after dismissal while docked") + " (" + ScreensaverConfig.reopenWhileDockedSec + "s)"
+            text: qsTr("Run after dismissal while docked") + " (" + ScreensaverConfig.reopenWhileDockedSec + "s)"
             font: fonts.primaryFont(30)
         }
         Text {
@@ -323,12 +323,9 @@ ColumnLayout {
             id: dockedRearmSlider
             objectName: "dockedRearmSlider"
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            Layout.fillWidth: true
-            Layout.preferredHeight: 140   // pressed-state grows sliderBG + label topMargin; matches v1.4.15 Power.qml fix
-            from: 30; to: 120; stepSize: 10
+            height: 60; Layout.fillWidth: true   // matches idleTimeoutSlider; no from/to labels needed (value shown in title)
+            from: 5; to: 120; stepSize: 5
             value: ScreensaverConfig.reopenWhileDockedSec; live: true
-            lowValueText: qsTr("%1 s").arg(from)
-            highValueText: qsTr("%1 s").arg(to)
             onMoved: ScreensaverConfig.reopenWhileDockedSec = value
             onUserInteractionEnded: ScreensaverConfig.reopenWhileDockedSec = value
             highlight: activeFocus && ui.keyNavigationEnabled

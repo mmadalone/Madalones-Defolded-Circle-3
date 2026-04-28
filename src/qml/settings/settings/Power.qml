@@ -109,14 +109,12 @@ Settings.Page {
                     }
 
                     Components.Slider {
+                        height: 60   // matches GeneralBehavior idleTimeoutSlider; no low/high labels (value shown in title above)
                         Layout.fillWidth: true
-                        Layout.preferredHeight: 140   // pressed-state grows sliderBG + label topMargin; v1.4.14's 100 wasn't enough
                         from: 30
                         to: 300
                         stepSize: 30
                         value: Config.sessionKeeperIdleSec
-                        lowValueText: qsTr("%1 s").arg(from)
-                        highValueText: qsTr("%1 s").arg(to)
                         live: true
                         onValueChanged: { Config.sessionKeeperIdleSec = value; }
                         onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
