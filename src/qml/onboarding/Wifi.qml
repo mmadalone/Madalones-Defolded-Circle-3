@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: displayOff gate on scan timers.
+// Copyright (c) 2026 madalone. WiFi UX bundle: displayOff gate on scan timers + scoped onboarding-failure cleanup.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -68,7 +68,7 @@ Item {
                     scanTimer.stop();
                 });
             } else {
-                Wifi.deleteAllNetworks();
+                Wifi.deletePendingJoinNetwork();   // madalone (W9): scoped — only the failed attempt
                 loading.failure(true, function() { wifiFailed.opacity = 1; });
                 Wifi.getWifiStatus();
                 Wifi.startNetworkScan();
@@ -246,7 +246,7 @@ Item {
         running: false
         interval: 3000
         onTriggered: {
-            Wifi.deleteAllNetworks();
+            Wifi.deletePendingJoinNetwork();   // madalone (W9): scoped — only the failed attempt
             loading.failure(true, function() { wifiFailed.opacity = 1; });
             Wifi.getWifiStatus();
             Wifi.startNetworkScan();

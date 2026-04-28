@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.13 — 2026-04-28 — WiFi onboarding: scoped failure cleanup (preserve other saved networks)
+
+### Fixed
+- **`onboarding/Wifi.qml` no longer nukes every saved WiFi network when a join attempt fails.** The two `Wifi.deleteAllNetworks()` callsites at line 71 (`onConnected(false)` handler) and line 249 (`connectionTimeoutTimer` 3 s timeout) were a nuclear cleanup — if the user had any pre-existing saved networks (rare during onboarding but possible after factory-reset-keep-data, or when re-running setup) and mistyped a password on one new network, all of them got wiped. Replaced both callsites with a new `Q_INVOKABLE Wifi::deletePendingJoinNetwork()` that targets only the SSID currently being joined. Tracking via new private member `m_pendingJoinSsid` set in `Wifi::connect()` (covers the timer-fires-before-`addNetwork`-completes race) and cleared in `onWifiEventChanged(CONNECTED)` for symmetry. Pre-checks `m_knownNetworkList.contains(ssid)` before calling `deleteSavedNetwork()` to silence the "network does not exist" notification when the timer wins the race against the async addNetwork response. Settings-side WiFi flow doesn't have this anti-pattern; this fix is onboarding-only.
+
+### Architectural note
+- **Three-line patch logic, ~20 lines diff.** Mechanical correction to a known bug; no architectural change. Touched: `wifi.h` (1 member, 1 Q_INVOKABLE decl, 1 copyright line), `wifi.cpp` (3 inserts: connect's pending-set, CONNECTED branch's pending-clear, deletePendingJoinNetwork impl), `onboarding/Wifi.qml` (2 line swaps).
+- **Verification path is awkward** — onboarding only runs at first boot or factory reset. Untested on-device for v1.4.13; the patch is mechanical enough that I'm willing to ship without verification, but flag it: confirm next time you factory-reset (or use macOS sim with `UC_MODEL=DEV`).
+- **Zero translation impact.** No new `qsTr(...)` strings.
+- **Drift increase: zero.** All three modified files were already in our diff post-v1.4.12.
+
+---
+
 ## v1.4.12 — 2026-04-28 — WiFi UX bundle: live diagnostics, always-on status indicator, reconnect button, WoWLAN surfacing, m_currentNetwork leak fix, periodic poll, scan-timer displayOff gate
 
 ### Added

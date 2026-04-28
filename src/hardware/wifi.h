@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate.
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -141,6 +141,7 @@ class Wifi : public QObject {
     Q_INVOKABLE void disconnect();
     Q_INVOKABLE void reassociate();
     Q_INVOKABLE void setDisplayOff(bool off);
+    Q_INVOKABLE void deletePendingJoinNetwork();
 
     Q_INVOKABLE void getWifiStatus();
     Q_INVOKABLE void startNetworkScan();
@@ -200,6 +201,9 @@ class Wifi : public QObject {
 
     QTimer  m_statusPollTimer;          // 30 s periodic getWifiStatus while connected + display awake
     bool    m_displayOff = false;       // mirrored from core::Api::powerModeChanged
+
+    QString m_pendingJoinSsid;          // SSID of the join attempt in flight; deleted (only) on connect failure
+                                        // during onboarding, cleared on successful connect
 
  private:
     QString m_lastConnectedSSid;

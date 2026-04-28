@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate.
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "wifi.h"
@@ -87,6 +87,7 @@ void Wifi::connect(const QString &ssid, const QString &password, uc::hw::Securit
     addNetwork(ssid, password, security);
     m_lastConnectedSSid     = ssid;
     m_lastConnectedPassword = password;
+    m_pendingJoinSsid       = ssid;  // madalone: scoped failure cleanup target (W9)
 }
 
 void Wifi::connectSavedNetwork(int id) {
@@ -130,6 +131,18 @@ void Wifi::setDisplayOff(bool off) {
         m_statusPollTimer.stop();
     } else if (m_isConnected) {
         m_statusPollTimer.start();
+    }
+}
+
+// madalone (W9): replaces deleteAllNetworks() nuclear-cleanup at onboarding/Wifi.qml:71,249.
+// Only deletes the network we were trying to join — preserves any previously-saved networks.
+// No-op if nothing is pending or if the pending network hasn't been saved yet (timer-fires-before-addNetwork-completes race).
+void Wifi::deletePendingJoinNetwork() {
+    if (m_pendingJoinSsid.isEmpty()) return;
+    const QString ssid = m_pendingJoinSsid;
+    m_pendingJoinSsid.clear();
+    if (m_knownNetworkList.contains(ssid)) {
+        deleteSavedNetwork(ssid);
     }
 }
 
@@ -419,6 +432,7 @@ void Wifi::onWifiEventChanged(core::WifiEvent::Enum wifiEvent) {
             emit connected(true);
             getWifiStatus();
             if (!m_displayOff) m_statusPollTimer.start();  // madalone: kick off live poll
+            m_pendingJoinSsid.clear();                     // madalone (W9): clear pending — successful join, nothing to clean up
             break;
         case core::WifiEvent::Enum::DISCONNECTED:
             m_isConnected = false;
