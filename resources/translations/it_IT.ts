@@ -1612,12 +1612,28 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="317"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="313"/>
+        <source>Re-run after dismissal while docked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="319"/>
+        <source>Restart the screensaver after this many seconds of inactivity when on the dock.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="330"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="331"/>
+        <source>%1 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="355"/>
         <source>Atlas profiling overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="335"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="373"/>
         <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -2989,15 +3005,19 @@ Climate fan</extracomment>
         <translation>Energia</translation>
     </message>
     <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="93"/>
+        <source>Prevents the 5-minute sleep timer while you&apos;re watching or listening.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="172"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Mantieni WiFi connesso in standby</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
         <source>Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.</source>
-        <translation>Mantiene il WiFi sempre connesso, anche quando il dispositivo è in standby. Consente una più rapida riconnessione dopo il risveglio. Nota che, abilitando questa funzione, la durata della batteria sarà leggermente ridotta.</translation>
+        <translation type="vanished">Mantiene il WiFi sempre connesso, anche quando il dispositivo è in standby. Consente una più rapida riconnessione dopo il risveglio. Nota che, abilitando questa funzione, la durata della batteria sarà leggermente ridotta.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="222"/>
@@ -3057,24 +3077,24 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="93"/>
-        <source>Prevents the 5-minute sleep timer from firing while a media player is actively playing or while you&apos;ve recently pressed media-control buttons. Sends a periodic ping to the firmware. Complementary to &quot;Keep WiFi connected in standby&quot; — that handles the post-sleep recovery; this avoids sleeping at all.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
         <source>Idle timeout after last button: %1 seconds</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="117"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="118"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="119"/>
         <source>%1 s</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="135"/>
         <source>Only when on charger or dock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
+        <source>Faster reconnect after wake; minor battery cost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -4643,69 +4663,68 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>WifiInfo</name>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="173"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="207"/>
         <source>Signal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="198"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="232"/>
         <source>Link speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="230"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="264"/>
         <source>Throughput</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="255"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="289"/>
         <source>BSSID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="280"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="314"/>
         <source>Channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="315"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="349"/>
         <source>MAC address</source>
         <translation>Indirizzo MAC</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="344"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="378"/>
         <source>IP address</source>
         <translation>Indirizzo IP</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="373"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="407"/>
         <source>Key management</source>
         <translation type="unfinished">Key management</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="389"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="437"/>
         <source>Disconnect</source>
         <translation>Disconnetti</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="389"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="437"/>
         <source>Connect</source>
         <translation>Connetti</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="405"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="452"/>
         <source>Reconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="416"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="463"/>
         <source>Delete</source>
         <translation>Elimina</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="427"/>
         <source>Close</source>
-        <translation>Chiudi</translation>
+        <translation type="vanished">Chiudi</translation>
     </message>
 </context>
 <context>
@@ -4886,7 +4905,7 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="849"/>
+        <location filename="../../src/qml/main.qml" line="879"/>
         <source>Done</source>
         <translation>Fatto</translation>
     </message>
