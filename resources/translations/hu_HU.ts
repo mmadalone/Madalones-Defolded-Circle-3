@@ -1613,7 +1613,7 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="313"/>
-        <source>Re-run after dismissal while docked</source>
+        <source>Run after dismissal while docked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
@@ -1622,18 +1622,12 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="330"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="331"/>
-        <source>%1 s</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="355"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="352"/>
         <source>Atlas profiling overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="373"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="370"/>
         <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3010,7 +3004,7 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="172"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="170"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Wifi csatlakoztatva marad készenlét közben</translation>
@@ -3020,54 +3014,54 @@ Climate fan</extracomment>
         <translation type="vanished">A WiFi mindig kapcsolódva marad, akkor is ha a készülék alvó állapotban van. Az ébredés után gyorsabb újracsatlakozást tesz lehetővé. Kérjük, vegye figyelembe, hogy ezen funkció bekapcsolása kicsit csökkenti az akkumulátor élettartamát.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="222"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="220"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="232"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="230"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="244"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="242"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="283"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="281"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Érzékenység felébresztése</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="293"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="291"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>A távirányító felébresztéséhez szükséges mozgás mennyisége.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="308"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="306"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Ki</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="310"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="308"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Érzékenység</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="348"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="346"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Kijelző kikapcsolási időtúllépés</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="245"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="368"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="369"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="580"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="243"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="366"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="367"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="578"/>
         <source>%1 seconds</source>
         <translation>%1 másodperc</translation>
     </message>
@@ -3082,49 +3076,43 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="118"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="119"/>
-        <source>%1 s</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="135"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="133"/>
         <source>Only when on charger or dock</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="198"/>
         <source>Faster reconnect after wake; minor battery cost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="408"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="406"/>
         <source>Screen off animations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="417"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="415"/>
         <source>Enabled</source>
         <translation type="unfinished">Engedélyezve</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="436"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="434"/>
         <source>Fire when undocked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="458"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="456"/>
         <source>Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="560"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="558"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Alvó mód időtúllépése</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="581"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="579"/>
         <source>%1 minutes</source>
         <translation>%1 perc</translation>
     </message>
@@ -4664,62 +4652,62 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>WifiInfo</name>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="207"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="208"/>
         <source>Signal</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="232"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="233"/>
         <source>Link speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="264"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="265"/>
         <source>Throughput</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="289"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="290"/>
         <source>BSSID</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="314"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="315"/>
         <source>Channel</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="349"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="350"/>
         <source>MAC address</source>
         <translation>MAC cím</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="378"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="379"/>
         <source>IP address</source>
         <translation>IP cím</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="407"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="408"/>
         <source>Key management</source>
         <translation type="unfinished">Key management</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="437"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="426"/>
         <source>Disconnect</source>
         <translation type="unfinished">Disconnect</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="437"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="426"/>
         <source>Connect</source>
         <translation type="unfinished">Connect</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="452"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="441"/>
         <source>Reconnect</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="463"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="452"/>
         <source>Delete</source>
         <translation>Törlés</translation>
     </message>
@@ -4906,7 +4894,7 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="879"/>
+        <location filename="../../src/qml/main.qml" line="881"/>
         <source>Done</source>
         <translation>Kész</translation>
     </message>
