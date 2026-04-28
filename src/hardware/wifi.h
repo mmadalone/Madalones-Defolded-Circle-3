@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -103,6 +104,13 @@ class Wifi : public QObject {
     Q_PROPERTY(QList<WifiNetwork *> knownNetworkList READ getKnownNetworkList NOTIFY knownNetworkListChanged)
     Q_PROPERTY(bool scanActive READ getScanActive NOTIFY scanActiveChanged);
     Q_PROPERTY(bool wowlanEnabled READ isWowlan CONSTANT)
+    Q_PROPERTY(QString currentBssid READ getCurrentBssid NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentRssi READ getCurrentRssi NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentAverageRssi READ getCurrentAverageRssi NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentNoise READ getCurrentNoise NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentSnr READ getCurrentSnr NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentLinkSpeed READ getCurrentLinkSpeed NOTIFY currentLinkInfoChanged)
+    Q_PROPERTY(int currentEstimatedThroughput READ getCurrentEstimatedThroughput NOTIFY currentLinkInfoChanged)
 
  public:
     explicit Wifi(core::Api *core, QObject *parent = nullptr);
@@ -117,6 +125,13 @@ class Wifi : public QObject {
     QList<WifiNetwork *> getKnownNetworkList();
     bool                 getScanActive() { return m_scanActive; }
     bool                 isWowlan() const { return m_wowlan; }
+    QString              getCurrentBssid() const { return m_currentBssid; }
+    int                  getCurrentRssi() const { return m_currentRssi; }
+    int                  getCurrentAverageRssi() const { return m_currentAverageRssi; }
+    int                  getCurrentNoise() const { return m_currentNoise; }
+    int                  getCurrentSnr() const { return m_currentSnr; }
+    int                  getCurrentLinkSpeed() const { return m_currentLinkSpeed; }
+    int                  getCurrentEstimatedThroughput() const { return m_currentEstimatedThroughput; }
 
     Q_INVOKABLE void turnOn();
     Q_INVOKABLE void turnOff();
@@ -124,6 +139,8 @@ class Wifi : public QObject {
     Q_INVOKABLE void connectSavedNetwork(int id);
     Q_INVOKABLE void enableSavedNetwork(int id, bool enable);
     Q_INVOKABLE void disconnect();
+    Q_INVOKABLE void reassociate();
+    Q_INVOKABLE void setDisplayOff(bool off);
 
     Q_INVOKABLE void getWifiStatus();
     Q_INVOKABLE void startNetworkScan();
@@ -157,6 +174,7 @@ class Wifi : public QObject {
     void connected(bool success);
     void networkNotFound();
     void wrongKey();
+    void currentLinkInfoChanged();
 
  private:
     static Wifi *s_instance;
@@ -171,6 +189,17 @@ class Wifi : public QObject {
     QHash<QString, WifiNetwork *> m_knownNetworkList;
     bool                          m_scanActive = true;
     bool                          m_wowlan = false;
+
+    QString m_currentBssid;
+    int     m_currentRssi = 0;
+    int     m_currentAverageRssi = 0;
+    int     m_currentNoise = 0;
+    int     m_currentSnr = 0;
+    int     m_currentLinkSpeed = 0;
+    int     m_currentEstimatedThroughput = 0;
+
+    QTimer  m_statusPollTimer;          // 30 s periodic getWifiStatus while connected + display awake
+    bool    m_displayOff = false;       // mirrored from core::Api::powerModeChanged
 
  private:
     QString m_lastConnectedSSid;

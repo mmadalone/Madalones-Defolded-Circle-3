@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi UX bundle: displayOff gate on scan timers.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -12,6 +13,8 @@ import Config 1.0
 import Wifi 1.0
 import Wifi.SignalStrength 1.0
 import Wifi.Security 1.0
+import Power 1.0
+import Power.Modes 1.0
 
 import "qrc:/settings" as Settings
 import "qrc:/components" as Components
@@ -51,6 +54,24 @@ Settings.Page {
                 scanStartTimer.stop();
                 scanTimer.stop();
                 Wifi.clearNetworkList();
+            }
+        }
+    }
+
+    // madalone: halt scan polling while screen is off; resume on wake if still on this page.
+    Connections {
+        target: Power
+        ignoreUnknownSignals: true
+
+        function onPowerModeChanged(fromPowerMode, toPowerMode) {
+            if (toPowerMode === PowerModes.Low_power || toPowerMode === PowerModes.Suspend) {
+                Wifi.stopNetworkScan();
+                scanStartTimer.stop();
+                scanTimer.stop();
+            } else if (toPowerMode === PowerModes.Normal
+                       && ui.inputController.activeController === wifiPageContent) {
+                Wifi.startNetworkScan();
+                scanTimer.start();
             }
         }
     }

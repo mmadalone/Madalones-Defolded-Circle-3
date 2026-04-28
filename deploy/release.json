@@ -1,10 +1,10 @@
 {
-  "version": "1.4.11",
+  "version": "1.4.12",
   "name": {
     "en": "Madalone's Custom UI Mods"
   },
   "description": {
-    "en": "Custom firmware mods for the UC Remote 3. Mod 1: configurable charging-screen screensaver with Matrix rain, Starfield, Minimal, Analog, and TV Static themes. Mod 3: compact battery indicator on every entity / activity detail page."
+    "en": "Custom firmware mods for the UC Remote 3. Mod 1: configurable charging-screen screensaver with Matrix rain, Starfield, Minimal, Analog, and TV Static themes. Mod 3: compact battery indicator on every entity / activity detail page. Mod 4: WiFi UX bundle — live link diagnostics, always-visible signal indicator, reconnect button, WoWLAN toggle on UCR3."
   },
   "developer": {
     "name": "madalone",

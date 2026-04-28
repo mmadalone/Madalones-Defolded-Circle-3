@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi UX bundle: always-visible signal-strength indicator.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -240,27 +241,36 @@ Item {
         }
 
 
-        // wifi icon, only shown when there's an issue
+        // wifi icon — always-visible signal indicator (madalone)
         Components.Icon {
             Layout.leftMargin: -10
             Layout.rightMargin: -10
 
             icon: "uc:wifi"
             color: colors.offwhite
-            opacity: 0.5
+            opacity: 1.0
             size: 60
-            visible: !Wifi.isConnected || Wifi.currentNetwork.signalStrength === SignalStrength.NONE
+            visible: true
 
             Components.Icon {
                 size: 60
                 icon: {
+                    if (!Wifi.isConnected) return "";
                     switch (Wifi.currentNetwork.signalStrength) {
                     case SignalStrength.NONE:
                         return "";
+                    case SignalStrength.WEAK:
+                        return "uc:wifi-01";
+                    case SignalStrength.OK:
+                    case SignalStrength.GOOD:
+                        return "uc:wifi-02";
+                    case SignalStrength.EXCELLENT:
+                        return "uc:wifi-03";
                     default:
                         return "";
                     }
                 }
+                color: colors.offwhite
                 opacity: icon === "" ? 0 : 1
                 anchors.centerIn: parent
             }

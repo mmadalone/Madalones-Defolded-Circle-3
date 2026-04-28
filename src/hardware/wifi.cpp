@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "wifi.h"
@@ -16,9 +17,14 @@ Wifi::Wifi(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
-    m_currentNetwork = new WifiNetwork(0, QString(), Security::OPEN, 0, "", "", "", 0, true, this);
+    {
+        WifiNetwork *oldNetwork = m_currentNetwork;
+        m_currentNetwork = new WifiNetwork(0, QString(), Security::OPEN, 0, "", "", "", 0, true, this);
+        if (oldNetwork) oldNetwork->deleteLater();
+    }
 
-    m_wowlan = qEnvironmentVariable("UC_WOWLAN").toLower() == "true";
+    // madalone: env-var unreachable in current UCR3 firmware; surface WoWLAN toggle unconditionally.
+    m_wowlan = true;
 
     qRegisterMetaType<SignalStrength::Enum>("SignalStrength");
     qRegisterMetaType<Security::Enum>("Security");
@@ -30,6 +36,20 @@ Wifi::Wifi(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
         getAllWifiNetworks();
     });
     QObject::connect(m_core, &core::Api::wifiEventChanged, this, &Wifi::onWifiEventChanged);
+
+    // madalone: 30 s periodic status poll keeps StatusBar bar + WifiInfo diagnostics live.
+    // Started in onWifiEventChanged(CONNECTED), stopped in DISCONNECTED + on display off.
+    m_statusPollTimer.setInterval(30000);
+    m_statusPollTimer.setSingleShot(false);
+    QObject::connect(&m_statusPollTimer, &QTimer::timeout, this, [=] { getWifiStatus(); });
+
+    // madalone: mirror display-off state from core power mode so the poll halts when screen is off.
+    // Treat LOW_POWER + SUSPEND as display off; NORMAL + IDLE keep polling (Idle = dimmed, still rendering).
+    QObject::connect(m_core, &core::Api::powerModeChanged, this,
+                     [=](core::PowerEnums::PowerMode mode) {
+                         setDisplayOff(mode == core::PowerEnums::PowerMode::LOW_POWER ||
+                                       mode == core::PowerEnums::PowerMode::SUSPEND);
+                     });
 }
 
 Wifi::~Wifi() { s_instance = nullptr; }
@@ -97,6 +117,22 @@ void Wifi::disconnect() {
         });
 }
 
+void Wifi::reassociate() {
+    qCDebug(lcHwWifi()) << "Reassociating Wi-Fi";
+    wifiCommand(core::WifiEnums::WifiCmd::REASSOCIATE);
+    QTimer::singleShot(2500, this, [=] { getWifiStatus(); });
+}
+
+void Wifi::setDisplayOff(bool off) {
+    if (m_displayOff == off) return;
+    m_displayOff = off;
+    if (off) {
+        m_statusPollTimer.stop();
+    } else if (m_isConnected) {
+        m_statusPollTimer.start();
+    }
+}
+
 void Wifi::getWifiStatus() {
     int id = m_core->wifiGetStatus();
 
@@ -115,21 +151,36 @@ void Wifi::getWifiStatus() {
                     security = Util::convertStringToEnum<Security::Enum>(wifiStatus.keyManagement.replace("-", "_"));
                 }
 
+                WifiNetwork *oldNetwork = m_currentNetwork;
                 m_currentNetwork = new WifiNetwork(wifiStatus.id, wifiStatus.ssid, security, wifiStatus.rssi, wifiStatus.keyManagement, wifiStatus.pairwiseCipher, wifiStatus.groupCipher, wifiStatus.freq, true, this);
-                emit currentNetworkChanged();
+                emit currentNetworkChanged();           // QML rebinds synchronously to new pointer
+                if (oldNetwork) oldNetwork->deleteLater();  // safe — bindings already point to new
+
+                m_currentBssid = wifiStatus.bssid;
+                m_currentRssi = wifiStatus.rssi;
+                m_currentAverageRssi = wifiStatus.averageRssi;
+                m_currentNoise = wifiStatus.noise;
+                m_currentSnr = wifiStatus.snr;
+                m_currentLinkSpeed = wifiStatus.linkSpeed;
+                m_currentEstimatedThroughput = wifiStatus.estimatedThroughput;
+                emit currentLinkInfoChanged();
 
                 m_ipAddress = wifiStatus.ipAddress;
                 emit ipAddressChanged();
 
                 m_isConnected = true;
                 emit isConnectedChanged();
+                if (!m_displayOff && !m_statusPollTimer.isActive())
+                    m_statusPollTimer.start();  // madalone: bootstrap poll on already-connected start
             } else if (wifiStatus.wpaState == core::WifiEnums::WpaState::ERROR ||
                        wifiStatus.wpaState == core::WifiEnums::WpaState::DISCONNECTED) {
                 m_isConnected = false;
                 emit isConnectedChanged();
+                m_statusPollTimer.stop();  // madalone: don't poll while disconnected
             } else {
                 m_isConnected = false;
                 emit isConnectedChanged();
+                m_statusPollTimer.stop();  // madalone: intermediate wpa state — pause poll, CONNECTED event will restart
             }
         },
         [=](int code, QString message) {
@@ -367,11 +418,13 @@ void Wifi::onWifiEventChanged(core::WifiEvent::Enum wifiEvent) {
             emit isConnectedChanged();
             emit connected(true);
             getWifiStatus();
+            if (!m_displayOff) m_statusPollTimer.start();  // madalone: kick off live poll
             break;
         case core::WifiEvent::Enum::DISCONNECTED:
             m_isConnected = false;
             emit isConnectedChanged();
             emit connected(false);
+            m_statusPollTimer.stop();  // madalone: halt live poll while disconnected
             break;
         case core::WifiEvent::Enum::SCAN_STARTED:
             m_scanActive = true;

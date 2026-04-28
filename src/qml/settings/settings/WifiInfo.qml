@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi UX bundle: live link diagnostics + reassociate button.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -157,6 +158,145 @@ Popup {
                 }
             }
 
+            // madalone: live link diagnostics from WifiStatus
+            Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width; height: 2; color: colors.medium }
+
+            Item {
+                width: parent.width
+                height: childrenRect.height
+
+                Text {
+                    id: signalLabel
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Signal")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: Wifi.currentRssi + " dBm" + (Wifi.currentSnr > 0 ? "  (SNR " + Wifi.currentSnr + " dB)" : "")
+                    font: fonts.secondaryFont(24)
+                    anchors { top: signalLabel.bottom }
+                }
+            }
+
+            Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width; height: 2; color: colors.medium }
+
+            Item {
+                width: parent.width
+                height: childrenRect.height
+
+                Text {
+                    id: linkSpeedLabel
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Link speed")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: Wifi.currentLinkSpeed + " Mbps"
+                    font: fonts.secondaryFont(24)
+                    anchors { top: linkSpeedLabel.bottom }
+                }
+            }
+
+            // madalone: hide Throughput row when firmware doesn't populate est_throughput (always 0 on observed UCR3 WS responses)
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width; height: visible ? 2 : 0
+                color: colors.medium
+                visible: Wifi.currentEstimatedThroughput > 0
+            }
+
+            Item {
+                width: parent.width
+                height: visible ? childrenRect.height : 0
+                visible: Wifi.currentEstimatedThroughput > 0
+
+                Text {
+                    id: throughputLabel
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Throughput")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: Wifi.currentEstimatedThroughput + " Mbps"
+                    font: fonts.secondaryFont(24)
+                    anchors { top: throughputLabel.bottom }
+                }
+            }
+
+            Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width; height: 2; color: colors.medium }
+
+            Item {
+                width: parent.width
+                height: childrenRect.height
+
+                Text {
+                    id: bssidLabel
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("BSSID")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: Wifi.currentBssid
+                    font: fonts.secondaryFont(24)
+                    anchors { top: bssidLabel.bottom }
+                }
+            }
+
+            Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width; height: 2; color: colors.medium }
+
+            Item {
+                width: parent.width
+                height: childrenRect.height
+
+                Text {
+                    id: channelLabel
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Channel")
+                    font: fonts.secondaryFont(24)
+                }
+
+                Text {
+                    width: parent.width
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: {
+                        var f = Wifi.currentNetwork.frequency;
+                        if (f === 2484) return "14";
+                        if (f >= 2412 && f <= 2472) return ((f - 2412) / 5 + 1).toString();
+                        if (f >= 5000) return ((f - 5000) / 5).toString();
+                        return "—";
+                    }
+                    font: fonts.secondaryFont(24)
+                    anchors { top: channelLabel.bottom }
+                }
+            }
+
             Rectangle {
                 Layout.alignment: Qt.AlignCenter
                 width: parent.width; height: 2
@@ -256,6 +396,18 @@ Popup {
 
                     wifiInfo.close();
                     ui.setTimeOut(500, ()=>{ Wifi.getAllWifiNetworks(); });
+                }
+            }
+
+            // madalone: REASSOCIATE — re-do 4-way handshake without full deauth
+            Components.Button {
+                width: parent.width
+                text: qsTr("Reconnect")
+                visible: Wifi.isConnected
+                trigger: function() {
+                    loading.start();
+                    Wifi.reassociate();
+                    ui.setTimeOut(2500, ()=>{ loading.success(); });
                 }
             }
 
