@@ -5025,12 +5025,12 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Échec lors de la suppression du réseau. Le réseau WiFi n&apos;existe pas.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Clé réseau incorrecte</translation>
     </message>

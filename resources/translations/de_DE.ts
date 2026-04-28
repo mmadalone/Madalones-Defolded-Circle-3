@@ -5025,12 +5025,12 @@ Tippe auf den QR-Code, um zu Vergrößern.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Das Netzwerk konnte nicht gelöscht werden. Das WiFi-Netzwerk existiert nicht.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Falscher Netzwerkschlüssel</translation>
     </message>

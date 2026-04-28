@@ -5023,12 +5023,12 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Netwerk verwijderen mislukt. WiFi-netwerk bestaat niet.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Verkeerde netwerksleutel</translation>
     </message>

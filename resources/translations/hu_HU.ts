@@ -5025,12 +5025,12 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Nem sikerült törölni a hálózatot. WiFi hálózat nem létezik.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Hibás hálózati kulcs</translation>
     </message>

@@ -5025,12 +5025,12 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Kunne ikke slette netværk. Wifi-netværket eksisterer ikke.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Forkert netværksnøgle</translation>
     </message>

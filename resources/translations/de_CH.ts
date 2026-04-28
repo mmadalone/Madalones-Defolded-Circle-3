@@ -5024,12 +5024,12 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="313"/>
+        <location filename="../../src/hardware/wifi.cpp" line="326"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Ds Netzwärk het nid chönne glöscht werde. Ds WiFi-Netzwärk existiert nid.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="456"/>
+        <location filename="../../src/hardware/wifi.cpp" line="470"/>
         <source>Wrong network key</source>
         <translation>Falsches Passwort</translation>
     </message>
