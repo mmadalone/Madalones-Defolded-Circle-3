@@ -11,6 +11,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.17 — 2026-04-29 — WiFi Diagnostics popup (W13)
+
+### Added
+- **WiFi Diagnostics popup** — new "Diagnostics" button in the WifiInfo popup action stack (between Reconnect and Delete) opens a focused diagnostic surface showing:
+  - **RSSI sparkline** — Canvas-rendered line graph of the last 60 RSSI samples. While the popup is open, a 5 s `Timer` polls `Wifi.getWifiStatus()`; the W6 30 s background poll feeds the buffer when the popup is closed. Reference lines (dashed, `colors.medium`) at -60 / -76 / -84 dBm matching the `SignalStrength::fromRssi` tier thresholds (EXCELLENT / GOOD-OK / OK-WEAK / WEAK boundaries). Y-axis range -100..-30 dBm clamped, X-axis is sample index.
+  - **Live RSSI + link speed** readouts.
+  - **Connection stats** — drops since boot, current session uptime (`HH:MM:SS`), time since last disconnect (formatted progressively: `Ns` → `Nmin` → `Nh Nmin`).
+  - **Reset counters** button with a `createActionableWarningNotification` confirmation dialog (precedent at `Wifi.qml:310-322` for "Delete all networks") — calls `Wifi.resetDiagnosticCounters()` to zero `m_disconnectCount`, clear the ring buffer, and set `m_currentSessionStartMs` to now.
+  - **Top-left back arrow** mirroring the v1.4.15 WifiInfo close affordance pattern.
+- **`Wifi` singleton C++ surface:**
+  - `Q_PROPERTY(QVariantList rssiHistory)` + `rssiHistoryChanged` signal — ring buffer (`QVector<int> m_rssiHistory`, capped at `kRssiHistoryMax = 60`) of last 60 RSSI samples; pushed in `getWifiStatus()`'s success branch alongside the existing `currentLinkInfoChanged` emit.
+  - `Q_PROPERTY(int disconnectCount)` + `disconnectCountChanged` signal — incremented in `onWifiEventChanged(DISCONNECTED)`.
+  - `Q_PROPERTY(qint64 currentSessionDurationSec READ ... NOTIFY connectionStatsChanged)` — computed from `m_currentSessionStartMs` (set in `onWifiEventChanged(CONNECTED)` and at construction). Returns 0 when disconnected.
+  - `Q_PROPERTY(qint64 secondsSinceLastDisconnect READ ... NOTIFY connectionStatsChanged)` — computed from `m_lastDisconnectMs` (set in `onWifiEventChanged(DISCONNECTED)`). Returns -1 sentinel when no disconnect since boot.
+  - `Q_INVOKABLE void resetDiagnosticCounters()` — zeroes counters, clears buffer, fires all three signals.
+  - `connectionStatsChanged()` 1 Hz tick via new `m_statsTickTimer` so QML uptime labels re-evaluate every second.
+- **`WifiDiagnostics.qml`** — new custom QML file (~280 lines), Canvas-based sparkline, mirrors WifiInfo's Popup chrome.
+
+### Architectural note
+- **Drift increase: 2 modified upstream files** (`wifi.{h,cpp}`, `WifiInfo.qml`) + **2 modified registration files** (`resources/qrc/main.qrc`) + **1 new custom file** (`WifiDiagnostics.qml`). `remote-ui.pro` doesn't need a new entry — QML files are picked up via qrc only.
+- **No new firmware-side dependency.** Reuses existing `getWifiStatus()` + `wifiEventChanged(DISCONNECTED|CONNECTED)` signal sources. Buffer lives in C++ `Wifi` singleton, persists for app lifetime, does not survive UI restart by design (transient diagnostic).
+- **Charting choice:** `Canvas` (Qt Quick 2.15 native, zero external deps). Codebase has no `QtCharts` or `QtQuick.Shapes` usage, so Canvas matches the existing rendering surface convention. Alternative ring-buffer pattern documented at `src/ui/rainsimulation.h:38-57` (head/count) was overkill for N=60 — used `QVector<int>::removeFirst()` instead.
+- **Translation impact:** new strings — `"WiFi Diagnostics"`, `"Signal strength"`, `"Link speed"`, `"Drops since boot"`, `"Current session"`, `"Disconnected"`, `"Time since last drop"`, `"None since boot"`, `" s"`, `" min"`, `" h "`, `"Diagnostics"`, `"Reset counters"`, `"Reset diagnostic counters?"`, `"Are you sure you want to zero the drop counter and clear the RSSI history?"`, `"Reset"`. Run `lupdate` (auto via build).
+- **Verification:** sparkline live update via slow walk-out-of-range, disconnect counter via toggling Settings → WiFi off/on, uptime via wall-clock, reset via the confirmation dialog.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`. Recovery: `curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=true" -u "web-configurator:${UC3_PIN}"`.
+
+---
+
 ## v1.4.16 — 2026-04-29 — Post-v1.4.15 polish round (slider thinning, docked-rearm functional, WifiInfo button placement)
 
 ### Fixed

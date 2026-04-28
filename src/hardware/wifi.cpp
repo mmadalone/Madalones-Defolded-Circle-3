@@ -1,8 +1,10 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup.
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup, RSSI history + drop counter (W13).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "wifi.h"
+
+#include <QDateTime>
 
 #include "../logging.h"
 #include "../ui/notification.h"
@@ -50,6 +52,14 @@ Wifi::Wifi(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
                          setDisplayOff(mode == core::PowerEnums::PowerMode::LOW_POWER ||
                                        mode == core::PowerEnums::PowerMode::SUSPEND);
                      });
+
+    // madalone (W13, v1.4.17): diagnostics ring buffer + 1 Hz uptime tick.
+    m_rssiHistory.reserve(kRssiHistoryMax);
+    m_currentSessionStartMs = QDateTime::currentMSecsSinceEpoch();   // assume connected at boot; corrected on first DISCONNECTED
+    m_statsTickTimer.setInterval(1000);
+    m_statsTickTimer.setSingleShot(false);
+    QObject::connect(&m_statsTickTimer, &QTimer::timeout, this, [this] { emit connectionStatsChanged(); });
+    m_statsTickTimer.start();
 }
 
 Wifi::~Wifi() { s_instance = nullptr; }
@@ -177,6 +187,11 @@ void Wifi::getWifiStatus() {
                 m_currentLinkSpeed = wifiStatus.linkSpeed;
                 m_currentEstimatedThroughput = wifiStatus.estimatedThroughput;
                 emit currentLinkInfoChanged();
+
+                // madalone (W13, v1.4.17): push to RSSI ring buffer for the diagnostics sparkline.
+                m_rssiHistory.append(wifiStatus.rssi);
+                while (m_rssiHistory.size() > kRssiHistoryMax) m_rssiHistory.removeFirst();
+                emit rssiHistoryChanged();
 
                 m_ipAddress = wifiStatus.ipAddress;
                 emit ipAddressChanged();
@@ -433,12 +448,20 @@ void Wifi::onWifiEventChanged(core::WifiEvent::Enum wifiEvent) {
             getWifiStatus();
             if (!m_displayOff) m_statusPollTimer.start();  // madalone: kick off live poll
             m_pendingJoinSsid.clear();                     // madalone (W9): clear pending — successful join, nothing to clean up
+            // madalone (W13, v1.4.17): mark new session start for uptime computation.
+            m_currentSessionStartMs = QDateTime::currentMSecsSinceEpoch();
+            emit connectionStatsChanged();
             break;
         case core::WifiEvent::Enum::DISCONNECTED:
             m_isConnected = false;
             emit isConnectedChanged();
             emit connected(false);
             m_statusPollTimer.stop();  // madalone: halt live poll while disconnected
+            // madalone (W13, v1.4.17): increment drop counter, capture timestamp for "since-last-drop".
+            m_disconnectCount++;
+            m_lastDisconnectMs = QDateTime::currentMSecsSinceEpoch();
+            emit disconnectCountChanged();
+            emit connectionStatsChanged();
             break;
         case core::WifiEvent::Enum::SCAN_STARTED:
             m_scanActive = true;
@@ -476,6 +499,35 @@ WifiNetwork::WifiNetwork(int id, const QString &ssid, Security::Enum security, i
     : QObject(parent), m_id(id), m_ssid(ssid), m_security(security), m_signalStrenght(SignalStrength::fromRssi(rssi)), m_keyManagement(keyManagement), m_pairwiseCipher(pairwiseCipher), m_groupCipher(groupCipher), m_frequency(frequency), m_enabled(enabled) {}
 
 WifiNetwork::~WifiNetwork() {}
+
+// madalone (W13, v1.4.17): WiFi diagnostics surface.
+QVariantList Wifi::getRssiHistory() const {
+    QVariantList out;
+    out.reserve(m_rssiHistory.size());
+    for (int v : m_rssiHistory) out.append(v);
+    return out;
+}
+
+qint64 Wifi::getCurrentSessionDurationSec() const {
+    if (!m_isConnected || m_currentSessionStartMs == 0) return 0;
+    return (QDateTime::currentMSecsSinceEpoch() - m_currentSessionStartMs) / 1000;
+}
+
+qint64 Wifi::getSecondsSinceLastDisconnect() const {
+    if (m_lastDisconnectMs == 0) return -1;   // sentinel: "never since boot"
+    return (QDateTime::currentMSecsSinceEpoch() - m_lastDisconnectMs) / 1000;
+}
+
+void Wifi::resetDiagnosticCounters() {
+    qCDebug(lcHwWifi()) << "Resetting WiFi diagnostic counters";
+    m_disconnectCount = 0;
+    m_lastDisconnectMs = 0;
+    m_currentSessionStartMs = QDateTime::currentMSecsSinceEpoch();
+    m_rssiHistory.clear();
+    emit disconnectCountChanged();
+    emit rssiHistoryChanged();
+    emit connectionStatsChanged();
+}
 
 }  // namespace hw
 }  // namespace uc

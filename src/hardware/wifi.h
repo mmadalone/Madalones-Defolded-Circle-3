@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup.
+// Copyright (c) 2026 madalone. WiFi UX bundle: live diagnostics, reconnect, leak fix, WoWLAN surfacing, periodic poll, displayOff gate, scoped onboarding-failure cleanup, RSSI history + drop counter (W13).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -9,6 +9,8 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QTimer>
+#include <QVariantList>
+#include <QVector>
 
 #include "../core/core.h"
 
@@ -111,6 +113,11 @@ class Wifi : public QObject {
     Q_PROPERTY(int currentSnr READ getCurrentSnr NOTIFY currentLinkInfoChanged)
     Q_PROPERTY(int currentLinkSpeed READ getCurrentLinkSpeed NOTIFY currentLinkInfoChanged)
     Q_PROPERTY(int currentEstimatedThroughput READ getCurrentEstimatedThroughput NOTIFY currentLinkInfoChanged)
+    // madalone (W13, v1.4.17): diagnostics surface
+    Q_PROPERTY(QVariantList rssiHistory READ getRssiHistory NOTIFY rssiHistoryChanged)
+    Q_PROPERTY(int disconnectCount READ getDisconnectCount NOTIFY disconnectCountChanged)
+    Q_PROPERTY(qint64 currentSessionDurationSec READ getCurrentSessionDurationSec NOTIFY connectionStatsChanged)
+    Q_PROPERTY(qint64 secondsSinceLastDisconnect READ getSecondsSinceLastDisconnect NOTIFY connectionStatsChanged)
 
  public:
     explicit Wifi(core::Api *core, QObject *parent = nullptr);
@@ -132,6 +139,10 @@ class Wifi : public QObject {
     int                  getCurrentSnr() const { return m_currentSnr; }
     int                  getCurrentLinkSpeed() const { return m_currentLinkSpeed; }
     int                  getCurrentEstimatedThroughput() const { return m_currentEstimatedThroughput; }
+    QVariantList         getRssiHistory() const;
+    int                  getDisconnectCount() const { return m_disconnectCount; }
+    qint64               getCurrentSessionDurationSec() const;
+    qint64               getSecondsSinceLastDisconnect() const;
 
     Q_INVOKABLE void turnOn();
     Q_INVOKABLE void turnOff();
@@ -142,6 +153,7 @@ class Wifi : public QObject {
     Q_INVOKABLE void reassociate();
     Q_INVOKABLE void setDisplayOff(bool off);
     Q_INVOKABLE void deletePendingJoinNetwork();
+    Q_INVOKABLE void resetDiagnosticCounters();   // madalone (W13): zero counters + clear ring buffer
 
     Q_INVOKABLE void getWifiStatus();
     Q_INVOKABLE void startNetworkScan();
@@ -176,6 +188,10 @@ class Wifi : public QObject {
     void networkNotFound();
     void wrongKey();
     void currentLinkInfoChanged();
+    // madalone (W13, v1.4.17)
+    void rssiHistoryChanged();
+    void disconnectCountChanged();
+    void connectionStatsChanged();   // 1 Hz tick + on DISCONNECTED/CONNECTED transitions
 
  private:
     static Wifi *s_instance;
@@ -204,6 +220,14 @@ class Wifi : public QObject {
 
     QString m_pendingJoinSsid;          // SSID of the join attempt in flight; deleted (only) on connect failure
                                         // during onboarding, cleared on successful connect
+
+    // madalone (W13, v1.4.17): diagnostics surface
+    static const int kRssiHistoryMax = 60;   // 5 min @ 5 s polling = 60 samples; or 30 min @ 30 s background poll
+    QVector<int> m_rssiHistory;              // ring of last N RSSI samples (-100..-30 dBm typical)
+    int          m_disconnectCount = 0;
+    qint64       m_currentSessionStartMs = 0;   // QDateTime::currentMSecsSinceEpoch when CONNECTED (or boot init)
+    qint64       m_lastDisconnectMs = 0;        // 0 = none since boot
+    QTimer       m_statsTickTimer;              // 1 Hz, fires connectionStatsChanged so QML uptime label re-evaluates
 
  private:
     QString m_lastConnectedSSid;

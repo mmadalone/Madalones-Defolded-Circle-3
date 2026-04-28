@@ -447,6 +447,13 @@ Popup {
                 }
             }
 
+            // madalone (W13, v1.4.17): opens RSSI history + drop counter popup.
+            Components.Button {
+                Layout.fillWidth: true
+                text: qsTr("Diagnostics")
+                trigger: function() { wifiDiagnostics.open(); }
+            }
+
             Components.Button {
                 Layout.fillWidth: true
                 text: qsTr("Delete")
@@ -464,4 +471,11 @@ Popup {
             }   // ColumnLayout (infoColumn)
         }       // Flickable (infoFlickable)
     }           // Rectangle (infoContainer)
+
+    // madalone (W13, v1.4.17): Diagnostics sub-popup. Parented to wifiInfo's parent so it
+    // overlays WifiInfo when open. Reuses Wifi singleton's properties (no per-network state).
+    WifiDiagnostics {
+        id: wifiDiagnostics
+        parent: wifiInfo.parent
+    }
 }               // Popup (wifiInfo)
