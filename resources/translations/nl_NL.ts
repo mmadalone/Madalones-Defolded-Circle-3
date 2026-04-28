@@ -2989,96 +2989,122 @@ Climate fan</extracomment>
         <translation>Vermogen</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="79"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="172"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Houd WiFi verbonden in standby</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
         <source>Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.</source>
         <translation>Houd WiFi altijd verbonden, zelfs wanneer het apparaat slaapt. Hiermee kan het apparaat sneller opnieuw verbinden na het ontwaken. Houd er rekening mee dat activering van deze functie de batterijduur iets vermindert.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="129"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="222"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="139"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="232"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="151"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="244"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="190"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="283"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Wekgevoeligheid</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="200"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="293"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>Bewegingshoeveelheid nodig om de afstandsbediening wakker te maken.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="215"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="308"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Uit</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="217"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="310"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Gevoeligheid</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="255"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="348"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Scherm uit-tijd</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="152"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="275"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="276"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="487"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="245"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="368"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="369"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="580"/>
         <source>%1 seconds</source>
         <translation>%1 seconden</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="315"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="76"/>
+        <source>Keep awake while watching/listening</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="93"/>
+        <source>Prevents the 5-minute sleep timer from firing while a media player is actively playing or while you&apos;ve recently pressed media-control buttons. Sends a periodic ping to the firmware. Complementary to &quot;Keep WiFi connected in standby&quot; — that handles the post-sleep recovery; this avoids sleeping at all.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
+        <source>Idle timeout after last button: %1 seconds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="117"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="118"/>
+        <source>%1 s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="135"/>
+        <source>Only when on charger or dock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="408"/>
         <source>Screen off animations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="324"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="417"/>
         <source>Enabled</source>
         <translation type="unfinished">Ingeschakeld</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="343"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="436"/>
         <source>Fire when undocked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="365"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="458"/>
         <source>Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="467"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="560"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Slaaptijd</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="488"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="581"/>
         <source>%1 minutes</source>
         <translation>%1 minuten</translation>
     </message>
@@ -4867,7 +4893,7 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="929"/>
+        <location filename="../../src/config/config.cpp" line="963"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fout bij het laden van configuratie. Nogmaals proberen.</translation>
     </message>
@@ -4942,17 +4968,17 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1347"/>
+        <location filename="../../src/core/core.cpp" line="1356"/>
         <source>Connection error</source>
         <translation>Verbindingsfout</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1348"/>
+        <location filename="../../src/core/core.cpp" line="1357"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Er was een fout bij het verbinden met de kern. Als het probleem aanhoudt, herstart de afstandsbediening.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1807"/>
+        <location filename="../../src/core/core.cpp" line="1816"/>
         <source>Authentication to core failed</source>
         <translation>Authenticatie met kern mislukt</translation>
     </message>
@@ -5202,22 +5228,22 @@ Tik op de QR-code om deze op het scherm weer te geven.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="661"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="671"/>
         <source>%1 is not responding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="662"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="672"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="695"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="705"/>
         <source>Error sending the command</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="696"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="706"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation type="unfinished"></translation>
     </message>
