@@ -3822,7 +3822,7 @@ le configurateur web</translation>
 <context>
     <name>StatusBar</name>
     <message>
-        <location filename="../../src/qml/components/StatusBar.qml" line="110"/>
+        <location filename="../../src/qml/components/StatusBar.qml" line="111"/>
         <source>Reorder</source>
         <translation>Réorganiser</translation>
     </message>
@@ -4521,96 +4521,96 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>Wifi</name>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="65"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="86"/>
         <source>Select your WiFi network</source>
         <translation>Sélectionnez votre réseau WiFi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="89"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="110"/>
         <source>Wi-Fi address</source>
         <translation>Adresse Wi-Fi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="125"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="146"/>
         <source>Skip</source>
         <translation>Passer</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="150"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="171"/>
         <source>Failed to connect</source>
         <extracomment>Failed to connect to a wifi network</extracomment>
         <translation>Échec de la connexion</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="166"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="187"/>
         <source>Failed to connect to the WiFi network. You can try again or proceed without setting up a WiFi network. You can set up your WiFi network later in Settings. If you skip this step, dock and integration setup won&apos;t be possible now.</source>
         <translation>Échec de la connexion au réseau WiFi. Vous pouvez réessayer ou continuer sans configurer de réseau WiFi. Vous pourrez configurer votre réseau WiFi plus tard dans les Paramètres. Si vous passez cette étape, l&apos;installation du dock et de l&apos;intégration ne sera pas possible pour le moment.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="173"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="194"/>
         <source>Set up later</source>
         <translation>Configurer plus tard</translation>
     </message>
     <message>
-        <location filename="../../src/qml/onboarding/Wifi.qml" line="184"/>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="205"/>
         <source>Try again</source>
         <translation>Réessayer</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="86"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="107"/>
         <source>Bluetooth</source>
         <translation>Bluetooth</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="127"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="148"/>
         <source>WiFi</source>
         <translation>WiFi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="165"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="186"/>
         <source>Active WiFi scanning</source>
         <translation>Analyse WiFi active</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="199"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="220"/>
         <source>Actively scan for nearby WiFi networks in the configured interval: %1 seconds</source>
         <translation>Analyser activement les réseaux WiFi à proximité à l&apos;intervalle configuré : %1 secondes</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="210"/>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="211"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="231"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="232"/>
         <source>%1 seconds</source>
         <translation>%1 secondes</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="249"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="270"/>
         <source>WiFi band</source>
         <translation>Bande WiFi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="263"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="284"/>
         <source>Select WiFi band</source>
         <translation>Sélection de la bande WiFi</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="289"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="310"/>
         <source>Known Networks</source>
         <extracomment>known WiFi networks</extracomment>
         <translation>Réseaux connus</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="307"/>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="311"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="328"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="332"/>
         <source>Delete all networks</source>
         <translation>Supprimer tous les réseaux</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="312"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="333"/>
         <source>Are you sure you want to delete all WiFi networks?</source>
         <translation>Es-tu sûr de vouloir supprimer tous les réseaux WiFi ?</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Wifi.qml" line="318"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="339"/>
         <source>Delete all</source>
         <translation>Tout supprimer</translation>
     </message>
@@ -4618,37 +4618,67 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>WifiInfo</name>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="175"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="173"/>
+        <source>Signal</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="198"/>
+        <source>Link speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="230"/>
+        <source>Throughput</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="255"/>
+        <source>BSSID</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="280"/>
+        <source>Channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="315"/>
         <source>MAC address</source>
         <translation>Adresse MAC</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="204"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="344"/>
         <source>IP address</source>
         <translation>Adresse IP</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="233"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="373"/>
         <source>Key management</source>
         <translation>Gestion des clés</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="249"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="389"/>
         <source>Disconnect</source>
         <translation>Déconnecter</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="249"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="389"/>
         <source>Connect</source>
         <translation>Connecter</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="264"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="405"/>
+        <source>Reconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="416"/>
         <source>Delete</source>
         <translation>Supprimer</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="275"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="427"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -4995,12 +5025,12 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="262"/>
+        <location filename="../../src/hardware/wifi.cpp" line="313"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Échec lors de la suppression du réseau. Le réseau WiFi n&apos;existe pas.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="403"/>
+        <location filename="../../src/hardware/wifi.cpp" line="456"/>
         <source>Wrong network key</source>
         <translation>Clé réseau incorrecte</translation>
     </message>
