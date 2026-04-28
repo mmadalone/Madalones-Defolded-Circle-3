@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.15 — 2026-04-29 — UI polish: Power slider overflow, WifiInfo back-arrow, docked-rearm screensaver timer
+
+### Fixed
+- **Settings → Power Active Session Keeper slider overlap.** v1.4.14's `Layout.preferredHeight: 100` wasn't enough — pressed-state animation grows `sliderBG` to `slider.height` (50 → 100) AND `lowValueText.topMargin` from 5 to 20, pushing labels ~42 px below the bound and into the "Only when on charger or dock" row. Bumped to 140 to give the pressed-state animation room.
+- **Settings → WiFi → tap connected network — back arrow top-left.** Replaces the now-redundant bottom "Close" button. Popup is conceptually a sub-section of WiFi settings, so a back arrow matches the navigation pattern better than a modal X. Implemented as `Components.HapticMouseArea` + `Components.Icon { icon: "uc:arrow-left" }` outside the Flickable, `z: 10`, `anchors { top; left; topMargin: 10; leftMargin: 10 }`. Flickable's `anchors.top.topMargin: 60` so content doesn't render under the arrow. Three close paths kept: arrow, tap-above-popup MouseArea, BACK hardware key.
+- **Screensaver doesn't rearm after tap-dismiss while docked (pre-existing UC bug).** `main.qml:648–655`'s `onClosed` handler restarted `idleScreensaverTimer` only when undocked (`var undocked = !Battery.powerSupply ...`). On the dock, the screensaver stayed dismissed until the user woke the screen via `Low_power → Normal` (the `main.qml:633–635` wake re-open path). New `dockedRearmTimer` (single-shot, interval driven by new `ScreensaverConfig.reopenWhileDockedSec` property, default 60 s, range 30–120 s via UI slider) re-activates `chargingScreenLoader` after the configured delay following a docked tap-dismiss. Cancels on `Battery.powerSupplyChanged(false)` (undock) and on `Power.powerModeChanged → Normal` wake-re-open (avoids double-fire when wake already re-opens the screensaver).
+
+### Added
+- **`ScreensaverConfig.reopenWhileDockedSec`** Q_PROPERTY (range 30–120 s via UI, default 60), QSettings key `charging/reopenWhileDockedSec`. New slider "Re-run after dismissal while docked" in Settings → Screensaver → General Behavior, below the existing idle-timeout slider. Always visible (independent of the "Idle screensaver" toggle, since docked rearm operates on a different code path from the battery-idle auto-open).
+
+### Architectural note
+- **Drift increase: 5 modified files** (`screensaverconfig.h`, `main.qml`, `Power.qml`, `WifiInfo.qml`, `GeneralBehavior.qml` — last is custom per CUSTOM_FILES manifest). No new files.
+- **Translation impact:** new strings — "Re-run after dismissal while docked", "Restart the screensaver after this many seconds of inactivity when on the dock.", "%1 s" already exists.
+- **Verification:** UI fixes (1, 2) tap-tested. Fix 3 requires docked-on-AC verification — set timer to 30/60/120 s, trigger screensaver, dismiss, time the rearm with a watch.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`. If the build crashes the UI for 90 s, prior firmware reverts; re-enable manually:
+  ```
+  curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=true" -u "web-configurator:${UC3_PIN}"
+  ```
+
+---
+
 ## v1.4.14 — 2026-04-28 — Active Session Keeper: prevent the 5-minute sleep timer during media playback
 
 ### Added

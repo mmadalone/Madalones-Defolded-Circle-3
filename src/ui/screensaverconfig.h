@@ -187,6 +187,8 @@ public:
     SCRN_BOOL(motionToClose,       "charging/motionToClose",          false)
     SCRN_BOOL(idleEnabled,         "charging/idleEnabled",            false)
     SCRN_INT(idleTimeout,          "charging/idleTimeout",            45)
+    // madalone (v1.4.15): rearm screensaver after tap-dismiss while docked. UI slider 30-120s, default 60.
+    SCRN_INT(reopenWhileDockedSec, "charging/reopenWhileDockedSec",   60)
     SCRN_BOOL(dpadEnabled,         "charging/matrixDpadEnabled",      true)
     SCRN_BOOL(dpadPersist,         "charging/matrixDpadPersist",      true)
     SCRN_BOOL(dpadTouchbarSpeed,   "charging/matrixDpadTouchbarSpeed", true)

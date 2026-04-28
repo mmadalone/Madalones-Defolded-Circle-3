@@ -545,6 +545,23 @@ ApplicationWindow {
             }
         }
 
+        // madalone (v1.4.15): rearm screensaver after tap-dismiss while docked.
+        // Pre-existing UC bug — onClosed handler at the bottom of this Loader skipped
+        // idleScreensaverTimer.restart() when docked, so screensaver stayed dismissed
+        // until the user woke the screen from Low_power. This timer fires on tap-dismiss
+        // while docked and re-activates chargingScreenLoader after a configurable delay.
+        Timer {
+            id: dockedRearmTimer
+            repeat: false
+            running: false
+            interval: ScreensaverConfig.reopenWhileDockedSec * 1000
+            onTriggered: {
+                if (Battery.powerSupply && !chargingScreenLoader.active && !ui.editMode) {
+                    chargingScreenLoader.active = true;
+                }
+            }
+        }
+
         Connections {
             target: ScreensaverConfig
             ignoreUnknownSignals: true
@@ -556,6 +573,12 @@ ApplicationWindow {
             function onIdleTimeoutChanged() {
                 idleScreensaverTimer.interval = ScreensaverConfig.idleTimeout * 1000;
                 if (idleScreensaverTimer.running) idleScreensaverTimer.restart();
+            }
+
+            // madalone (v1.4.15): keep dockedRearmTimer's interval in sync with the slider.
+            function onReopenWhileDockedSecChanged() {
+                dockedRearmTimer.interval = ScreensaverConfig.reopenWhileDockedSec * 1000;
+                if (dockedRearmTimer.running) dockedRearmTimer.restart();
             }
         }
 
@@ -597,6 +620,7 @@ ApplicationWindow {
                         chargingScreenLoader.active = true;
                         SoundEffects.play(SoundEffects.BatteryCharge);
                     } else {
+                        dockedRearmTimer.stop();   // madalone (v1.4.15): undocked → no docked rearm
                         // Honor 'Close on wake' toggle — keeps undock consistent with motion wake.
                         if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();
@@ -632,6 +656,7 @@ ApplicationWindow {
                         // Re-open screensaver when waking from suspend while charging (if not motion-closed)
                         else if (fromPowerMode !== PowerModes.Idle && Battery.isCharging && Battery.powerSupply) {
                             chargingScreenLoader.active = true;
+                            dockedRearmTimer.stop();   // madalone (v1.4.15): wake re-opened it; cancel pending rearm
                         }
                         // Reset idle timer on activity
                         if (root._shouldOpenOnIdle() && !Battery.powerSupply) {
@@ -651,6 +676,11 @@ ApplicationWindow {
                     var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
                     if (root._shouldOpenOnIdle() && undocked) {
                         idleScreensaverTimer.restart();
+                    }
+                    // madalone (v1.4.15): rearm screensaver while docked after configurable timeout.
+                    if (root._shouldOpenOnIdle() && Battery.powerSupply && HwInfo.modelNumber !== "DEV") {
+                        dockedRearmTimer.interval = ScreensaverConfig.reopenWhileDockedSec * 1000;
+                        dockedRearmTimer.restart();
                     }
                 }
             }

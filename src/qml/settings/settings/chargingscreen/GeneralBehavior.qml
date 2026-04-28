@@ -267,7 +267,7 @@ ColumnLayout {
                 KeyNavigation.up: ScreensaverConfig.theme === "matrix"
                     ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
                     : motionToCloseSwitch
-                KeyNavigation.down: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : debugOverlaySwitch
+                KeyNavigation.down: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : dockedRearmSlider
             }
         }
     }
@@ -296,6 +296,44 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationEnabled
             Accessible.name: "Idle timeout " + value
             KeyNavigation.up: idleEnabledSwitch
+            KeyNavigation.down: dockedRearmSlider
+        }
+    }
+
+    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+
+    // 16c. DOCKED REARM TIMEOUT (madalone v1.4.15) — always visible, independent of idleEnabled
+    ColumnLayout {
+        Layout.alignment: Qt.AlignCenter
+        Layout.leftMargin: 10; Layout.rightMargin: 10
+        spacing: 10
+
+        Text {
+            Layout.fillWidth: true; color: colors.offwhite
+            text: qsTr("Re-run after dismissal while docked") + " (" + ScreensaverConfig.reopenWhileDockedSec + "s)"
+            font: fonts.primaryFont(30)
+        }
+        Text {
+            Layout.fillWidth: true; color: colors.light
+            wrapMode: Text.WordWrap
+            text: qsTr("Restart the screensaver after this many seconds of inactivity when on the dock.")
+            font: fonts.secondaryFont(24)
+        }
+        Components.Slider {
+            id: dockedRearmSlider
+            objectName: "dockedRearmSlider"
+            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            Layout.fillWidth: true
+            Layout.preferredHeight: 140   // pressed-state grows sliderBG + label topMargin; matches v1.4.15 Power.qml fix
+            from: 30; to: 120; stepSize: 10
+            value: ScreensaverConfig.reopenWhileDockedSec; live: true
+            lowValueText: qsTr("%1 s").arg(from)
+            highValueText: qsTr("%1 s").arg(to)
+            onMoved: ScreensaverConfig.reopenWhileDockedSec = value
+            onUserInteractionEnded: ScreensaverConfig.reopenWhileDockedSec = value
+            highlight: activeFocus && ui.keyNavigationEnabled
+            Accessible.name: "Docked rearm timeout " + value
+            KeyNavigation.up: idleTimeoutSlider
             KeyNavigation.down: debugOverlaySwitch
         }
     }

@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi UX bundle: live link diagnostics + reassociate button.
+// Copyright (c) 2026 madalone. WiFi UX bundle: live link diagnostics + reassociate button + top-left back arrow.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -112,15 +112,49 @@ Popup {
     Rectangle {
         id: infoContainer
         width: ui.width
-        height: childrenRect.height
+        // madalone: cap at viewport-60; reserves room for the always-visible action button block at the bottom.
+        height: Math.min(infoFlickable.contentHeight + buttonsColumn.implicitHeight + 30, parent.height - 60)
         color: colors.dark
         radius: ui.cornerRadiusSmall
         anchors.bottom: parent.bottom
+        clip: true
 
-        ColumnLayout {
-            spacing: 20
-            width: parent.width - 40
-            anchors.horizontalCenter: parent.horizontalCenter
+        // madalone (v1.4.15): top-left back arrow — explicit close affordance.
+        // This popup is conceptually a sub-section of WiFi settings, not a modal,
+        // so a back arrow matches the navigation pattern better than a modal X.
+        Components.HapticMouseArea {
+            id: backArrowArea
+            width: 60; height: 60
+            anchors { top: parent.top; left: parent.left; topMargin: 10; leftMargin: 10 }
+            z: 10
+            onClicked: wifiInfo.close()
+
+            Components.Icon {
+                anchors.centerIn: parent
+                icon: "uc:arrow-left"
+                color: colors.offwhite
+                size: 60
+            }
+        }
+
+        // madalone: Flickable holds the diagnostic rows only; action buttons stay anchored
+        // at the bottom (always visible) so users always have a Close affordance.
+        Flickable {
+            id: infoFlickable
+            anchors { top: parent.top; topMargin: 60; left: parent.left; right: parent.right; bottom: buttonsColumn.top; bottomMargin: 10 }
+            contentHeight: infoColumn.implicitHeight + 20
+            contentWidth: width
+            flickableDirection: Flickable.VerticalFlick
+            boundsBehavior: Flickable.StopAtBounds
+            maximumFlickVelocity: 6000
+            flickDeceleration: 1000
+            clip: true
+
+            ColumnLayout {
+                id: infoColumn
+                spacing: 20
+                width: parent.width - 40
+                anchors.horizontalCenter: parent.horizontalCenter
 
             Item {
                 height: 1
@@ -384,8 +418,22 @@ Popup {
                 }
             }
 
+            Item {
+                height: 1
+            }
+            }   // ColumnLayout (infoColumn)
+        }       // Flickable (infoFlickable)
+
+        // madalone: action buttons live OUTSIDE the Flickable so they're always
+        // visible regardless of how tall the diagnostics scroll content gets.
+        ColumnLayout {
+            id: buttonsColumn
+            spacing: 20
+            width: parent.width - 40
+            anchors { bottom: parent.bottom; bottomMargin: 10; horizontalCenter: parent.horizontalCenter }
+
             Components.Button {
-                width: parent.width
+                Layout.fillWidth: true
                 text: Wifi.isConnected ? qsTr("Disconnect") : qsTr("Connect")
                 trigger: function() {
                     if (Wifi.isConnected) {
@@ -393,15 +441,14 @@ Popup {
                     } else {
                         Wifi.connectSavedNetwork(wifiInfo.wifiNetworkId);
                     }
-
                     wifiInfo.close();
                     ui.setTimeOut(500, ()=>{ Wifi.getAllWifiNetworks(); });
                 }
             }
 
-            // madalone: REASSOCIATE — re-do 4-way handshake without full deauth
+            // REASSOCIATE — re-do 4-way handshake without full deauth
             Components.Button {
-                width: parent.width
+                Layout.fillWidth: true
                 text: qsTr("Reconnect")
                 visible: Wifi.isConnected
                 trigger: function() {
@@ -412,7 +459,7 @@ Popup {
             }
 
             Components.Button {
-                width: parent.width
+                Layout.fillWidth: true
                 text: qsTr("Delete")
                 color: colors.red
                 trigger: function() {
@@ -421,16 +468,7 @@ Popup {
                     ui.setTimeOut(500, ()=>{ Wifi.getAllWifiNetworks(); });
                 }
             }
-
-            Components.Button {
-                width: parent.width
-                text: qsTr("Close")
-                trigger: function() { wifiInfo.close(); }
-            }
-
-            Item {
-                height: 1
-            }
+            // madalone (v1.4.15): bottom "Close" button removed — back arrow at top-left supersedes it.
         }
-    }
-}
+    }           // Rectangle (infoContainer)
+}               // Popup (wifiInfo)

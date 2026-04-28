@@ -90,18 +90,18 @@ Settings.Page {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: colors.light
-                    text: qsTr("Prevents the 5-minute sleep timer from firing while a media player is actively playing or while you've recently pressed media-control buttons. Sends a periodic ping to the firmware. Complementary to \"Keep WiFi connected in standby\" — that handles the post-sleep recovery; this avoids sleeping at all.")
+                    text: qsTr("Prevents the 5-minute sleep timer while you're watching or listening.")
                     font: fonts.secondaryFont(24)
                 }
 
-                Item {
+                ColumnLayout {
                     Layout.fillWidth: true
-                    Layout.preferredHeight: childrenRect.height + 40
+                    spacing: 10
                     visible: Config.sessionKeeperEnabled
 
                     Text {
                         id: idleTimeoutLabel
-                        width: parent.width
+                        Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: colors.light
                         text: qsTr("Idle timeout after last button: %1 seconds").arg(Config.sessionKeeperIdleSec)
@@ -109,7 +109,8 @@ Settings.Page {
                     }
 
                     Components.Slider {
-                        height: 60
+                        Layout.fillWidth: true
+                        Layout.preferredHeight: 140   // pressed-state grows sliderBG + label topMargin; v1.4.14's 100 wasn't enough
                         from: 30
                         to: 300
                         stepSize: 30
@@ -117,7 +118,6 @@ Settings.Page {
                         lowValueText: qsTr("%1 s").arg(from)
                         highValueText: qsTr("%1 s").arg(to)
                         live: true
-                        anchors { top: idleTimeoutLabel.bottom; topMargin: 10 }
                         onValueChanged: { Config.sessionKeeperIdleSec = value; }
                         onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
                         highlight: activeFocus && ui.keyNavigationEnabled
@@ -197,7 +197,7 @@ Settings.Page {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: colors.light
-                    text: qsTr("Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.")
+                    text: qsTr("Faster reconnect after wake; minor battery cost.")
                     font: fonts.secondaryFont(24)
                 }
             }
