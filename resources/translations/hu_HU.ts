@@ -4650,6 +4650,86 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
     </message>
 </context>
 <context>
+    <name>WifiDiagnostics</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="100"/>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="109"/>
+        <source>None since boot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="110"/>
+        <source> s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="111"/>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="112"/>
+        <source> min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="112"/>
+        <source> h </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="162"/>
+        <source>WiFi Diagnostics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="178"/>
+        <source>Signal strength</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="253"/>
+        <source>Link speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="277"/>
+        <source>Drops since boot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="300"/>
+        <source>Current session</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="307"/>
+        <source>Disconnected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="323"/>
+        <source>Time since last drop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="339"/>
+        <source>Reset counters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="343"/>
+        <source>Reset diagnostic counters?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="344"/>
+        <source>Are you sure you want to zero the drop counter and clear the RSSI history?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="347"/>
+        <source>Reset</source>
+        <translation type="unfinished">Visszaállít</translation>
+    </message>
+</context>
+<context>
     <name>WifiInfo</name>
     <message>
         <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="208"/>
@@ -4707,7 +4787,12 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="452"/>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="453"/>
+        <source>Diagnostics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="459"/>
         <source>Delete</source>
         <translation>Törlés</translation>
     </message>
@@ -5058,12 +5143,12 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="326"/>
+        <location filename="../../src/hardware/wifi.cpp" line="341"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Nem sikerült törölni a hálózatot. WiFi hálózat nem létezik.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="470"/>
+        <location filename="../../src/hardware/wifi.cpp" line="493"/>
         <source>Wrong network key</source>
         <translation>Hibás hálózati kulcs</translation>
     </message>
