@@ -11,6 +11,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.18 — 2026-04-29 — CI fix: sync remote-ui.pro VERSION with release.json
+
+### Fixed
+- **`remote-ui.pro` VERSION bumped from 1.4.11 → 1.4.18.** CI check at `.github/workflows/build.yml:44-55` validates `PRO_VERSION == JSON_VERSION` and was failing on every release since v1.4.12 (six in a row) because nobody touched the `.pro` file's `VERSION = 1.4.11` line. No runtime impact — the actual displayed app version comes from `GIT_VERSION` (line 56-71 in `.pro`) via `git describe`. CI artifact build was the only thing affected. Going forward: `release.json` and `remote-ui.pro:75` bump together.
+
+### Architectural note
+- **Drift increase: zero.** `remote-ui.pro` was already in our modified-upstream manifest.
+- **No translation impact.** No new strings.
+- **No deploy needed.** The v1.4.17 binary on the device is functionally correct; this is purely a CI sync. Tag v1.4.18 to clear the GitHub Actions failure backlog.
+
+---
+
 ## v1.4.17 — 2026-04-29 — WiFi Diagnostics popup (W13)
 
 ### Added
