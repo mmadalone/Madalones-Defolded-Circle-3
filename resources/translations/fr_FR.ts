@@ -3359,6 +3359,14 @@ le configurateur web</translation>
     </message>
 </context>
 <context>
+    <name>ReconnectingHUD</name>
+    <message>
+        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="73"/>
+        <source>Reconnecting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Remote</name>
     <message>
         <location filename="../../src/qml/components/entities/remote/deviceclass/Remote.qml" line="225"/>
@@ -4979,7 +4987,7 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="881"/>
+        <location filename="../../src/qml/main.qml" line="891"/>
         <source>Done</source>
         <translation>Terminé</translation>
     </message>
