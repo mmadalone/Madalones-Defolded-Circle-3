@@ -46,17 +46,18 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0 → v1.4.16):**
+**UI chrome beyond the screensaver (v1.3.0 → v1.4.19):**
 
+- **Wake-replay HUD** (v1.4.19) — visible "Reconnecting…" top-banner during the post-wake retry window. The bigger hidden fix in this release is a 3-line correction to `entityController.cpp:757` — the upstream resume-window trigger only checked for `SUSPEND → NORMAL`, but UC3's daily standby uses `LOW_POWER`, so the existing `m_pendingCommands` retry mechanism had been dead since the firmware shipped. Expanded to `LOW_POWER || SUSPEND`; the existing 500 ms retry loop now actually engages on real wakes.
 - **Active Session Keeper** (v1.4.14, polished v1.4.16) — Settings → Power "Keep awake while watching/listening". Prevents the firmware's hard 5-min standby timer while a media-player entity is in `Playing` state or curated media-control buttons (`PLAY_PAUSE` / `STOP` / `VOLUME_*` / `CURSOR_*` / `CHANNEL_*` / `NEXT` / `PREVIOUS` / etc.) have been pressed within a configurable idle window (30–300 s). Wired by sending the previously-orphan `set_power_mode` ucapi RPC every 270 s; resets firmware's `standby_timeout_sec` to its configured max on every transition. Default off, AC-required default on. Eliminates the 1–3 s wake-recovery gap on every 5-min sleep cycle while watching TV.
 - **Screensaver docked-rearm** (v1.4.15, polished v1.4.16) — pre-existing UC bug fix. Tap-dismissing the screensaver while docked previously left it dismissed permanently (until next wake from `Low_power`). New `dockedRearmTimer` re-activates after a configurable 5–120 s timeout. Slider in Settings → Screensaver → General Behavior, "Run after dismissal while docked", default 60 s.
-- **WiFi UX bundle** (v1.4.12 → v1.4.15) — eight separate improvements wired by exposing previously-orphan firmware capabilities. Live link diagnostics popup (RSSI dBm, link speed, BSSID, channel, throughput where firmware populates it); always-visible signal-strength bar in StatusBar; explicit Reconnect button (REASSOCIATE); WoWLAN toggle now visible on UCR3 (was env-var-gated upstream); scoped failure-cleanup on join (no more nuking every saved network on a mistyped password); WifiInfo popup gained scrollable diagnostics + back-arrow top-left.
+- **WiFi UX bundle** (v1.4.12 → v1.4.17) — eight separate improvements wired by exposing previously-orphan firmware capabilities. Live link diagnostics popup (RSSI dBm, link speed, BSSID, channel, throughput where firmware populates it); always-visible signal-strength bar in StatusBar; explicit Reconnect button (REASSOCIATE); WoWLAN toggle now visible on UCR3 (was env-var-gated upstream); scoped failure-cleanup on join (no more nuking every saved network on a mistyped password); WifiInfo popup gained scrollable diagnostics + back-arrow top-left; full WiFi Diagnostics popup added in v1.4.17 with RSSI sparkline, drop counter, current session uptime + reset.
 - **Battery chip on every detail page** (v1.3.0) — keeps battery % + charging state visible while inside Activity / Light / Climate / TV / Speaker / sensor detail pages, where the home-screen StatusBar is otherwise covered. Mirrors the StatusBar visual 1:1. Upstream UC independently shipped the same feature in v0.72.0 as "Show battery indicator everywhere"; v1.4.0 adopted their public API (`Config.showBatteryEveryWhere`, QSettings key `ui/batteryEveryWhere`, `Settings → UI` toggle) while keeping our superior chain-anchoring `RowLayout` that handles 6 status indicators adaptively. Fresh-install default is upstream's `false`; v1.3.0 upgraders retain `true` via one-shot QSettings migration.
 - **Volume OSD suppression** (v1.4.2) — `Settings → UI → Show volume overlay` disables the volume indicator that appears on VOLUME_UP / VOLUME_DOWN without disabling the underlying commands. Single guard in `VolumeOverlay.qml::start()` covers all 16 call sites. Complemented in v1.4.4 by per-entity `hideVolumeOverlay` (integrations can opt individual devices in via ucapi `options["hide_volume_overlay"]`).
-- **MediaBrowser button suppression** (v1.4.16) — four global toggles in `Settings → UI` to hide individual icons on the media player controls row: `Show shuffle button`, `Show repeat button`, `Show media browser button`, `Show source picker button`. Operates at the display layer; AND-chained with existing `entityObj.hasFeature(...)` checks so a Config-disabled button hides unconditionally but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits without also breaking the corresponding command — UC-side config toggles solve this at the right layer.
+- **MediaBrowser button suppression** (v1.4.8) — four global toggles in `Settings → UI` to hide individual icons on the media player controls row: `Show shuffle button`, `Show repeat button`, `Show media browser button`, `Show source picker button`. Operates at the display layer; AND-chained with existing `entityObj.hasFeature(...)` checks so a Config-disabled button hides unconditionally but a Config-enabled button still respects entity capabilities. Motivation: integrations can't selectively strip individual `MediaPlayerFeatures` bits without also breaking the corresponding command — UC-side config toggles solve this at the right layer.
 - **Quiet boot** (v1.4.6) — boot-log warning count reduced ~177 → ~4 via targeted fixes (image-download cancel filter, VoiceOverlay binding terminator, missing TouchSlider QML import, QSoundEffect missing-file guard). Not user-visible but makes logdy debugging sessions far more readable.
 - **Touchbar isolation + sensitivity tuning** (v1.4.7, v1.4.8) — physical touch slider is fully isolated while the screensaver owns it (prior partial isolation could still commit volume / seek / brightness changes to the media_player entity on release — fixed in v1.4.7). Screensaver's own touchbar speed / density control sensitivity tuned ~3× less sensitive in v1.4.8 so a full parameter sweep takes ~270 px of slider travel instead of ~90 px.
-- **MediaBrowser → player-widget thumbnail preview handoff** (v1.4.16) — tapping an item in the MediaBrowser popup now passes its browse-time thumbnail to the `MediaPlayer` entity as an immediate preview, rendering on the widget before the integration's `Player.GetItem` art response arrives. Bridges the "blank player widget post-tap" gap for library content that integrations CAN surface. Scheme-filter on `setPreviewImage` rejects unfetchable `icon://` / `image://` / non-image-data URIs at entry to avoid `ProtocolUnknownError` retry-burn when the integration falls back to an icon-name. Paired with empty controls-bar auto-collapse: when all four v1.4.16 button toggles are off, the 80 px controls row collapses instead of reserving an empty gap under the progress bar. Coverage of unscraped library content depends on the integration's browse response — separate integration-side work tracks the `art.thumb` / `Files.GetDirectory` vs `VideoLibrary.GetMovies` resolution gap.
+- **MediaBrowser → player-widget thumbnail preview handoff** (v1.4.9) — tapping an item in the MediaBrowser popup now passes its browse-time thumbnail to the `MediaPlayer` entity as an immediate preview, rendering on the widget before the integration's `Player.GetItem` art response arrives. Bridges the "blank player widget post-tap" gap for library content that integrations CAN surface. Scheme-filter on `setPreviewImage` rejects unfetchable `icon://` / `image://` / non-image-data URIs at entry to avoid `ProtocolUnknownError` retry-burn when the integration falls back to an icon-name. Paired with empty controls-bar auto-collapse: when all four v1.4.8 button toggles are off, the 80 px controls row collapses instead of reserving an empty gap under the progress bar. Coverage of unscraped library content depends on the integration's browse response — separate integration-side work tracks the `art.thumb` / `Files.GetDirectory` vs `VideoLibrary.GetMovies` resolution gap.
 
 ---
 
@@ -79,15 +80,15 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.16/remote-ui-v1.4.16-UCR2-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.16/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.19/remote-ui-v1.4.19-UCR2-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.19/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.4.16-UCR2-static.tar.gz remote-ui.hash
+./scripts/verify-release.sh remote-ui-v1.4.19-UCR2-static.tar.gz remote-ui.hash
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.4.16-UCR2-static.tar.gz" \
+    --form "file=@remote-ui-v1.4.19-UCR2-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -159,9 +160,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.4.16-UCR2-static.tar.gz \
+    remote-ui-v1.4.19-UCR2-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.16-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.19-UCR2-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -247,6 +248,12 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
 
+**v1.4.19** (2026-04-29) — Wake-replay HUD + LOW_POWER wake-trigger fix. New `ReconnectingHUD` overlay (`src/qml/components/overlays/ReconnectingHUD.qml`, ~75 lines QML) shows a top-banner "Reconnecting…" slide-down whenever `EntityController.resumeWindow` is true. Bigger fix snuck in alongside: `entityController.cpp:757`'s wake trigger expanded from SUSPEND-only to `LOW_POWER || SUSPEND` — UC3's typical 5-min standby uses LOW_POWER (REST probe of `/api/system/power` confirmed; never observed SUSPEND in 6 v1.4.x releases of probing), so the upstream `m_pendingCommands` retry mechanism had been a no-op for daily wakes. With this fix, the existing 500 ms retry loop actually engages. HUD is purely a visual layer over plumbing that's been there all along.
+
+**v1.4.18** (2026-04-29) — CI fix: bump `remote-ui.pro:75` `VERSION` from 1.4.11 → 1.4.18. Six releases (v1.4.12-v1.4.17) silently failed the `.github/workflows/build.yml:44-55` consistency check between `remote-ui.pro` and `release.json`. No runtime impact; firmware-side displayed version comes from `GIT_VERSION` (`git describe --tags`). CI artifact build was the only consumer of the bumped line.
+
+**v1.4.17** (2026-04-29) — WiFi Diagnostics popup (W13). New "Diagnostics" button in the WifiInfo popup action stack opens a focused diagnostic surface with: RSSI sparkline (Canvas, last 60 samples, dashed reference lines at SignalStrength tier thresholds -60/-76/-84 dBm), live RSSI + link speed, drops since boot, current session uptime (HH:MM:SS, 1 Hz tick), time since last drop, Reset counters button (with confirmation dialog). New custom QML file `WifiDiagnostics.qml` (~280 lines). C++ surface: 4 new Q_PROPERTYs on Wifi singleton (`rssiHistory` QVariantList, `disconnectCount`, `currentSessionDurationSec`, `secondsSinceLastDisconnect`) + ring buffer `m_rssiHistory` (capped at 60) + `Q_INVOKABLE resetDiagnosticCounters()`. 5 s fast poll while popup open, 30 s background W6 poll otherwise; both push to the same buffer.
+
 **v1.4.16** (2026-04-29) — Post-v1.4.15 polish round. Power "Keep awake" slider thinned (drops low/high labels — value already in title; `height: 60` matches existing `idleTimeoutSlider`). Screensaver docked-rearm gating fix: `_shouldOpenOnIdle()` was incorrectly required, now fires whenever docked + non-DEV regardless of "Idle screensaver" toggle. Slider label clip fix ("Re-run after dismissal while docked" → "Run after dismissal while docked"). Min lowered 30 s → 5 s. WifiInfo action buttons folded back into Flickable scroll content (per user feedback — v1.4.14's pinned-bottom design felt mid-screen).
 
 **v1.4.15** (2026-04-29) — UI polish triple. (1) Power slider preferredHeight 60 → 100 → 140 to fit pressed-state `lowValueText`/`highValueText` overflow (later rolled back in v1.4.16 by dropping the labels). (2) WifiInfo back-arrow at top-left + drop redundant bottom Close button. (3) Screensaver docked-rearm: pre-existing UC bug — `main.qml:648–655` only restarted `idleScreensaverTimer` when undocked; new `dockedRearmTimer` (driven by `ScreensaverConfig.reopenWhileDockedSec` Q_PROPERTY, range 5–120 s, default 60) re-activates `chargingScreenLoader` after configurable delay following docked tap-dismiss. Cancels on undock and on `Power.Normal` wake-re-open. New slider in Settings → Screensaver → General Behavior, always visible.
@@ -286,6 +293,34 @@ See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log an
 **v1.2.1** — drop `displayOff` gate from matrix running binding (fixes wake-black race).
 **v1.2.0** — runtime slider fix, tap master toggle.
 **Earlier** — theme selector, GradientText, Analog theme, TV Static theme, screen-off animation system.
+
+---
+
+## Roadmap / backlog
+
+State of the world at v1.4.19. Items here aren't TODOs in the imperative sense — they're "if I ever care, this is where I left it."
+
+**Validation pending (no code, just observation):**
+- **Mod 5 Active Session Keeper end-to-end** during real TV watching. Toggle visibility confirmed; the 30-min movie keeping device pinned to NORMAL through a continuous Playing state hasn't been observed long-form.
+- **W6** 30 s periodic `getWifiStatus` poll visibility in Logdy.
+- **W10** scan-timer halt on screen-off in Logdy.
+- **W9** onboarding scoped failure cleanup — only triggerable on factory reset, so untested.
+- **WoWLAN day-long battery-impact** observation (per `feedback_ha_entity_prune_thermal.md` memory note).
+- **v1.4.19 LOW_POWER trigger fix** in real use — the bigger functional change of v1.4.19 is silently activating the `m_pendingCommands` retry loop that had been a no-op on UCR3. Whether it actually solves the "first press post-wake doesn't land" complaint is the test.
+
+**Backlog (low-priority, deferrable):**
+- **W7** — WpaState progression UI in connect flow. Helps debug stuck-handshake / wrong-password scenarios with "Authenticating…" / "4-way handshake" intermediate labels. Niche; rare event.
+- **W8** — proper WPA3/EAP scan-result auth parsing. `wifi.cpp:177` has `// TODO(marton): properly convert security` and force-casts every encrypted result to `WPA2_PSK`. Visual-only bug; lock icon is correct, the security enum lies for WPA3 networks.
+- **W11** — WPA3 / Enterprise option in the "Join other" wizard. Corporate-network scenario.
+- **W14** — WiFi quick-toggle in notification drawer (phone-style control center). ~80 LOC.
+
+**Skipped (covered or duplicative):**
+- **W12** — per-network auto-connect toggle. Already covered by Enable/Disable in `WifiNetworkList.qml` known-networks list.
+
+**Deferred concepts (no plan, no commitment):**
+- Per-integration "Reconnecting to {X}…" labels on the Wake-replay HUD (Stage 4 of the v1.4.19 plan). Would require new `Q_PROPERTY` on `IntegrationController`. Generic banner is sufficient when WiFi-level reconnect is the dominant failure mode.
+- `docs/CUSTOM_FILES.md` per-Mod sections rewrite. Currently v1.4.11 baseline; only the v1.4.12+ summary table is current. Skip until a contributor needs the per-Mod detail.
+- Mod 6+. No specific candidate queued.
 
 ---
 

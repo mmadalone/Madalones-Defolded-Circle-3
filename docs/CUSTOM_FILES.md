@@ -3,9 +3,9 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-29 (v1.4.16 — post-v1.4.15 polish round)
+**Last updated:** 2026-04-29 (v1.4.19 — Wake-replay HUD + LOW_POWER wake-trigger fix)
 
-> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.16 lives in CHANGELOG.md and the new "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
+> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.19 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
 ---
 
@@ -316,25 +316,32 @@ Full prose lives in `CHANGELOG.md` and the per-Mod sections in `CLAUDE.md`. Use 
 | **v1.4.14** Mod 5 Active Session Keeper | `src/hardware/activitySessionKeeper.{h,cpp}` (new custom files) | `src/core/core.{h,cpp}` (added `setPowerMode`), `src/hardware/hardwareController.{h,cpp}` (singleton wiring), `src/main.cpp` (signal hookup), `src/ui/entity/entityController.{h,cpp}` (2 new signals + chokepoint emit + media-player state forward), `src/ui/uiController.h` (`getEntityController()` accessor), `src/qml/settings/settings/Power.qml` (3 new rows), `src/config/config.{h,cpp}` (3 new Q_PROPERTYs), `remote-ui.pro` (register new custom files) |
 | **v1.4.15** UI polish (Power slider overflow, WifiInfo back-arrow, screensaver docked-rearm) | — | `src/qml/settings/settings/Power.qml` (preferredHeight fix), `src/qml/settings/settings/WifiInfo.qml` (Flickable + back arrow + drop bottom Close), `src/ui/screensaverconfig.h` (new `reopenWhileDockedSec` SCRN_INT macro), `src/qml/main.qml` (new `dockedRearmTimer` + 3 handler edits), `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` (new slider section). Also: backfilled `src/config/config.h` Q_PROPERTYs for v1.4.14's `sessionKeeper*` (had landed in source after the v1.4.14 commit was tagged). |
 | **v1.4.16** Post-v1.4.15 polish round (slider thinning, docked-rearm gate fix, WifiInfo button placement, label clipping fix) | — | `src/qml/settings/settings/Power.qml` (revert preferredHeight 140 → height 60, drop low/high labels), `src/qml/settings/settings/WifiInfo.qml` (fold buttons back into Flickable), `src/qml/main.qml` (drop `_shouldOpenOnIdle()` gate from docked rearm path), `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` (label clip fix, min 30→5s, slider thinning) |
+| **v1.4.17** WiFi Diagnostics popup (W13) | `src/qml/settings/settings/WifiDiagnostics.qml` (~280 lines) | `src/hardware/wifi.{h,cpp}` (4 new Q_PROPERTYs: `rssiHistory` QVariantList, `disconnectCount`, `currentSessionDurationSec`, `secondsSinceLastDisconnect` + ring buffer `m_rssiHistory` cap 60 + `Q_INVOKABLE resetDiagnosticCounters()` + 1 Hz `m_statsTickTimer`), `src/qml/settings/settings/WifiInfo.qml` (Diagnostics button + popup instance), `resources/qrc/main.qrc` (register new file) |
+| **v1.4.18** CI sync fix (chore) | — | `remote-ui.pro:75` (`VERSION = 1.4.11` → `1.4.18`). No runtime change — CI artifact-build version-consistency check between `.pro` and `release.json` was failing for six releases v1.4.12-v1.4.17 silently. App-version display continues to come from `GIT_VERSION` (`git describe --tags`). |
+| **v1.4.19** Wake-replay HUD + LOW_POWER wake-trigger fix | `src/qml/components/overlays/ReconnectingHUD.qml` (~75 lines) | `src/ui/entity/entityController.cpp` (3-line wake-trigger expansion at line 757: `wasAsleep = SUSPEND \|\| LOW_POWER` — fixes a latent upstream bug where the existing `m_pendingCommands` retry loop never engaged on UCR3 because daily standby uses LOW_POWER, not SUSPEND), `src/qml/main.qml` (HUD instantiation + `import "qrc:/components/overlays" as Overlays` alias), `resources/qrc/main.qrc` (register new file). Closes the `EntityController.resumeWindow` Q_PROPERTY visibility loop — the property has existed since upstream but was never surfaced to the user. |
 
 ### Cumulative drift since v1.4.11 baseline
 
-**Custom files added:** 2 (`src/hardware/activitySessionKeeper.{h,cpp}`)
+**Custom files added:** 4
+- `src/hardware/activitySessionKeeper.{h,cpp}` — Mod 5 (v1.4.14)
+- `src/qml/settings/settings/WifiDiagnostics.qml` — Mod 4 W13 (v1.4.17)
+- `src/qml/components/overlays/ReconnectingHUD.qml` — Wake-replay HUD (v1.4.19)
 
 **Upstream files now modified (cumulative):**
-- `src/hardware/wifi.{h,cpp}` — Mod 4
+- `src/hardware/wifi.{h,cpp}` — Mod 4 (W1-W6, W9, W10) + Mod 4 W13 v1.4.17 (ring buffer + counters)
 - `src/core/core.{h,cpp}` — Mod 5 (`setPowerMode`)
 - `src/hardware/hardwareController.{h,cpp}` — Mod 5 keeper singleton wiring
 - `src/main.cpp` — Mod 5 keeper hookup + previous mods
-- `src/ui/entity/entityController.{h,cpp}` — Mod 5 keeper hookup signals
+- `src/ui/entity/entityController.{h,cpp}` — Mod 5 keeper hookup signals; v1.4.19 LOW_POWER wake-trigger expansion
 - `src/ui/uiController.h` — Mod 5 `getEntityController()` accessor
-- `src/qml/main.qml` — Mod 1 docked-rearm timer
+- `src/qml/main.qml` — Mod 1 docked-rearm timer; v1.4.19 ReconnectingHUD instantiation + `import "qrc:/components/overlays" as Overlays`
 - `src/qml/components/StatusBar.qml` — Mod 4 always-visible bar
 - `src/qml/settings/settings/Power.qml` — Mod 5 keeper UI
-- `src/qml/settings/settings/WifiInfo.qml` — Mod 4 diagnostics + back arrow
+- `src/qml/settings/settings/WifiInfo.qml` — Mod 4 diagnostics + back arrow + v1.4.17 Diagnostics button
 - `src/qml/settings/settings/Wifi.qml` — Mod 4 displayOff gate
 - `src/qml/onboarding/Wifi.qml` — Mod 4 displayOff gate + W9 onboarding fix
 - `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` — Mod 1 docked-rearm slider
 - `src/ui/screensaverconfig.h` — Mod 1 `reopenWhileDockedSec` SCRN_INT
 - `src/config/config.{h,cpp}` — Mod 5 keeper QSettings preferences
-- `remote-ui.pro` — Mod 5 custom-file registration
+- `remote-ui.pro` — Mod 5 custom-file registration; v1.4.18 VERSION sync; bumped per-release v1.4.19+
+- `resources/qrc/main.qrc` — registers v1.4.17 WifiDiagnostics.qml + v1.4.19 ReconnectingHUD.qml
