@@ -20,6 +20,7 @@ import Integration.Controller 1.0
 import TouchSlider 1.0
 
 import "qrc:/components" as Components
+import "qrc:/components/overlays" as Overlays
 import "qrc:/settings/softwareupdate" as Softwareupdate
 import "qrc:/components/entities/activity" as ActivityComponents
 import ScreensaverConfig 1.0
@@ -726,6 +727,15 @@ ApplicationWindow {
 
         Components.Notification {}
         Components.ActionableNotification {}
+
+        // madalone (v1.4.19, W2): visible "Reconnecting…" banner during the post-wake retry window.
+        // Visibility driven by EntityController.resumeWindow Q_PROPERTY (already exposed at
+        // entityController.h:56). Non-modal; user button presses fall through and get queued
+        // by m_pendingCommands' existing 500 ms retry loop while the window is open.
+        Overlays.ReconnectingHUD {
+            anchors { top: parent.top; left: parent.left; right: parent.right }
+            z: 9998   // one below the screensaver MouseArea at line 475 (z: 9999)
+        }
 
         Loader {
             id: remoteOpenLoader

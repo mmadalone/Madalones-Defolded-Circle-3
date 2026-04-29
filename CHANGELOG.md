@@ -11,6 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.19 — 2026-04-29 — Wake-replay HUD + LOW_POWER wake-trigger fix
+
+### Added
+- **`ReconnectingHUD` overlay** at `src/qml/components/overlays/ReconnectingHUD.qml` (~75 lines QML, custom file). Top-banner pattern, full width × 60 px, slides down from top while the post-wake retry window is active, shows spinner (`loader_small.png` rotating per `WifiNetworkList.qml:97-110` precedent) + `qsTr("Reconnecting…")` text, slides up when the window closes. Non-modal, taps fall through. `z: 9998` (one below the screensaver MouseArea at `main.qml:475`).
+- Visibility bound entirely to existing `EntityController.resumeWindow` Q_PROPERTY (already exposed at `entityController.h:56` via NOTIFY `resumewindowChanged`). No new C++ surface.
+- Single instantiation in `main.qml` near the `Notification` / `ActionableNotification` block. Imports `qrc:/components/overlays as Overlays` (new alias since `Components` covers only the parent `qrc:/components` directory).
+
+### Fixed
+- **Resume-window trigger expanded to cover `LOW_POWER → NORMAL`.** `entityController.cpp:757` previously only enabled the retry window on `m_previousPowerMode == SUSPEND`, but UC3's typical 5-min standby goes to LOW_POWER (REST probe of `/api/system/power` while the device was in standby returned `mode:LOW_POWER`; in 6 v1.4.x releases of observation we never saw `mode:SUSPEND`). Replaced the single-state check with `const bool wasAsleep = m_previousPowerMode == SUSPEND || == LOW_POWER` and OR'd the wake guard. Without this, the existing `m_pendingCommands` retry mechanism wasn't actually engaging in the daily-use case — commands fired and silently failed during the WS-reconnect window. With this, **the retry actually works** for the first time on UCR3 hardware.
+
+### Architectural note
+- **Drift increase: 2 modified upstream files** (`main.qml` — single `Overlays.ReconnectingHUD` instantiation + new `import "qrc:/components/overlays" as Overlays`; `entityController.cpp` — 3-line LOW_POWER trigger expansion) + 1 new custom file (`ReconnectingHUD.qml`) + qrc registration entry.
+- **No new C++ surface.** Reuses existing `EntityController.resumeWindow` Q_PROPERTY and the existing `m_pendingCommands` + `retrySendAttempt` retry loop at `entityController.cpp:584-711`. Existing failure-path notifications (`createActionableWarningNotification` at `entityController.cpp:625-650`) handle the post-window timeout case — no new timeout surface needed.
+- **Translation impact:** one new string — `"Reconnecting…"`. Run `lupdate` (auto via build).
+- **Verification:** on-device tap-to-wake test — HUD should appear when waking from screen-off; pressing a media-player button (e.g., Pause on Kodi) during the post-wake retry window should land on first attempt, where previously it took 2-3 attempts.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`. Recovery: `curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=true" -u "web-configurator:${UC3_PIN}"`.
+- **Stage 4 deferred:** per-integration "Reconnecting to Kodi…" labels (would require new Q_PROPERTY on `IntegrationController`) and explicit failure-toast post-window. Existing failure-path notifications cover the latter; the generic banner is sufficient when WiFi-level reconnect is the most likely cause (single integration WS down is rare relative to whole-WiFi cycles on UC3).
+
+---
+
 ## v1.4.18 — 2026-04-29 — CI fix: sync remote-ui.pro VERSION with release.json
 
 ### Fixed

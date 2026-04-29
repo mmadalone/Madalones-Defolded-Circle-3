@@ -754,7 +754,13 @@ void EntityController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode)
         return;
     }
 
-    if (powerMode == core::PowerEnums::PowerMode::NORMAL && m_previousPowerMode == core::PowerEnums::PowerMode::SUSPEND) {
+    // madalone (v1.4.19, W2 Wake-replay HUD): expand wake-trigger to also cover LOW_POWER → NORMAL.
+    // UCR3's typical 5-min standby goes to LOW_POWER; SUSPEND is rarely (if ever) entered, so the
+    // upstream SUSPEND-only check meant the resume-retry window never engaged in the daily-use case.
+    // REST probe of /api/system/power across 6 v1.4.x releases never observed mode:SUSPEND.
+    const bool wasAsleep = m_previousPowerMode == core::PowerEnums::PowerMode::SUSPEND ||
+                           m_previousPowerMode == core::PowerEnums::PowerMode::LOW_POWER;
+    if (powerMode == core::PowerEnums::PowerMode::NORMAL && wasAsleep) {
         m_resumeWindow = true;
         emit resumewindowChanged();
         QTimer::singleShot(m_resumeTimerTimeout, this, &EntityController::onResumeTimerTimeout);
