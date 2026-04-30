@@ -338,7 +338,7 @@
 <context>
     <name>BaseDetail</name>
     <message>
-        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="370"/>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="387"/>
         <source>Entity unavailable</source>
         <translation>Enhed utilgængelig</translation>
     </message>
@@ -2999,12 +2999,12 @@ Climate fan</extracomment>
         <translation>Strøm</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="93"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="167"/>
         <source>Prevents the 5-minute sleep timer while you&apos;re watching or listening.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="170"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="244"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Hold WiFi forbundet i standby</translation>
@@ -3014,105 +3014,120 @@ Climate fan</extracomment>
         <translation type="vanished">Holder WiFi altid tilsluttet, selv når enheden sover. Tillader hurtigere genforbindelse efter opvågning. Bemærk, at aktivering af denne funktion lidt mindsker batterilevetiden.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="220"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="294"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="230"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="304"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="242"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="316"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="281"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="355"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Opvågningsfølsomhed</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="291"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="365"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>Mængden af bevægelse der skal til for at vække fjernbetjeningen.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="306"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="380"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Slukket</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="308"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="382"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Følsomhed</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="346"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="420"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Display sluk timeout</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="243"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="366"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="367"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="578"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="317"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="440"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="441"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="652"/>
         <source>%1 seconds</source>
         <translation>%1 sekunder</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="76"/>
-        <source>Keep awake while watching/listening</source>
+        <source>Suppress phantom wake-ups</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="94"/>
+        <source>Forces the device back to standby if a wake event happens with no user input within %1 ms.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
+        <source>Grace window after wake: %1 ms</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="149"/>
+        <source>Keep awake while watching/listening</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="181"/>
         <source>Idle timeout after last button: %1 seconds</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="133"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="207"/>
         <source>Only when on charger or dock</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="198"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="272"/>
         <source>Faster reconnect after wake; minor battery cost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="406"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="480"/>
         <source>Screen off animations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="415"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="489"/>
         <source>Enabled</source>
         <translation type="unfinished">Aktiveret</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="434"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="508"/>
         <source>Fire when undocked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="456"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="530"/>
         <source>Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="558"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="632"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Sovetilstand timeout</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="579"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="653"/>
         <source>%1 minutes</source>
         <translation>%1 minutter</translation>
     </message>
@@ -3361,7 +3376,7 @@ Web-konfiguratoren</translation>
 <context>
     <name>ReconnectingHUD</name>
     <message>
-        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="73"/>
+        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="89"/>
         <source>Reconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4268,81 +4283,91 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
+        <source>Show WiFi indicator everywhere</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
+        <source>Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
         <source>Activities on pages</source>
         <translation>Aktiviteter på sider</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
         <source>Show the running activities and playing media players in the page header.</source>
         <translation>Vis de igangværende aktiviteter og afspilning af medieafspillere i sidehovedet.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
         <source>Zoom media image</source>
         <translation type="unfinished">Zoom media image</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="334"/>
         <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
         <translation type="unfinished">Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="360"/>
         <source>Coverflow in media browser</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="334"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="383"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="360"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="409"/>
         <source>Show volume overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="383"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="432"/>
         <source>Display volume indicator overlay when volume keys are pressed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="409"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="458"/>
         <source>Show shuffle button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="432"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="481"/>
         <source>Show the shuffle toggle on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="458"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="507"/>
         <source>Show repeat button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="481"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="530"/>
         <source>Show the repeat-mode toggle on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="507"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="556"/>
         <source>Show media browser button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="530"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="579"/>
         <source>Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="556"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="605"/>
         <source>Show source picker button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="578"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="627"/>
         <source>Show the source picker button on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -4995,7 +5020,7 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="963"/>
+        <location filename="../../src/config/config.cpp" line="998"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fejl under indlæsning af konfiguration. Prøver igen.</translation>
     </message>
@@ -5070,17 +5095,17 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1356"/>
+        <location filename="../../src/core/core.cpp" line="1362"/>
         <source>Connection error</source>
         <translation>Forbindelsesfejl</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1357"/>
+        <location filename="../../src/core/core.cpp" line="1363"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Der opstod en fejl ved forbindelse til kernen. Hvis problemet fortsætter, genstart fjernbetjeningen.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1816"/>
+        <location filename="../../src/core/core.cpp" line="1822"/>
         <source>Authentication to core failed</source>
         <translation>Godkendelse til kernen mislykkedes</translation>
     </message>
@@ -5151,12 +5176,12 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
 <context>
     <name>uc::hw::Wifi</name>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="341"/>
+        <location filename="../../src/hardware/wifi.cpp" line="346"/>
         <source>Failed to delete network. Wifi network does not exist.</source>
         <translation>Kunne ikke slette netværk. Wifi-netværket eksisterer ikke.</translation>
     </message>
     <message>
-        <location filename="../../src/hardware/wifi.cpp" line="493"/>
+        <location filename="../../src/hardware/wifi.cpp" line="498"/>
         <source>Wrong network key</source>
         <translation>Forkert netværksnøgle</translation>
     </message>
