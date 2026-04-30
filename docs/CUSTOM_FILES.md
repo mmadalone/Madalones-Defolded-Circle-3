@@ -3,9 +3,9 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-29 (v1.4.19 — Wake-replay HUD + LOW_POWER wake-trigger fix)
+**Last updated:** 2026-04-30 (v1.4.21 — Reconnect HUD overhaul + WiFi-everywhere toggle)
 
-> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.19 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
+> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.21 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
 ---
 
@@ -319,13 +319,17 @@ Full prose lives in `CHANGELOG.md` and the per-Mod sections in `CLAUDE.md`. Use 
 | **v1.4.17** WiFi Diagnostics popup (W13) | `src/qml/settings/settings/WifiDiagnostics.qml` (~280 lines) | `src/hardware/wifi.{h,cpp}` (4 new Q_PROPERTYs: `rssiHistory` QVariantList, `disconnectCount`, `currentSessionDurationSec`, `secondsSinceLastDisconnect` + ring buffer `m_rssiHistory` cap 60 + `Q_INVOKABLE resetDiagnosticCounters()` + 1 Hz `m_statsTickTimer`), `src/qml/settings/settings/WifiInfo.qml` (Diagnostics button + popup instance), `resources/qrc/main.qrc` (register new file) |
 | **v1.4.18** CI sync fix (chore) | — | `remote-ui.pro:75` (`VERSION = 1.4.11` → `1.4.18`). No runtime change — CI artifact-build version-consistency check between `.pro` and `release.json` was failing for six releases v1.4.12-v1.4.17 silently. App-version display continues to come from `GIT_VERSION` (`git describe --tags`). |
 | **v1.4.19** Wake-replay HUD + LOW_POWER wake-trigger fix | `src/qml/components/overlays/ReconnectingHUD.qml` (~75 lines) | `src/ui/entity/entityController.cpp` (3-line wake-trigger expansion at line 757: `wasAsleep = SUSPEND \|\| LOW_POWER` — fixes a latent upstream bug where the existing `m_pendingCommands` retry loop never engaged on UCR3 because daily standby uses LOW_POWER, not SUSPEND), `src/qml/main.qml` (HUD instantiation + `import "qrc:/components/overlays" as Overlays` alias), `resources/qrc/main.qrc` (register new file). Closes the `EntityController.resumeWindow` Q_PROPERTY visibility loop — the property has existed since upstream but was never surfaced to the user. |
+| **v1.4.20** Mod 6 Phantom-Wake Suppressor | `src/hardware/phantomWakeSuppressor.{h,cpp}` (~75 / ~110 lines) | `src/hardware/hardwareController.{h,cpp}` (singleton construction + Battery/Power/TouchSlider bridges + qmlRegisterSingletonType), `src/main.cpp` (Config + InputController wiring + initial-state push), `src/config/config.{h,cpp}` (2 new Q_PROPERTYs `phantomWakeSuppressEnabled`/`phantomWakeSuppressGraceMs` with QSettings keys `power/phantomWakeSuppress*`), `src/qml/settings/settings/Power.qml` (new top section above Mod 5 with Switch + helper Text + conditional Slider, KeyNav chain integrated), `remote-ui.pro` (HEADERS/SOURCES + VERSION 1.4.19 → 1.4.20). Inverse-symmetric to Mod 5 (`activitySessionKeeper.cpp`'s NORMAL-pinging) — same C++ singleton + QTimer + setPowerMode pattern, but forces LOW_POWER instead of NORMAL when grace expires without user input. |
+| **v1.4.21** Reconnect HUD overhaul + WiFi-everywhere toggle | `src/qml/components/overlays/WifiStatusChip.qml` (~50 lines, sibling to Mod 3's `BatteryStatusChip.qml`) | `src/qml/components/overlays/ReconnectingHUD.qml` (height 60 → 120, font 24 → 32, spinner 36 → 56, `colors.dark` → `colors.medium`, added 3-second opacity pulse), `src/qml/components/entities/BaseDetail.qml` (new WiFi chip Loader at position 6 just-left-of-battery; warning icon predicate now also gated on `!Config.showWifiEveryWhere`), `src/qml/settings/settings/Ui.qml` (new "Show WiFi indicator everywhere" Switch row + KeyNav chain extension + Flickable contentY clamp 1900 → 2080), `src/config/config.{h,cpp}` (1 new Q_PROPERTY `showWifiEveryWhere`, QSettings key `ui/showWifiEveryWhere`, default ON), `resources/qrc/main.qrc` (register WifiStatusChip), `remote-ui.pro` (VERSION 1.4.20 → 1.4.21). Mirrors Mod 3 Battery Chip pattern; chip carries full WiFi info (signal strength + disconnected red-X) so the existing warning-only icon hides when the everywhere toggle is on. |
 
 ### Cumulative drift since v1.4.11 baseline
 
-**Custom files added:** 4
+**Custom files added:** 6
 - `src/hardware/activitySessionKeeper.{h,cpp}` — Mod 5 (v1.4.14)
 - `src/qml/settings/settings/WifiDiagnostics.qml` — Mod 4 W13 (v1.4.17)
 - `src/qml/components/overlays/ReconnectingHUD.qml` — Wake-replay HUD (v1.4.19)
+- `src/hardware/phantomWakeSuppressor.{h,cpp}` — Mod 6 (v1.4.20)
+- `src/qml/components/overlays/WifiStatusChip.qml` — WiFi-everywhere chip (v1.4.21)
 
 **Upstream files now modified (cumulative):**
 - `src/hardware/wifi.{h,cpp}` — Mod 4 (W1-W6, W9, W10) + Mod 4 W13 v1.4.17 (ring buffer + counters)
@@ -342,6 +346,9 @@ Full prose lives in `CHANGELOG.md` and the per-Mod sections in `CLAUDE.md`. Use 
 - `src/qml/onboarding/Wifi.qml` — Mod 4 displayOff gate + W9 onboarding fix
 - `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` — Mod 1 docked-rearm slider
 - `src/ui/screensaverconfig.h` — Mod 1 `reopenWhileDockedSec` SCRN_INT
-- `src/config/config.{h,cpp}` — Mod 5 keeper QSettings preferences
-- `remote-ui.pro` — Mod 5 custom-file registration; v1.4.18 VERSION sync; bumped per-release v1.4.19+
-- `resources/qrc/main.qrc` — registers v1.4.17 WifiDiagnostics.qml + v1.4.19 ReconnectingHUD.qml
+- `src/config/config.{h,cpp}` — Mod 5 keeper QSettings preferences + Mod 6 suppressor QSettings preferences (v1.4.20) + showWifiEveryWhere (v1.4.21)
+- `remote-ui.pro` — Mod 5 custom-file registration; v1.4.18 VERSION sync; bumped per-release v1.4.19+; Mod 6 custom-file registration (v1.4.20)
+- `resources/qrc/main.qrc` — registers v1.4.17 WifiDiagnostics.qml + v1.4.19 ReconnectingHUD.qml + v1.4.21 WifiStatusChip.qml
+- `src/qml/components/entities/BaseDetail.qml` — Mod 3 chip Loader + v1.4.21 WiFi chip Loader + warning predicate tweak
+- `src/qml/components/overlays/ReconnectingHUD.qml` — v1.4.19 initial impl + v1.4.21 prominence overhaul
+- `src/qml/settings/settings/Ui.qml` — v1.4.2 showVolumeOverlay toggle + v1.4.8 media button toggles + v1.4.21 showWifiEveryWhere toggle

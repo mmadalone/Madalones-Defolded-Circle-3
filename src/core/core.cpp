@@ -22,12 +22,18 @@ Api::Api(const QString& url, QObject* parent) : QObject(parent), m_url(url) {
                      this, &Api::onError);
     QObject::connect(&m_webSocket, &QWebSocket::stateChanged, this, &Api::onStateChanged);
 
-    // setup keep alive timer
-    //    m_keepAliveTimer = new QTimer(this);
-    //    m_keepAliveTimer->setInterval(m_keepAliveInterval);
-    //    QObject::connect(m_keepAliveTimer, &QTimer::timeout, this, &core::onKeepAliveTimerTimeout);
-    //    QObject::connect(this, &core::connected, this, &core::startKeepAliveTimer);
-    //    QObject::connect(this, &core::disconnected, this, &core::stopKeepAliveTimer);
+    // madalone (post-v1.4.19 audit fix): re-enable WS keepalive timer.
+    // Upstream shipped this dormant — handler at line ~1334 exists but was never wired up.
+    // Re-enabling prevents the WS connection from going stale during LOW_POWER standby
+    // (NAT idle timeout, kernel TCP suspension, Dock-side idle close), which was the
+    // root cause of 2-3 s wake-press lag observed even with WoWLAN on. Battery cost is
+    // ~3 KB/day of WS pings (well under 1 % daily impact). Fixed-up signal scope from
+    // upstream's `&core::*` (wrong) to `&Api::*` (correct).
+    m_keepAliveTimer = new QTimer(this);
+    m_keepAliveTimer->setInterval(m_keepAliveInterval);
+    QObject::connect(m_keepAliveTimer, &QTimer::timeout, this, &Api::onKeepAliveTimerTimeout);
+    QObject::connect(this, &Api::connected, this, &Api::startKeepAliveTimer);
+    QObject::connect(this, &Api::disconnected, this, &Api::stopKeepAliveTimer);
 
     // setup reconnect timer
     m_reconnectTimer = new QTimer(this);

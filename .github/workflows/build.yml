@@ -144,11 +144,36 @@ jobs:
           echo "$APP_VERSION" > ${{ env.UC_BIN }}/version.txt
           echo "ARTIFACT_NAME=${{ env.APP_NAME }}-$APP_VERSION-${{ matrix.config.artifact }}-${{ matrix.config.build }}" >> $GITHUB_ENV
 
-      # Archive is required to preserve file permissions and re-used for release uploads
+      # madalone (post-v1.4.21): stage the firmware's expected install-bundle layout
+      # (release.json + bin/remote-ui + config/) before tarring. The /api/system/install/ui
+      # endpoint expects the binary at bin/remote-ui — CI previously tarred only the raw
+      # build directory (binary at root + version.txt), which the firmware rejected with
+      # "Missing file: remote-ui" on user installs. The manual deploy procedure in
+      # CLAUDE.md has always produced the correct structure; this aligns CI with that.
+      - name: Stage install bundle
+        shell: bash
+        run: |
+          STAGING="${GITHUB_WORKSPACE}/install-bundle"
+          mkdir -p "${STAGING}/bin" "${STAGING}/config"
+          cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/release.json" "${STAGING}/"
+          cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config/charging_screen.json" "${STAGING}/config/"
+          cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config/NotoSansMonoCJKjp.otf" "${STAGING}/config/"
+          cp "${{ env.UC_BIN }}/remote-ui" "${STAGING}/bin/"
+          # Include version.txt at root for downstream diagnostics; firmware install ignores it.
+          cp "${{ env.UC_BIN }}/version.txt" "${STAGING}/" || true
+          echo "=== Staging contents ==="
+          find "${STAGING}" -type f | sort
+          ls -laR "${STAGING}"
+
+      # Archive is required to preserve file permissions and re-used for release uploads.
+      # Now packaged in the install-bundle layout — drop-in usable with the firmware's
+      # `/api/system/install/ui?void_warranty=yes` endpoint per README.md.
       - name: Create upload artifact
         shell: bash
         run: |
-          tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C ${{ env.UC_BIN }} .
+          tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C "${GITHUB_WORKSPACE}/install-bundle" .
+          echo "=== Tarball contents ==="
+          tar tvf ${{ env.ARTIFACT_NAME }}.tar.gz
           ls -lah
 
       - uses: actions/upload-artifact@v4

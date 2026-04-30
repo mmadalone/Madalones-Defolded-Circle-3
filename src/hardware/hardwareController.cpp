@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. ActivitySessionKeeper integration.
+// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "hardwareController.h"
@@ -37,10 +37,17 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     m_power = new Power(m_core, this);
     m_battery = new Battery(m_core, this);
     m_activitySessionKeeper = new ActivitySessionKeeper(m_core, this);
+    m_phantomWakeSuppressor = new PhantomWakeSuppressor(m_core, this);
 
     // Bridge Battery → keeper for AC-power changes.
     QObject::connect(m_battery, &Battery::powerSupplyChanged, m_activitySessionKeeper,
                      &ActivitySessionKeeper::onPowerSupplyChanged);
+    // Bridge Battery → suppressor — dock/undock counts as user activity.
+    QObject::connect(m_battery, &Battery::powerSupplyChanged, m_phantomWakeSuppressor,
+                     &PhantomWakeSuppressor::onPowerSupplyChanged);
+    // Bridge Power → suppressor — wake-event detection.
+    QObject::connect(m_power, &Power::powerModeChanged, m_phantomWakeSuppressor,
+                     &PhantomWakeSuppressor::onPowerModeChanged);
 
     switch (model) {
         case HardwareModel::UCR2:
@@ -57,6 +64,12 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
             break;
     }
 
+    // Bridge TouchSlider → suppressor — slider touch counts as user activity.
+    // Wired here (after the switch above constructs m_touchSlider) for parity with the
+    // Battery/Power bridges established earlier in the ctor.
+    QObject::connect(m_touchSlider, &TouchSlider::touchPressed, m_phantomWakeSuppressor,
+                     &PhantomWakeSuppressor::onUserInput);
+
     qmlRegisterSingletonType<Info>("HwInfo", 1, 0, "HwInfo", &Info::qmlInstance);
     qmlRegisterSingletonType<Power>("Power", 1, 0, "Power", &Power::qmlInstance);
     qmlRegisterSingletonType<Haptic>("Haptic", 1, 0, "Haptic", &Haptic::qmlInstance);
@@ -65,6 +78,8 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     qmlRegisterSingletonType<TouchSlider>("TouchSlider", 1, 0, "TouchSliderProcessor", &TouchSlider::qmlInstance);
     qmlRegisterSingletonType<ActivitySessionKeeper>("ActivitySessionKeeper", 1, 0, "ActivitySessionKeeper",
                                                     &ActivitySessionKeeper::qmlInstance);
+    qmlRegisterSingletonType<PhantomWakeSuppressor>("PhantomWakeSuppressor", 1, 0, "PhantomWakeSuppressor",
+                                                    &PhantomWakeSuppressor::qmlInstance);
 
     QObject::connect(m_config, &Config::hapticEnabledChanged, this, &Controller::onHapticEnabledChanged);
 }
@@ -77,6 +92,7 @@ Controller::~Controller() {
     m_wifi = nullptr;
     m_touchSlider = nullptr;
     m_activitySessionKeeper = nullptr;
+    m_phantomWakeSuppressor = nullptr;
 }
 
 void Controller::onHapticEnabledChanged(bool enabled) {

@@ -420,6 +420,18 @@ void Config::setShowBatteryEveryWhere(bool value)
     emit showBatteryEveryWhereChanged();
 }
 
+// madalone (v1.4.21): WiFi indicator on all detail pages (default ON, mirrors StatusBar).
+bool Config::getShowWifiEveryWhere()
+{
+    return m_settings->value("ui/showWifiEveryWhere", true).toBool();
+}
+
+void Config::setShowWifiEveryWhere(bool value)
+{
+    m_settings->setValue("ui/showWifiEveryWhere", value);
+    emit showWifiEveryWhereChanged();
+}
+
 bool Config::getShowVolumeOverlay()
 {
     return m_settings->value("ui/showVolumeOverlay", true).toBool();
@@ -463,6 +475,29 @@ void Config::setSessionKeeperRequireAc(bool value)
 {
     m_settings->setValue("power/sessionKeeperRequireAc", value);
     emit sessionKeeperRequireAcChanged();
+}
+
+// madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences (purely UI-side, QSettings-backed).
+bool Config::getPhantomWakeSuppressEnabled()
+{
+    return m_settings->value("power/phantomWakeSuppressEnabled", false).toBool();
+}
+
+void Config::setPhantomWakeSuppressEnabled(bool value)
+{
+    m_settings->setValue("power/phantomWakeSuppressEnabled", value);
+    emit phantomWakeSuppressEnabledChanged();
+}
+
+int Config::getPhantomWakeSuppressGraceMs()
+{
+    return m_settings->value("power/phantomWakeSuppressGraceMs", 500).toInt();
+}
+
+void Config::setPhantomWakeSuppressGraceMs(int ms)
+{
+    m_settings->setValue("power/phantomWakeSuppressGraceMs", ms);
+    emit phantomWakeSuppressGraceMsChanged();
 }
 
 bool Config::getShowShuffleButton()

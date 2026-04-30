@@ -19,11 +19,10 @@ Wifi::Wifi(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
-    {
-        WifiNetwork *oldNetwork = m_currentNetwork;
-        m_currentNetwork = new WifiNetwork(0, QString(), Security::OPEN, 0, "", "", "", 0, true, this);
-        if (oldNetwork) oldNetwork->deleteLater();
-    }
+    // m_currentNetwork is default-null (wifi.h); no prior pointer to swap out at ctor time.
+    // The leak-fix swap pattern is only needed in getWifiStatus() where existing bindings
+    // may still reference the old object — see line ~177.
+    m_currentNetwork = new WifiNetwork(0, QString(), Security::OPEN, 0, "", "", "", 0, true, this);
 
     // madalone: env-var unreachable in current UCR3 firmware; surface WoWLAN toggle unconditionally.
     m_wowlan = true;
@@ -196,18 +195,24 @@ void Wifi::getWifiStatus() {
                 m_ipAddress = wifiStatus.ipAddress;
                 emit ipAddressChanged();
 
-                m_isConnected = true;
-                emit isConnectedChanged();
+                if (!m_isConnected) {
+                    m_isConnected = true;
+                    emit isConnectedChanged();
+                }
                 if (!m_displayOff && !m_statusPollTimer.isActive())
                     m_statusPollTimer.start();  // madalone: bootstrap poll on already-connected start
             } else if (wifiStatus.wpaState == core::WifiEnums::WpaState::ERROR ||
                        wifiStatus.wpaState == core::WifiEnums::WpaState::DISCONNECTED) {
-                m_isConnected = false;
-                emit isConnectedChanged();
+                if (m_isConnected) {
+                    m_isConnected = false;
+                    emit isConnectedChanged();
+                }
                 m_statusPollTimer.stop();  // madalone: don't poll while disconnected
             } else {
-                m_isConnected = false;
-                emit isConnectedChanged();
+                if (m_isConnected) {
+                    m_isConnected = false;
+                    emit isConnectedChanged();
+                }
                 m_statusPollTimer.stop();  // madalone: intermediate wpa state — pause poll, CONNECTED event will restart
             }
         },

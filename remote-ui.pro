@@ -72,7 +72,7 @@ REMOTE_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += APP_VERSION=\\\"$$REMOTE_VERSION\\\"
 
 # Custom firmware version — keep in sync with deploy/release.json
-VERSION = 1.4.19
+VERSION = 1.4.21
 
 # build timestamp
 BUILDDATE=$$system(date +"%Y-%m-%dT%H:%M:%S")
@@ -99,6 +99,7 @@ HEADERS += \
     src/hardware/haptic.h \
     src/hardware/hardwareController.h \
     src/hardware/info.h \
+    src/hardware/phantomWakeSuppressor.h \
     src/hardware/power.h \
     src/hardware/touchSlider.h \
     src/hardware/ucr2/hapticUCR2.h \
@@ -175,6 +176,7 @@ SOURCES += \
         src/hardware/haptic.cpp \
         src/hardware/hardwareController.cpp \
         src/hardware/info.cpp \
+        src/hardware/phantomWakeSuppressor.cpp \
         src/hardware/power.cpp \
         src/hardware/touchSlider.cpp \
         src/hardware/ucr2/hapticUCR2.cpp \

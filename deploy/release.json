@@ -1,10 +1,10 @@
 {
-  "version": "1.4.19",
+  "version": "1.4.21",
   "name": {
     "en": "Madalone's Custom UI Mods"
   },
   "description": {
-    "en": "Custom firmware mods for the UC Remote 3. Mod 1: configurable charging-screen screensaver with Matrix rain, Starfield, Minimal, Analog, and TV Static themes. Mod 3: compact battery indicator on every entity / activity detail page. Mod 4: WiFi UX bundle — live link diagnostics, always-visible signal indicator, reconnect button, WoWLAN toggle on UCR3. Mod 5: Active Session Keeper — prevents the 5-minute sleep timer from firing while a media player is actively playing or recent media-control buttons are pressed, via periodic set_power_mode pings."
+    "en": "Custom firmware mods for the UC Remote 3. Mod 1: configurable charging-screen screensaver with Matrix rain, Starfield, Minimal, Analog, and TV Static themes. Mod 3: compact battery indicator on every entity / activity detail page (v1.4.21 adds a sibling WiFi indicator with a Settings → UI toggle). Mod 4: WiFi UX bundle — live link diagnostics, always-visible signal indicator, reconnect button, WoWLAN toggle on UCR3. Mod 5: Active Session Keeper — prevents the 5-minute sleep timer from firing while a media player is actively playing or recent media-control buttons are pressed, via periodic set_power_mode pings. Mod 6: Phantom-Wake Suppressor — forces the device back to LOW_POWER if a wake event happens with no user input within a configurable grace window, eliminating WoWLAN-induced phantom-wake battery drain. Wake-replay HUD: post-wake reconnect banner — v1.4.21 made it more prominent (120 px height, font 32, brighter color, subtle pulse)."
   },
   "developer": {
     "name": "madalone",

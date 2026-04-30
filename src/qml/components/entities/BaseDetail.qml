@@ -257,7 +257,10 @@ Rectangle {
             visible: SoftwareUpdate.updateAvailable
         }
 
-        // 4. WiFi warning (detail-page wider predicate: NONE || WEAK || disconnected)
+        // 4. WiFi warning (detail-page wider predicate: NONE || WEAK || disconnected).
+        // v1.4.21: hidden when the always-visible WiFi chip is on — chip carries the full
+        // signal-state info including the disconnected red-X strikethrough, so this warning
+        // becomes redundant. When chip is OFF, original v1.4.0 behavior preserved.
         Components.Icon {
             id: iconWifiWarning
 
@@ -268,7 +271,7 @@ Rectangle {
             color: colors.offwhite
             opacity: 0.5
             size: 60
-            visible: entityBaseDetailContainer._wifiWarningActive
+            visible: !Config.showWifiEveryWhere && entityBaseDetailContainer._wifiWarningActive
 
             Components.Icon {
                 size: 60
@@ -311,7 +314,21 @@ Rectangle {
             visible: integrationObj.state != "connected" && integrationObj.state != ""
         }
 
-        // 6. Battery chip (rightmost, fixed anchor)
+        // 6. WiFi chip (v1.4.21) — sits just left of the persistent battery anchor.
+        // Replaces the warning icon at section 4 (which is hidden when this chip is on).
+        // Default ON; mirrors StatusBar.qml's always-visible WiFi indicator.
+        Loader {
+            id: wifiChipLoader
+
+            Layout.preferredWidth: (active && item) ? item.implicitWidth : 0
+            Layout.preferredHeight: 40
+            Layout.alignment: Qt.AlignVCenter
+
+            active: Config.showWifiEveryWhere
+            source: "qrc:/components/overlays/WifiStatusChip.qml"
+        }
+
+        // 7. Battery chip (rightmost, fixed anchor)
         Loader {
             id: batteryChipLoader
 

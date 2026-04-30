@@ -90,11 +90,16 @@ class Config : public QObject {
 
     Q_PROPERTY(bool showBatteryPercentage READ getShowBatteryPercentage WRITE setShowBatteryPercentage NOTIFY showBatteryPercentageChanged)
     Q_PROPERTY(bool showBatteryEveryWhere READ getShowBatteryEveryWhere WRITE setShowBatteryEveryWhere NOTIFY showBatteryEveryWhereChanged)
+    // madalone (v1.4.21): WiFi indicator on all detail pages, mirroring showBatteryEveryWhere.
+    Q_PROPERTY(bool showWifiEveryWhere READ getShowWifiEveryWhere WRITE setShowWifiEveryWhere NOTIFY showWifiEveryWhereChanged)
     Q_PROPERTY(bool showVolumeOverlay READ getShowVolumeOverlay WRITE setShowVolumeOverlay NOTIFY showVolumeOverlayChanged)
     // madalone: ActivitySessionKeeper preferences (QSettings-backed)
     Q_PROPERTY(bool sessionKeeperEnabled READ getSessionKeeperEnabled WRITE setSessionKeeperEnabled NOTIFY sessionKeeperEnabledChanged)
     Q_PROPERTY(int sessionKeeperIdleSec READ getSessionKeeperIdleSec WRITE setSessionKeeperIdleSec NOTIFY sessionKeeperIdleSecChanged)
     Q_PROPERTY(bool sessionKeeperRequireAc READ getSessionKeeperRequireAc WRITE setSessionKeeperRequireAc NOTIFY sessionKeeperRequireAcChanged)
+    // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences (QSettings-backed)
+    Q_PROPERTY(bool phantomWakeSuppressEnabled READ getPhantomWakeSuppressEnabled WRITE setPhantomWakeSuppressEnabled NOTIFY phantomWakeSuppressEnabledChanged)
+    Q_PROPERTY(int phantomWakeSuppressGraceMs READ getPhantomWakeSuppressGraceMs WRITE setPhantomWakeSuppressGraceMs NOTIFY phantomWakeSuppressGraceMsChanged)
     Q_PROPERTY(bool showShuffleButton READ getShowShuffleButton WRITE setShowShuffleButton NOTIFY showShuffleButtonChanged)
     Q_PROPERTY(bool showRepeatButton READ getShowRepeatButton WRITE setShowRepeatButton NOTIFY showRepeatButtonChanged)
     Q_PROPERTY(bool showMediaBrowserButton READ getShowMediaBrowserButton WRITE setShowMediaBrowserButton NOTIFY showMediaBrowserButtonChanged)
@@ -173,6 +178,9 @@ class Config : public QObject {
 
     bool getShowBatteryEveryWhere();
     void setShowBatteryEveryWhere(bool value);
+    // madalone (v1.4.21)
+    bool getShowWifiEveryWhere();
+    void setShowWifiEveryWhere(bool value);
 
     bool getShowVolumeOverlay();
     void setShowVolumeOverlay(bool value);
@@ -184,6 +192,11 @@ class Config : public QObject {
     void setSessionKeeperIdleSec(int seconds);
     bool getSessionKeeperRequireAc();
     void setSessionKeeperRequireAc(bool value);
+    // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences
+    bool getPhantomWakeSuppressEnabled();
+    void setPhantomWakeSuppressEnabled(bool value);
+    int  getPhantomWakeSuppressGraceMs();
+    void setPhantomWakeSuppressGraceMs(int ms);
 
     bool getShowShuffleButton();
     void setShowShuffleButton(bool value);
@@ -336,11 +349,16 @@ class Config : public QObject {
     void entityButtonFuncInvertedChanged();
     void showBatteryPercentageChanged();
     void showBatteryEveryWhereChanged();
+    // madalone (v1.4.21)
+    void showWifiEveryWhereChanged();
     void showVolumeOverlayChanged();
     // madalone: ActivitySessionKeeper preferences
     void sessionKeeperEnabledChanged();
     void sessionKeeperIdleSecChanged();
     void sessionKeeperRequireAcChanged();
+    // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences
+    void phantomWakeSuppressEnabledChanged();
+    void phantomWakeSuppressGraceMsChanged();
     void showShuffleButtonChanged();
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();

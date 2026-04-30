@@ -171,6 +171,28 @@ int main(int argc, char *argv[]) {
     keeper->onPowerSupplyChanged(hwController.getBattery()->getPowerSupply());
     keeper->setEnabled(config.getSessionKeeperEnabled());  // last — triggers evaluateSession after others are set
 
+    // madalone: PhantomWakeSuppressor wiring (v1.4.20, Mod 6).
+    // Battery, TouchSlider, Power, and core::Api wiring already happen in hwController ctor;
+    // here we wire Config->suppressor and InputController->suppressor, plus push initial state.
+    auto* suppressor = hwController.getPhantomWakeSuppressor();
+    auto* inputController = uiController.getInputController();
+
+    QObject::connect(&config, &uc::Config::phantomWakeSuppressEnabledChanged, suppressor, [suppressor, &config] {
+        suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
+    });
+    QObject::connect(&config, &uc::Config::phantomWakeSuppressGraceMsChanged, suppressor, [suppressor, &config] {
+        suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
+    });
+    // InputController activity → suppressor (cancels the grace window if a real user is here).
+    // keyPressed(QString) connects to onUserInput() — Qt auto-discards the surplus arg.
+    QObject::connect(inputController, &uc::ui::InputController::keyPressed, suppressor,
+                     &uc::hw::PhantomWakeSuppressor::onUserInput);
+    QObject::connect(inputController, &uc::ui::InputController::touchDetected, suppressor,
+                     &uc::hw::PhantomWakeSuppressor::onUserInput);
+    // Initial state push — graceMs first so the timer interval is correct when enabled flips on.
+    suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
+    suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(

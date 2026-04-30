@@ -59,6 +59,79 @@ Settings.Page {
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
 
+            /** PHANTOM-WAKE SUPPRESSOR (madalone, v1.4.20, Mod 6) **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Suppress phantom wake-ups")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: phantomWakeSwitch
+                        icon: "uc:check"
+                        checked: Config.phantomWakeSuppressEnabled
+                        trigger: function() { Config.phantomWakeSuppressEnabled = !Config.phantomWakeSuppressEnabled; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.down: Config.phantomWakeSuppressEnabled ? phantomWakeGraceSlider : sessionKeeperSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Forces the device back to standby if a wake event happens with no user input within %1 ms.").arg(Config.phantomWakeSuppressGraceMs)
+                    font: fonts.secondaryFont(24)
+                }
+
+                ColumnLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    visible: Config.phantomWakeSuppressEnabled
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.light
+                        text: qsTr("Grace window after wake: %1 ms").arg(Config.phantomWakeSuppressGraceMs)
+                        font: fonts.secondaryFont(24)
+                    }
+
+                    Components.Slider {
+                        id: phantomWakeGraceSlider
+                        height: 60
+                        Layout.fillWidth: true
+                        from: 100
+                        to: 2000
+                        stepSize: 100
+                        value: Config.phantomWakeSuppressGraceMs
+                        live: true
+                        onValueChanged: { Config.phantomWakeSuppressGraceMs = value; }
+                        onUserInteractionEnded: { Config.phantomWakeSuppressGraceMs = value; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: phantomWakeSwitch
+                        KeyNavigation.down: sessionKeeperSwitch
+                    }
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
             /** ACTIVE SESSION KEEPER (madalone) **/
             ColumnLayout {
                 Layout.alignment: Qt.AlignCenter
@@ -83,6 +156,7 @@ Settings.Page {
                         checked: Config.sessionKeeperEnabled
                         trigger: function() { Config.sessionKeeperEnabled = !Config.sessionKeeperEnabled; }
                         highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: Config.phantomWakeSuppressEnabled ? phantomWakeGraceSlider : phantomWakeSwitch
                     }
                 }
 

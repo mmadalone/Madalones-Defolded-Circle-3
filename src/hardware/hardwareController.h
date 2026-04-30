@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. ActivitySessionKeeper integration.
+// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -13,6 +13,7 @@
 #include "haptic.h"
 #include "hardwareModel.h"
 #include "info.h"
+#include "phantomWakeSuppressor.h"
 #include "power.h"
 #include "ucr2/hapticUCR2.h"
 #include "ucr2/hapticUCR3.h"
@@ -37,6 +38,7 @@ class Controller : public QObject {
     Wifi*    getWifi() { return m_wifi; }
     TouchSlider* getTouchSlider() { return m_touchSlider; }
     ActivitySessionKeeper* getActivitySessionKeeper() { return m_activitySessionKeeper; }
+    PhantomWakeSuppressor* getPhantomWakeSuppressor() { return m_phantomWakeSuppressor; }
 
  private slots:
     void onHapticEnabledChanged(bool enabled);
@@ -52,6 +54,7 @@ class Controller : public QObject {
     Wifi*    m_wifi;
     TouchSlider* m_touchSlider;
     ActivitySessionKeeper* m_activitySessionKeeper;
+    PhantomWakeSuppressor* m_phantomWakeSuppressor;
 };
 
 }  // namespace hw

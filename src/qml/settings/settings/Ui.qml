@@ -30,8 +30,8 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1900) {
-                contentY = 1900;
+            if (contentY > 2080) {
+                contentY = 2080;
             }
         }
 
@@ -176,7 +176,7 @@ Settings.Page {
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: batteryPercentSwitch
-                        KeyNavigation.down: activityBarSwitch
+                        KeyNavigation.down: wifiEveryWhereSwitch
                     }
                 }
 
@@ -185,6 +185,55 @@ Settings.Page {
                     wrapMode: Text.WordWrap
                     color: colors.light
                     text: qsTr("Shows the battery level indicator on all pages and activities.")
+                    font: fonts.secondaryFont(24)
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** SHOW WIFI INDICATOR EVERYWHERE (madalone, v1.4.21) **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                spacing: 10
+
+                RowLayout {
+                    spacing: 10
+
+                    Text {
+                        id: wifiEveryWhereText
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Show WiFi indicator everywhere")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: wifiEveryWhereSwitch
+                        icon: "uc:check"
+                        checked: Config.showWifiEveryWhere
+                        trigger: function() {
+                            Config.showWifiEveryWhere = !Config.showWifiEveryWhere;
+                        }
+
+                        /** KEYBOARD NAVIGATION **/
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: batteryEveryWhereSwitch
+                        KeyNavigation.down: activityBarSwitch
+                    }
+                }
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.")
                     font: fonts.secondaryFont(24)
                 }
             }
@@ -224,7 +273,7 @@ Settings.Page {
 
                         /** KEYBOARD NAVIGATION **/
                         highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: batteryEveryWhereSwitch
+                        KeyNavigation.up: wifiEveryWhereSwitch
                         KeyNavigation.down: mediaComponentSwitch
                     }
                 }

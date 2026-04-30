@@ -46,8 +46,11 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0 → v1.4.19):**
+**UI chrome beyond the screensaver (v1.3.0 → v1.4.21):**
 
+- **Phantom-Wake Suppressor (Mod 6)** (v1.4.20) — Settings → Power "Suppress phantom wake-ups". Inverse-symmetric companion to Mod 5: detects `LOW_POWER|SUSPEND → NORMAL` transitions and arms a configurable grace timer (default 500 ms, range 100–2000). If user input fires during grace (`InputController::keyPressed` / `touchDetected`, `TouchSlider::touchPressed`, `Battery::powerSupplyChanged`), timer cancels — wake-press path unaffected. If grace expires without input, fires `core::Api::setPowerMode(LOW_POWER)` to force the device back to standby. Eliminates the ~9 %/hr off-dock battery drain caused by WoWLAN-induced phantom wakes. Default off, opt-in.
+- **Reconnect HUD overhaul + WiFi-everywhere toggle** (v1.4.21) — `ReconnectingHUD` bumped from 60 → 120 px height, font 24 → 32, `colors.dark` → `colors.medium`, added subtle 3-second opacity pulse so the wake-retry banner is hard to miss. New `WifiStatusChip.qml` + `Settings → UI → "Show WiFi indicator everywhere"` toggle (default on) puts the always-visible signal-strength chip on every entity / activity detail page, just left of the battery chip — mirrors the home-screen StatusBar's WiFi indicator. When on, the existing weak-signal warning icon hides because the chip carries the disconnected-state info via its red strikethrough.
+- **WS keepalive + spurious-emit hygiene** (bundled in v1.4.20) — re-enabled the dormant `m_keepAliveTimer` at `core/core.cpp:26-30` (commented out by upstream, never wired). 60 s WS pings keep the localhost UI ↔ core daemon connection healthy across kernel-suspend, eliminating the multi-second WS-reconnect tail on first wake-press. `Wifi::onResponseWithErrorResult` callback no longer emits `isConnectedChanged` on every 30 s status poll regardless of state change (3 sites guarded). Dead `oldNetwork` swap in `Wifi` ctor removed.
 - **Wake-replay HUD** (v1.4.19) — visible "Reconnecting…" top-banner during the post-wake retry window. The bigger hidden fix in this release is a 3-line correction to `entityController.cpp:757` — the upstream resume-window trigger only checked for `SUSPEND → NORMAL`, but UC3's daily standby uses `LOW_POWER`, so the existing `m_pendingCommands` retry mechanism had been dead since the firmware shipped. Expanded to `LOW_POWER || SUSPEND`; the existing 500 ms retry loop now actually engages on real wakes.
 - **Active Session Keeper** (v1.4.14, polished v1.4.16) — Settings → Power "Keep awake while watching/listening". Prevents the firmware's hard 5-min standby timer while a media-player entity is in `Playing` state or curated media-control buttons (`PLAY_PAUSE` / `STOP` / `VOLUME_*` / `CURSOR_*` / `CHANNEL_*` / `NEXT` / `PREVIOUS` / etc.) have been pressed within a configurable idle window (30–300 s). Wired by sending the previously-orphan `set_power_mode` ucapi RPC every 270 s; resets firmware's `standby_timeout_sec` to its configured max on every transition. Default off, AC-required default on. Eliminates the 1–3 s wake-recovery gap on every 5-min sleep cycle while watching TV.
 - **Screensaver docked-rearm** (v1.4.15, polished v1.4.16) — pre-existing UC bug fix. Tap-dismissing the screensaver while docked previously left it dismissed permanently (until next wake from `Low_power`). New `dockedRearmTimer` re-activates after a configurable 5–120 s timeout. Slider in Settings → Screensaver → General Behavior, "Run after dismissal while docked", default 60 s.
@@ -80,8 +83,8 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.19/remote-ui-v1.4.19-UCR2-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.19/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.21/remote-ui-v1.4.21-UCR2-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.21/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
 ./scripts/verify-release.sh remote-ui-v1.4.19-UCR2-static.tar.gz remote-ui.hash
@@ -162,7 +165,7 @@ gpg --import docs/release-pubkey.asc
 ./scripts/verify-release.sh \
     remote-ui-v1.4.19-UCR2-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.19-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.21-UCR2-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -247,6 +250,10 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.4.21** (2026-04-30) — Reconnect HUD overhaul + WiFi-everywhere toggle. `ReconnectingHUD` bumped 60 → 120 px, font 24 → 32, spinner 36 → 56, `colors.dark` → `colors.medium`, added 3-second opacity pulse so the post-wake banner is hard to miss. New `WifiStatusChip.qml` (~50 lines) + `Settings → UI → Show WiFi indicator everywhere` (default on) puts the always-visible signal-strength chip on every entity / activity detail page, just left of the battery chip — mirrors `StatusBar.qml`'s WiFi indicator (Mod 4 W3). When chip is on, the existing weak-signal warning icon hides because the chip carries the disconnected-state info. CI workflow `build.yml:151` patched to stage the install-bundle layout (`release.json + bin/remote-ui + config/`) before tarring — fixes a long-standing release bug where the published tarball was rejected by the firmware install endpoint with "Missing file: remote-ui".
+
+**v1.4.20** (2026-04-30) — **Mod 6: Phantom-Wake Suppressor.** Inverse-symmetric companion to Mod 5. New `uc::hw::PhantomWakeSuppressor` singleton at `src/hardware/phantomWakeSuppressor.{h,cpp}` (~75 / ~110 lines). On `Power::powerModeChanged(from, to)`: if `from == LOW_POWER || SUSPEND` and `to == NORMAL`, arms a single-shot grace timer (default 500 ms, range 100–2000). If user input fires during grace (`InputController::keyPressed` / `touchDetected`, `TouchSlider::touchPressed`, `Battery::powerSupplyChanged`), timer cancels — wake-press path unaffected (~242 ms wake-to-functional measured on hardware). If grace expires without input, calls `core::Api::setPowerMode(LOW_POWER)` to force the device back to standby. Eliminates the ~9 %/hr off-dock battery drain caused by WoWLAN-induced phantom wakes (~5 min of NORMAL/IDLE per phantom wake → ≤500 ms per phantom wake). Default off. Bundled with this release: re-enabled the dormant WS keepalive at `core/core.cpp:26-30` (was commented out by upstream, never wired) — 60 s `m_webSocket.ping()` keeps the localhost UI ↔ core daemon connection healthy across kernel-suspend; eliminates the multi-second WS-reconnect tail on first wake-press. `Wifi` callback emit-guards (`isConnectedChanged` no longer fires every 30 s poll regardless of state change). Dead `oldNetwork` swap in `Wifi` ctor removed.
 
 **v1.4.19** (2026-04-29) — Wake-replay HUD + LOW_POWER wake-trigger fix. New `ReconnectingHUD` overlay (`src/qml/components/overlays/ReconnectingHUD.qml`, ~75 lines QML) shows a top-banner "Reconnecting…" slide-down whenever `EntityController.resumeWindow` is true. Bigger fix snuck in alongside: `entityController.cpp:757`'s wake trigger expanded from SUSPEND-only to `LOW_POWER || SUSPEND` — UC3's typical 5-min standby uses LOW_POWER (REST probe of `/api/system/power` confirmed; never observed SUSPEND in 6 v1.4.x releases of probing), so the upstream `m_pendingCommands` retry mechanism had been a no-op for daily wakes. With this fix, the existing 500 ms retry loop actually engages. HUD is purely a visual layer over plumbing that's been there all along.
 
