@@ -20,6 +20,7 @@ Item {
 
     // Base wifi icon (always visible — neutral chrome glyph, signal level overlaid by inner Icon).
     Components.Icon {
+        objectName: "wifiBase"   // v1.4.34: testability annotation
         anchors.centerIn: parent
         size: 40
         icon: "uc:wifi"
@@ -29,6 +30,7 @@ Item {
         // Signal-strength overlay icon (uc:wifi-01/02/03 per tier). Empty when disconnected
         // or NONE — fades to opacity 0 to reveal the base "uc:wifi" silhouette underneath.
         Components.Icon {
+            objectName: "wifiOverlay"   // v1.4.34: testability annotation
             anchors.centerIn: parent
             size: 40
             icon: {
@@ -48,6 +50,7 @@ Item {
 
         // Red strikethrough when disconnected (matches StatusBar pattern at lines 278-286).
         Rectangle {
+            objectName: "wifiStrikethrough"   // v1.4.34: testability annotation
             anchors.centerIn: parent
             width: 30
             height: 2

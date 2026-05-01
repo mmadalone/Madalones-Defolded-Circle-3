@@ -14,7 +14,9 @@ macx {
 }
 
 SOURCES += tst_qml_main.cpp
-HEADERS += MockScreensaverConfig.h MockHaptic.h
+HEADERS += MockScreensaverConfig.h MockHaptic.h \
+           MockSignalStrength.h MockBattery.h MockWifi.h \
+           MockEntityController.h MockConfig.h
 
 # Pull in the project QRC so Components.Switch, Components.Slider etc. resolve
 RESOURCES += ../../resources/qrc/main.qrc

@@ -35,6 +35,7 @@ Item {
 
     Rectangle {
         id: banner
+        objectName: "hudBanner"   // v1.4.34: testability annotation
         width: parent.width
         height: parent.height
         color: colors.medium
@@ -51,6 +52,7 @@ Item {
         // is calm but visibly alive. Stops when banner slides out — saves cycles when idle.
         SequentialAnimation on opacity {
             id: pulseAnimation
+            objectName: "hudPulse"   // v1.4.34: testability annotation
             running: hudRoot.active
             loops: Animation.Infinite
             NumberAnimation { from: 0.95; to: 1.0; duration: 1500; easing.type: Easing.InOutSine }
@@ -68,6 +70,7 @@ Item {
             // Spinning indicator — same pattern as WifiNetworkList.qml:97-110, Discovery.qml:209.
             Image {
                 id: spinner
+                objectName: "hudSpinner"   // v1.4.34: testability annotation
                 Layout.preferredWidth: 56
                 Layout.preferredHeight: 56
                 source: "qrc:/images/loader_small.png"
@@ -75,6 +78,7 @@ Item {
                 asynchronous: true
 
                 RotationAnimation on rotation {
+                    objectName: "hudSpinnerRotation"   // v1.4.34: testability annotation
                     running: hudRoot.active
                     loops: Animation.Infinite
                     from: 0; to: 360

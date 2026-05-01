@@ -20,6 +20,7 @@ Item {
         spacing: 0
 
         Text {
+            objectName: "batteryText"   // v1.4.34: testability annotation
             Layout.alignment: Qt.AlignVCenter
 
             color: colors.offwhite
@@ -31,6 +32,7 @@ Item {
         }
 
         Components.Icon {
+            objectName: "batteryBolt"   // v1.4.34: testability annotation
             icon: "uc:bolt"
             color: colors.offwhite
             size: 40
@@ -38,6 +40,7 @@ Item {
         }
 
         Item {
+            objectName: "batteryBarWrapper"   // v1.4.34: testability annotation
             Layout.leftMargin: 5
             Layout.preferredWidth: 16
             Layout.preferredHeight: 30
@@ -46,6 +49,7 @@ Item {
             visible: !Battery.isCharging
 
             Rectangle {
+                objectName: "batteryBarFill"   // v1.4.34: testability annotation
                 width: parent.width
                 height: (parent.height * Battery.level / 100) + (Battery.level < 10 ? 2 : 0)
                 radius: 4

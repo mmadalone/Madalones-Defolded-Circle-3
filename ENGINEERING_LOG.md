@@ -13,6 +13,59 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v1434"></a>v1.4.34 — 2026-05-01 — QML test coverage for BatteryStatusChip / WifiStatusChip / ReconnectingHUD (audit B5)
+
+### Context
+Item B5 in the path-to-A audit roadmap (`audit-v1.4.26-thorough.md` Finding 8). Three custom UI overlay components — `BatteryStatusChip` (Mod 3), `WifiStatusChip` (Mod 4 v1.4.21), `ReconnectingHUD` (wake-replay v1.4.19/v1.4.21) — shipped at zero test coverage despite being on the critical path (battery + wifi + wake-recovery indicators visible during every entity/activity detail page open and every device wake from LOW_POWER). The audit specifically called this out as the largest contiguous untested block among custom UI files.
+
+### Approach
+Mock singleton infrastructure for the three production C++ singletons the chips depend on (`Battery`, `Wifi`, `EntityController`) plus the existing `Config` (separate from `MockScreensaverConfig` which is the persistence layer for screensaver settings — `Config` is the device-wide persistence layer). Mocks expose only the Q_PROPERTYs the chips actually read (≈12 props vs ≈130 in the full production headers). Each mock includes `Q_INVOKABLE void resetDefaults()` matching the established `MockScreensaverConfig` precedent so tests can `init()` cleanly between runs.
+
+The mock-singleton pattern works because production registration of `Battery` / `Wifi` / `EntityController` lives in `hardwareController.cpp` and `uiController.cpp` — neither of which is linked into the `test_qml` binary. The mocks register under the same QML names (`Battery`, `Wifi`, `Entity.Controller`, `Config`, `Wifi.SignalStrength`) without competing with anything.
+
+### New files (test/qml/, 8 total)
+| File | LOC | Purpose |
+|---|---|---|
+| `MockSignalStrength.h` | 27 | Q_GADGET copy of `uc::hw::SignalStrength` enum (NONE/WEAK/OK/GOOD/EXCELLENT). Avoids pulling production `wifi.h`'s transitive `core/core.h` include. |
+| `MockBattery.h` | 67 | Q_PROPERTY mirror of Battery (level, low, isCharging, powerSupply) + WRITE setters + signal-arity-matching emit (`lowChanged(bool)`, `powerSupplyChanged(bool)`). |
+| `MockWifi.h` | 78 | MockWifiNetwork (signalStrength NOTIFY — not CONSTANT, single-object lifetime) + MockWifi (isConnected + currentNetwork pointer). |
+| `MockEntityController.h` | 36 | Mirrors only `resumeWindow` Q_PROPERTY. Critical: signal name is lowercase `resumewindowChanged` to match production. |
+| `MockConfig.h` | 30 | Mirrors only `showBatteryPercentage` (the one Config prop the chips read). |
+| `tst_battery_status_chip.qml` | 110 | 6 tests. |
+| `tst_wifi_status_chip.qml` | 95 | 6 tests. |
+| `tst_reconnecting_hud.qml` | 100 | 5 tests including round-trip slide-in/out for the directional-easing path. |
+
+### Modified files (5 total)
+- `test/qml/tst_qml_main.cpp` — 6 new includes, 4 new static singletons + providers, 4 new `qmlRegisterSingletonType` calls, 1 new `qmlRegisterUncreatableType` for SignalStrength, 4 new deletes in cleanupTestCase.
+- `test/qml/matrixrain_qml_test.pro` — HEADERS line extended with the 5 new mock headers.
+- `src/qml/components/overlays/BatteryStatusChip.qml` — 4 lines added: `objectName: "..."` on inner Text, Components.Icon, wrapping Item, and Rectangle (bar fill).
+- `src/qml/components/overlays/WifiStatusChip.qml` — 3 lines added: `objectName` on base Components.Icon, overlay Components.Icon, strikethrough Rectangle.
+- `src/qml/components/overlays/ReconnectingHUD.qml` — 4 lines added: `objectName` on banner Rectangle, pulseAnimation, spinner Image, spinner RotationAnimation.
+
+### Test scope rationale
+For each chip, tests target observable visual states + binding chains, not mid-animation values. The `Battery.low` vs `Battery.level` asymmetry test (`test_discharging_low_height_growth`) catches the bug where `level<10` drives the +2 px height boost while `low` drives color independently — an easy regression to introduce during a refactor. The `test_strength_change_rebinds` test catches the `Wifi.currentNetwork.signalStrength` re-bind path (the one place where the mock's deliberate divergence from production CONSTANT is observable). For the HUD, `tryCompare` with 1000 ms timeout absorbs xvfb + Mesa software GL frame-pacing variance.
+
+### Why no production-singleton refactor (deferred)
+Adding `Q_INVOKABLE void resetDefaults()` to the production `Battery`/`Wifi`/`EntityController`/`Config` would mirror the v1.4.28 `ScreensaverConfig::resetDefaults()` precedent. We did not do this for v1.4.34 because the mocks already provide the API surface tests need; production-side reset is premature until a use case appears. v1.4.28's addition was driven by a real bug (the audit memo's MockScreensaverConfig referenced `resetDefaults()` for months without the production class having it). No equivalent latent bug exists for the other four singletons.
+
+### Architectural note
+- **Drift increase: 5 new files in `test/qml/`, 3 modified production QML files, 2 modified test infrastructure files.** Production-source LOC delta: 11 lines of `objectName: "..."` annotations. No behavioral changes to production code.
+- **No CI workflow changes.** The `qml-tests` job auto-picks-up new `tst_*.qml` files via `QUICK_TEST_MAIN_WITH_SETUP`.
+- **Translation impact:** none — no `qsTr` changes.
+- **Verification protocol** (post-deploy):
+  - Push to `origin/main` + tag `v1.4.34`.
+  - GitHub Actions `qml-tests` job (under `Tests` workflow) should run all 17 new tests + existing tests within ~2 min. xvfb headless display for animation tests.
+  - `Build & Release` workflow should run cross-compile + bundle + GitHub Release. Production binary unchanged in behavior; the `objectName` annotations bake into qmlcache without size impact.
+  - Hardware-tests / Clang-Tidy / Code Guidelines should remain green.
+- **Mock divergence audit** (intentional, future-Claude-Code reading these mocks should NOT "fix" them to match production):
+  - `MockBattery` Q_PROPERTYs are WRITE-able. Production is READ-only. Test convenience.
+  - `MockWifiNetwork.signalStrength` is NOT CONSTANT. Production is CONSTANT. Tests need to mutate strength on a persistent QObject; production's pointer-swap pattern is more invasive to mock.
+  - `MockEntityController` exposes only `resumeWindow` (the only prop ReconnectingHUD reads). Production has 5 Q_PROPERTYs.
+  - `MockConfig` exposes only `showBatteryPercentage` (1 prop). Production has 100+.
+- **Auto-revert safety net** active. For v1.4.34 specifically the only production-source changes are 11 lines of test annotations — risk to device behavior is zero.
+
+---
+
 ## <a id="v1433"></a>v1.4.33 — 2026-05-01 — Settings → Power 70-second open delay (root cause: Slider tick over-instantiation)
 
 ### Symptom

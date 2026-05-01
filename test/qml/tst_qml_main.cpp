@@ -13,10 +13,19 @@
 
 #include "MockScreensaverConfig.h"
 #include "MockHaptic.h"
+#include "MockSignalStrength.h"
+#include "MockBattery.h"
+#include "MockWifi.h"
+#include "MockEntityController.h"
+#include "MockConfig.h"
 
 // ── Mock objects (singleton lifetime) ──────────────────────────────
 static MockScreensaverConfig *s_config = nullptr;
 static MockHaptic *s_haptic = nullptr;
+static MockBattery *s_battery = nullptr;
+static MockWifi *s_wifi = nullptr;
+static MockEntityController *s_entityController = nullptr;
+static MockConfig *s_appConfig = nullptr;
 
 static QObject *configProvider(QQmlEngine *, QJSEngine *) {
     // QtQuick tests destroy/recreate the engine — prevent double-delete
@@ -26,6 +35,22 @@ static QObject *configProvider(QQmlEngine *, QJSEngine *) {
 static QObject *hapticProvider(QQmlEngine *, QJSEngine *) {
     QQmlEngine::setObjectOwnership(s_haptic, QQmlEngine::CppOwnership);
     return s_haptic;
+}
+static QObject *batteryProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_battery, QQmlEngine::CppOwnership);
+    return s_battery;
+}
+static QObject *wifiProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_wifi, QQmlEngine::CppOwnership);
+    return s_wifi;
+}
+static QObject *entityControllerProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_entityController, QQmlEngine::CppOwnership);
+    return s_entityController;
+}
+static QObject *appConfigProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_appConfig, QQmlEngine::CppOwnership);
+    return s_appConfig;
 }
 
 // ── Mock C++ object for fonts context property ────────────────────
@@ -153,8 +178,20 @@ class Setup : public QObject {
     void applicationAvailable() {
         s_config = new MockScreensaverConfig;
         s_haptic = new MockHaptic;
+        s_battery = new MockBattery;
+        s_wifi = new MockWifi;
+        s_entityController = new MockEntityController;
+        s_appConfig = new MockConfig;
         qmlRegisterSingletonType<MockScreensaverConfig>("ScreensaverConfig", 1, 0, "ScreensaverConfig", configProvider);
         qmlRegisterSingletonType<MockHaptic>("Haptic", 1, 0, "Haptic", hapticProvider);
+        qmlRegisterSingletonType<MockBattery>("Battery", 1, 0, "Battery", batteryProvider);
+        qmlRegisterSingletonType<MockWifi>("Wifi", 1, 0, "Wifi", wifiProvider);
+        qmlRegisterSingletonType<MockEntityController>("Entity.Controller", 1, 0, "EntityController", entityControllerProvider);
+        qmlRegisterSingletonType<MockConfig>("Config", 1, 0, "Config", appConfigProvider);
+        // SignalStrength Q_GADGET — registered separately under its own URI to match
+        // production wifi.cpp:32 registration. WifiStatusChip imports `Wifi.SignalStrength 1.0`
+        // and uses the enum values (NONE/WEAK/OK/GOOD/EXCELLENT) in switch cases.
+        qmlRegisterUncreatableType<uc::hw::SignalStrength>("Wifi.SignalStrength", 1, 0, "SignalStrength", "Enum is not a type");
         // Palettes is pure-QML data (no behaviour), so we register the real
         // singleton URL — matches src/main.cpp registration. Any settings
         // page test that transitively pulls GradientText / BatteryOverlay /
@@ -192,6 +229,10 @@ class Setup : public QObject {
         // Singletons are C++ owned — clean up manually
         delete s_config; s_config = nullptr;
         delete s_haptic; s_haptic = nullptr;
+        delete s_battery; s_battery = nullptr;
+        delete s_wifi; s_wifi = nullptr;
+        delete s_entityController; s_entityController = nullptr;
+        delete s_appConfig; s_appConfig = nullptr;
     }
 };
 

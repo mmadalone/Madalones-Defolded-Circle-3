@@ -11,6 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.34 — 2026-05-01 — QML test coverage for BatteryStatusChip / WifiStatusChip / ReconnectingHUD (audit B5)
+
+Closes the largest contiguous block of zero-coverage custom UI components per the v1.4.26 thorough audit (item B5 in the path-to-A roadmap). Three custom UI overlay components (≈225 LOC together) shipped in production with no QML tests since their introduction in Mod 3 / Mod 4 / wake-replay HUD.
+
+### Added
+- **17 real assertions across 3 new test QML files** in `test/qml/`:
+  - `tst_battery_status_chip.qml` — 6 tests covering charging/discharging mode swap, bar color binding (`Battery.low` → red, independent of `level`), `+2 px` height growth path under `level < 10`, and the `Battery.isCharging || Config.showBatteryPercentage` OR-clause precedence.
+  - `tst_wifi_status_chip.qml` — 6 tests covering each of the 4 connected signal-strength tiers (NONE / WEAK / OK&GOOD fall-through / EXCELLENT), the disconnected-state red-strikethrough overlay, and the `Wifi.currentNetwork.signalStrength` re-bind path.
+  - `tst_reconnecting_hud.qml` — 5 tests covering the idle/active state machine, banner slide-in/out endpoints (`tryCompare` against `y=0` / `y=-height`), and `pulseAnimation.running` + spinner rotation start/stop on `EntityController.resumeWindow` flips.
+- **5 new minimal C++ mock singletons** in `test/qml/`: `MockBattery`, `MockWifi` + nested `MockWifiNetwork`, `MockEntityController`, `MockConfig`, `MockSignalStrength` (Q_GADGET enum). Each mock exposes only the Q_PROPERTYs the chips actually read; full production-surface mirror would have been 100+ extra Q_PROPERTYs across the four production singletons.
+- **`objectName` testability annotations** on the chips' internal elements (`batteryBolt`, `batteryText`, `batteryBarFill` etc.). 6 lines across the 3 chip files. Non-functional — required so test code can use a recursive `findByObjectName` helper to locate inner elements (which use scoped QML `id`s, unreachable from outside the component).
+
+### Why mocks (not real singletons)
+Production `Battery`, `Wifi`, `EntityController` constructors require a `core::Api*` and immediately connect to core signals + start timers; using them in a test would crash or hang. Mocks live solely in `test/qml/` and don't compete with production registration — the test binary doesn't link `hardwareController.cpp` or `uiController.cpp` where production registration happens.
+
+### Mock divergences (deliberate, documented)
+- **`MockBattery` exposes WRITE setters** on its Q_PROPERTYs; production declares them READ-only and mutates via `core::Api` slot signals.
+- **`MockWifiNetwork.signalStrength` is NOT CONSTANT**; production declares it CONSTANT and swaps the QObject pointer per state change. Mock's single-object lifetime is simpler and equivalent for the chip's binding chain (the prop's NOTIFY triggers re-bind without pointer swap).
+- **`MockEntityController`** mirrors only `resumeWindow` — production has 5 Q_PROPERTYs and pulls 14+ entity-type headers transitively.
+
+Each divergence is documented in the relevant Mock`*.h` file's header comment.
+
+### Architectural note
+- **Drift increase: zero new files in production source.** All new files live in `test/qml/`. Three production files modified (`BatteryStatusChip.qml`, `WifiStatusChip.qml`, `ReconnectingHUD.qml`) gain only `objectName` annotations — no behavioral changes.
+- **CI integration:** zero workflow changes. The `qml-tests` job in `.github/workflows/test.yml` auto-discovers `tst_*.qml` files via QtQuickTest's `QUICK_TEST_MAIN_WITH_SETUP`. New tests run alongside existing ones in the same `test_qml` binary.
+- **Test count delta:** existing `test_qml` covered settings navigation/visibility/bindings (~50 assertions across 9 test files). v1.4.34 adds 17 more across 3 files → ~67 assertions total.
+- **Translation impact:** none — no `qsTr` strings change. Animations under xvfb + Mesa software GL use `tryCompare` with generous timeouts (1000 ms for 250 ms slides) to absorb timing variance.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md` — but for v1.4.34 specifically the only production code changes are 6 lines of `objectName:` annotations. Risk to device behavior: zero.
+
+---
+
 ## v1.4.33 — 2026-05-01 — Settings → Power 70-second open delay fix
 
 Settings → Power was taking ~70 seconds to fully populate on UC3, with the screen-off-animation Style picker buttons appearing in a slow cascade at the end. v1.4.26 attempted a fix by replacing GridLayout with `Item` + computed positions; the cascade persisted because that wasn't the actual bottleneck.
