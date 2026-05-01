@@ -162,6 +162,7 @@ HEADERS += \
     src/ui/matrixrain/layerpipeline.h \
     src/ui/matrixrain/atlasbuilder.h \
     src/ui/matrixrain/singlelayerrenderer.h \
+    src/ui/matrixrain/inputhandler.h \
     src/util.h \
     src/voice.h
 
@@ -235,6 +236,7 @@ SOURCES += \
         src/ui/matrixrain/layerpipeline.cpp \
         src/ui/matrixrain/atlasbuilder.cpp \
         src/ui/matrixrain/singlelayerrenderer.cpp \
+        src/ui/matrixrain/inputhandler.cpp \
         src/util.cpp \
         src/voice.cpp
 

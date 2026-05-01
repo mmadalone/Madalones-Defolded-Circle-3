@@ -12,6 +12,7 @@
 
 #include "glyphatlas.h"
 #include "gravitydirection.h"
+#include "matrixrain/inputhandler.h"
 #include "matrixrain/layerpipeline.h"
 #include "matrixrain/singlelayerrenderer.h"
 #include "rainsimulation.h"
@@ -255,14 +256,13 @@ class MatrixRainItem : public QQuickItem {
     ///   - "enter": Triggers chaos burst (if glitch+chaos enabled) or flash-all.
     ///   - "slow:hold"/"slow:release": Reduces/restores tick rate for hold effect.
     ///   - "tap:x,y,burst,flash,scramble,spawn,message[,R{chance}]": Touch interaction.
-    Q_INVOKABLE void interactiveInput(const QString &action);
-
-    /// @brief Begin enter button press. Starts hold/double-tap detection timers.
-    Q_INVOKABLE void enterPressed();
-    /// @brief End enter button press. Emits enterAction with "enter", "slow:hold", or "slow:release".
-    Q_INVOKABLE void enterReleased();
-    /// @brief Reset enter state machine to idle. Call when closing the screensaver.
-    Q_INVOKABLE void resetEnterState();
+    // QML-facing input dispatch — inline forwarders to m_inputHandler. The full
+    // implementation lives in src/ui/matrixrain/inputhandler.{h,cpp}. The QML
+    // contract (signal name, Q_INVOKABLE method names) is preserved verbatim.
+    Q_INVOKABLE void interactiveInput(const QString &action) { m_inputHandler.interactiveInput(action); }
+    Q_INVOKABLE void enterPressed()    { m_inputHandler.enterPressed(); }
+    Q_INVOKABLE void enterReleased()   { m_inputHandler.enterReleased(); }
+    Q_INVOKABLE void resetEnterState() { m_inputHandler.resetEnterState(); }
 
 signals:
     /// @brief Emitted by the enter button state machine with action strings for QML dispatch.
@@ -493,12 +493,14 @@ public:
                                                m_sortOrder, m_glowFade);
     }
 
-    // interactiveInput handlers
-    void handleDirectionInput(const QString &action);
-    void handleEnterInput();
-    void handleSlowInput(bool hold);
-    void handleRestoreInput();
-    void handleTapInput(const QString &params);
+    // interactiveInput handlers — inline forwarders to m_inputHandler.
+    // Kept on MatrixRainItem so `friend class MatrixRainTest` continues to call
+    // item.handleX(...) at test_matrixrain.cpp's existing call sites without edits.
+    void handleDirectionInput(const QString &action) { m_inputHandler.handleDirectionInput(action); }
+    void handleEnterInput()                          { m_inputHandler.handleEnterInput(); }
+    void handleSlowInput(bool hold)                  { m_inputHandler.handleSlowInput(hold); }
+    void handleRestoreInput()                        { m_inputHandler.handleRestoreInput(); }
+    void handleTapInput(const QString &params)       { m_inputHandler.handleTapInput(params); }
 
     // State
     QVector<quint8> m_cellDrawn;  // per-cell depth priority (0=undrawn, 1=far, 2=normal, 3=near)
@@ -520,6 +522,12 @@ public:
     // Single-layer rain renderer (used when m_layerPipeline.enabled() is false).
     // Stateless — all state passed per-call. See src/ui/matrixrain/singlelayerrenderer.h.
     SingleLayerRenderer m_singleLayer;
+
+    // Input-handling subsystem (interactiveInput + 5 handle* + enter-button
+    // state machine + 2 timers). QObject-by-value member, mirrors the
+    // GravityDirection m_gravity pattern. Granted private-state access via
+    // `friend class InputHandler` below. See src/ui/matrixrain/inputhandler.h.
+    InputHandler m_inputHandler;
 
     // Phase-timing instrumentation (Task #1 profiling — NOT shipped to end users).
     // Captures cold-dock-to-first-paint breakdown. qCInfo logging is unreliable
@@ -584,27 +592,15 @@ public:
     bool   m_autoRotateWasActive{false}; // was auto-rotate running before interactive override
     bool   m_slowOverride{false};        // speed slowed down by enter hold
 
-    // Enter button state machine (ported from QML timers).
-    // Called from ChargingScreen.qml DPAD_MIDDLE handler → enterPressed()/enterReleased().
-    //
-    // State diagram:
-    //   EnterIdle ──press──► EnterPressed (start 300ms + 500ms timers)
-    //     EnterPressed ──press again (< 300ms)──► emit "restore", → EnterIdle
-    //     EnterPressed ──500ms elapsed──► EnterHeld, emit "slow:hold"
-    //     EnterPressed ──300ms elapsed──► emit "enter", → EnterIdle
-    //     EnterHeld ──release──► emit "slow:release", → EnterIdle
-    //
-    // Signals emitted via enterAction(QString):
-    //   "enter"        → chaos burst (if glitch+chaos) or flash-all
-    //   "restore"      → revert DPAD direction override, restore auto-rotate
-    //   "slow:hold"    → reduce tick rate to 25%
-    //   "slow:release" → restore normal tick rate
-    enum EnterState { EnterIdle, EnterPressed, EnterHeld };
-    EnterState m_enterState{EnterIdle};
-    QTimer m_enterDoubleTapTimer;  // 300ms — single vs double tap detection
-    QTimer m_enterHoldTimer;       // 500ms — press vs hold detection
-    static constexpr int DOUBLE_TAP_MS = 300;
-    static constexpr int HOLD_THRESHOLD_MS = 500;
+    // Enter button state machine + DOUBLE_TAP_MS/HOLD_THRESHOLD_MS constants
+    // moved to InputHandler. See src/ui/matrixrain/inputhandler.h.
+
+    // InputHandler accesses private state (m_sim, m_layerPipeline, m_gravity,
+    // m_atlas, m_running, m_interactiveOverride, m_autoRotateWasActive,
+    // m_slowOverride, m_needsReinit) and private timer helpers (startTimerAt,
+    // startTimerAtSpeed) through its m_item back-pointer. Tightly-coupled
+    // internal helper — same friend pattern as MatrixRainTest below.
+    friend class InputHandler;
 
 #ifdef MATRIX_RAIN_TESTING
     friend class MatrixRainTest;
