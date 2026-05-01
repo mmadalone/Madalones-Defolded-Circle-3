@@ -183,6 +183,10 @@ int main(int argc, char *argv[]) {
     QObject::connect(&config, &uc::Config::phantomWakeSuppressGraceMsChanged, suppressor, [suppressor, &config] {
         suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
     });
+    // v1.4.23: recent-input lookback (skip-grace logic for firmware delivery ordering).
+    QObject::connect(&config, &uc::Config::phantomWakeSuppressInputLookbackMsChanged, suppressor, [suppressor, &config] {
+        suppressor->setInputLookbackMs(config.getPhantomWakeSuppressInputLookbackMs());
+    });
     // InputController activity → suppressor (cancels the grace window if a real user is here).
     // keyPressed(QString) connects to onUserInput() — Qt auto-discards the surplus arg.
     QObject::connect(inputController, &uc::ui::InputController::keyPressed, suppressor,
@@ -196,8 +200,10 @@ int main(int argc, char *argv[]) {
     // real wake-press. Mirrors Mod 5's wiring at line 165-166.
     QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, suppressor,
                      &uc::hw::PhantomWakeSuppressor::onEntityCommandIssued);
-    // Initial state push — graceMs first so the timer interval is correct when enabled flips on.
+    // Initial state push — graceMs and inputLookbackMs first so the values are correct
+    // when enabled flips on (which triggers the first evaluateSession path).
     suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
+    suppressor->setInputLookbackMs(config.getPhantomWakeSuppressInputLookbackMs());
     suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));

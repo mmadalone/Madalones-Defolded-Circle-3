@@ -500,6 +500,22 @@ void Config::setPhantomWakeSuppressGraceMs(int ms)
     emit phantomWakeSuppressGraceMsChanged();
 }
 
+// madalone (v1.4.23): recent-input lookback for skip-grace logic.
+// If a user-input signal arrived within this many ms before the LOW_POWER → NORMAL
+// transition, the suppressor skips arming the grace timer entirely. Handles the
+// firmware delivery ordering where keyPressed/entityCommandIssued can fire BEFORE
+// powerModeChanged on wake-from-LOW_POWER. Default 500 ms; 0 disables the skip.
+int Config::getPhantomWakeSuppressInputLookbackMs()
+{
+    return m_settings->value("power/phantomWakeSuppressInputLookbackMs", 500).toInt();
+}
+
+void Config::setPhantomWakeSuppressInputLookbackMs(int ms)
+{
+    m_settings->setValue("power/phantomWakeSuppressInputLookbackMs", ms);
+    emit phantomWakeSuppressInputLookbackMsChanged();
+}
+
 bool Config::getShowShuffleButton()
 {
     return m_settings->value("ui/showShuffleButton", true).toBool();

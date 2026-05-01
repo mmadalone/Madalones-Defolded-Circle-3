@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <QElapsedTimer>
 #include <QJSEngine>
 #include <QObject>
 #include <QQmlEngine>
@@ -21,20 +22,23 @@ namespace hw {
 class PhantomWakeSuppressor : public QObject {
     Q_OBJECT
 
-    Q_PROPERTY(bool enabled READ getEnabled WRITE setEnabled NOTIFY enabledChanged)
-    Q_PROPERTY(int  graceMs READ getGraceMs WRITE setGraceMs NOTIFY graceMsChanged)
-    Q_PROPERTY(bool armed   READ getArmed                    NOTIFY armedChanged)
+    Q_PROPERTY(bool enabled         READ getEnabled         WRITE setEnabled         NOTIFY enabledChanged)
+    Q_PROPERTY(int  graceMs         READ getGraceMs         WRITE setGraceMs         NOTIFY graceMsChanged)
+    Q_PROPERTY(int  inputLookbackMs READ getInputLookbackMs WRITE setInputLookbackMs NOTIFY inputLookbackMsChanged)
+    Q_PROPERTY(bool armed           READ getArmed                                    NOTIFY armedChanged)
 
  public:
     explicit PhantomWakeSuppressor(core::Api* core, QObject* parent = nullptr);
     ~PhantomWakeSuppressor();
 
-    bool getEnabled() const { return m_enabled; }
-    int  getGraceMs() const { return m_graceMs; }
-    bool getArmed() const   { return m_graceTimer.isActive(); }
+    bool getEnabled() const         { return m_enabled; }
+    int  getGraceMs() const         { return m_graceMs; }
+    int  getInputLookbackMs() const { return m_inputLookbackMs; }
+    bool getArmed() const           { return m_graceTimer.isActive(); }
 
     void setEnabled(bool enabled);
     void setGraceMs(int ms);
+    void setInputLookbackMs(int ms);
 
     static QObject* qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine);
 
@@ -59,6 +63,7 @@ class PhantomWakeSuppressor : public QObject {
  signals:
     void enabledChanged();
     void graceMsChanged();
+    void inputLookbackMsChanged();
     void armedChanged();
 
  private:
@@ -68,10 +73,12 @@ class PhantomWakeSuppressor : public QObject {
     static PhantomWakeSuppressor* s_instance;
     core::Api*                    m_core;
 
-    QTimer m_graceTimer;   // single-shot, fires forceLowPower if grace expires without user input
+    QTimer        m_graceTimer;       // single-shot, fires forceLowPower if grace expires without user input
+    QElapsedTimer m_lastInputTimer;   // v1.4.23: tracks "last user input" timestamp for skip-grace logic
 
-    bool m_enabled = false;
-    int  m_graceMs = 500;
+    bool m_enabled         = false;
+    int  m_graceMs         = 500;
+    int  m_inputLookbackMs = 500;     // v1.4.23: skip arming grace if user input arrived within this many ms before wake
 };
 
 }  // namespace hw

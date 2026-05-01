@@ -11,6 +11,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.23 — 2026-05-01 — Mod 6 wake-press timing fix + grace range expansion
+
+### Fixed
+- **Mod 6 wake-from-LOW_POWER false force-back.** Empirical capture 2026-05-01 (post-v1.4.22 deploy) revealed a firmware delivery ordering issue: on `LOW_POWER → NORMAL` transitions, `inputController::keyPressed` and `EntityController::entityCommandIssued` fire BEFORE `Power::powerModeChanged`. Mod 6 was arming the grace timer based on the latter signal, so by the time the timer was active the user-input signals had already been processed and early-returned through `m_graceTimer.isActive() == false`. Net effect: even a real wake-press would force-back the device 2 sec later (or whatever the grace value was). Worked for some scenarios (one-shot remote control: brief wake → command → sleep) but broke for sustained-interaction wakes. Fix: track `m_lastInputTimer` (QElapsedTimer) and update it from `onUserInput` and `onEntityCommandIssued` regardless of timer state. In `onPowerModeChanged`, before arming the grace timer, check if `m_lastInputTimer.elapsed() < m_inputLookbackMs` and skip arming entirely if so. Default 500 ms lookback; configurable 0–2000 ms via Settings → Power. 0 disables the skip (reverts to v1.4.22 behavior).
+- **Wake-from-SUSPEND case unchanged** — input device polling is suspended in deep sleep, so wake-press doesn't fire `keyPressed` at all. The `entityCommandIssued` path catches media-control wake-presses; pure-navigation wakes (HOME / BACK / MENU) still get force-backed (no `entityCommandIssued` to trigger the lookback). This is the existing v1.4.22 limitation; not regressed by this release.
+
+### Changed
+- **Grace window slider range expanded from 100–2000 ms → 100–5000 ms** at `phantomWakeSuppressor.cpp::setGraceMs()` clamp and `Power.qml` slider `to:`. The original 2000 ms cap was set in v1.4.20 under the wrong assumption that wake-press inputs arrive in milliseconds. Now that the lookback fix handles wake-press detection independently, the grace value is purely about the post-wake "follow-up activity" window. 5000 ms gives users more headroom for natural pickup-and-press cadence on motion-wake scenarios. Even at 5 sec the battery math is fine: every phantom wake costs 5 sec NORMAL instead of 5 min — still a 60× win over no Mod 6.
+
+### Added
+- **`Config.phantomWakeSuppressInputLookbackMs` Q_PROPERTY** (default 500 ms, range 0–2000 ms, QSettings key `power/phantomWakeSuppressInputLookbackMs`). Standard get/set/Changed pattern at `config.{h,cpp}`. Wired in `main.cpp` to `PhantomWakeSuppressor::setInputLookbackMs`.
+- **Settings → Power → "Recent-input lookback" slider** in `Power.qml`, visible when Mod 6 toggle is on. Inserted just below the existing grace slider with a brief explanatory text. KeyNavigation chain: `phantomWakeSwitch ↔ phantomWakeGraceSlider ↔ phantomWakeLookbackSlider ↔ sessionKeeperSwitch`.
+
+### Architectural note
+- **Drift increase: zero new files.** All changes in already-modified files (`config.{h,cpp}`, `phantomWakeSuppressor.{h,cpp}`, `main.cpp`, `Power.qml`).
+- **Translation impact:** 3 new qsTr strings (slider value label with two formats + slider help text). Run `lupdate` (auto via build).
+- **Verification protocol** (post-deploy):
+  - **Phantom wake** (motion / passive trigger): expect `armed: <ms> ms` → no input → `forced LOW_POWER` → success. Same as v1.4.22 baseline.
+  - **Wake-press** from LOW_POWER (PLAY/PAUSE, VOLUME, etc.): expect `skipping grace (input <N> ms ago, lookback 500 ms)` log line. **No** `armed:` line, **no** force-back. Device stays NORMAL. This is the new behavior the v1.4.22 capture showed was missing.
+  - **Phantom wake immediately following user activity** (e.g., user pressed something 200 ms ago, then a phantom wake fires): with 500 ms lookback, this also gets the skip-grace treatment and stays NORMAL. Edge case where Mod 6 is briefly less aggressive — acceptable since it's bounded to ~500 ms windows after real input.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`.
+
+---
+
 ## v1.4.22 — 2026-05-01 — Mod 5 + Mod 6 force-back API fix + wake-press detection
 
 ### Fixed

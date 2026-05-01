@@ -100,6 +100,8 @@ class Config : public QObject {
     // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences (QSettings-backed)
     Q_PROPERTY(bool phantomWakeSuppressEnabled READ getPhantomWakeSuppressEnabled WRITE setPhantomWakeSuppressEnabled NOTIFY phantomWakeSuppressEnabledChanged)
     Q_PROPERTY(int phantomWakeSuppressGraceMs READ getPhantomWakeSuppressGraceMs WRITE setPhantomWakeSuppressGraceMs NOTIFY phantomWakeSuppressGraceMsChanged)
+    // madalone (v1.4.23): recent-input lookback for skip-grace logic
+    Q_PROPERTY(int phantomWakeSuppressInputLookbackMs READ getPhantomWakeSuppressInputLookbackMs WRITE setPhantomWakeSuppressInputLookbackMs NOTIFY phantomWakeSuppressInputLookbackMsChanged)
     Q_PROPERTY(bool showShuffleButton READ getShowShuffleButton WRITE setShowShuffleButton NOTIFY showShuffleButtonChanged)
     Q_PROPERTY(bool showRepeatButton READ getShowRepeatButton WRITE setShowRepeatButton NOTIFY showRepeatButtonChanged)
     Q_PROPERTY(bool showMediaBrowserButton READ getShowMediaBrowserButton WRITE setShowMediaBrowserButton NOTIFY showMediaBrowserButtonChanged)
@@ -197,6 +199,9 @@ class Config : public QObject {
     void setPhantomWakeSuppressEnabled(bool value);
     int  getPhantomWakeSuppressGraceMs();
     void setPhantomWakeSuppressGraceMs(int ms);
+    // madalone (v1.4.23)
+    int  getPhantomWakeSuppressInputLookbackMs();
+    void setPhantomWakeSuppressInputLookbackMs(int ms);
 
     bool getShowShuffleButton();
     void setShowShuffleButton(bool value);
@@ -359,6 +364,8 @@ class Config : public QObject {
     // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences
     void phantomWakeSuppressEnabledChanged();
     void phantomWakeSuppressGraceMsChanged();
+    // madalone (v1.4.23)
+    void phantomWakeSuppressInputLookbackMsChanged();
     void showShuffleButtonChanged();
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();

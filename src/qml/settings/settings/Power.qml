@@ -113,7 +113,7 @@ Settings.Page {
                         height: 60
                         Layout.fillWidth: true
                         from: 100
-                        to: 2000
+                        to: 5000
                         stepSize: 100
                         value: Config.phantomWakeSuppressGraceMs
                         live: true
@@ -121,6 +121,40 @@ Settings.Page {
                         onUserInteractionEnded: { Config.phantomWakeSuppressGraceMs = value; }
                         highlight: activeFocus && ui.keyNavigationEnabled
                         KeyNavigation.up: phantomWakeSwitch
+                        KeyNavigation.down: phantomWakeLookbackSlider
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.light
+                        text: Config.phantomWakeSuppressInputLookbackMs > 0
+                              ? qsTr("Recent-input lookback: %1 ms").arg(Config.phantomWakeSuppressInputLookbackMs)
+                              : qsTr("Recent-input lookback: disabled")
+                        font: fonts.secondaryFont(24)
+                    }
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.medium
+                        text: qsTr("If a button-press arrived this many ms before a wake, treat the wake as user-initiated and skip the grace timer. Handles firmware delivery ordering on wake-from-low-power.")
+                        font: fonts.secondaryFont(20)
+                    }
+
+                    Components.Slider {
+                        id: phantomWakeLookbackSlider
+                        height: 60
+                        Layout.fillWidth: true
+                        from: 0
+                        to: 2000
+                        stepSize: 50
+                        value: Config.phantomWakeSuppressInputLookbackMs
+                        live: true
+                        onValueChanged: { Config.phantomWakeSuppressInputLookbackMs = value; }
+                        onUserInteractionEnded: { Config.phantomWakeSuppressInputLookbackMs = value; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                        KeyNavigation.up: phantomWakeGraceSlider
                         KeyNavigation.down: sessionKeeperSwitch
                     }
                 }
@@ -156,7 +190,7 @@ Settings.Page {
                         checked: Config.sessionKeeperEnabled
                         trigger: function() { Config.sessionKeeperEnabled = !Config.sessionKeeperEnabled; }
                         highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: Config.phantomWakeSuppressEnabled ? phantomWakeGraceSlider : phantomWakeSwitch
+                        KeyNavigation.up: Config.phantomWakeSuppressEnabled ? phantomWakeLookbackSlider : phantomWakeSwitch
                     }
                 }
 

@@ -51,8 +51,8 @@ void PhantomWakeSuppressor::setEnabled(bool enabled) {
 }
 
 void PhantomWakeSuppressor::setGraceMs(int ms) {
-    // Clamp to [100, 2000] — matches the Power.qml slider range.
-    const int clamped = qBound(100, ms, 2000);
+    // Clamp to [100, 5000] — v1.4.23 expanded from 2000 (matches Power.qml slider range).
+    const int clamped = qBound(100, ms, 5000);
     if (m_graceMs == clamped) return;
     m_graceMs = clamped;
     emit graceMsChanged();
@@ -61,6 +61,15 @@ void PhantomWakeSuppressor::setGraceMs(int ms) {
     if (m_graceTimer.isActive()) {
         m_graceTimer.start(m_graceMs);
     }
+}
+
+// v1.4.23: recent-input lookback — handles firmware delivery ordering where
+// keyPressed/entityCommandIssued can fire BEFORE powerModeChanged on wake-from-LOW_POWER.
+void PhantomWakeSuppressor::setInputLookbackMs(int ms) {
+    const int clamped = qBound(0, ms, 2000);  // 0 disables; matches Power.qml slider range
+    if (m_inputLookbackMs == clamped) return;
+    m_inputLookbackMs = clamped;
+    emit inputLookbackMsChanged();
 }
 
 void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, Power::PowerMode toPowerMode) {
@@ -75,6 +84,18 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
                             fromPowerMode == Power::PowerMode::Suspend);
 
     if (toPowerMode == Power::PowerMode::Normal && wasAsleep) {
+        // v1.4.23: skip-grace if user input arrived within m_inputLookbackMs of this wake.
+        // Firmware delivers wake-from-LOW_POWER input events (keyPressed, entityCommandIssued)
+        // BEFORE the powerModeChanged signal, so by the time we'd arm the grace timer the
+        // input has already been processed. Tracking "last input" lets us recognize this
+        // ordering and skip arming entirely. m_inputLookbackMs == 0 disables the skip.
+        if (m_inputLookbackMs > 0 && m_lastInputTimer.isValid()
+                && m_lastInputTimer.elapsed() < m_inputLookbackMs) {
+            qCWarning(lcHw()) << "PhantomWakeSuppressor: skipping grace (input"
+                              << m_lastInputTimer.elapsed() << "ms ago, lookback"
+                              << m_inputLookbackMs << "ms)";
+            return;
+        }
         // Wake event detected — arm the grace window. If the user presses something
         // within m_graceMs, onUserInput() cancels it. Otherwise forceLowPower() fires.
         m_graceTimer.start(m_graceMs);
@@ -92,13 +113,15 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
 }
 
 void PhantomWakeSuppressor::onUserInput() {
+    // v1.4.23: always update last-input timestamp (used by onPowerModeChanged for
+    // skip-grace logic), regardless of whether a grace window is currently active.
+    m_lastInputTimer.restart();
     if (!m_graceTimer.isActive()) return;
     cancelGrace("user input");
 }
 
 void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString command) {
     Q_UNUSED(entityId)
-    if (!m_graceTimer.isActive()) return;
     // Curated allowlist mirrors ActivitySessionKeeper::onEntityCommandIssued — only
     // human-facing commands count as wake-press evidence. Avoids false-cancel on
     // poll-noise (state queries / capability fetches that some integrations fire
@@ -111,6 +134,10 @@ void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString comm
         "NEXT", "PREVIOUS", "FAST_FORWARD", "REWIND",
     };
     if (!kUserCommands.contains(command.toUpper())) return;
+    // v1.4.23: update last-input timestamp here too, so an entity command arriving
+    // before the powerModeChanged signal still counts toward the skip-grace lookback.
+    m_lastInputTimer.restart();
+    if (!m_graceTimer.isActive()) return;
     cancelGrace("entity command");
 }
 
