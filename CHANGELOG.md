@@ -11,6 +11,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.31 — 2026-05-01 — Hardware-tests link fix (qrcodegen.cpp)
+
+Follow-up to v1.4.30. The submodule-checkout fix unblocked the compile phase, but `keeper_test.pro` and `suppressor_test.pro` were still missing `qrcodegen.cpp` from `SOURCES`, so the link step failed:
+
+```
+util.cpp:(.text+0x3ee7): undefined reference to `qrcodegen::QrCode::encodeText(char const*, qrcodegen::QrCode::Ecc)'
+util.cpp:(.text+0x3f5b): undefined reference to `qrcodegen::QrCode::getSize() const'
+util.cpp:(.text+0x410e): undefined reference to `qrcodegen::QrCode::getModule(int, int) const'
+collect2: error: ld returned 1 exit status
+```
+
+`util.cpp` calls `qrcodegen::QrCode::{encodeText, getSize, getModule}` — `remote-ui.pro:244` lists the .cpp in SOURCES; the test pros had the header in transitive scope but not the implementation. Same surface as the v1.4.30 handoff doc's original linker-error hypothesis, just one layer deeper than expected.
+
+### Fixed
+- **`test/hardware/keeper_test/keeper_test.pro`** + **`test/hardware/suppressor_test/suppressor_test.pro`** — added `3rd-party/QR-Code-generator/cpp/qrcodegen.cpp` to SOURCES and `qrcodegen.hpp` to HEADERS, mirroring `remote-ui.pro:241,244`.
+
+### Architectural notes
+- **No firmware change.** v1.4.31 is a CI-only fix on top of v1.4.30. v1.4.30 already validated 4/5 of the failing surfaces (Tests / Unit, Tests / QML, Tests / Integration, Tests / setpowermode-drift, Clang-Tidy was still pending result at v1.4.31 push time). v1.4.31 closes the last hardware-tests gap.
+
+---
+
 ## v1.4.30 — 2026-05-01 — CI green: submodule checkout + QML required-property init
 
 Closes the three CI failures that landed on `v1.4.29`'s tag run. Two were the same root cause (submodule missing in CI checkout), one was a missing test-fixture wiring. None of these touch firmware behaviour.
