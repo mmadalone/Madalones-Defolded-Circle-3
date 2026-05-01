@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.30 — 2026-05-01 — CI green: submodule checkout + QML required-property init
+
+Closes the three CI failures that landed on `v1.4.29`'s tag run. Two were the same root cause (submodule missing in CI checkout), one was a missing test-fixture wiring. None of these touch firmware behaviour.
+
+### Fixed
+- **`hardware-tests` CI job now checks out the `3rd-party/QR-Code-generator` submodule** at `.github/workflows/test.yml`. `keeper_test.pro` and `suppressor_test.pro` pull `src/util.cpp` + `src/util.h` (via `mock_core_api.cpp` and the `HEADERS` list), and `util.h:13` includes `qrcodegen.hpp` from the submodule. Default `actions/checkout@v4` skips submodules, so the build failed at compile time with `fatal error: 3rd-party/QR-Code-generator/cpp/qrcodegen.hpp: No such file or directory` on `util.o`, `mock_core_api.o`, and `activitySessionKeeper.o`. The handoff doc's linker-error hypothesis was wrong — it was a header-resolution failure that never reached the link phase.
+- **`clang-tidy` CI job now checks out submodules** at `.github/workflows/tidy.yml`. Same root cause: `bear -- make` survives the missing header via `|| true`, but the subsequent `clang-tidy` re-parse of those TUs flags `'3rd-party/QR-Code-generator/cpp/qrcodegen.hpp' file not found [clang-diagnostic-error]`, which the workflow's `ERROR_COUNT > 0` gate counts as 1 fatal lint error. v1.4.28's allowlist expansion (Finding 4) was the trigger — the 4 newly-linted files transitively pulled `util.h` for the first time.
+- **`tst_settings_visibility.qml` now initialises `settingsPage:` on `StarfieldSettings` and `MinimalSettings`** at `test/qml/tst_settings_visibility.qml:41-50`. v1.4.28's audit rewrite (Finding 3) wired the stub-page to `MatrixAppearance` and `MatrixEffects` but missed the other two siblings, which both declare `required property Item settingsPage`. The QML engine raised `Required property settingsPage was not initialized` at the load-time compile step (1 failure out of 166 tests; the 343 "errors" in the XML result are unrelated `qrc:/...TapSection.qml: Unable to assign [undefined] to bool` runtime warnings, not test failures).
+
+### Architectural notes
+- **No firmware change.** `remote-ui.pro VERSION` + `deploy/release.json version` advance to `1.4.30` to keep the semver chain consistent on the new tag.
+- **Why the v1.4.29 handoff doc's surfaces were wrong.** The handoff (in `.claude-memory/project_v1429_ci_failures_handoff.md`) speculated that the hardware-tests failure was a linker `undefined reference` from missing moc-generated symbols, and the clang-tidy failure was real lint findings on the 4 newly-allowlisted files. Both speculations were the same upstream symptom (missing submodule in CI checkout) — the existing `unit-tests` (matrixrain) job has been silently relying on a build path that doesn't transitively reach `util.h`, and only the new `hardware-tests` + the v1.4.28 clang-tidy allowlist exposed that the workflows have never been pulling submodules. Logged so the next "linker error" hypothesis on a CI fail gets a `git submodule status` check first.
+
+---
+
 ## v1.4.29 — 2026-05-01 — Hardware-tests CI job + setPowerMode drift check + audit-path corrections
 
 Closes the three follow-up items called out by the v1.4.27/v1.4.28 review: the deferred CI wiring for the new hardware tests, the false claim in `mock_core_api.h` about a build-time drift check that didn't actually exist, and the v1.4.28 CHANGELOG entry's stale audit-file references that pointed at root-level paths after the audit files were moved to `logs/` (gitignored).

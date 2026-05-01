@@ -41,11 +41,13 @@ Item {
     ChargingScreen.StarfieldSettings {
         id: starfieldSettings
         anchors.fill: parent
+        settingsPage: stubSettingsPage
         visible: ScreensaverConfig.theme === "starfield"
     }
     ChargingScreen.MinimalSettings {
         id: minimalSettings
         anchors.fill: parent
+        settingsPage: stubSettingsPage
         visible: ScreensaverConfig.theme === "minimal"
     }
 

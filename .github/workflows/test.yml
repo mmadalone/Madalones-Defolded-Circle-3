@@ -156,6 +156,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # keeper_test.pro / suppressor_test.pro pull src/util.cpp and util.h
+          # via mock_core_api.cpp; util.h:13 includes the QR-Code-generator
+          # submodule. Default checkout skips submodules → fatal compile error.
+          submodules: recursive
 
       - name: Install Qt ${{ env.QT_VERSION }}
         uses: jurplel/install-qt-action@v3

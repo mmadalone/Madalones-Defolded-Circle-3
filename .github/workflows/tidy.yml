@@ -44,6 +44,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
+          # bear -- make compiles src/util.cpp which transitively includes the
+          # QR-Code-generator submodule via util.h:13. clang-tidy then re-parses
+          # the same TU and flags the missing header as clang-diagnostic-error,
+          # tripping the ERROR_COUNT > 0 fail-gate.
+          submodules: recursive
 
       - name: Install clang-tidy and bear
         run: |
