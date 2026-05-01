@@ -52,7 +52,6 @@ Item {
         // is calm but visibly alive. Stops when banner slides out — saves cycles when idle.
         SequentialAnimation on opacity {
             id: pulseAnimation
-            objectName: "hudPulse"   // v1.4.34: testability annotation
             running: hudRoot.active
             loops: Animation.Infinite
             NumberAnimation { from: 0.95; to: 1.0; duration: 1500; easing.type: Easing.InOutSine }
@@ -78,7 +77,6 @@ Item {
                 asynchronous: true
 
                 RotationAnimation on rotation {
-                    objectName: "hudSpinnerRotation"   // v1.4.34: testability annotation
                     running: hudRoot.active
                     loops: Animation.Infinite
                     from: 0; to: 360

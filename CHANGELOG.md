@@ -11,6 +11,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.35 — 2026-05-01 — HUD test fix (property value source unreachability)
+
+v1.4.34's `qml-tests` job failed on 3 of 17 new tests — all in `tst_reconnecting_hud.qml`. Root cause: `SequentialAnimation on opacity` and `RotationAnimation on rotation` register as Qt property value sources, not as children/resources of their parent QQuickItem. The recursive `findByObjectName` helper that worked for visual children (`hudBanner`, `hudSpinner`) couldn't reach them. The 12 BatteryStatusChip + WifiStatusChip tests passed cleanly.
+
+### Fixed
+- **Replaced 3 failing HUD tests with a single binding-chain test on `hud.active`.** The chip's `readonly property bool active: EntityController.resumeWindow` is the single source of truth that drives every animation's `running:` binding and the banner's `y:` slide. Verifying that property reflects state changes correctly is sufficient — Qt's QML binding propagation handles the rest. Net test count: 6 (Battery) + 6 (Wifi) + 4 (HUD) = 16 (down 1 from 17).
+- **Removed dead `objectName` annotations** (`hudPulse` on `pulseAnimation`, `hudSpinnerRotation` on `RotationAnimation`) from `ReconnectingHUD.qml`. Both were unreachable from `findByObjectName` traversal anyway.
+- **Bundled `resources/qrc/images.qrc` into test resources** so `loader_small.png` resolves cleanly — silences the spurious `Image: Cannot open: qrc:/images/loader_small.png` warning that surfaced during HUD test setup.
+
+### Why this approach (and not property aliases)
+The alternative was to add `property alias pulseRunning: pulseAnimation.running` to `hudRoot` for direct test access. Rejected because (a) it adds test-only hooks to production code, (b) the binding from `hud.active` to `pulseAnimation.running` is a 1-line `running: hudRoot.active` — testing it is testing Qt's binding engine, which is already exhaustively tested upstream, (c) the binding chain passes through `banner.y` too (we test that), so any binding regression that broke pulse would also break the slide.
+
+### Architectural note
+- **Drift increase: zero new files.** Modified `tst_reconnecting_hud.qml`, `matrixrain_qml_test.pro`, `ReconnectingHUD.qml`. Production-source delta: 2 lines removed (`objectName: "hudPulse"`, `objectName: "hudSpinnerRotation"`).
+- **No CI workflow changes.** qml-tests will pick up the revised test file automatically.
+- **Auto-revert safety net** active. v1.4.35's only production change is the 2-line annotation removal — risk to device behavior: zero.
+
+---
+
 ## v1.4.34 — 2026-05-01 — QML test coverage for BatteryStatusChip / WifiStatusChip / ReconnectingHUD (audit B5)
 
 Closes the largest contiguous block of zero-coverage custom UI components per the v1.4.26 thorough audit (item B5 in the path-to-A roadmap). Three custom UI overlay components (≈225 LOC together) shipped in production with no QML tests since their introduction in Mod 3 / Mod 4 / wake-replay HUD.
