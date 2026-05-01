@@ -133,6 +133,7 @@ jobs:
             src/ui/glyphatlas.cpp
             src/ui/matrixrain/layerpipeline.cpp
             src/ui/matrixrain/atlasbuilder.cpp
+            src/ui/matrixrain/singlelayerrenderer.cpp
             src/hardware/activitySessionKeeper.cpp
             src/hardware/phantomWakeSuppressor.cpp
           )
