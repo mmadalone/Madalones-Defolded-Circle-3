@@ -24,13 +24,19 @@ SOURCES += \
     ../../../3rd-party/QR-Code-generator/cpp/qrcodegen.cpp
 
 # Headers — qmake runs moc on Q_OBJECT classes here.
+# power.h is intentionally NOT in HEADERS: the test only uses the Power::PowerMode
+# enum and calls Suppressor::onPowerModeChanged() directly with synthetic values.
+# Listing power.h would moc-generate moc_power.cpp, whose vtable references
+# Power::~Power / powerOff / reboot / onPowerModeChanged — none of which the
+# test exercises. power.h is still #included by phantomWakeSuppressor.h and
+# test_phantomWakeSuppressor.cpp for the enum declaration; that's a compile-only
+# dep and doesn't trigger moc.
 HEADERS += \
     ../mock_core_api.h \
     ../../../src/core/core.h \
     ../../../src/core/enums.h \
     ../../../src/core/structs.h \
     ../../../src/hardware/phantomWakeSuppressor.h \
-    ../../../src/hardware/power.h \
     ../../../src/util.h \
     ../../../src/logging.h \
     ../../../3rd-party/QR-Code-generator/cpp/qrcodegen.hpp

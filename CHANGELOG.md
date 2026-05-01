@@ -11,6 +11,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.32 — 2026-05-01 — Suppressor test: stop moc'ing power.h
+
+Follow-up to v1.4.31. v1.4.31's keeper test linked cleanly with `qrcodegen.cpp` added; suppressor still failed at link with a different undefined-reference cluster, this time pointing at `moc_power.cpp`:
+
+```
+moc_power.cpp:(.text+0x294): undefined reference to `uc::hw::Power::onPowerModeChanged(uc::core::PowerEnums::PowerMode)'
+moc_power.cpp:(.text+0x305): undefined reference to `uc::hw::Power::powerOff()'
+moc_power.cpp:(.text+0x486): undefined reference to `uc::hw::Power::reboot()'
+moc_power.o:(.data.rel.ro._ZTVN2uc2hw5PowerE[...]+0x28): undefined reference to `uc::hw::Power::~Power()'
+```
+
+`suppressor_test.pro` was listing `power.h` in HEADERS, which made qmake run moc on it and generate `moc_power.cpp`. That moc'd file materialises the Power vtable (dtor + slot bodies), needing `power.cpp` to link. But `power.cpp` pulls `notification.h` which pulls a UI dep chain we don't want in unit tests, AND the test never exercises Power's runtime behaviour:
+
+| Power surface | Used by test? |
+|---|---|
+| `Power::PowerMode` enum values | yes — pure compile-time, no link dep |
+| `Power` ctor / instance / signals | no — test never constructs a `Power`; never `connect`s to one |
+| `Power::powerModeChanged` signal emission | no — test calls `m_suppressor->onPowerModeChanged(from, to)` directly with synthetic enum values |
+| `Power::powerOff` / `reboot` / `~Power` | no — never invoked; `phantomWakeSuppressor.cpp` doesn't touch them either |
+
+`phantomWakeSuppressor.cpp` itself never calls into Power — it `connect`s to `Power::powerModeChanged` *externally* in `hardwareController.cpp` (not under test). The unit test bypasses the wiring entirely. `moc_power.cpp` was being generated and link-required for surfaces the test never verifies.
+
+### Fixed
+- **`test/hardware/suppressor_test/suppressor_test.pro`** — removed `power.h` from HEADERS. Header is still `#include`'d (for the `Power::PowerMode` enum) by `phantomWakeSuppressor.h` and `test_phantomWakeSuppressor.cpp`; that's a compile-time-only dep and doesn't trigger moc. Comment in the .pro explains the deliberate omission.
+
+### What's preserved
+All 17 suppressor test methods still execute as before — the body-shape regression (the v1.4.22 `mode`/`power_mode` drift), the `onPowerModeChanged` truth table, grace cancellation paths, v1.4.23 input-lookback skip-grace, and setter clamping. None of those depend on a real `Power` instance.
+
+### What's NOT covered (and never was)
+A future regression where someone makes `phantomWakeSuppressor.cpp` call Power class methods directly (e.g. `Power::powerOff()`). That's not the suppressor's design — it sends RPC via `Api::setPowerMode(LOW_POWER)` only. If that contract changes, a `mock_power.cpp` with stub bodies would close the gap; deferred until needed.
+
+---
+
 ## v1.4.31 — 2026-05-01 — Hardware-tests link fix (qrcodegen.cpp)
 
 Follow-up to v1.4.30. The submodule-checkout fix unblocked the compile phase, but `keeper_test.pro` and `suppressor_test.pro` were still missing `qrcodegen.cpp` from `SOURCES`, so the link step failed:
