@@ -3390,7 +3390,7 @@ the Web Configurator</source>
 <context>
     <name>ReconnectingHUD</name>
     <message>
-        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="89"/>
+        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="93"/>
         <source>Reconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
