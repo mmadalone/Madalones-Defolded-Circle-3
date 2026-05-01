@@ -609,15 +609,10 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
         // Multi-layer path: count quads across all 3 layers
         quadCount = m_layerPipeline.countVisibleQuads(m_glowFade);
     } else {
-        // Single-layer path: existing code
-        int gridCols = m_sim.gridCols();
-        int gridRows = m_sim.gridRows();
-
-        int cellCount = gridCols * gridRows;
-        m_cellDrawn.resize(cellCount);
-        m_cellDrawn.fill(0);
-
-        quadCount = countVisibleQuads();
+        // Single-layer path — delegated to SingleLayerRenderer, which handles
+        // the resize+fill of m_cellDrawn internally.
+        quadCount = m_singleLayer.countVisibleQuads(m_sim, m_atlas, m_cellDrawn,
+                                                    m_sortOrder, m_glowFade);
     }
 
     // Cap total quads to quint16 index limit (multi-layer + glitch trails can exceed grid cap)
@@ -652,20 +647,18 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
                                   m_glowFade,
                                   m_color, m_colorMode);
     } else {
-        // Single-layer rendering path (unchanged)
-        int gridCols = m_sim.gridCols();
-        int gridRows = m_sim.gridRows();
-        float colSp = (gridCols > 1) ? static_cast<float>(width()) / static_cast<float>(gridCols) : static_cast<float>(m_atlas.glyphW());
-        float rowSp = (gridRows > 1) ? static_cast<float>(height()) / static_cast<float>(gridRows) : static_cast<float>(m_atlas.glyphH());
-        float gw = static_cast<float>(m_atlas.glyphW()), gh = static_cast<float>(m_atlas.glyphH());
-
-        m_cellDrawn.fill(0);  // reset for rendering pass
-
-        renderStreamTrails(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
-        renderResidualCells(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
-        renderGlitchTrails(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
-        renderMessageFlash(verts, ixBuf, vi, ii, colSp, rowSp, gw, gh);
-        renderMessageOverlay(verts, ixBuf, vi, ii, gw, gh);
+        // Single-layer rendering path — delegated to SingleLayerRenderer.
+        // m_cellDrawn.fill(0) is load-bearing: countVisibleQuads filled it
+        // with priority bytes for occlusion testing; rendering needs a clear
+        // slate so the same priority logic runs from scratch.
+        m_cellDrawn.fill(0);
+        m_singleLayer.renderAll(verts, ixBuf, vi, ii,
+                                m_sim, m_atlas, m_cellDrawn,
+                                m_sortOrder, m_streamColorCache,
+                                width(), height(),
+                                m_baseVertexColor,
+                                m_glowFade, m_depthGlow, m_depthGlowMin,
+                                m_color, m_colorMode);
     }
 
     // Safety net: pad any unused geometry slots with degenerate triangles.
@@ -692,312 +685,11 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     return node;
 }
 
-int MatrixRainItem::countVisibleQuads() {
-    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
-    int cellCount = gridCols * gridRows;
-    if (m_cellDrawn.size() != cellCount) m_cellDrawn.resize(cellCount);
-    m_cellDrawn.fill(0);
-    const auto &streams = m_sim.streams();
-    const auto &glitchTrails = m_sim.glitchTrails();
-    const auto &messageBright = m_sim.messageBright();
-    bool depthOn = m_sim.depthEnabled();
-
-    // Sort streams by depthFactor ascending (far first) for correct occlusion.
-    // Near streams overwrite far streams at shared cells (painter's algorithm).
-    // Uses the shared member buffer to avoid per-frame heap churn.
-    auto &order = m_sortOrder;
-    order.resize(streams.size());
-    std::iota(order.begin(), order.end(), 0);
-    if (depthOn) {
-        std::sort(order.begin(), order.end(), [&streams](int a, int b) {
-            return streams[a].depthFactor < streams[b].depthFactor;
-        });
-    }
-
-    int quadCount = 0;
-    for (int si : order) {
-        const auto &s = streams[si];
-        if (!s.active) continue;
-        quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int step = 0; step < s.trailLength; ++step) {
-            int c, r;
-            s.trailPos(step, c, r);
-            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-            int cellIdx = c * gridRows + r;
-            if (m_cellDrawn[cellIdx] >= prio) continue;
-            m_cellDrawn[cellIdx] = prio;
-            quadCount++;
-        }
-    }
-    for (const auto &gt : glitchTrails) {
-        for (int step = 0; step < gt.length; ++step) {
-            int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
-            if (c >= 0 && c < gridCols && r >= 0 && r < gridRows)
-                quadCount++;
-        }
-    }
-    for (int i = 0; i < messageBright.size(); ++i) {
-        if (messageBright[i] > 0) quadCount++;
-    }
-    const auto &overlay = m_sim.messageOverlay();
-    for (const auto &mc : overlay) {
-        if (mc.glyphIdx < 0) continue;
-        int uvIdx = mc.glyphIdx * m_atlas.brightnessLevels() * m_atlas.colorVariants()
-                  + qMin(mc.colorVariant, qMax(0, m_atlas.colorVariants() - 1)) * m_atlas.brightnessLevels();
-        if (uvIdx >= 0 && uvIdx < m_atlas.glyphUVs().size())
-            quadCount++;
-    }
-    // Residual glow: cells not in any trail but recently visited by a stream head.
-    // Residual glow: cells not in any trail but recently visited.
-    // Cap max age by brightness levels to prevent screen fill-up in rainbow mode
-    // (fewer levels = glow persists too long without this cap).
-    const auto &cellAge = m_sim.cellAge();
-    const auto &bmap2 = m_atlas.brightnessMap();
-    int bmapSize = bmap2.size();
-    int maxGlowAge = (m_glowFade <= 0) ? 0 : qMin(bmapSize, qMax(4, bmapSize * m_glowFade / 100));
-    for (int i = 0; i < cellAge.size(); ++i) {
-        if (m_cellDrawn[i] == 0 && cellAge[i] < maxGlowAge)
-            quadCount++;
-    }
-    return quadCount;
-}
-
-void MatrixRainItem::renderStreamTrails(MatrixRainVertex *verts, quint16 *ixBuf,
-                                        int &vi, int &ii,
-                                        float colSp, float rowSp, float gw, float gh) {
-    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
-    const auto &streams = m_sim.streams();
-    const auto &charGrid = m_sim.charGrid();
-    const auto &glitchBright = m_sim.glitchBright();
-    const auto &messageBright = m_sim.messageBright();
-    bool simGlow = m_sim.glow(), simInvertTrail = m_sim.invertTrail(), simMessagePulse = m_sim.messagePulse();
-    const auto &bmap = m_atlas.brightnessMap();
-    int bmapSize = bmap.size(), blevels = m_atlas.brightnessLevels();
-    bool depthOn = m_sim.depthEnabled();
-
-    // Depth layers: sort streams far-first so near overwrites far (painter's algorithm).
-    // Priority-based cellDrawn ensures near stream glyphs occlude far ones.
-    // Per-stream depth color computed once (continuous tint from exact depthFactor).
-    // Shared member buffers to avoid per-frame heap churn.
-    auto &order = m_sortOrder;
-    order.resize(streams.size());
-    std::iota(order.begin(), order.end(), 0);
-    // When depth is on, atlas is white — vertex color provides ALL color.
-    // Base color for non-depth quads; depth-computed color for depth streams.
-    QColor baseColor = GlyphAtlas::resolveColor(m_colorMode, m_color);
-    quint32 baseVC = depthOn ? packColor(baseColor) : 0xFFFFFFFF;
-    auto &streamColors = m_streamColorCache;
-    streamColors.fill(baseVC, streams.size());
-    if (depthOn) {
-        std::sort(order.begin(), order.end(), [&streams](int a, int b) {
-            return streams[a].depthFactor < streams[b].depthFactor;
-        });
-        for (int i = 0; i < streams.size(); ++i)
-            streamColors[i] = depthColor(streams[i].depthFactor, baseColor, m_sim.depthIntensity());
-    }
-
-    for (int si : order) {
-        const auto &s = streams[si];
-        if (!s.active) continue;
-        quint8 prio = depthOn ? depthPriority(s.depthFactor) : 1;
-        for (int step = 0; step < s.trailLength; ++step) {
-            int c, r;
-            s.trailPos(step, c, r);
-            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-            int cellIdx = c * gridRows + r;
-            if (m_cellDrawn[cellIdx] >= prio) continue;
-            m_cellDrawn[cellIdx] = prio;
-
-            int dist = SimContext::trailDist(step, s.trailLength, simInvertTrail);
-            int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
-            if (dist == 0 && simGlow) bright = 0;
-
-            if (s.flashFrames > 0) {
-                bright = 0;
-            } else {
-                int gridIdx = c * gridRows + r;
-                if (gridIdx >= 0 && gridIdx < glitchBright.size() && glitchBright[gridIdx] >= 0)
-                    bright = glitchBright[gridIdx];
-            }
-
-            int gridIdx = c * gridRows + r;
-            if (gridIdx >= 0 && gridIdx < messageBright.size() && messageBright[gridIdx] > 0) {
-                bright = (simMessagePulse && (messageBright[gridIdx] % 4 < 2))
-                    ? qMin(2, blevels - 1) : 0;
-            }
-
-            // Depth layers: spatial offset, brightness attenuation, per-vertex color tint.
-            float cx = c * colSp, cy = r * rowSp;
-            if (depthOn) {
-                // Spatial offset: far streams shifted off-grid for parallax separation
-                if (s.depthFactor < 0.93f)
-                    cx += colSp * 0.35f;
-                // Brightness floor: far streams capped at ~40% max brightness
-                if (s.depthFactor < 0.93f) {
-                    int minBright = blevels * 2 / 5;
-                    bright = qMax(bright, minBright);
-                }
-                // Fade curve adjustment: far=gentler (brighter tail), near=steeper
-                float fadeMod = 1.0f;
-                if (s.depthFactor < 0.93f) fadeMod = 0.7f;
-                else if (s.depthFactor > 1.07f) fadeMod = 1.3f;
-                bright = qBound(0, static_cast<int>(bright * fadeMod), blevels - 1);
-            }
-
-            if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
-            int glyphIdx = charGrid[gridIdx];
-            if (glyphIdx < 0) continue;
-            int cv = qMin(s.colorVariant, qMax(0, m_atlas.colorVariants() - 1));
-            int uvIdx = glyphIdx * blevels * m_atlas.colorVariants() + cv * blevels + bright;
-            if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
-
-            const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
-            emitQuad(verts, ixBuf, vi, ii,
-                     cx, cy, gw, gh,
-                     static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                     static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                     streamColors[si]);
-        }
-    }
-}
-
-void MatrixRainItem::renderResidualCells(MatrixRainVertex *verts, quint16 *ixBuf,
-                                         int &vi, int &ii,
-                                         float colSp, float rowSp, float gw, float gh) const {
-    // Rezmason-inspired residual glow: cells not in any active trail but recently
-    // visited by a stream head continue to glow at their decay brightness.
-    // Uses the same brightness map as trail rendering for consistent fade curve.
-    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
-    const auto &charGrid = m_sim.charGrid();
-    const auto &cellAge = m_sim.cellAge();
-    const auto &bmap = m_atlas.brightnessMap();
-    int bmapSize = bmap.size(), blevels = m_atlas.brightnessLevels();
-
-    // Cap max glow age by brightness levels to prevent screen fill in rainbow mode
-    int maxGlowAge = (m_glowFade <= 0) ? 0 : qMin(bmapSize, qMax(4, bmapSize * m_glowFade / 100));
-    for (int idx = 0; idx < cellAge.size(); ++idx) {
-        if (m_cellDrawn[idx] > 0) continue;  // already rendered by stream trail
-        int age = cellAge[idx];
-        if (age >= maxGlowAge) continue;   // too old — fully dark
-
-        int c = idx / gridRows, r = idx % gridRows;
-        if (c >= gridCols) continue;
-
-        int glyphIdx = charGrid[idx];
-        if (glyphIdx < 0) continue;
-        int bright = bmap[age];  // same decay curve as trail distance
-        // Residual glow uses the normal/base color variant (not far/cool depth variant)
-        int baseCV = m_atlas.hasDepthVariants() ? m_atlas.depthVariantBase() : 0;
-        int uvIdx = glyphIdx * blevels * m_atlas.colorVariants() + baseCV * blevels + bright;
-        if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
-
-        // Depth glow: older cells shrink for depth illusion (100% → depthGlowMin%)
-        float qx = c * colSp, qy = r * rowSp, qw = gw, qh = gh;
-        if (m_depthGlow) {
-            float ageFrac = static_cast<float>(age) / qMax(1, maxGlowAge);
-            float minScale = m_depthGlowMin / 100.0f;
-            float scale = 1.0f - ageFrac * (1.0f - minScale);
-            qw = gw * scale;
-            qh = gh * scale;
-            qx += (gw - qw) * 0.5f;
-            qy += (gh - qh) * 0.5f;
-        }
-
-        const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
-        emitQuad(verts, ixBuf, vi, ii,
-                 qx, qy, qw, qh,
-                 static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                 static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                 m_baseVertexColor);
-    }
-}
-
-void MatrixRainItem::renderGlitchTrails(MatrixRainVertex *verts, quint16 *ixBuf,
-                                         int &vi, int &ii,
-                                         float colSp, float rowSp, float gw, float gh) const {
-    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
-    const auto &charGrid = m_sim.charGrid();
-    const auto &glitchTrails = m_sim.glitchTrails();
-
-    for (const auto &gt : glitchTrails) {
-        for (int step = 0; step < gt.length; ++step) {
-            int c = gt.col - step * gt.dx, r = gt.row - step * gt.dy;
-            if (c < 0 || c >= gridCols || r < 0 || r >= gridRows) continue;
-
-            int gridIdx = c * gridRows + r;
-            if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
-            int glyphIdx = charGrid[gridIdx];
-            if (glyphIdx < 0) continue;
-            int cv = qMin(gt.colorVariant, qMax(0, m_atlas.colorVariants() - 1));
-            int uvIdx = glyphIdx * m_atlas.brightnessLevels() * m_atlas.colorVariants()
-                      + cv * m_atlas.brightnessLevels();  // bright = 0 (full)
-            if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
-
-            const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
-            emitQuad(verts, ixBuf, vi, ii,
-                     c * colSp, r * rowSp, gw, gh,
-                     static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                     static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                     m_baseVertexColor);
-        }
-    }
-}
-
-void MatrixRainItem::renderMessageFlash(MatrixRainVertex *verts, quint16 *ixBuf,
-                                         int &vi, int &ii,
-                                         float colSp, float rowSp, float gw, float gh) const {
-    int gridCols = m_sim.gridCols(), gridRows = m_sim.gridRows();
-    const auto &charGrid = m_sim.charGrid();
-    const auto &messageBright = m_sim.messageBright();
-    const auto &messageColor = m_sim.messageColor();
-    bool simMessagePulse = m_sim.messagePulse();
-
-    for (int idx = 0; idx < messageBright.size(); ++idx) {
-        if (messageBright[idx] <= 0) continue;
-        int c = idx / gridRows, r = idx % gridRows;
-        if (c >= gridCols || r >= gridRows) continue;
-
-        int glyphIdx = charGrid[idx];
-        if (glyphIdx < 0) continue;
-        int cv = (idx < messageColor.size()) ? qMin(messageColor[idx], qMax(0, m_atlas.colorVariants() - 1)) : 0;
-        int bright = (simMessagePulse && (messageBright[idx] % 4 < 2))
-            ? qMin(2, m_atlas.brightnessLevels() - 1) : 0;
-
-        int uvIdx = glyphIdx * m_atlas.brightnessLevels() * m_atlas.colorVariants()
-                  + cv * m_atlas.brightnessLevels() + bright;
-        if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
-
-        const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
-        emitQuad(verts, ixBuf, vi, ii,
-                 c * colSp, r * rowSp, gw, gh,
-                 static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                 static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                 m_baseVertexColor);
-    }
-}
-
-void MatrixRainItem::renderMessageOverlay(MatrixRainVertex *verts, quint16 *ixBuf,
-                                           int &vi, int &ii,
-                                           float gw, float gh) const {
-    const auto &messageOverlay = m_sim.messageOverlay();
-    bool simMessagePulse = m_sim.messagePulse();
-
-    for (const auto &mc : messageOverlay) {
-        if (mc.glyphIdx < 0) continue;
-        int uvIdx = mc.glyphIdx * m_atlas.brightnessLevels() * m_atlas.colorVariants()
-                  + qMin(mc.colorVariant, qMax(0, m_atlas.colorVariants() - 1)) * m_atlas.brightnessLevels();
-        if (simMessagePulse && (mc.framesLeft % 4 < 2))
-            uvIdx += qMin(2, m_atlas.brightnessLevels() - 1);
-        if (uvIdx < 0 || uvIdx >= m_atlas.glyphUVs().size()) continue;
-
-        const QRectF &uv = m_atlas.glyphUVs()[uvIdx];
-        emitQuad(verts, ixBuf, vi, ii,
-                 mc.px, mc.py, gw, gh,
-                 static_cast<float>(uv.x()), static_cast<float>(uv.y()),
-                 static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
-                 m_baseVertexColor);
-    }
-}
+// Single-layer render helpers (countVisibleQuads + renderStreamTrails +
+// renderResidualCells + renderGlitchTrails + renderMessageFlash +
+// renderMessageOverlay) moved to src/ui/matrixrain/singlelayerrenderer.cpp.
+// Test access via the MatrixRainItem::countVisibleQuads() shim in matrixrain.h
+// (matrixrain_test.cpp:2048,2157,2162,2169 hit it through friend MatrixRainTest).
 
 // --- Property setters ---
 

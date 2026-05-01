@@ -13,6 +13,7 @@
 #include "glyphatlas.h"
 #include "gravitydirection.h"
 #include "matrixrain/layerpipeline.h"
+#include "matrixrain/singlelayerrenderer.h"
 #include "rainsimulation.h"
 
 namespace uc { class ScreensaverConfig; }
@@ -483,17 +484,14 @@ public:
 
     // updatePaintNode helpers (render thread)
     void uploadAtlasTexture(QSGNode *node);
-    int  countVisibleQuads();
-    void renderStreamTrails(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
-                            float colSp, float rowSp, float gw, float gh);
-    void renderGlitchTrails(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
-                            float colSp, float rowSp, float gw, float gh) const;
-    void renderMessageFlash(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
-                            float colSp, float rowSp, float gw, float gh) const;
-    void renderMessageOverlay(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
-                              float gw, float gh) const;
-    void renderResidualCells(struct MatrixRainVertex *verts, quint16 *ixBuf, int &vi, int &ii,
-                             float colSp, float rowSp, float gw, float gh) const;
+
+    // Test-compat shim — preserves test_matrixrain.cpp's item.countVisibleQuads()
+    // calls via the friend class MatrixRainTest pattern. Delegates to
+    // m_singleLayer (single-layer render path moved to SingleLayerRenderer).
+    int countVisibleQuads() {
+        return m_singleLayer.countVisibleQuads(m_sim, m_atlas, m_cellDrawn,
+                                               m_sortOrder, m_glowFade);
+    }
 
     // interactiveInput handlers
     void handleDirectionInput(const QString &action);
@@ -518,6 +516,10 @@ public:
     // Owns its own RainLayer state, atlas cache, and render helpers.
     // See src/ui/matrixrain/layerpipeline.h for the public API.
     LayerPipeline m_layerPipeline;
+
+    // Single-layer rain renderer (used when m_layerPipeline.enabled() is false).
+    // Stateless — all state passed per-call. See src/ui/matrixrain/singlelayerrenderer.h.
+    SingleLayerRenderer m_singleLayer;
 
     // Phase-timing instrumentation (Task #1 profiling — NOT shipped to end users).
     // Captures cold-dock-to-first-paint breakdown. qCInfo logging is unreliable

@@ -161,6 +161,7 @@ HEADERS += \
     src/ui/glyphatlas.h \
     src/ui/matrixrain/layerpipeline.h \
     src/ui/matrixrain/atlasbuilder.h \
+    src/ui/matrixrain/singlelayerrenderer.h \
     src/util.h \
     src/voice.h
 
@@ -233,6 +234,7 @@ SOURCES += \
         src/ui/glyphatlas.cpp \
         src/ui/matrixrain/layerpipeline.cpp \
         src/ui/matrixrain/atlasbuilder.cpp \
+        src/ui/matrixrain/singlelayerrenderer.cpp \
         src/util.cpp \
         src/voice.cpp
 

@@ -25,6 +25,9 @@ enable_testing(true)
 add_executable(testMatrixRain
     "test_matrixrain.cpp"
     "../../src/ui/matrixrain.cpp"
+    "../../src/ui/matrixrain/layerpipeline.cpp"
+    "../../src/ui/matrixrain/atlasbuilder.cpp"
+    "../../src/ui/matrixrain/singlelayerrenderer.cpp"
     "../../src/ui/rainsimulation.cpp"
     "../../src/ui/glitchengine.cpp"
     "../../src/ui/messageengine.cpp"
