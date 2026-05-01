@@ -3042,7 +3042,7 @@ Climate fan</extracomment>
         <location filename="../../src/qml/settings/settings/Power.qml" line="351"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="474"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="475"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="686"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="697"/>
         <source>%1 seconds</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3132,13 +3132,13 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="666"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="677"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="687"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="698"/>
         <source>%1 minutes</source>
         <translation type="unfinished"></translation>
     </message>

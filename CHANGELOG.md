@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.26 — 2026-05-01 — Settings → Power screen-off-style grid render fix
+
+### Fixed
+- **Screen-off animation style buttons in `Power.qml` had a visible ~270 ms cascade** when navigating to Settings → Power. User feedback 2026-05-01: "I see items pop in over ~300 ms." Section had been in this state since 2026-04-10 (`dea996b7 [feat] screensaver: Batch 2 screen-off animation styles`); not a recent regression but worth fixing for polish ahead of public release. **Root cause:** `GridLayout` runs Qt's constraint solver on every child added during Repeater instantiation; for 9 children that's a visible cascade on the ARM hardware (each delegate ~30 ms × 9 = ~270 ms). **Fix:** replaced `GridLayout` with `Item` + computed `x`/`y` math per Repeater delegate. Skips the constraint solver entirely. Same visual output, no change to selection logic or KeyNavigation chain. Estimated cascade time after fix: <16 ms (single frame).
+- **Bundled polish:** consolidated the per-delegate string-equality bindings (`ScreensaverConfig.screenOffEffectStyle === modelData.name`) into a single `readonly property bool selected` referenced by both `color` and `Text.color`. Halves the binding cost when the selection changes externally (e.g., via the parent's `Keys.onLeftPressed/RightPressed` cycle).
+
+### Architectural note
+- **Drift increase: zero new files.** Single-file change to `Power.qml`.
+- **No new qsTr strings.** No translation regen required for this change (the `lupdate` line-number shifts are still bundled per release norm).
+- **No code changes outside `Power.qml`.** Logic is identical: same KeyNavigation, same Keys handlers, same MouseArea click behavior, same model definition. Only the layout container and per-delegate positioning change.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`.
+- **Verification:** post-deploy, navigate Settings → Power. The 9 style buttons should appear instantly when the section becomes visible (vs. the prior cascade). Style selection (left/right arrow + click + tap) should behave identically to v1.4.25.
+
+---
+
 ## v1.4.25 — 2026-05-01 — release.json description fix + Mod 5/6 history note
 
 ### Fixed
