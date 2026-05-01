@@ -11,9 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.29 — 2026-05-01 — Hardware-tests CI job + setPowerMode drift check + audit-path corrections
+
+Closes the three follow-up items called out by the v1.4.27/v1.4.28 review: the deferred CI wiring for the new hardware tests, the false claim in `mock_core_api.h` about a build-time drift check that didn't actually exist, and the v1.4.28 CHANGELOG entry's stale audit-file references that pointed at root-level paths after the audit files were moved to `logs/` (gitignored).
+
+### Added
+- **`hardware-tests` CI job** in `.github/workflows/test.yml`. Mirrors the existing `unit-tests` (matrixrain) job: installs Qt 5.15.2 on Ubuntu, builds `test/hardware/hardware_test.pro` with AddressSanitizer, runs both `test_activitySessionKeeper` and `test_phantomWakeSuppressor` with `QT_QPA_PLATFORM=offscreen` + `ASAN_OPTIONS=detect_leaks=0`, uploads XML test results as artifacts. The 49 unit tests added in v1.4.27 now run on every push and PR. Closes the v1.4.27 deferred-to-v1.4.29 promise.
+- **`tools/check_setPowerMode_drift.py`** + **`setpowermode-drift` CI job**. Closes a real correctness gap in v1.4.27's regression-prevention strategy: the unit tests assert against `mock_core_api.cpp`'s verbatim mirror of the v1.4.22 fix line, but a co-ordinated regression that touched both `core.cpp` AND the mock would still pass tests. The new build-time grep check verifies BOTH files contain `msgData.insert("mode"` and NEITHER contains `msgData.insert("power_mode"` — closes the mirror-drift gap with literal-string assertion. Runs in seconds (no Qt install needed) as a separate CI job, so a co-ordinated regression fails fast and points the author directly at the root cause.
+
+### Fixed
+- **`test/hardware/mock_core_api.h` no longer lies about its drift-check infrastructure.** The header comment claimed `tools/check_setPowerMode_drift.py` was "Wired into the unit-test workflow as a pre-step" — but neither the script nor the workflow integration existed. v1.4.29 makes the claim true: the script is created with full historical context, the CI job is wired, and the comment is updated to point at the now-real `setpowermode-drift` job in `test.yml`.
+- **CHANGELOG.md v1.4.28 entry's audit-file references corrected** from `audit-v1.4.26.md` / `audit-v1.4.26-thorough.md` (root-level paths) to `logs/audit-v1.4.26.md` / `logs/audit-v1.4.26-thorough.md` (with explicit "gitignored project artifact" note). The audit files were moved to `logs/` per the user's request before the v1.4.28 commit landed; the CHANGELOG entry's references stayed at the old root paths and would have left readers unable to find them.
+
+### Architectural notes
+- **Drift increase: 1 new file, 1 new CI workflow surface.** `tools/check_setPowerMode_drift.py` is the new file (~100 lines, includes full v1.4.22-incident historical context as a literate-script header). `.github/workflows/test.yml` gains 2 new jobs (`setpowermode-drift` + `hardware-tests`), bumping job count 3 → 5. No production code modified.
+- **No firmware deploy required.** This is a CI-and-doc-honesty release. `remote-ui.pro VERSION` and `deploy/release.json version` advance to `1.4.29` to keep the semver chain consistent and surface the new CI job on the v1.4.29 tag's first run.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md` — though not exercised since no production behavior changed.
+
+---
+
 ## v1.4.28 — 2026-05-01 — Audit-driven quick wins (CI digest pin, clang-tidy allowlist, locale shipping, manifest sync, fake-test cleanup)
 
-Hygiene release addressing six findings from `audit-v1.4.26-thorough.md`. None of these change runtime behavior on the device; they all close gaps between what the project documented and what the project actually enforced.
+Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (gitignored project artifact). None of these change runtime behavior on the device; they all close gaps between what the project documented and what the project actually enforced.
 
 ### Fixed
 - **CI build no longer uses a floating-tag toolchain image** at `.github/workflows/build.yml`. Previously the CI matrix referenced `unfoldedcircle/r2-toolchain-qt-5.15.8-static` (no `@sha256` suffix), so a CI re-build of the same source tag could pull a different toolchain if UC pushed an updated image. `BUILD.md` and `CLAUDE.md` had always documented the digest pin for local builds; CI was the gap. Now pinned to `@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6` matching `BUILD.md:16`. Closes audit Finding 1.
@@ -24,7 +43,7 @@ Hygiene release addressing six findings from `audit-v1.4.26-thorough.md`. None o
 
 ### Changed
 - **5 previously-orphaned locales now ship in the binary** at `remote-ui.pro` and `resources/qrc/translations.qrc`. `es_ES.ts`, `no_NO.ts`, `pl_PL.ts`, `pt_PT.ts`, and `sv_SE.ts` existed in `resources/translations/` but were not declared in `TRANSLATIONS +=`, so `lupdate` never refreshed them and `lrelease` never compiled them to `.qm`. **Caveat: these locales are partial.** Spanish is the most complete at ~99.5% (3 unfinished strings); Norwegian, Polish, Portuguese, and Swedish sit at 86–90% completion. Qt falls back to `en_US` for any string a locale doesn't translate, so partial coverage is acceptable. Closes audit Finding 2.
-- **`audit-v1.4.26.md` annotated with corrections**. The original spot-check audit had three claims the thorough follow-up audit found wrong (README staleness was time-warped; A11Y_AUDIT.md was a never-used template, not stale; ScreensaverConfig property count was undercounted). A new "Corrections (post-thorough-audit)" section appended at the end documents these and points to `audit-v1.4.26-thorough.md` as the canonical reference. The original audit body is preserved verbatim for traceability.
+- **`logs/audit-v1.4.26.md` annotated with corrections** (gitignored project artifact alongside `logs/audit-v1.4.26-thorough.md`). The original spot-check audit had three claims the thorough follow-up audit found wrong (README staleness was time-warped; A11Y_AUDIT.md was a never-used template, not stale; ScreensaverConfig property count was undercounted). A new "Corrections (post-thorough-audit)" section appended at the end documents these and points to `logs/audit-v1.4.26-thorough.md` as the canonical reference. The original audit body is preserved verbatim for traceability.
 
 ### Added
 - **Real assertions in `test/qml/tst_settings_navigation.qml`**, replacing 5 fake `verify(true, "...")` calls. The new tests mount each chargingscreen sub-component (`ThemeSelector`, `CommonToggles`, `MatrixAppearance`, `MatrixEffects`, `GeneralBehavior`) at the test root and assert each component's `firstFocusItem` and `lastFocusItem` aliases resolve to non-null Items. Partially closes audit Finding 3.

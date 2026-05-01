@@ -128,3 +128,66 @@ jobs:
         with:
           name: integration-test-results
           path: test/integration/results.xml
+
+  setpowermode-drift:
+    name: "setPowerMode field-name drift check"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed). Verifies the v1.4.22 setPowerMode
+    # body field name (`mode`, not `power_mode`) is present in both production
+    # (src/core/core.cpp) and the regression-prevention mock (test/hardware/mock_core_api.cpp).
+    # Closes the verbatim-mirror drift gap that the keeper/suppressor body-shape unit tests
+    # alone can't catch (a co-ordinated regression of both files would still pass tests).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run drift check
+        run: python3 tools/check_setPowerMode_drift.py
+
+  hardware-tests:
+    name: "Hardware tests (Mod 5 + Mod 6)"
+    runs-on: ubuntu-latest
+    # Mod 5 (ActivitySessionKeeper) + Mod 6 (PhantomWakeSuppressor) unit tests.
+    # 49 test methods covering body-shape regression-prevention, evaluateSession truth tables,
+    # grace cancellation paths, input-lookback skip-grace, and signal lifecycle.
+    # Mirrors the `unit-tests` (matrixrain) job structure for consistency.
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@v3
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: ""
+
+      - name: Build hardware tests
+        working-directory: test/hardware
+        run: |
+          qmake hardware_test.pro "QMAKE_CXXFLAGS += -fsanitize=address -fno-omit-frame-pointer" "QMAKE_LFLAGS += -fsanitize=address"
+          make -j$(nproc)
+
+      - name: Run keeper tests (Mod 5)
+        working-directory: test/hardware/keeper_test
+        run: ./test_activitySessionKeeper -v2 -o keeper_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
+      - name: Run suppressor tests (Mod 6)
+        working-directory: test/hardware/suppressor_test
+        run: ./test_phantomWakeSuppressor -v2 -o suppressor_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: hardware-test-results
+          path: |
+            test/hardware/keeper_test/keeper_results.xml
+            test/hardware/suppressor_test/suppressor_results.xml

@@ -42,9 +42,11 @@
 // emit field name "power_mode" again, the stub would need to be re-aligned and the test
 // would still pass — UNLESS we additionally have a build-time consistency check.
 //
-// A build-time check is provided by `tools/check_setPowerMode_drift.py` which greps for
-// the literal `msgData.insert("mode"` line in core.cpp and fails CI if it doesn't match.
-// (Wired into the unit-test workflow as a pre-step.)
+// A build-time check is provided by `tools/check_setPowerMode_drift.py` (added v1.4.29)
+// which greps for the literal `msgData.insert("mode"` line in BOTH src/core/core.cpp AND
+// this mock's mock_core_api.cpp, failing CI if either is missing the expected literal
+// or has the regressed `msgData.insert("power_mode"` form. Wired as the `setpowermode-drift`
+// job in `.github/workflows/test.yml` — runs in seconds, no Qt install required.
 
 #pragma once
 
