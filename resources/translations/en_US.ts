@@ -3072,18 +3072,18 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="141"/>
-        <source>If a button-press arrived this many ms before a wake, treat the wake as user-initiated and skip the grace timer. Handles firmware delivery ordering on wake-from-low-power.</source>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="183"/>
         <source>Keep awake while watching/listening</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="141"/>
+        <source>Skip the grace timer when a button-press arrived this recently before a wake.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="201"/>
-        <source>Prevents the 5-minute sleep timer while you&apos;re watching or listening.</source>
+        <source>Resets the device&apos;s sleep countdown every 4.5 min while media is playing or you&apos;ve recently pressed a button.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>

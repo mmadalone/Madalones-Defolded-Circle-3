@@ -137,9 +137,9 @@ Settings.Page {
                     Text {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
-                        color: colors.medium
-                        text: qsTr("If a button-press arrived this many ms before a wake, treat the wake as user-initiated and skip the grace timer. Handles firmware delivery ordering on wake-from-low-power.")
-                        font: fonts.secondaryFont(20)
+                        color: colors.light
+                        text: qsTr("Skip the grace timer when a button-press arrived this recently before a wake.")
+                        font: fonts.secondaryFont(24)
                     }
 
                     Components.Slider {
@@ -198,7 +198,7 @@ Settings.Page {
                     Layout.fillWidth: true
                     wrapMode: Text.WordWrap
                     color: colors.light
-                    text: qsTr("Prevents the 5-minute sleep timer while you're watching or listening.")
+                    text: qsTr("Resets the device's sleep countdown every 4.5 min while media is playing or you've recently pressed a button.")
                     font: fonts.secondaryFont(24)
                 }
 

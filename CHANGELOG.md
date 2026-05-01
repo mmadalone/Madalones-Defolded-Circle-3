@@ -11,6 +11,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.24 — 2026-05-01 — Power.qml settings copy fixes
+
+### Fixed
+- **"Recent-input lookback" help text** in `src/qml/settings/settings/Power.qml` was unreadable: too small (font 20), too dim (`colors.medium`), and overly long. Bumped font to 24 and color to `colors.light` to match the surrounding secondary-text style; rewrote text to a single readable sentence: "Skip the grace timer when a button-press arrived this recently before a wake." User feedback 2026-05-01.
+- **"Keep awake while watching/listening" subtitle** was misleading: claimed it "prevents the 5-minute sleep timer" but (a) the sleep timer isn't fixed at 5 minutes (firmware setting, user-configurable), and (b) Mod 5 doesn't *prevent* sleep — it *resets the countdown* every 270 seconds via `set_power_mode(NORMAL)` while a session is active. New text: "Resets the device's sleep countdown every 4.5 min while media is playing or you've recently pressed a button." Accurate to the actual mechanism in `activitySessionKeeper.cpp::ping()`. User feedback 2026-05-01.
+
+### Architectural note
+- **Drift increase: zero** — only `Power.qml` modified (+ version bumps + translation regen for the 2 changed qsTr strings).
+- **No code changes**, copy-only.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`.
+
+---
+
 ## v1.4.23 — 2026-05-01 — Mod 6 wake-press timing fix + grace range expansion
 
 ### Fixed
