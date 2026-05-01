@@ -113,6 +113,11 @@ jobs:
           # Custom files per docs/CUSTOM_FILES.md — keep in sync when the
           # manifest changes. Headers are linted via HeaderFilterRegex in
           # .clang-tidy when they're #include'd by these .cpp files.
+          # v1.4.28 (audit-driven): added 4 missing custom files —
+          # activitySessionKeeper (Mod 5), phantomWakeSuppressor (Mod 6),
+          # and the matrixrain/ subdirectory extraction (Phase 3) which
+          # was never re-added after the layerpipeline split.
+          # See audit-v1.4.26-thorough.md Finding 4.
           CUSTOM_FILES=(
             src/ui/matrixrain.cpp
             src/ui/rainsimulation.cpp
@@ -121,6 +126,10 @@ jobs:
             src/ui/gravitydirection.cpp
             src/ui/screensaverconfig.cpp
             src/ui/glyphatlas.cpp
+            src/ui/matrixrain/layerpipeline.cpp
+            src/ui/matrixrain/atlasbuilder.cpp
+            src/hardware/activitySessionKeeper.cpp
+            src/hardware/phantomWakeSuppressor.cpp
           )
 
           # Filter to files that actually exist so the workflow stays

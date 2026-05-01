@@ -292,6 +292,15 @@ public:
     bool   showBattery() const;
     /// @}
 
+    /// @brief Reset all charging/* QSettings keys to their unwritten state.
+    /// Defaults will be restored on the next read because every getter passes
+    /// the literal default to `m_settings->value(key, default)`. Used by QML
+    /// tests for clean-slate setup; also exposed as a future user-facing
+    /// "Reset to defaults" affordance. Emits all NOTIFY signals via
+    /// engine->retranslate-equivalent (`emit Changed()` for every property)
+    /// so QML bindings re-read after the wipe.
+    Q_INVOKABLE void resetDefaults();
+
 signals:
     void colorChanged();
     void speedChanged();

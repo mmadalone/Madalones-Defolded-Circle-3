@@ -72,7 +72,7 @@ REMOTE_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += APP_VERSION=\\\"$$REMOTE_VERSION\\\"
 
 # Custom firmware version — keep in sync with deploy/release.json
-VERSION = 1.4.27
+VERSION = 1.4.28
 
 # build timestamp
 BUILDDATE=$$system(date +"%Y-%m-%dT%H:%M:%S")
@@ -260,14 +260,26 @@ macx {
 }
 
 # === start TRANSLATION section =======================================
+# madalone (v1.4.28, audit-driven): added 5 previously-orphaned locales —
+# es_ES (~99.5% complete), no_NO, pl_PL, pt_PT, sv_SE (all 86-90% complete).
+# These .ts files existed in resources/translations/ but were not declared
+# here, so lupdate never refreshed them and lrelease never compiled them
+# to .qm. Qt falls back to en_US for missing strings; partial coverage is
+# acceptable while these stale-string gaps get filled in over time.
+# See audit-v1.4.26-thorough.md Finding 2.
 TRANSLATIONS += resources/translations/da_DK.ts \
                resources/translations/de_DE.ts \
                resources/translations/de_CH.ts \
                resources/translations/en_US.ts \
-               resources/translations/hu_HU.ts \
-               resources/translations/nl_NL.ts \
+               resources/translations/es_ES.ts \
                resources/translations/fr_FR.ts \
-               resources/translations/it_IT.ts
+               resources/translations/hu_HU.ts \
+               resources/translations/it_IT.ts \
+               resources/translations/nl_NL.ts \
+               resources/translations/no_NO.ts \
+               resources/translations/pl_PL.ts \
+               resources/translations/pt_PT.ts \
+               resources/translations/sv_SE.ts
 
 # -----------------------------------------------------------------------------
 # Qt Linguist tools

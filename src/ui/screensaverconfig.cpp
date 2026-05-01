@@ -139,4 +139,176 @@ void ScreensaverConfig::setMatrixTrail(int value) {
     emit trailLengthChanged();
 }
 
+// --- resetDefaults: wipe all charging/* keys, then re-broadcast NOTIFY signals so
+// QML bindings re-read defaults via the SCRN_*-emitted getters and the hand-written
+// transformed getters. Added v1.4.28 to match the API the QML test suite already
+// relied on (was previously only on MockScreensaverConfig — see audit-v1.4.26-thorough.md
+// Finding 12). Also useful as a user-facing "Reset screensaver to defaults" affordance.
+void ScreensaverConfig::resetDefaults() {
+    // QSettings::remove("groupName") with a path that doesn't end in '/' removes
+    // the whole group — all keys whose name starts with "charging/" will be erased.
+    m_settings->remove("charging");
+    m_settings->sync();
+
+    // Re-broadcast every NOTIFY signal so QML property bindings re-read defaults.
+    // Order roughly matches header declaration order; cheap signals so emit-them-all
+    // is cleaner than per-property selective emission. Signals named here must
+    // match the NOTIFY identifiers in the matching Q_PROPERTY / SCRN_* declarations.
+    emit themeChanged();
+    emit showClockChanged();
+    emit clockDockedOnlyChanged();
+    emit clockSizeChanged();
+    emit clockFontChanged();
+    emit clockColorChanged();
+    emit clockClock24hChanged();
+    emit clockDateSizeChanged();
+    emit clockShowDateChanged();
+    emit clockDateColorChanged();
+    emit clockPositionChanged();
+    emit showBatteryEnabledChanged();
+    emit batteryDockedOnlyChanged();
+    emit batteryTextSizeChanged();
+
+    emit matrixColorChanged();
+    emit matrixSpeedChanged();
+    emit matrixDensityChanged();
+    emit matrixFadeChanged();
+    emit matrixTrailChanged();
+    emit colorModeChanged();
+    emit fontSizeChanged();
+    emit charsetChanged();
+
+    emit glowChanged();
+    emit glowFadeChanged();
+    emit depthGlowChanged();
+    emit depthGlowMinChanged();
+    emit invertTrailChanged();
+
+    emit glitchChanged();
+    emit glitchRateChanged();
+    emit glitchFlashChanged();
+    emit glitchStutterChanged();
+    emit glitchReverseChanged();
+    emit glitchDirectionChanged();
+    emit glitchDirRateChanged();
+    emit glitchDirMaskChanged();
+    emit glitchDirFadeChanged();
+    emit glitchDirSpeedChanged();
+    emit glitchDirLengthChanged();
+    emit glitchRandomColorChanged();
+    emit glitchChaosChanged();
+    emit glitchChaosFrequencyChanged();
+    emit glitchChaosSurgeChanged();
+    emit glitchChaosScrambleChanged();
+    emit glitchChaosFreezeChanged();
+    emit glitchChaosScatterChanged();
+    emit glitchChaosSquareBurstChanged();
+    emit glitchChaosSquareBurstSizeChanged();
+    emit glitchChaosRippleChanged();
+    emit glitchChaosWipeChanged();
+    emit glitchChaosIntensityChanged();
+    emit glitchChaosScatterRateChanged();
+    emit glitchChaosScatterLengthChanged();
+
+    emit directionChanged();
+    emit gravityModeChanged();
+    emit autoRotateSpeedChanged();
+    emit autoRotateBendChanged();
+
+    emit messagesChanged();
+    emit messagesEnabledChanged();
+    emit messageIntervalChanged();
+    emit messageRandomChanged();
+    emit messageDirectionChanged();
+    emit messageFlashChanged();
+    emit messagePulseChanged();
+
+    emit subliminalChanged();
+    emit subliminalIntervalChanged();
+    emit subliminalDurationChanged();
+    emit subliminalStreamChanged();
+    emit subliminalOverlayChanged();
+    emit subliminalFlashChanged();
+
+    emit tapEnabledChanged();
+    emit tapBurstChanged();
+    emit tapBurstCountChanged();
+    emit tapBurstLengthChanged();
+    emit tapFlashChanged();
+    emit tapScrambleChanged();
+    emit tapSpawnChanged();
+    emit tapSpawnCountChanged();
+    emit tapSpawnLengthChanged();
+    emit tapMessageChanged();
+    emit tapSquareBurstChanged();
+    emit tapSquareBurstSizeChanged();
+    emit tapRippleChanged();
+    emit tapWipeChanged();
+    emit tapRandomizeChanged();
+    emit tapRandomizeChanceChanged();
+
+    emit tapToCloseChanged();
+    emit motionToCloseChanged();
+    emit idleEnabledChanged();
+    emit idleTimeoutChanged();
+    emit reopenWhileDockedSecChanged();
+    emit dpadEnabledChanged();
+    emit dpadPersistChanged();
+    emit dpadTouchbarSpeedChanged();
+    emit tapDirectionChanged();
+    emit tapSwipeSpeedChanged();
+    emit lastDirectionChanged();
+
+    emit depthEnabledChanged();
+    emit depthIntensityChanged();
+    emit depthOverlayChanged();
+    emit layersEnabledChanged();
+
+    emit minimalClockSizeChanged();
+    emit minimalDateSizeChanged();
+    emit minimalFontChanged();
+    emit minimalClock24hChanged();
+    emit minimalTimeColorChanged();
+    emit minimalDateColorChanged();
+
+    emit starfieldSpeedChanged();
+    emit starfieldDensityChanged();
+    emit starfieldColorChanged();
+    emit starfieldStarSizeChanged();
+    emit starfieldTrailLengthChanged();
+
+    emit analogShutoffHandsChanged();
+
+    emit screenOffEffectEnabledChanged();
+    emit screenOffEffectUndockedChanged();
+    emit screenOffEffectStyleChanged();
+    emit measuredDimPhaseMsChanged();
+
+    emit tvStaticIntensityChanged();
+    emit tvStaticSnowSizeChanged();
+    emit tvStaticScanlineStrengthChanged();
+    emit tvStaticScanlineSpeedChanged();
+    emit tvStaticChromaAmountChanged();
+    emit tvStaticTrackingEnableChanged();
+    emit tvStaticTrackingSpeedChanged();
+    emit tvStaticFlashOnTapChanged();
+    emit tvStaticChannelFlashAutoChanged();
+    emit tvStaticFlashIntervalChanged();
+    emit tvStaticFlashDurationChanged();
+    emit tvStaticFlashBrightnessChanged();
+    emit tvStaticTintChanged();
+
+    emit debugAtlasOverlayChanged();
+
+    // Transformed properties — these read through to the raw values, so they must
+    // also re-broadcast even though the raw setters above already emit during
+    // normal mutation. After a group-wide remove() the dual-emit path is bypassed.
+    emit colorChanged();
+    emit speedChanged();
+    emit densityChanged();
+    emit fadeRateChanged();
+    emit trailLengthChanged();
+    emit showBatteryChanged();
+}
+
 }  // namespace uc

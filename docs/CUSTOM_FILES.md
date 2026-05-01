@@ -3,9 +3,11 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.71.1`  
-**Last updated:** 2026-04-30 (v1.4.21 — Reconnect HUD overhaul + WiFi-everywhere toggle)
+**Last updated:** 2026-05-01 (v1.4.28 — audit-driven manifest sync + size-figure correction)
 
-> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.21 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
+> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.26 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
+
+> **Note on size figures (v1.4.28):** The `~Lines` columns in the per-file tables below were mechanically synced against `wc -l` on 2026-05-01 per `audit-v1.4.26-thorough.md` Findings 7 + 11. Pre-v1.4.28 figures were stale — some by factors of 2-7x — because the manifest tracked file sizes by hand, not by re-counting. Going forward, run `wc -l <file>` whenever a file gets a substantive edit, and update the matching row here. The QML files (which still use `(~N)` parenthetical figures elsewhere) are not part of this sync.
 
 ---
 
@@ -39,25 +41,25 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ## Mod 1: Screensaver System
 
 ### Custom C++ Files
-| File | Purpose | ~Lines |
-|------|---------|--------|
-| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | ~600 |
-| `src/ui/matrixrain.cpp` | QSG rendering, vertex buffer, atlas upload, single-layer stream iteration, ScreensaverConfig binding orchestration | ~1430 |
-| `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | ~245 |
-| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache | ~660 |
-| `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | ~65 |
-| `src/ui/matrixrain/atlasbuilder.cpp` | Class-static single-layer cache (`s_singleCacheKey`, `s_singleCacheAtlas`), `buildSingle`, `cacheKey` | ~50 |
-| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | ~150 |
-| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management | ~400 |
-| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow | ~100 |
-| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control | ~200 |
-| `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | ~80 |
-| `src/ui/messageengine.cpp` | Text layout, character placement | ~150 |
-| `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate | ~80 |
-| `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math | ~200 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, 114 properties (108 SCRN + 6 transformed) | ~220 |
-| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | ~100 |
-| `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | ~50 |
+| File | Purpose | Lines |
+|------|---------|-------|
+| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 610 |
+| `src/ui/matrixrain.cpp` | QSG rendering, vertex buffer, atlas upload, single-layer stream iteration, ScreensaverConfig binding orchestration | 1445 |
+| `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 244 |
+| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache | 661 |
+| `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | 65 |
+| `src/ui/matrixrain/atlasbuilder.cpp` | Class-static single-layer cache (`s_singleCacheKey`, `s_singleCacheAtlas`), `buildSingle`, `cacheKey` | 47 |
+| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 419 |
+| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management | 706 |
+| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow | 197 |
+| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control | 394 |
+| `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | 168 |
+| `src/ui/messageengine.cpp` | Text layout, character placement | 358 |
+| `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate (most logic now inline in header — `.cpp` is a near-empty shell after the inline-implementation refactor) | 50 |
+| `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math (most code moved into the header during a prior refactor; this `.cpp` is now a thin shell) | 28 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations) | 313 |
+| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 142 |
+| `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | 58 |
 
 ### Custom QML Files
 | File | Purpose |
@@ -321,15 +323,23 @@ Full prose lives in `CHANGELOG.md` and the per-Mod sections in `CLAUDE.md`. Use 
 | **v1.4.19** Wake-replay HUD + LOW_POWER wake-trigger fix | `src/qml/components/overlays/ReconnectingHUD.qml` (~75 lines) | `src/ui/entity/entityController.cpp` (3-line wake-trigger expansion at line 757: `wasAsleep = SUSPEND \|\| LOW_POWER` — fixes a latent upstream bug where the existing `m_pendingCommands` retry loop never engaged on UCR3 because daily standby uses LOW_POWER, not SUSPEND), `src/qml/main.qml` (HUD instantiation + `import "qrc:/components/overlays" as Overlays` alias), `resources/qrc/main.qrc` (register new file). Closes the `EntityController.resumeWindow` Q_PROPERTY visibility loop — the property has existed since upstream but was never surfaced to the user. |
 | **v1.4.20** Mod 6 Phantom-Wake Suppressor | `src/hardware/phantomWakeSuppressor.{h,cpp}` (~75 / ~110 lines) | `src/hardware/hardwareController.{h,cpp}` (singleton construction + Battery/Power/TouchSlider bridges + qmlRegisterSingletonType), `src/main.cpp` (Config + InputController wiring + initial-state push), `src/config/config.{h,cpp}` (2 new Q_PROPERTYs `phantomWakeSuppressEnabled`/`phantomWakeSuppressGraceMs` with QSettings keys `power/phantomWakeSuppress*`), `src/qml/settings/settings/Power.qml` (new top section above Mod 5 with Switch + helper Text + conditional Slider, KeyNav chain integrated), `remote-ui.pro` (HEADERS/SOURCES + VERSION 1.4.19 → 1.4.20). Inverse-symmetric to Mod 5 (`activitySessionKeeper.cpp`'s NORMAL-pinging) — same C++ singleton + QTimer + setPowerMode pattern, but forces LOW_POWER instead of NORMAL when grace expires without user input. |
 | **v1.4.21** Reconnect HUD overhaul + WiFi-everywhere toggle | `src/qml/components/overlays/WifiStatusChip.qml` (~50 lines, sibling to Mod 3's `BatteryStatusChip.qml`) | `src/qml/components/overlays/ReconnectingHUD.qml` (height 60 → 120, font 24 → 32, spinner 36 → 56, `colors.dark` → `colors.medium`, added 3-second opacity pulse), `src/qml/components/entities/BaseDetail.qml` (new WiFi chip Loader at position 6 just-left-of-battery; warning icon predicate now also gated on `!Config.showWifiEveryWhere`), `src/qml/settings/settings/Ui.qml` (new "Show WiFi indicator everywhere" Switch row + KeyNav chain extension + Flickable contentY clamp 1900 → 2080), `src/config/config.{h,cpp}` (1 new Q_PROPERTY `showWifiEveryWhere`, QSettings key `ui/showWifiEveryWhere`, default ON), `resources/qrc/main.qrc` (register WifiStatusChip), `remote-ui.pro` (VERSION 1.4.20 → 1.4.21). Mirrors Mod 3 Battery Chip pattern; chip carries full WiFi info (signal strength + disconnected red-X) so the existing warning-only icon hides when the everywhere toggle is on. |
+| **v1.4.22** Mod 5 + Mod 6 force-back API fix + wake-press detection | `test/probe_logdy_persist.py` (test infra — persistent reconnecting Logdy WS capture for soak observation, gitignored output dir) | `src/core/core.cpp:815` (one-line fix: `Api::setPowerMode` body field name `power_mode` → `mode`; firmware's serde rejected every prior call with HTTP 400 since v1.4.14 for Mod 5 and v1.4.20 for Mod 6, both Mods were silent no-ops), `src/hardware/phantomWakeSuppressor.{h,cpp}` (added `onEntityCommandIssued(QString,QString)` slot with curated allowlist mirroring Mod 5's; promoted log levels qCDebug/qCInfo → qCWarning at the three state-machine transition sites for Logdy visibility), `src/main.cpp` (wire `EntityController::entityCommandIssued → suppressor::onEntityCommandIssued`), `CHANGELOG.md`, `deploy/release.json`, `remote-ui.pro` (1.4.21 → 1.4.22). Empirical confirmation captured 2026-05-01 via Logdy WS — 3 Mod 6 force-backs + 2 Mod 5 pings all logged the same `missing field 'mode'` error. |
+| **v1.4.23** Mod 6 wake-press timing fix + grace range expansion | — | `src/config/config.{h,cpp}` (new Q_PROPERTY `phantomWakeSuppressInputLookbackMs`, QSettings key `power/phantomWakeSuppressInputLookbackMs`, default 500 ms, range 0–2000 ms), `src/hardware/phantomWakeSuppressor.{h,cpp}` (new `m_lastInputTimer` QElapsedTimer + `m_inputLookbackMs` member; updated in `onUserInput`/`onEntityCommandIssued` regardless of timer state; consulted in `onPowerModeChanged` to skip arming when input arrived within lookback window — handles firmware delivery ordering where wake-press signals fire BEFORE `Power::powerModeChanged` on wake-from-LOW_POWER; setGraceMs clamp 2000 → 5000 ms), `src/main.cpp` (config wiring + initial state push), `src/qml/settings/settings/Power.qml` (grace slider `to: 2000` → `to: 5000`, new "Recent-input lookback" slider 0–2000 ms with KeyNav chain extension), `resources/translations/*.ts` (lupdate regen, 3 new qsTr strings), `CHANGELOG.md`, `deploy/release.json`, `remote-ui.pro` (1.4.22 → 1.4.23). |
+| **v1.4.24** Power.qml settings copy fixes | — | `src/qml/settings/settings/Power.qml` (lookback help text font 20 → 24, `colors.medium` → `colors.light`, shortened to "Skip the grace timer when a button-press arrived this recently before a wake."; Mod 5 subtitle rewritten from "Prevents the 5-minute sleep timer..." to "Resets the device's sleep countdown every 4.5 min while media is playing or you've recently pressed a button." — accurate to `activitySessionKeeper.cpp::ping()` mechanism), `resources/translations/*.ts` (lupdate regen, 2 changed qsTr strings), `CHANGELOG.md`, `deploy/release.json`, `remote-ui.pro` (1.4.23 → 1.4.24). Copy-only; no logic, no new files. |
+| **v1.4.25** release.json description fix + Mod 5/6 history note | — | `deploy/release.json` (Mod 5 description carried the same misleading "5-minute sleep timer" wording v1.4.24 fixed in Power.qml — publicly visible on GitHub release page + install-API responses, so updated to match the corrected QML wording. Mod 6 description gained a brief one-line history note: "(v1.4.22 fixed the API call format that had silently broken Mod 5/6 since their respective releases; v1.4.23 added recent-input lookback to handle wake-press timing)"), `CHANGELOG.md`, `remote-ui.pro` (1.4.24 → 1.4.25). Copy-only; no QML, no code, no logic. |
+| **v1.4.26** Power.qml screen-off-style grid render fix | — | `src/qml/settings/settings/Power.qml` (replaced the screen-off-style picker's `GridLayout` with `Item` + computed-position `Repeater` children; explicit `x/y` math skips Qt's constraint solver during instantiation — eliminates the ~270 ms cascade when entering Settings → Power → Screen off animations. Bundled polish: per-delegate `readonly property bool selected` consolidates the previous two parallel `ScreensaverConfig.screenOffEffectStyle === modelData.name` bindings into one — halves the binding cost on selection change), `resources/translations/*.ts` (lupdate regen, line-number-only shifts), `CHANGELOG.md`, `deploy/release.json`, `remote-ui.pro` (1.4.25 → 1.4.26). No new code, no new qsTr strings, single-file logic change. |
 
 ### Cumulative drift since v1.4.11 baseline
 
-**Custom files added:** 6
+**Custom files added (compiled):** 6 — unchanged through v1.4.26 (the v1.4.22 → v1.4.26 cluster modified existing files, did not add new compiled units).
 - `src/hardware/activitySessionKeeper.{h,cpp}` — Mod 5 (v1.4.14)
 - `src/qml/settings/settings/WifiDiagnostics.qml` — Mod 4 W13 (v1.4.17)
 - `src/qml/components/overlays/ReconnectingHUD.qml` — Wake-replay HUD (v1.4.19)
 - `src/hardware/phantomWakeSuppressor.{h,cpp}` — Mod 6 (v1.4.20)
 - `src/qml/components/overlays/WifiStatusChip.qml` — WiFi-everywhere chip (v1.4.21)
+
+**Test infrastructure added (not compiled into binary):**
+- `test/probe_logdy_persist.py` — persistent reconnecting Logdy WS capture for multi-hour soak observation (v1.4.22)
 
 **Upstream files now modified (cumulative):**
 - `src/hardware/wifi.{h,cpp}` — Mod 4 (W1-W6, W9, W10) + Mod 4 W13 v1.4.17 (ring buffer + counters)

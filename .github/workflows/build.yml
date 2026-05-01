@@ -96,7 +96,12 @@ jobs:
           - {
             name: "UCR2 aarch64", artifact: "UCR2", build: "static",
             qmake-args: "CONFIG+=release CONFIG+=static",
-            build-image: "unfoldedcircle/r2-toolchain-qt-5.15.8-static"
+            # madalone (v1.4.28, audit-driven): digest-pin the toolchain image
+            # so CI builds are reproducible. BUILD.md and CLAUDE.md have always
+            # documented this pin for local builds; the audit caught CI was
+            # using the floating tag (audit-v1.4.26-thorough.md Finding 1).
+            # To rotate: see BUILD.md:21-28 for the digest-bump cookbook.
+            build-image: "unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6"
           }
 # TODO add YIO Remote support
 #          - {
