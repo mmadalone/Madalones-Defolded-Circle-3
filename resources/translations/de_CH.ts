@@ -5094,17 +5094,17 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1362"/>
+        <location filename="../../src/core/core.cpp" line="1368"/>
         <source>Connection error</source>
         <translation>Verbindigsfähler</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1363"/>
+        <location filename="../../src/core/core.cpp" line="1369"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Bim Verbinde ufe Core Service isch en Fähler ufträtte. We ds Problem wyterhi bestoht, start d Fernbedienig nöi.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1822"/>
+        <location filename="../../src/core/core.cpp" line="1828"/>
         <source>Authentication to core failed</source>
         <translation>Authentifizierig mitem Core Service fehlgschlage</translation>
     </message>

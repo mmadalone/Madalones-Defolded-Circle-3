@@ -79,7 +79,11 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
         // within m_graceMs, onUserInput() cancels it. Otherwise forceLowPower() fires.
         m_graceTimer.start(m_graceMs);
         emit armedChanged();
-        qCDebug(lcHw()) << "PhantomWakeSuppressor armed:" << m_graceMs << "ms";
+        // v1.4.22: promoted from qCDebug → qCWarning so this surfaces in
+        // /api/system/logs (NOTICE+ filter) and is prominent in Logdy captures.
+        // Diagnostic event, not a real warning — semantic stretch is intentional
+        // because Qt 5.15 has no qCNotice and qCInfo is filtered out.
+        qCWarning(lcHw()) << "PhantomWakeSuppressor armed:" << m_graceMs << "ms";
     } else if (toPowerMode != Power::PowerMode::Normal && m_graceTimer.isActive()) {
         // Defensive: firmware itself transitioned away from NORMAL during our grace.
         // Don't double-fire force-back; let the firmware's own transition stand.
@@ -90,6 +94,24 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
 void PhantomWakeSuppressor::onUserInput() {
     if (!m_graceTimer.isActive()) return;
     cancelGrace("user input");
+}
+
+void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString command) {
+    Q_UNUSED(entityId)
+    if (!m_graceTimer.isActive()) return;
+    // Curated allowlist mirrors ActivitySessionKeeper::onEntityCommandIssued — only
+    // human-facing commands count as wake-press evidence. Avoids false-cancel on
+    // poll-noise (state queries / capability fetches that some integrations fire
+    // during the post-wake reconnect window).
+    static const QSet<QString> kUserCommands = {
+        "PLAY_PAUSE", "PLAY", "STOP", "PAUSE", "SEEK",
+        "VOLUME", "VOLUME_UP", "VOLUME_DOWN", "MUTE_TOGGLE", "MUTE", "UNMUTE",
+        "CURSOR_UP", "CURSOR_DOWN", "CURSOR_LEFT", "CURSOR_RIGHT", "CURSOR_ENTER",
+        "CHANNEL_UP", "CHANNEL_DOWN",
+        "NEXT", "PREVIOUS", "FAST_FORWARD", "REWIND",
+    };
+    if (!kUserCommands.contains(command.toUpper())) return;
+    cancelGrace("entity command");
 }
 
 void PhantomWakeSuppressor::onPowerSupplyChanged(bool onAc) {
@@ -106,11 +128,15 @@ void PhantomWakeSuppressor::onCoreDisconnected() {
 void PhantomWakeSuppressor::cancelGrace(const char* reason) {
     m_graceTimer.stop();
     emit armedChanged();
-    qCDebug(lcHw()) << "PhantomWakeSuppressor cancelled:" << reason;
+    // v1.4.22: promoted to qCWarning. The cancel reason is the load-bearing
+    // diagnostic — distinguishes "real user input fired during grace" (Mod 6
+    // working as designed) from "ghost touch defeated Mod 6" (mitigation needed).
+    qCWarning(lcHw()) << "PhantomWakeSuppressor cancelled:" << reason;
 }
 
 void PhantomWakeSuppressor::forceLowPower() {
-    qCInfo(lcHw()) << "PhantomWakeSuppressor: phantom wake -> forced LOW_POWER";
+    // v1.4.22: was qCInfo, promoted to qCWarning to match cancelGrace and onPowerModeChanged.
+    qCWarning(lcHw()) << "PhantomWakeSuppressor: phantom wake -> forced LOW_POWER";
     int id = m_core->setPowerMode(core::PowerEnums::PowerMode::LOW_POWER);
     m_core->onResult(
         id,

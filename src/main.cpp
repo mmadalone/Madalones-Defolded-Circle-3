@@ -189,6 +189,13 @@ int main(int argc, char *argv[]) {
                      &uc::hw::PhantomWakeSuppressor::onUserInput);
     QObject::connect(inputController, &uc::ui::InputController::touchDetected, suppressor,
                      &uc::hw::PhantomWakeSuppressor::onUserInput);
+    // v1.4.22: EntityController::entityCommandIssued → suppressor. Critical for wake-press
+    // detection — firmware delivers wake-press events directly to integrations, bypassing
+    // InputController in our UI process. Without this connection the first press that
+    // wakes the device wouldn't cancel the grace window, and Mod 6 would force-back every
+    // real wake-press. Mirrors Mod 5's wiring at line 165-166.
+    QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, suppressor,
+                     &uc::hw::PhantomWakeSuppressor::onEntityCommandIssued);
     // Initial state push — graceMs first so the timer interval is correct when enabled flips on.
     suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
     suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());

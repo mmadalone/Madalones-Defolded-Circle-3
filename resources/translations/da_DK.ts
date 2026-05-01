@@ -5095,17 +5095,17 @@ Tryk på QR-koden for at vise den på skærmen.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1362"/>
+        <location filename="../../src/core/core.cpp" line="1368"/>
         <source>Connection error</source>
         <translation>Forbindelsesfejl</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1363"/>
+        <location filename="../../src/core/core.cpp" line="1369"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Der opstod en fejl ved forbindelse til kernen. Hvis problemet fortsætter, genstart fjernbetjeningen.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1822"/>
+        <location filename="../../src/core/core.cpp" line="1828"/>
         <source>Authentication to core failed</source>
         <translation>Godkendelse til kernen mislykkedes</translation>
     </message>

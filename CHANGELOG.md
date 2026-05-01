@@ -11,6 +11,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.22 — 2026-05-01 — Mod 5 + Mod 6 force-back API fix + wake-press detection
+
+### Fixed
+- **`Api::setPowerMode` body field name corrected at `src/core/core.cpp:815`**, `power_mode` → `mode`. The 2026-04-28 probe verified the **REST URL query** convention (`PUT /api/system/power?power_mode=NORMAL`); the **WS RPC body** convention is different — firmware's Rust serde deserializer expects field name `mode`. Symptom of the bug: every call returned HTTP 400 `Error("missing field 'mode'", line: 0, column: 0)`. **Empirical evidence** captured via Logdy WS 2026-05-01: three `PhantomWakeSuppressor` force-back attempts (12:55:15, 13:08:51, 13:15:18) and two `ActivitySessionKeeper` pings (13:08:54, 13:13:24) all failed with the same error. Fix is one line; both Mod 5 (silently broken since v1.4.14) and Mod 6 (silently broken since v1.4.20) work after this. **Mod 6 was a no-op for the entire v1.4.20–v1.4.21 window** — the grace logic ran correctly, the force-back call was always rejected, the firmware's own NORMAL→IDLE→LOW_POWER timer carried the device back to standby unaffected. Battery-drain reduction promised by v1.4.20 never materialized; expected to land with this release.
+
+### Added
+- **`PhantomWakeSuppressor::onEntityCommandIssued(QString, QString)`** slot in `src/hardware/phantomWakeSuppressor.{h,cpp}`. Curated allowlist of human-facing commands (PLAY_PAUSE, VOLUME_*, CURSOR_*, NEXT, PREV, FF, REWIND, etc.) — mirrors `ActivitySessionKeeper::onEntityCommandIssued` exactly. When a command on the allowlist arrives during the grace window, calls `cancelGrace("entity command")`. Wired in `src/main.cpp` after the existing InputController connections (Mod 5's pattern at line 165-166 mirrored at the Mod 6 wiring block).
+- **Why this matters — empirical regression risk discovered 2026-05-01.** The Logdy capture revealed that **firmware delivers wake-press events directly to integrations, bypassing `inputController::keyPressed` in our UI process**. At 13:08:50.930Z a Play/Pause press woke the device and reached the kodi integration cleanly (`entity_command play_pause`), but **no `Key pressed` log entry appeared from inputController** — only the second press (13:08:54.934Z, post-wake) did. This means: without `entityCommandIssued`, fixing the field-name bug alone would have caused Mod 6 to force-back **every real wake-press** 1 second after wake, requiring users to press buttons twice every time. The `entityCommandIssued` path catches the first-press scenario at the entity-command layer, which fires regardless of which input path the firmware used. Curated allowlist (not all commands) avoids false-cancel on poll-noise from state queries / capability fetches some integrations fire during reconnect.
+
+### Changed
+- **`PhantomWakeSuppressor` log levels promoted `qCDebug`/`qCInfo` → `qCWarning`** at the three state-machine transition sites in `phantomWakeSuppressor.cpp` (`onPowerModeChanged` armed-line, `cancelGrace` cancelled-line, `forceLowPower` phantom-wake-line). The original v1.4.22 plan was to surface these in `/api/system/logs?lines=N` (NOTICE+ filter), but Logdy WS empirically showed the REST endpoint is **service-filtered to `core` only** (memory: `feedback_uc3_systemlogs_core_only.md`) — log-level promotion doesn't help that endpoint. Keeping the promotion regardless: makes Mod 6 events prominent at level 4 in Logdy captures, which is the actual diagnostic surface going forward. Semantic stretch (`qCWarning` for diagnostic state-machine events) is intentional and confined to these three sites; Qt 5.15 has no `qCNotice`.
+
+### Architectural note
+- **Drift increase: zero new files.** All four modified files were already in the custom/upstream-modified manifest (`core.cpp`, `phantomWakeSuppressor.{h,cpp}` custom, `main.cpp` modified-upstream).
+- **Translation impact:** none — no new qsTr strings.
+- **Memory artifacts created:** `feedback_uc3_systemlogs_core_only.md` (REST endpoint filter behavior — saves future sessions from wasted log-level-promotion churn). The `project_display_init_ghost_touches.md` mitigation options remain parked — empirical capture showed 3+ phantom wakes with **zero** `cancelled: user input` outcomes (no ghost-touch defeats observed yet); the wake-press detection failure was a separate axis.
+- **Test infrastructure:** `test/probe_logdy_persist.py` added — persistent reconnecting WS capture that survives suspend/wake cycles, appends incrementally with flush-per-frame, writes filtered matches file alongside full stream. Original `test/probe_logdy.py` retained for short single-shot captures (it writes file at exit, no good for multi-hour observation).
+- **Verification protocol** (post-deploy):
+  - **Phantom wake** (motion / WoWLAN push / passive trigger): expect `armed: 1000 ms` → 1000 ms with no input → `phantom wake -> forced LOW_POWER` → success (no `force-back failed: 400` line). Device returns to LOW_POWER within ~1 second. Battery drain should drop from observed ~9 %/hr off-dock to near true-standby.
+  - **Wake-press** (user presses any media-control button to wake): expect `armed: 1000 ms` → entity command arrives within ms → `cancelled: entity command` → device stays NORMAL. No force-back. User's first press takes effect.
+  - **Pure navigation wake** (HOME / BACK / MENU only — no media command): not yet covered. If `inputController::keyPressed` doesn't fire for wake-press (firmware bypass observed for media keys; unverified for navigation keys), Mod 6 may force-back. Iterate based on observation.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md` (10 successful v1.4.x deploys to date).
+
+---
+
 ## v1.4.21 — 2026-04-30 — Reconnect HUD overhaul + WiFi-everywhere toggle
 
 ### Added

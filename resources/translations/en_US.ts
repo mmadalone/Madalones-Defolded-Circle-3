@@ -5075,17 +5075,17 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1362"/>
+        <location filename="../../src/core/core.cpp" line="1368"/>
         <source>Connection error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1363"/>
+        <location filename="../../src/core/core.cpp" line="1369"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1822"/>
+        <location filename="../../src/core/core.cpp" line="1828"/>
         <source>Authentication to core failed</source>
         <translation type="unfinished"></translation>
     </message>

@@ -44,6 +44,13 @@ class PhantomWakeSuppressor : public QObject {
     // Single multi-source slot for InputController::keyPressed (QString arg auto-discarded),
     // InputController::touchDetected, TouchSlider::touchPressed.
     void onUserInput();
+    // EntityController::entityCommandIssued — curated allowlist of human-facing commands
+    // (PLAY_PAUSE, VOLUME_*, CURSOR_*, NEXT, PREV, etc.) counts as user input.
+    // v1.4.22: critical for wake-press detection. Firmware delivers wake-press events
+    // directly to integrations, bypassing InputController::keyPressed in our UI process.
+    // The first press that wakes the device only surfaces at the entity-command layer;
+    // without this slot, Mod 6 force-backs every wake-press as if it were a phantom wake.
+    void onEntityCommandIssued(QString entityId, QString command);
     // Battery::powerSupplyChanged — dock/undock counts as user activity.
     void onPowerSupplyChanged(bool onAc);
     // core::Api::disconnected — defensive cleanup if connection drops mid-grace.

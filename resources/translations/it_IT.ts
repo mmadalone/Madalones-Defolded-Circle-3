@@ -5094,17 +5094,17 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1362"/>
+        <location filename="../../src/core/core.cpp" line="1368"/>
         <source>Connection error</source>
         <translation>Errore di connessione</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1363"/>
+        <location filename="../../src/core/core.cpp" line="1369"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Si è verificato un errore durante la connessione al core. Se il problema persiste, riavvia il telecomando.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1822"/>
+        <location filename="../../src/core/core.cpp" line="1828"/>
         <source>Authentication to core failed</source>
         <translation>Autenticazione al core fallita</translation>
     </message>

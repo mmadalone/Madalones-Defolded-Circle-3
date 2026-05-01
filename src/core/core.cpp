@@ -810,9 +810,15 @@ int Api::getPowerSavingCfg() {
 // madalone: ActivitySessionKeeper sends this every ~270 s while a session is active.
 // Probe (2026-04-28) confirmed PUT /api/system/power?power_mode=NORMAL resets standby_timeout_sec
 // to its configured max (typ. 300) on each LOW_POWER/IDLE → NORMAL transition.
+//
+// v1.4.22: body field is "mode", not "power_mode". The 2026-04-28 probe verified the
+// REST URL query convention (?power_mode=NORMAL); the WS RPC body convention is different.
+// Symptom of the original bug: every call returned HTTP 400 "missing field `mode`" (serde
+// error from the Rust core service), making both Mod 5 pings and Mod 6 force-back no-ops
+// from v1.4.14 through v1.4.21. Fix verified by Logdy capture 2026-05-01.
 int Api::setPowerMode(PowerEnums::PowerMode mode) {
     QVariantMap msgData;
-    msgData.insert("power_mode", Util::convertEnumToString(mode));
+    msgData.insert("mode", Util::convertEnumToString(mode));
     return sendRequest(RequestTypes::set_power_mode, msgData);
 }
 

@@ -5095,17 +5095,17 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1362"/>
+        <location filename="../../src/core/core.cpp" line="1368"/>
         <source>Connection error</source>
         <translation>Erreur de connexion</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1363"/>
+        <location filename="../../src/core/core.cpp" line="1369"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Une erreur s&apos;est produite lors de la connexion au cœur du système. Si le problème persiste, redémarrez la télécommande.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1822"/>
+        <location filename="../../src/core/core.cpp" line="1828"/>
         <source>Authentication to core failed</source>
         <translation>Échec de l&apos;authentification du cœur</translation>
     </message>
