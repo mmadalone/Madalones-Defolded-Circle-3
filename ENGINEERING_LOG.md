@@ -1,9 +1,11 @@
-# Remote UI Changelog
+# Remote UI Engineering Log
 
-All notable changes to this project will be documented in this file.
+Full root-cause analysis, architectural notes, verification protocols, and
+per-file diff details for [Madalone's Defolded Circle 3](https://github.com/mmadalone/Madalones-Defolded-Circle-3).
+User-facing release summaries live in [CHANGELOG.md](CHANGELOG.md).
 
-The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
-and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+The format mirrors [Keep a Changelog](https://keepachangelog.com/en/1.0.0/);
+this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
@@ -11,175 +13,87 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
-## v1.4.33 — 2026-05-01 — Settings → Power 70-second open delay fix
+## <a id="v1433"></a>v1.4.33 — 2026-05-01 — Settings → Power 70-second open delay (root cause: Slider tick over-instantiation)
 
-Settings → Power was taking ~70 seconds to fully populate on UC3, with the screen-off-animation Style picker buttons appearing in a slow cascade at the end. v1.4.26 attempted a fix by replacing GridLayout with `Item` + computed positions; the cascade persisted because that wasn't the actual bottleneck.
+### Symptom
+User-reported: Settings → Power took **~1 minute 10 seconds** to fully populate. The screen-off-animation Style picker (3×3 grid of 9 buttons) appeared in a slow cascade at the end of the page-open. v1.4.26's previous attempt at fixing the cascade was based on a wrong root-cause hypothesis and did not actually address the user-visible delay.
 
-### Fixed
-- **70 s → sub-second Settings → Power open.** Root cause was the upstream `src/qml/components/Slider.qml` tick-marks `Repeater`: it instantiated `to - from + 1` Rectangles regardless of `showTicks`, because the wrapping Row's `visible: showTicks` only gates *rendering*, not *instantiation*. v1.4.20 (Mod 6 phantomWakeGraceSlider 100–5000 = 4,901 ticks) and v1.4.23 (phantomWakeLookbackSlider 0–2000 = 2,001 ticks) added two large-range sliders to Power.qml, pushing total invisible-Rectangle creation on Power open to ~7,500 — combined with the Row positioner's O(N²) reflow on each insert, this took ~70 s on UC3 ARM. **Fix:** one-line gate on `Repeater.model` — `showTicks ? (to-from+1) : 0`. When ticks aren't requested, zero delegates are created.
+### Root cause
+Upstream `src/qml/components/Slider.qml` lines 90–110 wraps a tick-marks `Repeater` in a `Row { visible: showTicks; enabled: showTicks; … }`:
+
+```qml
+Row {
+    visible: showTicks
+    enabled: showTicks
+    Repeater {
+        model: slider.to - slider.from + 1   // ALWAYS evaluates, regardless of showTicks
+        Rectangle { width: 2; height: 10; color: colors.offwhite; opacity: 0.3 }
+    }
+}
+```
+
+QML's `visible: false` on a parent only affects **rendering**, not **instantiation**. The `Repeater` inside still creates `to - from + 1` delegate Rectangles. For sliders with large `to - from`, this materialises a large invisible tree.
+
+**Power.qml's slider census post-Mod-6:**
+
+| Slider | from–to | showTicks | Invisible ticks created |
+|---|---|---|---|
+| `phantomWakeGraceSlider` (Mod 6, v1.4.20) | 100–5000 | false | **4,901** |
+| `phantomWakeLookbackSlider` (Mod 6, v1.4.23) | 0–2000 | false | **2,001** |
+| `sessionKeeperIdleSlider` (Mod 5, v1.4.14) | 30–300 | false | 271 |
+| `resumeTimeoutValueSlider` (upstream) | 0–10 | false | 11 |
+| `wakeupSensitivitySlider` (upstream) | 0–3 | **true** | 4 (visible — by design) |
+| `displayoffTimeoutSlider` (upstream) | 10–60 | false | 51 |
+| `sleepTimeoutSlider` (upstream) | 10–300 | false | 291 |
+
+**Total invisible Rectangles created on Power-page open: ~7,526.**
+
+The dominant cost is not just the Rectangle creation (~1 ms each on UC3 ARM), but the wrapping `Row` positioner's O(N²) reflow on each child insert — 1+2+3+…+4901 = ~12 million repositions for the grace slider alone. Combined across all sliders, the math lands within rounding of the user's "70+ s" report.
 
 ### Why v1.4.26 missed this
-v1.4.26 mistook GridLayout's constraint solver for the cascade source (~270 ms of measurable cost it did remove). The remaining 99% of the delay was Slider, not the style picker itself. The 9 style buttons appeared last simply because they're at the bottom of Power.qml's DOM — every slider above them blocked the main thread for several seconds during instantiation.
+v1.4.26 mistook the visible cascade *symptom* for a localised problem in the style picker. It replaced `GridLayout` with `Item` + computed `x/y` for the 9-button grid, removing ~270 ms of GridLayout constraint-solver overhead. That was a real cost, just not the dominant one. The screen-off-animation buttons appear last only because they're at the bottom of Power.qml's DOM — every slider above them was blocking the main thread during their tick-Repeater instantiation, so the buttons couldn't render until all sliders were done.
 
-### Files changed
-- `src/qml/components/Slider.qml` — 1-line `model:` gate (now upstream-modified).
-- `docs/CUSTOM_FILES.md` — Slider.qml added to "Modified Upstream QML" table.
-- `remote-ui.pro` / `deploy/release.json` — version bump.
+### Regression timeline
+- Pre-v1.4.20: total invisible ticks ≈ 624. Cascade was visible but tolerable.
+- **v1.4.20 (Mod 6)** added `phantomWakeGraceSlider` (100–5000): +4,901 ticks → cascade noticeably worse.
+- **v1.4.23** added `phantomWakeLookbackSlider` (0–2000): +2,001 ticks → user-pain threshold crossed.
+- v1.4.26's failed fix: localised to style picker, didn't address the actual blocker.
 
-### Translation impact
-None — no qsTr changes. No `lupdate` regen.
+### Fix
+One-line change to `src/qml/components/Slider.qml` Repeater model binding:
 
-### Verification protocol (post-deploy)
-- Cold open Settings → Power: page populates in <1 s (from ~70 s).
-- Style picker (3×3 button grid): renders in a single frame, no cascade.
-- `wakeupSensitivitySlider` (the only `showTicks: true` slider in the codebase, range 0–3): 4 ticks still visible.
-- Spot-check Display / Sound / Color sliders: no visual regression (none use `showTicks: true`).
+```qml
+// Before
+model: slider.to - slider.from + 1
 
-### Auto-revert safety net
-Active per `project_auto_revert_validated_on_uc3.md`. If the binary fails to start, firmware reverts to stock; re-enable via `/api/system/install/ui?enable=true`.
-
-### Out of scope (separate latent bug, deferred)
-Even when `showTicks` *is* true, the `Repeater.model = to - from + 1` ignores `stepSize`. The 100–5000 grace slider would render 4,901 ticks instead of the correct 50 (5000/100) if ever enabled. Not exercised today (only the 4-tick `wakeupSensitivitySlider` enables ticks). Worth fixing if/when ticks get adopted on a step-sized slider.
-
----
-
-## v1.4.32 — 2026-05-01 — Suppressor test: stop moc'ing power.h
-
-Follow-up to v1.4.31. v1.4.31's keeper test linked cleanly with `qrcodegen.cpp` added; suppressor still failed at link with a different undefined-reference cluster, this time pointing at `moc_power.cpp`:
-
-```
-moc_power.cpp:(.text+0x294): undefined reference to `uc::hw::Power::onPowerModeChanged(uc::core::PowerEnums::PowerMode)'
-moc_power.cpp:(.text+0x305): undefined reference to `uc::hw::Power::powerOff()'
-moc_power.cpp:(.text+0x486): undefined reference to `uc::hw::Power::reboot()'
-moc_power.o:(.data.rel.ro._ZTVN2uc2hw5PowerE[...]+0x28): undefined reference to `uc::hw::Power::~Power()'
+// After
+model: showTicks ? (slider.to - slider.from + 1) : 0
 ```
 
-`suppressor_test.pro` was listing `power.h` in HEADERS, which made qmake run moc on it and generate `moc_power.cpp`. That moc'd file materialises the Power vtable (dtor + slot bodies), needing `power.cpp` to link. But `power.cpp` pulls `notification.h` which pulls a UI dep chain we don't want in unit tests, AND the test never exercises Power's runtime behaviour:
+Per Qt 5.15 docs (`Repeater`, "Properties → model"), setting model to 0 destroys all created delegates. Reactive bindings re-evaluate on dependency change, so any future caller that flips `showTicks` true will lazily get its ticks. No semantic change for current callers — `Row`'s `visible: showTicks` already gated rendering; the fix also gates instantiation.
 
-| Power surface | Used by test? |
-|---|---|
-| `Power::PowerMode` enum values | yes — pure compile-time, no link dep |
-| `Power` ctor / instance / signals | no — test never constructs a `Power`; never `connect`s to one |
-| `Power::powerModeChanged` signal emission | no — test calls `m_suppressor->onPowerModeChanged(from, to)` directly with synthetic enum values |
-| `Power::powerOff` / `reboot` / `~Power` | no — never invoked; `phantomWakeSuppressor.cpp` doesn't touch them either |
+### Why one-line `model:` gate over a `Loader` wrap
+Both achieve identical runtime characteristics for the `showTicks: false` case. The `model:` gate wins on:
+- Smaller upstream-diff (1 line vs ~10-line restructure).
+- No anchor parent-reference re-mapping (the Row anchors `parent.horizontalCenter` to the Slider's contentItem; wrapping in Loader would silently rebind `parent` to the Loader unless we hoist anchors).
+- No `Behavior on anchors.topMargin` re-attachment hazard (the Behavior animates the Row's topMargin on `slider.pressed`; under a Loader wrap it would need to be hoisted alongside the anchors).
+- Easier future merge against upstream.
+- Loader's only theoretical advantage — not instantiating the Row+Behavior+empty Repeater wrappers in the false case — is worth ~1 ms in aggregate, invisible relative to the 70-s problem.
 
-`phantomWakeSuppressor.cpp` itself never calls into Power — it `connect`s to `Power::powerModeChanged` *externally* in `hardwareController.cpp` (not under test). The unit test bypasses the wiring entirely. `moc_power.cpp` was being generated and link-required for surfaces the test never verifies.
+### Architectural note
+- **Drift increase:** zero new files. `Slider.qml` was previously upstream-only; v1.4.33 makes it upstream-modified. Added to `docs/CUSTOM_FILES.md` "Modified Upstream QML" table.
+- **No code changes outside Slider.qml + version-bump files.** Power.qml itself is unmodified.
+- **Translation impact:** none — no `qsTr` strings change.
+- **Test impact:** existing QML tests (`tst_settings_navigation.qml`, `tst_settings_visibility.qml`) don't exercise tick rendering; no test fixture changes.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`.
+- **Verification:** cold open Settings → Power; page should populate in <1 s. Style picker should render in one frame. `wakeupSensitivitySlider`'s 4 ticks still visible. Display / Sound / Color sliders unchanged (none use `showTicks: true`).
 
-### Fixed
-- **`test/hardware/suppressor_test/suppressor_test.pro`** — removed `power.h` from HEADERS. Header is still `#include`'d (for the `Power::PowerMode` enum) by `phantomWakeSuppressor.h` and `test_phantomWakeSuppressor.cpp`; that's a compile-time-only dep and doesn't trigger moc. Comment in the .pro explains the deliberate omission.
-
-### What's preserved
-All 17 suppressor test methods still execute as before — the body-shape regression (the v1.4.22 `mode`/`power_mode` drift), the `onPowerModeChanged` truth table, grace cancellation paths, v1.4.23 input-lookback skip-grace, and setter clamping. None of those depend on a real `Power` instance.
-
-### What's NOT covered (and never was)
-A future regression where someone makes `phantomWakeSuppressor.cpp` call Power class methods directly (e.g. `Power::powerOff()`). That's not the suppressor's design — it sends RPC via `Api::setPowerMode(LOW_POWER)` only. If that contract changes, a `mock_power.cpp` with stub bodies would close the gap; deferred until needed.
-
----
-
-## v1.4.31 — 2026-05-01 — Hardware-tests link fix (qrcodegen.cpp)
-
-Follow-up to v1.4.30. The submodule-checkout fix unblocked the compile phase, but `keeper_test.pro` and `suppressor_test.pro` were still missing `qrcodegen.cpp` from `SOURCES`, so the link step failed:
-
-```
-util.cpp:(.text+0x3ee7): undefined reference to `qrcodegen::QrCode::encodeText(char const*, qrcodegen::QrCode::Ecc)'
-util.cpp:(.text+0x3f5b): undefined reference to `qrcodegen::QrCode::getSize() const'
-util.cpp:(.text+0x410e): undefined reference to `qrcodegen::QrCode::getModule(int, int) const'
-collect2: error: ld returned 1 exit status
-```
-
-`util.cpp` calls `qrcodegen::QrCode::{encodeText, getSize, getModule}` — `remote-ui.pro:244` lists the .cpp in SOURCES; the test pros had the header in transitive scope but not the implementation. Same surface as the v1.4.30 handoff doc's original linker-error hypothesis, just one layer deeper than expected.
-
-### Fixed
-- **`test/hardware/keeper_test/keeper_test.pro`** + **`test/hardware/suppressor_test/suppressor_test.pro`** — added `3rd-party/QR-Code-generator/cpp/qrcodegen.cpp` to SOURCES and `qrcodegen.hpp` to HEADERS, mirroring `remote-ui.pro:241,244`.
-
-### Architectural notes
-- **No firmware change.** v1.4.31 is a CI-only fix on top of v1.4.30. v1.4.30 already validated 4/5 of the failing surfaces (Tests / Unit, Tests / QML, Tests / Integration, Tests / setpowermode-drift, Clang-Tidy was still pending result at v1.4.31 push time). v1.4.31 closes the last hardware-tests gap.
+### Out of scope — flagged for future
+Even with `showTicks: true`, the `Repeater.model = to - from + 1` ignores `stepSize`. The 100–5000 grace slider would render 4,901 ticks instead of the correct 50 (5000/100) if ever enabled. Not exercised today; safe to defer.
 
 ---
 
-## v1.4.30 — 2026-05-01 — CI green: submodule checkout + QML required-property init
-
-Closes the three CI failures that landed on `v1.4.29`'s tag run. Two were the same root cause (submodule missing in CI checkout), one was a missing test-fixture wiring. None of these touch firmware behaviour.
-
-### Fixed
-- **`hardware-tests` CI job now checks out the `3rd-party/QR-Code-generator` submodule** at `.github/workflows/test.yml`. `keeper_test.pro` and `suppressor_test.pro` pull `src/util.cpp` + `src/util.h` (via `mock_core_api.cpp` and the `HEADERS` list), and `util.h:13` includes `qrcodegen.hpp` from the submodule. Default `actions/checkout@v4` skips submodules, so the build failed at compile time with `fatal error: 3rd-party/QR-Code-generator/cpp/qrcodegen.hpp: No such file or directory` on `util.o`, `mock_core_api.o`, and `activitySessionKeeper.o`. The handoff doc's linker-error hypothesis was wrong — it was a header-resolution failure that never reached the link phase.
-- **`clang-tidy` CI job now checks out submodules** at `.github/workflows/tidy.yml`. Same root cause: `bear -- make` survives the missing header via `|| true`, but the subsequent `clang-tidy` re-parse of those TUs flags `'3rd-party/QR-Code-generator/cpp/qrcodegen.hpp' file not found [clang-diagnostic-error]`, which the workflow's `ERROR_COUNT > 0` gate counts as 1 fatal lint error. v1.4.28's allowlist expansion (Finding 4) was the trigger — the 4 newly-linted files transitively pulled `util.h` for the first time.
-- **`tst_settings_visibility.qml` now initialises `settingsPage:` on `StarfieldSettings` and `MinimalSettings`** at `test/qml/tst_settings_visibility.qml:41-50`. v1.4.28's audit rewrite (Finding 3) wired the stub-page to `MatrixAppearance` and `MatrixEffects` but missed the other two siblings, which both declare `required property Item settingsPage`. The QML engine raised `Required property settingsPage was not initialized` at the load-time compile step (1 failure out of 166 tests; the 343 "errors" in the XML result are unrelated `qrc:/...TapSection.qml: Unable to assign [undefined] to bool` runtime warnings, not test failures).
-
-### Architectural notes
-- **No firmware change.** `remote-ui.pro VERSION` + `deploy/release.json version` advance to `1.4.30` to keep the semver chain consistent on the new tag.
-- **Why the v1.4.29 handoff doc's surfaces were wrong.** The handoff (in `.claude-memory/project_v1429_ci_failures_handoff.md`) speculated that the hardware-tests failure was a linker `undefined reference` from missing moc-generated symbols, and the clang-tidy failure was real lint findings on the 4 newly-allowlisted files. Both speculations were the same upstream symptom (missing submodule in CI checkout) — the existing `unit-tests` (matrixrain) job has been silently relying on a build path that doesn't transitively reach `util.h`, and only the new `hardware-tests` + the v1.4.28 clang-tidy allowlist exposed that the workflows have never been pulling submodules. Logged so the next "linker error" hypothesis on a CI fail gets a `git submodule status` check first.
-
----
-
-## v1.4.29 — 2026-05-01 — Hardware-tests CI job + setPowerMode drift check + audit-path corrections
-
-Closes the three follow-up items called out by the v1.4.27/v1.4.28 review: the deferred CI wiring for the new hardware tests, the false claim in `mock_core_api.h` about a build-time drift check that didn't actually exist, and the v1.4.28 CHANGELOG entry's stale audit-file references that pointed at root-level paths after the audit files were moved to `logs/` (gitignored).
-
-### Added
-- **`hardware-tests` CI job** in `.github/workflows/test.yml`. Mirrors the existing `unit-tests` (matrixrain) job: installs Qt 5.15.2 on Ubuntu, builds `test/hardware/hardware_test.pro` with AddressSanitizer, runs both `test_activitySessionKeeper` and `test_phantomWakeSuppressor` with `QT_QPA_PLATFORM=offscreen` + `ASAN_OPTIONS=detect_leaks=0`, uploads XML test results as artifacts. The 49 unit tests added in v1.4.27 now run on every push and PR. Closes the v1.4.27 deferred-to-v1.4.29 promise.
-- **`tools/check_setPowerMode_drift.py`** + **`setpowermode-drift` CI job**. Closes a real correctness gap in v1.4.27's regression-prevention strategy: the unit tests assert against `mock_core_api.cpp`'s verbatim mirror of the v1.4.22 fix line, but a co-ordinated regression that touched both `core.cpp` AND the mock would still pass tests. The new build-time grep check verifies BOTH files contain `msgData.insert("mode"` and NEITHER contains `msgData.insert("power_mode"` — closes the mirror-drift gap with literal-string assertion. Runs in seconds (no Qt install needed) as a separate CI job, so a co-ordinated regression fails fast and points the author directly at the root cause.
-
-### Fixed
-- **`test/hardware/mock_core_api.h` no longer lies about its drift-check infrastructure.** The header comment claimed `tools/check_setPowerMode_drift.py` was "Wired into the unit-test workflow as a pre-step" — but neither the script nor the workflow integration existed. v1.4.29 makes the claim true: the script is created with full historical context, the CI job is wired, and the comment is updated to point at the now-real `setpowermode-drift` job in `test.yml`.
-- **CHANGELOG.md v1.4.28 entry's audit-file references corrected** from `audit-v1.4.26.md` / `audit-v1.4.26-thorough.md` (root-level paths) to `logs/audit-v1.4.26.md` / `logs/audit-v1.4.26-thorough.md` (with explicit "gitignored project artifact" note). The audit files were moved to `logs/` per the user's request before the v1.4.28 commit landed; the CHANGELOG entry's references stayed at the old root paths and would have left readers unable to find them.
-
-### Architectural notes
-- **Drift increase: 1 new file, 1 new CI workflow surface.** `tools/check_setPowerMode_drift.py` is the new file (~100 lines, includes full v1.4.22-incident historical context as a literate-script header). `.github/workflows/test.yml` gains 2 new jobs (`setpowermode-drift` + `hardware-tests`), bumping job count 3 → 5. No production code modified.
-- **No firmware deploy required.** This is a CI-and-doc-honesty release. `remote-ui.pro VERSION` and `deploy/release.json version` advance to `1.4.29` to keep the semver chain consistent and surface the new CI job on the v1.4.29 tag's first run.
-- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md` — though not exercised since no production behavior changed.
-
----
-
-## v1.4.28 — 2026-05-01 — Audit-driven quick wins (CI digest pin, clang-tidy allowlist, locale shipping, manifest sync, fake-test cleanup)
-
-Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (gitignored project artifact). None of these change runtime behavior on the device; they all close gaps between what the project documented and what the project actually enforced.
-
-### Fixed
-- **CI build no longer uses a floating-tag toolchain image** at `.github/workflows/build.yml`. Previously the CI matrix referenced `unfoldedcircle/r2-toolchain-qt-5.15.8-static` (no `@sha256` suffix), so a CI re-build of the same source tag could pull a different toolchain if UC pushed an updated image. `BUILD.md` and `CLAUDE.md` had always documented the digest pin for local builds; CI was the gap. Now pinned to `@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6` matching `BUILD.md:16`. Closes audit Finding 1.
-- **`clang-tidy` CI allowlist now covers all 11 custom .cpp files** at `.github/workflows/tidy.yml`. Was missing 4 files: `activitySessionKeeper.cpp` (Mod 5), `phantomWakeSuppressor.cpp` (Mod 6), `matrixrain/layerpipeline.cpp`, `matrixrain/atlasbuilder.cpp`. The two most-recent custom additions — both touched by the v1.4.22 `setPowerMode` silent-failure bug — were escaping the static-analysis gate entirely. Closes audit Finding 4.
-- **Mock-only `resetDefaults()` API now exists on real `ScreensaverConfig`** at `src/ui/screensaverconfig.{h,cpp}`. The QML test suite's `init()` cleanup function calls `ScreensaverConfig.resetDefaults()` against `MockScreensaverConfig`, but the real production class never implemented it — so any test code that hit the real singleton would have raised a runtime error rather than a compile error, and any future "Reset to defaults" UI affordance would have had to invent its own implementation. The new `Q_INVOKABLE void resetDefaults()` does a `m_settings->remove("charging")` group-wide wipe + `sync()` + emits every `*Changed` NOTIFY signal so QML bindings re-read the macro-emitted defaults from the headers. Closes audit Finding 12.
-- **`docs/CUSTOM_FILES.md` size figures resynchronized against `wc -l`**. Several `~Lines` claims were off by factors of 1.5x to 7x (in aggregate ~26% under-reported). Corrected: `gravitydirection.cpp` ~200 → 28 (the implementation moved into the header during a prior refactor); `rainsimulation.cpp` ~400 → 706; `rainsimulation.h` ~150 → 419; `messageengine.cpp` ~150 → 358; `messageengine.h` ~80 → 168; `glitchengine.cpp` ~200 → 394; `glitchengine.h` ~100 → 197; `screensaverconfig.h` ~220 → 313; matrixrain.cpp/h close-but-imprecise figures bumped to exact. Added a footnote at the top of the manifest noting figures are now mechanically synced. Closes audit Findings 7 + 11.
-- **Property count on `ScreensaverConfig` corrected** in `docs/CUSTOM_FILES.md`. The previous claim "108 SCRN + 6 transformed = 114 properties" undercounted both terms. Verified count: 60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macro invocations = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations = **136 total**. Note: the thorough audit's own count of "139" was also slightly off; the empirically-verified figure is 136.
-
-### Changed
-- **5 previously-orphaned locales now ship in the binary** at `remote-ui.pro` and `resources/qrc/translations.qrc`. `es_ES.ts`, `no_NO.ts`, `pl_PL.ts`, `pt_PT.ts`, and `sv_SE.ts` existed in `resources/translations/` but were not declared in `TRANSLATIONS +=`, so `lupdate` never refreshed them and `lrelease` never compiled them to `.qm`. **Caveat: these locales are partial.** Spanish is the most complete at ~99.5% (3 unfinished strings); Norwegian, Polish, Portuguese, and Swedish sit at 86–90% completion. Qt falls back to `en_US` for any string a locale doesn't translate, so partial coverage is acceptable. Closes audit Finding 2.
-- **`logs/audit-v1.4.26.md` annotated with corrections** (gitignored project artifact alongside `logs/audit-v1.4.26-thorough.md`). The original spot-check audit had three claims the thorough follow-up audit found wrong (README staleness was time-warped; A11Y_AUDIT.md was a never-used template, not stale; ScreensaverConfig property count was undercounted). A new "Corrections (post-thorough-audit)" section appended at the end documents these and points to `logs/audit-v1.4.26-thorough.md` as the canonical reference. The original audit body is preserved verbatim for traceability.
-
-### Added
-- **Real assertions in `test/qml/tst_settings_navigation.qml`**, replacing 5 fake `verify(true, "...")` calls. The new tests mount each chargingscreen sub-component (`ThemeSelector`, `CommonToggles`, `MatrixAppearance`, `MatrixEffects`, `GeneralBehavior`) at the test root and assert each component's `firstFocusItem` and `lastFocusItem` aliases resolve to non-null Items. Partially closes audit Finding 3.
-- **Real assertions in `test/qml/tst_settings_visibility.qml`**, replacing tautological "set X, assert X==X" patterns. The new tests mount `MatrixAppearance`, `MatrixEffects`, `StarfieldSettings`, and `MinimalSettings` with the same `visible: ScreensaverConfig.theme === "..."` binding pattern that `ChargingScreen.qml` uses; toggling the theme and asserting `visible` actually flips for each one. Partially closes audit Finding 3.
-
-### Architectural notes
-- **Coordinated as a back-to-back pair with the v1.4.27 unit-tests release.** Two commits land in sequence — v1.4.27 covers Mod 5 + Mod 6 unit tests under `test/hardware/`; v1.4.28 covers the audit hygiene items. Version files (`remote-ui.pro VERSION`, `deploy/release.json version`) advance to `1.4.28` in this commit, having been at `1.4.27` after the previous one.
-- **Drift increase: 1 new method on `ScreensaverConfig`** (`Q_INVOKABLE void resetDefaults()`). Five new locale files declared in `remote-ui.pro` + 5 new `<file alias=>` entries in `translations.qrc` (the .ts source files already existed in `resources/translations/`). All other changes are doc / CI / test / size-figure updates with zero runtime impact.
-- **No firmware deploy required.** This is a hygiene-only release. The toolchain pin and clang-tidy allowlist take effect on the next CI run; the locale changes ship in the next install bundle when one is built; the `resetDefaults()` method is dormant until the QML test suite runs against the real config.
-- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md` — though not exercised since no production behavior changed.
-
----
-
-## v1.4.27 — 2026-05-01 — unit tests for Mod 5 and Mod 6
-
-### Added
-- **Unit tests for `ActivitySessionKeeper` (Mod 5)** at `test/hardware/keeper_test/test_activitySessionKeeper.cpp` — 18 test methods covering: `ping()` body shape (regression-prevention for the v1.4.14 → v1.4.21 `setPowerMode` field-name bug), `evaluateSession` truth table (enabled / on-AC / media / idle-timer matrix — 6 cases), `onMediaPlayerStateChanged` active-set bookkeeping (add/remove/dedupe), `onEntityCommandIssued` curated allowlist (24-row data-driven table — 17 allowlisted + 7 non-allowlisted), `onPowerSupplyChanged` AC requirement (2 cases), `onCoreDisconnected` defensive cleanup, ping cadence (immediate-first-ping behavior, no-double-fire), `setEnabled` mid-session deactivation, `setIdleTimeoutSec` no-double-fire. Public Mod numbering: this is **Mod 4** in the Discord-post sequence.
-- **Unit tests for `PhantomWakeSuppressor` (Mod 6)** at `test/hardware/suppressor_test/test_phantomWakeSuppressor.cpp` — 31 test methods covering: `forceLowPower()` body shape (mirror regression-prevention for the same `setPowerMode` bug), `onPowerModeChanged` matrix (LOW_POWER/SUSPEND/IDLE/NORMAL → NORMAL transitions — 6 cases), `wasAsleep` gate (Mod 5 ping artifact filtering), grace cancellation paths (user input, allowlisted vs non-allowlisted entity command, dock/undock event, core disconnect — 7 cases), v1.4.23 input-lookback skip-grace (the wake-press timing fix — 6 cases), `setGraceMs` / `setInputLookbackMs` clamping (6 cases), `setEnabled` mid-grace cancellation, `armedChanged` signal lifecycle, subsequent-wake timer-restart behavior. Public Mod numbering: this is **Mod 5** in the Discord-post sequence.
-- **Mock infrastructure** at `test/hardware/mock_core_api.{h,cpp}` — stub-impl-of-`core::Api` pattern. Real `src/core/core.h` is consumed unmodified by both production code and tests; the mock provides linker symbols for the methods the keeper/suppressor call. `Api::setPowerMode` is mirrored verbatim from `core.cpp:819-823` so the regression-prevention tests catch the WS RPC body-shape bug regardless of which implementation is exercised. `MockCoreRecorder` static interface exposes the captured `QVariantMap` / JSON envelope for test assertions.
-- **CI wiring deferred to v1.4.29.** A new `hardware-tests` job mirroring the existing `unit-tests` (matrixrain) pattern in `.github/workflows/test.yml` — recursive `qmake test/hardware/hardware_test.pro` build with AddressSanitizer, run with `QT_QPA_PLATFORM=offscreen`, upload XML results — needs to land separately. The test files compile and run today via local invocation; CI will pick them up once the workflow job is added.
-
-### Why this matters
-- **The setPowerMode bug went undetected for 8 releases** (v1.4.14 → v1.4.21) because `ActivitySessionKeeper::ping()` and `PhantomWakeSuppressor::forceLowPower()` had no automated coverage. A 5-line unit test asserting `msg_data.value("mode")` against `"NORMAL"` / `"LOW_POWER"` would have surfaced the firmware HTTP 400 rejection on the very first build. This release closes the highest-leverage gap identified by the post-bug audit: zero unit-test coverage for both custom hardware components.
-- The state machines also got real coverage (49 test methods total, including data-driven rows). Future refactors of either keeper or suppressor — e.g., adding a new wake-source signal, expanding the curated command allowlist, tweaking the lookback default — will surface state-machine regressions immediately.
-
-### Architectural notes
-- **Drift increase: 4 new files** (mock + 2 test files + parent .pro), 3 new directories (`test/hardware/`, `keeper_test/`, `suppressor_test/`). **Zero production code modified** — `src/hardware/activitySessionKeeper.{h,cpp}`, `src/hardware/phantomWakeSuppressor.{h,cpp}`, `src/core/core.{h,cpp}` all compiled untouched into the test binaries.
-- **Version bumped to 1.4.27** in `remote-ui.pro VERSION` and `deploy/release.json version` to keep the release-cadence semver chain consistent with the v1.4.28 audit-driven hygiene release that lands immediately after this. Tests are purely additive — no firmware behavior change. No on-device deploy required.
-- **Mock strategy** documented in `test/hardware/mock_core_api.h` header comment + `.claude-memory/project_unit_test_design.md`. The verbatim-mirror pattern has a load-bearing drift-policy comment; future maintainers must keep the stub in sync with `core.cpp:819-823` or update both sides.
-- **Build verified** via the cross-compile toolchain (`unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722...`). Both test binaries build clean (zero warnings, zero linker errors) for ARM64. Cannot natively run ARM64 binaries on the dev Windows host — the CI workflow uses x86_64 Qt 5.15.2 which exercises the same source through a different toolchain.
-- **Future work**: extend coverage to `BatteryStatusChip`, `WifiStatusChip`, `ReconnectingHUD` (QML components — different pattern, see `.claude-memory/project_unit_test_design.md`); add a `tools/check_setPowerMode_field_drift.py` build-time grep check to close the stub-stays-in-sync-with-production loop.
-
----
-
-## v1.4.26 — 2026-05-01 — Settings → Power screen-off-style grid render fix
+## <a id="v1426"></a>v1.4.26 — 2026-05-01 — Settings → Power screen-off-style grid render fix
 
 ### Fixed
 - **Screen-off animation style buttons in `Power.qml` had a visible ~270 ms cascade** when navigating to Settings → Power. User feedback 2026-05-01: "I see items pop in over ~300 ms." Section had been in this state since 2026-04-10 (`dea996b7 [feat] screensaver: Batch 2 screen-off animation styles`); not a recent regression but worth fixing for polish ahead of public release. **Root cause:** `GridLayout` runs Qt's constraint solver on every child added during Repeater instantiation; for 9 children that's a visible cascade on the ARM hardware (each delegate ~30 ms × 9 = ~270 ms). **Fix:** replaced `GridLayout` with `Item` + computed `x`/`y` math per Repeater delegate. Skips the constraint solver entirely. Same visual output, no change to selection logic or KeyNavigation chain. Estimated cascade time after fix: <16 ms (single frame).
@@ -194,7 +108,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.25 — 2026-05-01 — release.json description fix + Mod 5/6 history note
+## <a id="v1425"></a>v1.4.25 — 2026-05-01 — release.json description fix + Mod 5/6 history note
 
 ### Fixed
 - **Mod 5 description in `deploy/release.json`** carried the same misleading "prevents the 5-minute sleep timer" wording that v1.4.24 fixed in `Power.qml`. This text is publicly visible on the GitHub release page and in the `/api/system/install/ui` response, so leaving it stale would surface to anyone looking at the install logs or release notes. Rewritten to match the Power.qml subtitle: "resets the device's sleep countdown every 4.5 min via set_power_mode(NORMAL) pings while a media player is actively playing or recent media-control buttons are pressed."
@@ -209,7 +123,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.24 — 2026-05-01 — Power.qml settings copy fixes
+## <a id="v1424"></a>v1.4.24 — 2026-05-01 — Power.qml settings copy fixes
 
 ### Fixed
 - **"Recent-input lookback" help text** in `src/qml/settings/settings/Power.qml` was unreadable: too small (font 20), too dim (`colors.medium`), and overly long. Bumped font to 24 and color to `colors.light` to match the surrounding secondary-text style; rewrote text to a single readable sentence: "Skip the grace timer when a button-press arrived this recently before a wake." User feedback 2026-05-01.
@@ -222,7 +136,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.23 — 2026-05-01 — Mod 6 wake-press timing fix + grace range expansion
+## <a id="v1423"></a>v1.4.23 — 2026-05-01 — Mod 6 wake-press timing fix + grace range expansion
 
 ### Fixed
 - **Mod 6 wake-from-LOW_POWER false force-back.** Empirical capture 2026-05-01 (post-v1.4.22 deploy) revealed a firmware delivery ordering issue: on `LOW_POWER → NORMAL` transitions, `inputController::keyPressed` and `EntityController::entityCommandIssued` fire BEFORE `Power::powerModeChanged`. Mod 6 was arming the grace timer based on the latter signal, so by the time the timer was active the user-input signals had already been processed and early-returned through `m_graceTimer.isActive() == false`. Net effect: even a real wake-press would force-back the device 2 sec later (or whatever the grace value was). Worked for some scenarios (one-shot remote control: brief wake → command → sleep) but broke for sustained-interaction wakes. Fix: track `m_lastInputTimer` (QElapsedTimer) and update it from `onUserInput` and `onEntityCommandIssued` regardless of timer state. In `onPowerModeChanged`, before arming the grace timer, check if `m_lastInputTimer.elapsed() < m_inputLookbackMs` and skip arming entirely if so. Default 500 ms lookback; configurable 0–2000 ms via Settings → Power. 0 disables the skip (reverts to v1.4.22 behavior).
@@ -246,7 +160,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.22 — 2026-05-01 — Mod 5 + Mod 6 force-back API fix + wake-press detection
+## <a id="v1422"></a>v1.4.22 — 2026-05-01 — Mod 5 + Mod 6 force-back API fix + wake-press detection
 
 ### Fixed
 - **`Api::setPowerMode` body field name corrected at `src/core/core.cpp:815`**, `power_mode` → `mode`. The 2026-04-28 probe verified the **REST URL query** convention (`PUT /api/system/power?power_mode=NORMAL`); the **WS RPC body** convention is different — firmware's Rust serde deserializer expects field name `mode`. Symptom of the bug: every call returned HTTP 400 `Error("missing field 'mode'", line: 0, column: 0)`. **Empirical evidence** captured via Logdy WS 2026-05-01: three `PhantomWakeSuppressor` force-back attempts (12:55:15, 13:08:51, 13:15:18) and two `ActivitySessionKeeper` pings (13:08:54, 13:13:24) all failed with the same error. Fix is one line; both Mod 5 (silently broken since v1.4.14) and Mod 6 (silently broken since v1.4.20) work after this. **Mod 6 was a no-op for the entire v1.4.20–v1.4.21 window** — the grace logic ran correctly, the force-back call was always rejected, the firmware's own NORMAL→IDLE→LOW_POWER timer carried the device back to standby unaffected. Battery-drain reduction promised by v1.4.20 never materialized; expected to land with this release.
@@ -271,7 +185,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.21 — 2026-04-30 — Reconnect HUD overhaul + WiFi-everywhere toggle
+## <a id="v1421"></a>v1.4.21 — 2026-04-30 — Reconnect HUD overhaul + WiFi-everywhere toggle
 
 ### Added
 - **`WifiStatusChip.qml`** at `src/qml/components/overlays/WifiStatusChip.qml` (~50 lines, custom file). Compact WiFi signal-strength chip mirroring `BatteryStatusChip.qml` (Mod 3) shape. Renders the same `uc:wifi-01/02/03` icon family the home-screen `StatusBar.qml` uses (Mod 4 W3) plus the disconnected red-X strikethrough rectangle. 40 px sized to match the existing 40 px chips in `BaseDetail.qml`'s status strip.
@@ -293,7 +207,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.20 — 2026-04-30 — Mod 6: Phantom-Wake Suppressor + WS keepalive + audit hygiene
+## <a id="v1420"></a>v1.4.20 — 2026-04-30 — Mod 6: Phantom-Wake Suppressor + WS keepalive + audit hygiene
 
 ### Fixed (audit hygiene bundled in this release)
 - **WS keepalive enabled** at `src/core/core.cpp:25-37`. Upstream UC checked in keepalive infrastructure (60-second ping interval, declared at `core.h:450` as `m_keepAliveInterval = 60000`) but commented out the four lines that wire the `m_keepAliveTimer` member to `Api::onKeepAliveTimerTimeout()` and to the `connected/disconnected` signals. Handler `m_webSocket.ping()` at `core.cpp:1334` exists but was never invoked. Re-enabling restores 60 s WS pings during connected state, preventing the localhost UI ↔ core daemon connection from going stale across LOW_POWER kernel-suspend cycles. **User-visible impact:** eliminates the multi-second WS-reconnect tail on first wake-press after long-idle (paired with the v0.9.0 dock fw's TCP keepalive on the dock-side connection — UC's own engineers reached the same conclusion on the Dock side). Fixed-up signal scope from upstream's `&core::*` (wrong — `core` is the namespace, not the class) to `&Api::*`. Mild evidence the upstream code had never been compile-tested.
@@ -318,7 +232,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.19 — 2026-04-29 — Wake-replay HUD + LOW_POWER wake-trigger fix
+## <a id="v1419"></a>v1.4.19 — 2026-04-29 — Wake-replay HUD + LOW_POWER wake-trigger fix
 
 ### Added
 - **`ReconnectingHUD` overlay** at `src/qml/components/overlays/ReconnectingHUD.qml` (~75 lines QML, custom file). Top-banner pattern, full width × 60 px, slides down from top while the post-wake retry window is active, shows spinner (`loader_small.png` rotating per `WifiNetworkList.qml:97-110` precedent) + `qsTr("Reconnecting…")` text, slides up when the window closes. Non-modal, taps fall through. `z: 9998` (one below the screensaver MouseArea at `main.qml:475`).
@@ -338,7 +252,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.18 — 2026-04-29 — CI fix: sync remote-ui.pro VERSION with release.json
+## <a id="v1418"></a>v1.4.18 — 2026-04-29 — CI fix: sync remote-ui.pro VERSION with release.json
 
 ### Fixed
 - **`remote-ui.pro` VERSION bumped from 1.4.11 → 1.4.18.** CI check at `.github/workflows/build.yml:44-55` validates `PRO_VERSION == JSON_VERSION` and was failing on every release since v1.4.12 (six in a row) because nobody touched the `.pro` file's `VERSION = 1.4.11` line. No runtime impact — the actual displayed app version comes from `GIT_VERSION` (line 56-71 in `.pro`) via `git describe`. CI artifact build was the only thing affected. Going forward: `release.json` and `remote-ui.pro:75` bump together.
@@ -350,7 +264,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.17 — 2026-04-29 — WiFi Diagnostics popup (W13)
+## <a id="v1417"></a>v1.4.17 — 2026-04-29 — WiFi Diagnostics popup (W13)
 
 ### Added
 - **WiFi Diagnostics popup** — new "Diagnostics" button in the WifiInfo popup action stack (between Reconnect and Delete) opens a focused diagnostic surface showing:
@@ -378,7 +292,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.16 — 2026-04-29 — Post-v1.4.15 polish round (slider thinning, docked-rearm functional, WifiInfo button placement)
+## <a id="v1416"></a>v1.4.16 — 2026-04-29 — Post-v1.4.15 polish round (slider thinning, docked-rearm functional, WifiInfo button placement)
 
 ### Fixed
 - **Settings → Power "Keep awake" slider — too thick.** v1.4.15's `Layout.preferredHeight: 140` (chosen to fit pressed-state `lowValueText`/`highValueText` overflow) made the slider visually heavy. Dropped the from/to value labels entirely (the current value is already shown in the section title above), reverted to `height: 60` to match the existing `idleTimeoutSlider` pattern in `GeneralBehavior.qml`. No more overflow into "Only when on charger or dock".
@@ -395,7 +309,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.15 — 2026-04-29 — UI polish: Power slider overflow, WifiInfo back-arrow, docked-rearm screensaver timer
+## <a id="v1415"></a>v1.4.15 — 2026-04-29 — UI polish: Power slider overflow, WifiInfo back-arrow, docked-rearm screensaver timer
 
 ### Fixed
 - **Settings → Power Active Session Keeper slider overlap.** v1.4.14's `Layout.preferredHeight: 100` wasn't enough — pressed-state animation grows `sliderBG` to `slider.height` (50 → 100) AND `lowValueText.topMargin` from 5 to 20, pushing labels ~42 px below the bound and into the "Only when on charger or dock" row. Bumped to 140 to give the pressed-state animation room.
@@ -416,7 +330,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.14 — 2026-04-28 — Active Session Keeper: prevent the 5-minute sleep timer during media playback
+## <a id="v1414"></a>v1.4.14 — 2026-04-28 — Active Session Keeper: prevent the 5-minute sleep timer during media playback
 
 ### Added
 - **Active Session Keeper (Mod 5)** prevents the firmware's 5-min standby timer from firing while a media-player entity is in `Playing` state or while curated media-control commands have been pressed within the configurable idle window. Eliminates the every-5-min wake-recovery gap while watching TV / listening to music. Backed by the previously-orphan `set_power_mode` ucapi RPC at `enums.h:96` (same orphan-surface pattern as v1.4.12 `WifiCmd::REASSOCIATE` and v1.4.10 `entityAdded`). Wire-probe (`_diag_capture_set_power_mode.log`) confirmed `PUT /api/system/power?power_mode=NORMAL` returns `{"code":"OK"}` and resets `standby_timeout_sec` to its configured max (typically 300) on every LOW_POWER/IDLE → NORMAL transition. New `core::Api::setPowerMode(PowerMode)` method mirrors `setPowerSavingCfg` shape.
@@ -434,7 +348,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.13 — 2026-04-28 — WiFi onboarding: scoped failure cleanup (preserve other saved networks)
+## <a id="v1413"></a>v1.4.13 — 2026-04-28 — WiFi onboarding: scoped failure cleanup (preserve other saved networks)
 
 ### Fixed
 - **`onboarding/Wifi.qml` no longer nukes every saved WiFi network when a join attempt fails.** The two `Wifi.deleteAllNetworks()` callsites at line 71 (`onConnected(false)` handler) and line 249 (`connectionTimeoutTimer` 3 s timeout) were a nuclear cleanup — if the user had any pre-existing saved networks (rare during onboarding but possible after factory-reset-keep-data, or when re-running setup) and mistyped a password on one new network, all of them got wiped. Replaced both callsites with a new `Q_INVOKABLE Wifi::deletePendingJoinNetwork()` that targets only the SSID currently being joined. Tracking via new private member `m_pendingJoinSsid` set in `Wifi::connect()` (covers the timer-fires-before-`addNetwork`-completes race) and cleared in `onWifiEventChanged(CONNECTED)` for symmetry. Pre-checks `m_knownNetworkList.contains(ssid)` before calling `deleteSavedNetwork()` to silence the "network does not exist" notification when the timer wins the race against the async addNetwork response. Settings-side WiFi flow doesn't have this anti-pattern; this fix is onboarding-only.
@@ -447,7 +361,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.12 — 2026-04-28 — WiFi UX bundle: live diagnostics, always-on status indicator, reconnect button, WoWLAN surfacing, m_currentNetwork leak fix, periodic poll, scan-timer displayOff gate
+## <a id="v1412"></a>v1.4.12 — 2026-04-28 — WiFi UX bundle: live diagnostics, always-on status indicator, reconnect button, WoWLAN surfacing, m_currentNetwork leak fix, periodic poll, scan-timer displayOff gate
 
 ### Added
 - **Live link diagnostics on `WifiInfo` popup.** Five new rows render data the firmware was already shipping but the UI threw away: **Signal** (`rssi` dBm + optional `snr` dB), **Link speed** (`linkspeed` Mbps), **Throughput** (`est_throughput` Mbps), **BSSID**, **Channel** (computed from `freq`: 2.4 GHz `(f-2412)/5+1` for ch 1–13, special-cased ch 14 at 2484 MHz, 5 GHz `(f-5000)/5`). Backed by 7 new `Q_PROPERTY`s on the `Wifi` singleton (`currentBssid` / `currentRssi` / `currentAverageRssi` / `currentNoise` / `currentSnr` / `currentLinkSpeed` / `currentEstimatedThroughput`) populated in `Wifi::getWifiStatus()` from the existing `WifiStatus` struct (`src/core/structs.h:275-292` — already parsed in `core.cpp:2882-2898`, just unused). Single bundled `currentLinkInfoChanged()` signal — values update atomically per status response, so 7 separate signals would be wasteful. Properties are `int` not `double` because the firmware ships integer dBm/Mbps; conversion only happens at QML display time.
@@ -471,7 +385,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.11 — 2026-04-27 — Audit-driven hardening: timer displayOff gate, entity-leak deferred-delete, toolchain digest pin
+## <a id="v1411"></a>v1.4.11 — 2026-04-27 — Audit-driven hardening: timer displayOff gate, entity-leak deferred-delete, toolchain digest pin
 
 ### Fixed
 - **`MatrixRainItem` timer-start callsites now gate on `displayOff`.** Prior to v1.4.11, 7 `m_timer.start(...)` callsites in `matrixrain.cpp` (first-render at `updatePaintNode`, `resumeTicks`, `setSpeed`, slowdown effect at `handleSlowInput(true)`, slowdown release at `handleSlowInput(false)`, `handleRestoreInput`, `setRunning(true)`) had no `displayOff` guard — any of them firing while the screen was off would silently re-arm the tick timer and burn CPU/GPU until the next `setDisplayOff(true)` arrived. AP-UC-08 (§7.5) "Zero CPU/GPU when screen off — non-negotiable for battery life" contract was technically violated by 5 of the 7 sites (the other 2 already had `if (m_running)` guards but `m_running` is independent of `m_displayOff`). Consolidated all 7 callsites behind `startTimerAtSpeed()` and `startTimerAt(int intervalMs)` private helpers, both early-returning on `m_displayOff`. Line 1163's `handleSlowInput(true)` 3× interval preserved via the variable-interval helper. `setDisplayOff(false)` wake path keeps its direct `m_timer.start()` (helper would behave identically anyway since `m_displayOff` was just cleared on the previous line — kept as direct call to flag it as the canonical wake path).
@@ -488,7 +402,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.10 — 2026-04-27 — entity_change apply gap fix: NEW events now populate m_entities
+## <a id="v1410"></a>v1.4.10 — 2026-04-27 — entity_change apply gap fix: NEW events now populate m_entities
 
 ### Fixed
 - **`entity_change` events with `event_type=NEW` were silently discarded.** Upstream UC's `core::Api::processEntityChange` emits `entityAdded(entity)` for the NEW path (`src/core/core.cpp:2142`) but **nothing in the codebase ever connected to that signal** (verified via grep — declared in `core.h:360`, emitted, never wired). Subsequent `entity_change ev=CHANGE` events for that entity then hit the `m_entities.contains(entityId)` early-return in `EntityController::onEntityChanged()` (`entityController.cpp:430`) and were dropped without a log line. User-visible symptom: after a Kodi (or any) integration **uninstall→reinstall** cycle, the integration's NEW event re-creates the entity in core, the wire delivers the event to the firmware, the core-API GET shows the populated state — but the remote display never re-renders any subsequent attribute updates (artwork, title, position, etc.). Close+reopening the activity card worked around it because `Activity.qml`'s `includedEntityItem` delegate calls `EntityController.load(entityId)`, which fetches the (already-populated) state and inserts into m_entities. **Fix:** `entityController.cpp` ctor now `connect()`s `core::Api::entityAdded` to a new `EntityController::onEntityAdded(core::Entity)` slot that calls `addEntityObject(entity)`. `addEntityObject` is idempotent (early-return when the id is already in the map), so a NEW for an already-loaded entity is a safe no-op. Diagnosed via wire capture (`_diag_capture_5.log`) showing `ev=NEW` at 15:07:11 followed by ignored `ev=CHANGE` events through 15:09 even after the populated 17 KB JPEG data URI emit at 15:08:01.
@@ -503,7 +417,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.9 — 2026-04-24 — MediaBrowser → Player Widget thumbnail preview handoff + setPreviewImage scheme filter + empty controls-bar auto-collapse
+## <a id="v149"></a>v1.4.9 — 2026-04-24 — MediaBrowser → Player Widget thumbnail preview handoff + setPreviewImage scheme filter + empty controls-bar auto-collapse
 
 ### Added
 - **Browse-time thumbnails now render on the player widget immediately after `playMedia()`**, instead of waiting for the integration's `Player.GetItem` art response (which for unscraped Kodi library files, video-source SMB/NFS files, and most plugin items — Netflix, Movistar+, Amazon, Filmin — never arrives with usable art, leaving the widget blank or showing Kodi's stock `DefaultVideo.png` placeholder). Thumbnail is already in hand at tap-time in `MediaBrowser` via `modelData.thumbnail` / `pageContainer.thumbnail`; new `Q_INVOKABLE MediaPlayer::setPreviewImage(QString thumbnailUrl)` accepts the URL and drives it through the existing `getMediaImageColor()` fetch path, populating `m_mediaImage` base64 data URI + `m_mediaImageColor` accent (same machinery as the normal `media_image_url` flow, no new image plumbing). All 10 `requestPlayMedia(...)` call sites in `MediaBrowser.qml` now thread `thumbnail` through — centralized in the existing `requestPlayMedia()` helper which invokes `entityObj.setPreviewImage(thumbnail)` once before dispatching `entityObj.playMedia(...)`. `playMedia()` signature untouched; zero coupling between transient preview UI state and ucapi command dispatch.
@@ -523,7 +437,7 @@ Hygiene release addressing six findings from `logs/audit-v1.4.26-thorough.md` (g
 
 ---
 
-## v1.4.8 — 2026-04-24 — Touchbar speed sensitivity tuning + media-button suppression toggles
+## <a id="v148"></a>v1.4.8 — 2026-04-24 — Touchbar speed sensitivity tuning + media-button suppression toggles
 
 Two independent additive changes bundled:
 
@@ -545,7 +459,7 @@ Two independent additive changes bundled:
 
 ---
 
-## v1.4.7 — 2026-04-24 — TouchSlider screensaver guard completeness fix
+## <a id="v147"></a>v1.4.7 — 2026-04-24 — TouchSlider screensaver guard completeness fix
 
 ### Fixed
 - **Physical touch slider bled through to the active media_player during screensaver.** When the Matrix/Starfield screensaver was active and the user touched the side slider (the intended behavior was: touchbar controls theme speed/density, volume/seek/etc. stays untouched), the slider was in fact still committing volume/seek/brightness/position writes to the currently-bound entity (e.g., Kodi volume getting changed from the bedroom while a movie played). Root cause: the `applicationWindow.screensaverActive` early-return guard was only present on `onTouchPressed` in each of the 4 `TouchSlider*.qml` variants — `onTouchXChanged` and `onTouchReleased` ran ungated. `onTouchPressed` being suppressed prevented `prevTouchX` and `targetVolume` from being initialized to fresh values, but `onTouchXChanged` still accumulated `targetVolume += Math.sign(rawDelta)` against stale state, and `onTouchReleased` then committed that target via `entityObj.setVolume(sliderContainer.targetVolume)` (or `setBrightness` / `setPosition` / seek). Net effect: the slider was writing arbitrary values to Kodi, undoing the user's own volume setting every time they adjusted screensaver speed. Fix: added the same one-line guard at the top of `onTouchXChanged` and `onTouchReleased` in all four variants (`TouchSliderVolume.qml`, `TouchSliderSeek.qml`, `TouchSliderBrightness.qml`, `TouchSliderPosition.qml`). 8 one-liners across 4 already-modified files; zero new upstream drift; identical pattern to the existing `onTouchPressed` guards, just completeness. **No behavior change when screensaver is inactive** — the guard is a strict defensive early-return on an existing property.
@@ -555,7 +469,7 @@ Two independent additive changes bundled:
 
 ---
 
-## v1.4.6 — 2026-04-24 — Quiet boot hygiene pass
+## <a id="v146"></a>v1.4.6 — 2026-04-24 — Quiet boot hygiene pass
 
 Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2026-04-24T09:56:45Z, `logdy-messages (3).json` — 167 `Image download Operation canceled` + 5 `QSoundEffect Error decoding` + 2 `TouchSliderProcessor ReferenceError` + 2-3 `VoiceOverlay undefined QString`). None are v1.4.5 regressions; all pre-date v1.4.4. Boot-log warning count drops ~177 → ≤ 4 (94% reduction), and one of the four fixes turns out to be a silently-broken functional wiring repair, not just cosmetic.
 
@@ -571,7 +485,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 ---
 
-## v1.4.5 — 2026-04-24 — TouchSlider null-guard (startSetup + Loader binding)
+## <a id="v145"></a>v1.4.5 — 2026-04-24 — TouchSlider null-guard (startSetup + Loader binding)
 
 ### Fixed
 - **Two latent `TouchSlider.qml` null-deref TypeErrors** surfaced in v1.4.4 deploy logdy trace (2026-04-24T10:32:40.760Z, single occurrence during a Settings → HOME navigation). `qrc:/components/TouchSlider.qml:44: TypeError: Value is null and could not be converted to an object` thrown inside `startSetup()` when `entityObj` was null (binding race during rapid card re-activation). `qrc:/components/TouchSlider.qml:161: TypeError: Cannot read property 'height' of null` thrown by the `sliderLoader` Loader's `y:` binding when `sliderLoader.item` became null post-`source=""`. Same class of bug v1.4.3 fixed for MediaBrowser's `onOpened` — identical null-guard recipe applied: (1) at the top of `startSetup()`, if `entityObj` is null, log a warn breadcrumb, set `touchSlider.active = false`, clear `sliderLoader.source`, and return before the first dereference; (2) the Loader's `y:` binding now evaluates `sliderLoader.item ? ui.height - sliderLoader.item.height : 0` — safe zero fallback when item is null, binding re-evaluates cleanly once a valid source is set again. Pre-existing robustness issue, not caused by v1.4.4.
@@ -582,7 +496,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 ---
 
-## v1.4.4 — 2026-04-24 — MediaBrowser button expansion + volume split-guard + per-entity OSD flag
+## <a id="v144"></a>v1.4.4 — 2026-04-24 — MediaBrowser button expansion + volume split-guard + per-entity OSD flag
 
 ### Added
 - **MediaBrowser — full hardware-button coverage.** `MUTE`, `STOP`, `NEXT`, `PREV`, `CHANNEL_UP`, and `CHANNEL_DOWN` now fire their commands while the media browser Popup is the active `buttonNavigation` owner. Before v1.4.4 these 6 hardware keys silently no-op'd — only `PLAY`, `VOLUME_UP`, `VOLUME_DOWN`, `BACK`, `HOME`, and the DPAD cluster were mapped. Feature gating: MUTE unguarded (matches `Tv.qml`/`Set_top_box.qml` pattern; `muteToggle()` is a command dispatch with no side effect when unsupported); STOP gated on `MediaPlayerFeatures.Stop`; NEXT prefers `Fast_forward` → falls back to `Next`; PREV prefers `Rewind` → falls back to `Previous`.
@@ -599,7 +513,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 ---
 
-## v1.4.3 — 2026-04-24 — MediaBrowser hotfix (null-guard + inline loading + watchdog)
+## <a id="v143"></a>v1.4.3 — 2026-04-24 — MediaBrowser hotfix (null-guard + inline loading + watchdog)
 
 ### Fixed
 - **MediaBrowser unescapable loading loop (critical).** When `MediaBrowser.qml::onOpened` was called with a transiently-null `entityObj` binding (QML entity-resolution race), line 225's `entityObj.browseMedia(...)` threw a TypeError mid-handler. `buttonNavigation.takeControl()` at line 226 never ran → hardware HOME/BACK keys stopped working in the browser. Meanwhile `pageLoading: true` was already set at line 218, triggering the global `LoadingScreen` which blocks all UI input for up to 3 minutes via `inputController.blockInput(true)` + `timeOutTimer{interval: 180000}`. Net effect: user stuck in a 3-minute blackout with the rotating loading animation burning CPU at 60 fps (thermal risk on repeated entry — reproduced during v1.4.2 smoke testing, required hard reboot). Fix: null-guard `entityObj` at the top of `onOpened` — if null, log a warning and close the popup immediately via `Qt.callLater(close)`. Root cause analysis captured from a complete logdy trace of the live incident (2026-04-24T08:15:50Z); known upstream behaviour previously documented in `.claude-memory/project_media_browser_close_loop.md` ("X button dead, remote restart only escape") — now with a fix that prevents the trap instead of requiring a hardware reboot.
@@ -612,7 +526,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 ---
 
-## v1.4.2 — 2026-04-24 — Settings → UI toggle to suppress volume OSD popup
+## <a id="v142"></a>v1.4.2 — 2026-04-24 — Settings → UI toggle to suppress volume OSD popup
 
 ### Added
 - **`Config.showVolumeOverlay`** (`Q_PROPERTY` in `src/config/config.h`, QSettings key `ui/showVolumeOverlay`, default `true` — preserves current behaviour on upgrade). Users can now globally disable the volume OSD that appears when pressing volume keys, without disabling the underlying volume commands themselves. Implementation is a single early-return guard at the top of `VolumeOverlay.qml::start()` — one suppression point covers all 16 call sites (8 files × VOLUME_UP + VOLUME_DOWN), architecturally orthogonal to v1.4.1's `hasFeature(Volume_up_down)` feature-advertising fix (that one checks the entity; this one is a user preference). Guard fires before any side effect (no property writes, no `hideTimer.restart()`, no `volume.open()`), so a disabled toggle produces zero OSD-related activity. Exposed as the final toggle in `Settings → UI` ("Show volume overlay") after "Coverflow in media browser", wired into the `KeyNavigation` chain. `Flickable.contentY` clamp bumped 1100 → 1260 for the ~160 px of added content (restores v1.3.0's value before the v1.4.0 rebase reverted it to upstream's 1100).
@@ -622,14 +536,14 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 ---
 
-## v1.4.1 — 2026-04-24 — volume OSD guard fix (root-cause for kodi-integration `suppress_volume_overlay`)
+## <a id="v141"></a>v1.4.1 — 2026-04-24 — volume OSD guard fix (root-cause for kodi-integration `suppress_volume_overlay`)
 
 ### Fixed
 - **Volume OSD bypassed entity feature advertising in 7 of 8 call sites** — upstream bug. `Activity.qml`'s VOLUME_UP/DOWN handlers correctly check `entityObj.hasFeature(MediaPlayerFeatures.Volume_up_down)` before calling `volume.start()`; every other handler (`Page.qml` home-screen fallback, `MediaBrowser.qml`, and the 5 media-player deviceclass overrides `Receiver` / `Speaker` / `Tv` / `Streaming_box` / `Set_top_box`) called `volume.start()` unconditionally. Net effect: any media-player entity would fire the OSD on VOLUME_UP/DOWN even if the driver had removed the `Volume_up_down` feature from its capability set. This broke the contract that integration drivers could suppress volume UI by removing the feature. **Specific user impact:** the `madalone/integration-kodi-patch` fork's `suppress_volume_overlay` toggle (introduced in `v1.18.13-madalone.1` patch 6) correctly strips `Features.VOLUME` / `VOLUME_UP_DOWN` / `MUTE*` from the entity, but the OSD still appeared because remote-ui's call sites weren't checking the feature flag before rendering. Wrapped all 7 unguarded `volume.start()` call sites with the same `hasFeature(MediaPlayerFeatures.Volume_up_down)` guard `Activity.qml` already uses — 14 edits across 7 files, no new imports needed (each file already imports `Entity.MediaPlayer 1.0`). Now integration-declared volume capability is honoured consistently across all media-player UI paths, whether the user is on the home page, inside a detail view, in any media_player deviceclass skin, or navigating the media browser. **No config or settings changes** — the fix is purely respecting existing upstream semantics. Upstream-contributable: if you're reading this and you maintain `unfoldedcircle/remote-ui`, these are the same ~14 guards needed in stock. Files touched: `src/qml/components/Page.qml`, `src/qml/components/entities/media_player/MediaBrowser.qml`, `src/qml/components/entities/media_player/deviceclass/Receiver.qml` / `Speaker.qml` / `Tv.qml` / `Streaming_box.qml` / `Set_top_box.qml`.
 
 ---
 
-## v1.4.0 — 2026-04-23 — upstream v0.72.0 merge (Option B rebase) + detail-page WiFi predicate fix
+## <a id="v140"></a>v1.4.0 — 2026-04-23 — upstream v0.72.0 merge (Option B rebase) + detail-page WiFi predicate fix
 
 ### Merged from upstream (`unfoldedcircle/remote-ui` "v0.72.0", commit `c76ff05`)
 
@@ -655,7 +569,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - ⚠️ **QSettings key renamed** `ui/batteryOnDetailPages` → `ui/batteryEveryWhere`. One-shot migration handles v1.3.0 user data.
 - **Settings → UI toggle wording** changes to upstream's phrasing: "Battery on detail pages" → "Show battery indicator everywhere"; helper text "Show a compact battery indicator on entity and activity detail pages." → "Shows the battery level indicator on all pages and activities." Both translatable — locale files regenerated.
 
-## v1.3.0 — 2026-04-23 — settings-freeze fix + atlas profiling overlay + dead-code sweep + hot-path polish + detail-page battery chip (Mod 3) + matrixrain.cpp subsystem extraction (audit B → A−)
+## <a id="v130"></a>v1.3.0 — 2026-04-23 — settings-freeze fix + atlas profiling overlay + dead-code sweep + hot-path polish + detail-page battery chip (Mod 3) + matrixrain.cpp subsystem extraction (audit B → A−)
 
 ### Refactored (Mod 1 architectural cleanup, audit B → A−)
 - **`matrixrain.cpp` subsystem extraction.** Triggered by a deep-scan codebase audit that landed an honest grade B, dragged down primarily by one file: `src/ui/matrixrain.cpp` was 2055 lines (4× the project's own §1.6 budget of ~500), with `MatrixRainItem` carrying 150+ Q_PROPERTYs and a 214-line `updatePaintNode`. Extracted two new pure-C++ collaborator classes (no QObject, no MOC, no signals/slots — owned by-value on `MatrixRainItem`):
@@ -703,7 +617,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - **Documented audit item closure: "ScreensaverConfig QSettings caching".** Investigation revealed that Qt 5.15's `QSettings` INI backend parses the file once on construction into an in-memory `QHash` — subsequent `value()` calls are O(1) hash lookups, not disk I/O. The audit's "biggest remaining runtime win" framing was based on a false premise, and the total per-dock cost of all ScreensaverConfig getter calls is ~127 µs one-time at `bindToScreensaverConfig()` with zero per-frame cost. Added warning comments in `src/ui/screensaverconfig_macros.h` and `src/ui/screensaverconfig.h` so future sessions don't re-litigate, and so the load-bearing dual-emit fix from commit `47b6d59` (Qt 5.15 MOC signal-chain bug) is visibly protected from well-meaning refactors.
 - **New standing rule: menu-touching QML changes must be dev-env previewed before UC3 deploy.** Captured in auto-memory after the `required property` trap burned on the first settings-freeze fix deploy. Rule applies to any QML edit under `src/qml/settings/settings/*`, `src/qml/components/*Screen*`, `src/qml/components/themes/*`, `src/qml/components/overlays/*`, or any change to `Loader`/`Component` instantiation patterns.
 
-## v1.2.2 — 2026-04-13 — screensaver bug fixes + thermal + hygiene sweep + post-release polish
+## <a id="v122"></a>v1.2.2 — 2026-04-13 — screensaver bug fixes + thermal + hygiene sweep + post-release polish
 
 ### Fixed (user-reported Batch 0)
 - **"Close on wake" toggle was ignored on undock** (`main.qml`). The `Battery.onPowerSupplyChanged(false)` handler now honors `ScreensaverConfig.motionToClose` the same way the sibling `Power.onPowerModeChanged` handler already did. Template for the fix was the `tapToClose` check at `ChargingScreen.qml:494` — no new state, no new abstractions, just connecting the piece that was disconnected.
@@ -734,7 +648,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - **`README.md` rewritten for fork identity** (no longer the upstream UC README). New sections: five-theme hero table, YouTube Shorts demo link, explicit Matrix-tunability disclosure, "How this was built" (vibecoding loop + audits + testing + safety posture), "Human-reviewed documentation" (AI drafts, maintainer proofs), "With love and thanks" acknowledgment, expanded screen-off animations section, pinned tested firmware range (1.9.x only, maintainer device only), loud revert-first install callout.
 - **`SCREENSAVER-README.md` screenshot tables fully rebuilt** to match current `docs/screenshots/` contents: 5 theme heroes, common toggles, Matrix/Starfield/Minimal/Analog/TV Static settings tables (21 sub-pages total), Power saving → Screen off animations settings page + 9 textual style descriptions.
 
-## v1.2.1 — 2026-04-13 — drop displayOff gate from running binding (fixes wake-black)
+## <a id="v121"></a>v1.2.1 — 2026-04-13 — drop displayOff gate from running binding (fixes wake-black)
 
 ### Fixed
 - **Matrix and Starfield rain going black on wake** from any screen-off animation cycle. Root cause was a `running: visible && !isClosing && !displayOff` binding race: on wake, `setRunning(false) → setRunning(true)` fired in the same QML tick as `cancelScreenOffEffect` and `setSpeed`, and Qt does not guarantee binding / notifier / onChanged ordering. The race left the scene graph's first post-wake `updatePaintNode()` submitting an empty geometry node. Fix: drop `!displayOff` from the binding — the sim ticks through display-off at near-zero cost because Qt stops compositing when the display is off.
@@ -744,7 +658,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 ### Removed
 - **Matrix theme-native cascade animation.** Matrix now falls through to the shared `ScreenOffOverlay` styles same as Starfield and Minimal. The Matrix shutdown animation settings section is gone.
 
-## v1.2.0 — 2026-04-13 — runtime slider wiring + tap master toggle
+## <a id="v120"></a>v1.2.0 — 2026-04-13 — runtime slider wiring + tap master toggle
 
 ### Fixed
 - **Matrix animation speed, density, trail length, fade, and color sliders silently having no effect on the live rain.** Root cause: a signal-to-signal `connect` in `ScreensaverConfig`'s ctor didn't route through correctly because the raw `matrix*Changed` signals were declared via macro while the transformed `*Changed` signals were in a separate manual `signals:` block — Qt's MOC + QML binding engine don't trace indirect signal chains. Fixed with the canonical Qt dual-emit pattern: hand-written setters emit both the raw and the transformed NOTIFY signal directly.
@@ -757,7 +671,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 # Upstream Unfolded Circle releases
 
-## v0.71.1 - 2026-03-19
+## <a id="v0711"></a>v0.71.1 - 2026-03-19
 ### Fixed
 - Adjust color contrast
 - Show play indication
@@ -766,7 +680,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Close media browser after starting
 
 ---
-## v0.71.0 - 2026-03-18
+## <a id="v0710"></a>v0.71.0 - 2026-03-18
 ### Added
 - Download progress for software updates
 - Media browsing and search
@@ -774,12 +688,12 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Option to set coverflow as the default view
 
 ---
-## v0.70.1 - 2026-02-24
+## <a id="v0701"></a>v0.70.1 - 2026-02-24
 ### Added
 - Log messages for software update process
 
 ---
-## v0.70.0 - 2026-02-16
+## <a id="v0700"></a>v0.70.0 - 2026-02-16
 ### Added
 - Show warning when activity ready check is disabled
 
@@ -787,7 +701,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Only check entities in activity on and off sequences
 
 ---
-## v0.69.0 - 2026-01-22
+## <a id="v0690"></a>v0.69.0 - 2026-01-22
 ### Added
 - Select entity and select widget support
 
@@ -796,33 +710,33 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Missing retry logic from activity power button mapping
 
 ---
-## v0.68.5 - 2026-01-15
+## <a id="v0685"></a>v0.68.5 - 2026-01-15
 ### Fixed
 - Entity state check before starting/stopping activities
 
 ---
-## v0.68.4 - 2026-01-14
+## <a id="v0684"></a>v0.68.4 - 2026-01-14
 ### Fixed
 - Button control not working when entity opened from an activity
 - Activity page indicator visible when activity in header is disabled
 
 ---
-## v0.68.3 - 2026-01-13
+## <a id="v0683"></a>v0.68.3 - 2026-01-13
 ### Fixed
 - Dropdown menu button control. Mainly present in activity included entities screen letting button presses through.
 
 ---
-## v0.68.2 - 2026-01-12
+## <a id="v0682"></a>v0.68.2 - 2026-01-12
 ### Fixed
 - Long press timer key tracking
 
 ---
-## v0.68.1 - 2026-01-11
+## <a id="v0681"></a>v0.68.1 - 2026-01-11
 ### Fixed
 - Media image not shown on page entity
 
 ---
-## v0.68.0 - 2026-01-09
+## <a id="v0680"></a>v0.68.0 - 2026-01-09
 ### Fixed
 - Button navigation sproadically stops working
 - Voice assistant listening animation still showed after error
@@ -833,13 +747,13 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Ignore button presses for unavailable entities
 
 ---
-## v0.67.0 - 2025-12-24
+## <a id="v0670"></a>v0.67.0 - 2025-12-24
 ### Fixed
 - Touch slider warning if entity is unavailable
 - Sensor widget shows wrong values in activity UI
 
 ---
-## v0.66.0 - 2025-12-19
+## <a id="v0660"></a>v0.66.0 - 2025-12-19
 ### Fixed
 - Same sensor value shown for all sensors
 - Customer sensor label shows "Custom"
@@ -856,12 +770,12 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Improved activity turn on/off after resume from system sleep
 
 ---
-## v0.65.10 - 2025-12-10
+## <a id="v06510"></a>v0.65.10 - 2025-12-10
 ### Fixed
 - Charging screen shown after reboot
 
 ---
-## v0.65.2 - 2025-12-05
+## <a id="v0652"></a>v0.65.2 - 2025-12-05
 ### Added
 - Voice Assistant support
 - Command retry after wakeup. Wakeup window is configurable in Power Saving settings.
@@ -873,29 +787,29 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Disable certificate validation for media image download
 
 ---
-## v0.64.4 - 2025-11-27
+## <a id="v0644"></a>v0.64.4 - 2025-11-27
 ### Fixed
 - Media image not loaded sproadically
 - Sensor value not shown within activity
 
 ---
-## v0.64.3 - 2025-11-23
+## <a id="v0643"></a>v0.64.3 - 2025-11-23
 ### Changed
 - Display brightness minimum value to 5%
 
 
 ---
-## v0.64.1 - 2025-11-21
+## <a id="v0641"></a>v0.64.1 - 2025-11-21
 ### Fixed
 - Only load media image when it has changed
 
 ---
-## v0.64.0 - 2025-11-18
+## <a id="v0640"></a>v0.64.0 - 2025-11-18
 ### Added
 - Touch slider configuration support
 
 ---
-## v0.63.0 - 2025-11-06
+## <a id="v0630"></a>v0.63.0 - 2025-11-06
 ### Added
 - Sensor widget support for activities
 - Notify before starting an activity if an integration is not ready
@@ -914,18 +828,18 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Popup menu trims text for long text items
 
 ---
-## v0.62.2 - 2025-09-26
+## <a id="v0622"></a>v0.62.2 - 2025-09-26
 ### Fixed
 - Popup menu button handling
 
 ---
-## v0.62.0 - 2025-09-23
+## <a id="v0620"></a>v0.62.0 - 2025-09-23
 ### Changed
 - Reload entity data when entering UI screen
 - Update method for loading button mapping
 
 ---
-## v0.61.0 - 2025-09-22
+## <a id="v0610"></a>v0.61.0 - 2025-09-22
 ### Changed
 - Starting an activity from another activity will open the new activity's UI
 
@@ -934,7 +848,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Show loading icon next to WiFi networks, when connecting
 
 ---
-## v0.60.1 - 2025-09-19
+## <a id="v0601"></a>v0.60.1 - 2025-09-19
 ### Added
 - Binary sensor support
 
@@ -945,7 +859,7 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - WiFi settings menu
 
 ---
-## v0.59.0 - 2025-09-12
+## <a id="v0590"></a>v0.59.0 - 2025-09-12
 ### Fixed
 - Repeat command handling, do not wait for ack
 
@@ -953,25 +867,25 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Repeat count increased to 4
 
 ---
-## v0.58.3 - 2025-08-27
+## <a id="v0583"></a>v0.58.3 - 2025-08-27
 ### Fixed
 - QR code in pull-down menu and during onboarding
 - Popup menu closed when home button released when it has opened
 
 ---
-## v0.58.2 - 2025-08-26
+## <a id="v0582"></a>v0.58.2 - 2025-08-26
 ### Fixed
 - QR code in pull-down menu and during onboarding
 - Popup menu closed when home button released when it has opened
 
 ---
-## v0.58.0 - 2025-08-25
+## <a id="v0580"></a>v0.58.0 - 2025-08-25
 ### Fixed
 - QR code in pull-down menu and during onboarding
 - Popup menu closed when home button released when it has opened
 
 ---
-## v0.57.0 - 2025-08-18
+## <a id="v0570"></a>v0.57.0 - 2025-08-18
 ### Fixed
 - Language text logic
 - High power consumption when display is off
@@ -980,39 +894,39 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Renamed media image fill option
 
 ---
-## v0.56.4 - 2025-08-05
+## <a id="v0564"></a>v0.56.4 - 2025-08-05
 ### Fixed
 - High CPU consumption in low power mode
 
 ---
-## v0.56.3 - 2025-08-03
+## <a id="v0563"></a>v0.56.3 - 2025-08-03
 ### Fixed
 - Wifi scan interval slider range
 
 ---
-## v0.56.2 - 2025-08-02
+## <a id="v0562"></a>v0.56.2 - 2025-08-02
 ### Fixed
 - High CPU consumption while loading animation is running
 
 ---
-## v0.56.0 - 2025-07-24
+## <a id="v0560"></a>v0.56.0 - 2025-07-24
 ### Added
 - WiFi band selection
 - WiFi scan interval config option
 
 ---
-## v0.55.1 - 2025-07-04
+## <a id="v0551"></a>v0.55.1 - 2025-07-04
 ### Fixed
 - Incorrect dock image shown
 - Dock discovery help text
 
 ---
-## v0.54.10 - 2025-06-06
+## <a id="v05410"></a>v0.54.10 - 2025-06-06
 ### Fixed
 - Bug in repeat logic
 
 ---
-## v0.54.9 - 2025-05-27
+## <a id="v0549"></a>v0.54.9 - 2025-05-27
 ### Fixed
 - Wifi icon size in known networks
 - Transparent media image when no media text is shown
@@ -1022,11 +936,11 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Touch slider not working with certain device classes
 
 ---
-## v0.54.5 - 2025-05-23
+## <a id="v0545"></a>v0.54.5 - 2025-05-23
 ### Fixed
 - Turn off menu only shows entities with on/off features available
 
-## v0.54.4 - 2025-05-19
+## <a id="v0544"></a>v0.54.4 - 2025-05-19
 ### Changed
 - Media type is displayed as string
 
@@ -1034,11 +948,11 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Record, Stop and Menu buttons not working on Remote 3
 - Icon shown under transparent media image
 
-## v0.54.2 - 2025-05-12
+## <a id="v0542"></a>v0.54.2 - 2025-05-12
 ### Fixed
 - Icon shown under transparent media image
 
-## v0.53.2 - 2025-04-06
+## <a id="v0532"></a>v0.53.2 - 2025-04-06
 ### Added
 - Option to fill available space for media player widget. Can be turned on in Settings / User interface.
 
@@ -1046,11 +960,11 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Activity list image and icon sizes
 - Media player widget shrinking
 
-## v0.50.2 - 2025-04-03
+## <a id="v0502"></a>v0.50.2 - 2025-04-03
 ### Fixed
 - Missing media player icon map
 
-## v0.50.0 - 2025-03-31
+## <a id="v0500"></a>v0.50.0 - 2025-03-31
 ### Added
 - Support for touch slider
 - Access profiles, Web Configurator and settings by pulling down the page
@@ -1062,11 +976,11 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 - Missing icons during dock discovery
 - Wrong remote name for Remote 3 during onboarding
 
-## v0.49.0 - 2024-02-11
+## <a id="v0490"></a>v0.49.0 - 2024-02-11
 ### Added
 - Option to show media widget as horizontal
 
-## v0.48.0 - 2024-01-17
+## <a id="v0480"></a>v0.48.0 - 2024-01-17
 ### Fixed
 - DPAD middle button behaviour on pages
 - Sizing of media player widget on activity UI pages. Very small media widget won't show progress bar and media information.

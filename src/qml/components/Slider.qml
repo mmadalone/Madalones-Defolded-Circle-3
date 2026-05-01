@@ -98,7 +98,14 @@ Slider {
         }
 
         Repeater {
-            model: slider.to - slider.from + 1
+            // Don't materialize the tick Rectangles when showTicks is false.
+            // The wrapping Row's `visible: showTicks` only gates rendering, not
+            // instantiation — without this gate the Repeater creates `to-from+1`
+            // tick Rectangles regardless. Power.qml's 100–5000 grace slider alone
+            // would create ~4900 invisible Rectangles, and the Row positioner's
+            // O(N²) reflow on each insert pushed Settings → Power's open time to
+            // ~70 s on UC3 ARM (v1.4.33 root cause).
+            model: showTicks ? (slider.to - slider.from + 1) : 0
 
             Rectangle {
                 width: 2
