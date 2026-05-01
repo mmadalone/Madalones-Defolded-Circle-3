@@ -54,6 +54,7 @@
   - `ButtonNavigation` for input handling (not raw `Keys.onPressed`).
   - `Popup` for overlays (not custom `Item` with manual z-ordering).
   - `Loader` for conditional components (not `visible: false` with full instantiation).
+    - For `Repeater` with a non-trivial range: gate the **model**, not the wrapper. Use `model: cond ? N : 0` — `Repeater.model` evaluates regardless of any enclosing `visible:` / `enabled:`. Wrapper visibility gates rendering, not delegate instantiation. Severity scales with `to − from`. (v1.4.33: a 100–5000 Slider tick `Repeater` gated only by `Row { visible: showTicks }` materialized ~4,901 invisible Rectangles + O(N²) Row positioner reflows → 70-sec Settings → Power open on UCR3.)
   - `EntityController.load()` → `onEntityLoaded` for entity access (not raw WebSocket).
 - **Prefer declarative property bindings over imperative JavaScript.** QML is a declarative language — use bindings for reactive UI updates. Use imperative JS only for complex logic that can't be expressed declaratively (multi-step calculations, network calls, state machine transitions). If a binding expression exceeds ~3 lines, extract it into a JS function — but the function should still *return* a value for binding, not imperatively set properties.
 
