@@ -1,3011 +1,4074 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!DOCTYPE TS>
 <TS version="2.1" language="pl" sourcelanguage="en">
-  <context>
+<context>
     <name>Abbreviation for not available</name>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="751"/>
-      <location filename="../../src/qml/components/Profile.qml" line="753"/>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="474"/>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="476"/>
-      <location filename="../../src/qml/components/docks/Info.qml" line="326"/>
-      <location filename="../../src/qml/components/docks/Info.qml" line="350"/>
-      <location filename="../../src/qml/components/entities/BaseSensorButton.qml" line="23"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Battery.qml" line="64"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Current.qml" line="65"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Custom.qml" line="40"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Energy.qml" line="64"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Humidity.qml" line="64"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Power.qml" line="64"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Temperature.qml" line="64"/>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Voltage.qml" line="64"/>
-      <source>N/A</source>
-      <translation type="unfinished">N/A</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="751"/>
+        <location filename="../../src/qml/components/Profile.qml" line="753"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="48"/>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="49"/>
+        <location filename="../../src/qml/components/SensorWidget.qml" line="60"/>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="474"/>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="476"/>
+        <location filename="../../src/qml/components/docks/Info.qml" line="326"/>
+        <location filename="../../src/qml/components/docks/Info.qml" line="350"/>
+        <location filename="../../src/qml/components/entities/BaseSensorButton.qml" line="23"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Battery.qml" line="63"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Current.qml" line="64"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Custom.qml" line="40"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Energy.qml" line="63"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Humidity.qml" line="63"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Power.qml" line="63"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Temperature.qml" line="63"/>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Voltage.qml" line="63"/>
+        <source>N/A</source>
+        <translation type="unfinished">N/A</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>Abbreviation for nothing is selected</name>
+    <message>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="60"/>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>About</name>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="57"/>
-      <source>Model number</source>
-      <translation>Numer modelu</translation>
+        <location filename="../../src/qml/settings/About.qml" line="57"/>
+        <source>Model number</source>
+        <translation>Numer modelu</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="65"/>
-      <source>Serial number</source>
-      <translation>Numer seryjny</translation>
+        <location filename="../../src/qml/settings/About.qml" line="65"/>
+        <source>Serial number</source>
+        <translation>Numer seryjny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="73"/>
-      <source>Revision</source>
-      <translation>Rewizja</translation>
+        <location filename="../../src/qml/settings/About.qml" line="73"/>
+        <source>Revision</source>
+        <translation>Rewizja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="81"/>
-      <source>Wi-Fi address</source>
-      <translation>Adres Wi-Fi</translation>
+        <location filename="../../src/qml/settings/About.qml" line="81"/>
+        <source>Wi-Fi address</source>
+        <translation>Adres Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="89"/>
-      <source>Bluetooth address</source>
-      <translation>Adres Bluetooth</translation>
+        <location filename="../../src/qml/settings/About.qml" line="89"/>
+        <source>Bluetooth address</source>
+        <translation>Adres Bluetooth</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="97"/>
-      <source>UI version</source>
-      <translation>Wersja UI</translation>
+        <location filename="../../src/qml/settings/About.qml" line="97"/>
+        <source>UI version</source>
+        <translation>Wersja UI</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="105"/>
-      <source>Core version</source>
-      <translation>Wersja Core</translation>
+        <location filename="../../src/qml/settings/About.qml" line="105"/>
+        <source>Core version</source>
+        <translation>Wersja Core</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="113"/>
-      <source>System version</source>
-      <translation>Wersja systemu</translation>
+        <location filename="../../src/qml/settings/About.qml" line="113"/>
+        <source>System version</source>
+        <translation>Wersja systemu</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="134"/>
-      <source>Regulatory</source>
-      <translation>Regulacje</translation>
+        <location filename="../../src/qml/settings/About.qml" line="134"/>
+        <source>Regulatory</source>
+        <translation>Regulacje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="138"/>
-      <source>Terms &amp; conditions</source>
-      <translation>Regulamin</translation>
+        <location filename="../../src/qml/settings/About.qml" line="138"/>
+        <source>Terms &amp; conditions</source>
+        <translation>Regulamin</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="142"/>
-      <source>Warranty information</source>
-      <translation>Informacje o gwarancji</translation>
+        <location filename="../../src/qml/settings/About.qml" line="142"/>
+        <source>Warranty information</source>
+        <translation>Informacje o gwarancji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/About.qml" line="146"/>
-      <source>Licenses</source>
-      <translation>Licencje</translation>
+        <location filename="../../src/qml/settings/About.qml" line="146"/>
+        <source>Licenses</source>
+        <translation>Licencje</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ActionableNotification</name>
     <message>
-      <location filename="../../src/qml/components/ActionableNotification.qml" line="174"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/ActionableNotification.qml" line="183"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Activity</name>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="271"/>
-      <source>Tap to close</source>
-      <extracomment>Tap to close menu or tap to see more</extracomment>
-      <translation>Dotknij, aby zamknąć</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
+        <source>Some devices are not ready</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="271"/>
-      <source>Tap for more</source>
-      <translation>Dotknij, aby zobaczyć więcej</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
+        <source>%1 is not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="408"/>
-      <source>Fix states</source>
-      <extracomment>Title referring to fixing device states that might out of sync</extracomment>
-      <translation>Napraw stany</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
+        <source>%1 are not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="429"/>
-      <source>Quickly access entities included in this activity:</source>
-      <translation>Szybki dostęp do encji w tej aktywności:</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="296"/>
+        <source>Proceed</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="470"/>
-      <source>Back</source>
-      <extracomment>Caption to go back</extracomment>
-      <translation>Wstecz</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="418"/>
+        <source>Tap to close</source>
+        <extracomment>Tap to close menu or tap to see more</extracomment>
+        <translation>Dotknij, aby zamknąć</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="510"/>
-      <source>Empty page</source>
-      <translation>Pusta strona</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="418"/>
+        <source>Tap for more</source>
+        <translation>Dotknij, aby zobaczyć więcej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="522"/>
-      <source>You can add UI elements via the Web Configurator</source>
-      <translation>Możesz dodać elementy UI za pomocą Web Configuratora</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="520"/>
+        <source>Fix states</source>
+        <extracomment>Title referring to fixing device states that might out of sync</extracomment>
+        <translation>Napraw stany</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="633"/>
-      <source>State: %1</source>
-      <extracomment>Device state</extracomment>
-      <translation>Stan: %1</translation>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="541"/>
+        <source>Quickly access entities included in this activity:</source>
+        <translation>Szybki dostęp do encji w tej aktywności:</translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="582"/>
+        <source>Back</source>
+        <extracomment>Caption to go back</extracomment>
+        <translation>Wstecz</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="622"/>
+        <source>Empty page</source>
+        <translation>Pusta strona</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="634"/>
+        <source>You can add UI elements via the Web Configurator</source>
+        <translation>Możesz dodać elementy UI za pomocą Web Configuratora</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/deviceclass/Activity.qml" line="745"/>
+        <source>State: %1</source>
+        <extracomment>Device state</extracomment>
+        <translation>Stan: %1</translation>
+    </message>
+</context>
+<context>
     <name>Activity state</name>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="36"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/activity.h" line="36"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="38"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/activity.h" line="38"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="40"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/activity.h" line="40"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="42"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/activity.h" line="42"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="44"/>
-      <source>Running</source>
-      <translation>Działa</translation>
+        <location filename="../../src/ui/entity/activity.h" line="44"/>
+        <source>Running</source>
+        <translation>Działa</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="46"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/ui/entity/activity.h" line="46"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/activity.h" line="48"/>
-      <source>Completed</source>
-      <translation>Ukończone</translation>
+        <location filename="../../src/ui/entity/activity.h" line="48"/>
+        <source>Completed</source>
+        <translation>Ukończone</translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/ui/entity/activity.h" line="50"/>
+        <source>Timeout</source>
+        <translation type="unfinished">Limit czasu</translation>
+    </message>
+</context>
+<context>
     <name>AddEntities</name>
     <message>
-      <location filename="../../src/qml/components/integrations/AddEntities.qml" line="70"/>
-      <source>Select entities to control with the remote</source>
-      <translation>Wybierz encje do sterowania pilotem</translation>
+        <location filename="../../src/qml/components/integrations/AddEntities.qml" line="70"/>
+        <source>Select entities to control with the remote</source>
+        <translation>Wybierz encje do sterowania pilotem</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/AddEntities.qml" line="92"/>
-      <source>Select entities</source>
-      <translation>Wybierz encje</translation>
+        <location filename="../../src/qml/components/integrations/AddEntities.qml" line="92"/>
+        <source>Select entities</source>
+        <translation>Wybierz encje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/AddEntities.qml" line="92"/>
-      <source>Please select entities to add by tapping in the list.</source>
-      <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
+        <location filename="../../src/qml/components/integrations/AddEntities.qml" line="92"/>
+        <source>Please select entities to add by tapping in the list.</source>
+        <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>AnalogSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="34"/>
+        <source>Shutdown hands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="39"/>
+        <source>Which hands animate when the display is about to turn off</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="63"/>
+        <source>All three hands</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/AnalogSettings.qml" line="64"/>
+        <source>Minute + hour only</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Base</name>
     <message>
-      <location filename="../../src/qml/components/entities/Base.qml" line="63"/>
-      <source>Activity error. Select option below.</source>
-      <translation>Błąd aktywności. Wybierz opcję poniżej.</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="74"/>
+        <source>Activity error. Select option below.</source>
+        <translation>Błąd aktywności. Wybierz opcję poniżej.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/Base.qml" line="66"/>
-      <source>Turn activity on</source>
-      <translation>Włącz aktywność</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="77"/>
+        <source>Turn activity on</source>
+        <translation>Włącz aktywność</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/Base.qml" line="73"/>
-      <source>Turn activity off</source>
-      <translation>Wyłącz aktywność</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="83"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="96"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="126"/>
+        <source>Some devices are not ready</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/Base.qml" line="84"/>
-      <source>is unavailable</source>
-      <translation>jest niedostępne</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="83"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="96"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="126"/>
+        <source>%1 is not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/Base.qml" line="234"/>
-      <location filename="../../src/qml/components/group/Base.qml" line="176"/>
-      <source>Profile is restricted</source>
-      <translation>Profil jest ograniczony</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="83"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="96"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="126"/>
+        <source>%1 are not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/Base.qml" line="228"/>
-      <source>%1 entity</source>
-      <extracomment>Tap and hold down to edit a group</extracomment>
-      <translation>%1 encja</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="83"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="96"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="143"/>
+        <source>Proceed</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/Base.qml" line="228"/>
-      <source>%1 entities</source>
-      <translation>%1 encje/encji</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="90"/>
+        <source>Turn activity off</source>
+        <translation>Wyłącz aktywność</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/help-overlay/Base.qml" line="54"/>
-      <source>Close</source>
-      <translation>Zamknij</translation>
+        <location filename="../../src/qml/components/entities/Base.qml" line="103"/>
+        <source>Open activity</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/components/entities/Base.qml" line="137"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="156"/>
+        <source>is unavailable</source>
+        <translation>jest niedostępne</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/Base.qml" line="309"/>
+        <location filename="../../src/qml/components/group/Base.qml" line="176"/>
+        <source>Profile is restricted</source>
+        <translation>Profil jest ograniczony</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/group/Base.qml" line="228"/>
+        <source>%1 entity</source>
+        <extracomment>Tap and hold down to edit a group</extracomment>
+        <translation>%1 encja</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/group/Base.qml" line="228"/>
+        <source>%1 entities</source>
+        <translation>%1 encje/encji</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/help-overlay/Base.qml" line="54"/>
+        <source>Close</source>
+        <translation>Zamknij</translation>
+    </message>
+</context>
+<context>
     <name>BaseDetail</name>
     <message>
-      <location filename="../../src/qml/components/entities/BaseDetail.qml" line="182"/>
-      <source>Entity unavailable</source>
-      <translation>Funkcja niedostępna</translation>
+        <location filename="../../src/qml/components/entities/BaseDetail.qml" line="387"/>
+        <source>Entity unavailable</source>
+        <translation>Funkcja niedostępna</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Battery</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Battery.qml" line="49"/>
-      <source>Battery</source>
-      <translation>Bateria</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Battery.qml" line="47"/>
+        <source>Battery</source>
+        <translation>Bateria</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>BatteryOverlay</name>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="36"/>
+        <source>100% - Fully charged</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="38"/>
+        <source>%1% - Charging</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/overlays/BatteryOverlay.qml" line="39"/>
+        <source>%1%</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Binary sensor state battery</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="141"/>
-      <source>Normal</source>
-      <translation type="unfinished">Normal</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="141"/>
+        <source>Normal</source>
+        <translation type="unfinished">Normal</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="200"/>
-      <source>Low</source>
-      <translation type="unfinished">Low</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="200"/>
+        <source>Low</source>
+        <translation type="unfinished">Low</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state battery_charging</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="143"/>
-      <source>Charging</source>
-      <translation type="unfinished">Charging</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="143"/>
+        <source>Charging</source>
+        <translation type="unfinished">Charging</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="202"/>
-      <source>Not charging</source>
-      <translation type="unfinished">Not charging</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="202"/>
+        <source>Not charging</source>
+        <translation type="unfinished">Not charging</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state cold</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="145"/>
-      <source>Cold</source>
-      <translation type="unfinished">Cold</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="145"/>
+        <source>Cold</source>
+        <translation type="unfinished">Cold</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="204"/>
-      <source>Normal</source>
-      <translation type="unfinished">Normal</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="204"/>
+        <source>Normal</source>
+        <translation type="unfinished">Normal</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state connectivity</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="147"/>
-      <source>Connected</source>
-      <translation type="unfinished">Connected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="147"/>
+        <source>Connected</source>
+        <translation type="unfinished">Connected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="206"/>
-      <source>Disconnected</source>
-      <translation type="unfinished">Disconnected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="206"/>
+        <source>Disconnected</source>
+        <translation type="unfinished">Disconnected</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state door</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="150"/>
-      <source>Opened</source>
-      <translation type="unfinished">Opened</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="150"/>
+        <source>Opened</source>
+        <translation type="unfinished">Opened</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="209"/>
-      <source>Closed</source>
-      <translation type="unfinished">Closed</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="209"/>
+        <source>Closed</source>
+        <translation type="unfinished">Closed</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state gas</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="153"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="153"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="212"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="212"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state heat</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="155"/>
-      <source>Hot</source>
-      <translation type="unfinished">Hot</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="155"/>
+        <source>Hot</source>
+        <translation type="unfinished">Hot</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="214"/>
-      <source>Normal</source>
-      <translation type="unfinished">Normal</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="214"/>
+        <source>Normal</source>
+        <translation type="unfinished">Normal</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state light</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="157"/>
-      <source>Light detected</source>
-      <translation type="unfinished">Light detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="157"/>
+        <source>Light detected</source>
+        <translation type="unfinished">Light detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="216"/>
-      <source>No light</source>
-      <translation type="unfinished">No light</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="216"/>
+        <source>No light</source>
+        <translation type="unfinished">No light</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state lock</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="159"/>
-      <source>Unlocked</source>
-      <translation type="unfinished">Unlocked</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="159"/>
+        <source>Unlocked</source>
+        <translation type="unfinished">Unlocked</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="218"/>
-      <source>Locked</source>
-      <translation type="unfinished">Locked</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="218"/>
+        <source>Locked</source>
+        <translation type="unfinished">Locked</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state moisture</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="161"/>
-      <source>Wet</source>
-      <translation type="unfinished">Wet</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="161"/>
+        <source>Wet</source>
+        <translation type="unfinished">Wet</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="220"/>
-      <source>Dry</source>
-      <translation type="unfinished">Dry</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="220"/>
+        <source>Dry</source>
+        <translation type="unfinished">Dry</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state motion</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="163"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="163"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="222"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="222"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state moving</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="165"/>
-      <source>Moving</source>
-      <translation type="unfinished">Moving</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="165"/>
+        <source>Moving</source>
+        <translation type="unfinished">Moving</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="224"/>
-      <source>Not moving</source>
-      <translation type="unfinished">Not moving</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="224"/>
+        <source>Not moving</source>
+        <translation type="unfinished">Not moving</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state occupancy</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="167"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="167"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="226"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="226"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state opening</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="169"/>
-      <source>Open</source>
-      <translation type="unfinished">Open</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="169"/>
+        <source>Open</source>
+        <translation type="unfinished">Open</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="228"/>
-      <source>Closed</source>
-      <translation type="unfinished">Closed</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="228"/>
+        <source>Closed</source>
+        <translation type="unfinished">Closed</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state plug</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="171"/>
-      <source>Plugged in</source>
-      <translation type="unfinished">Plugged in</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="171"/>
+        <source>Plugged in</source>
+        <translation type="unfinished">Plugged in</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="230"/>
-      <source>Unplugged</source>
-      <translation type="unfinished">Unplugged</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="230"/>
+        <source>Unplugged</source>
+        <translation type="unfinished">Unplugged</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state power</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="173"/>
-      <source>On</source>
-      <translation type="unfinished">On</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="173"/>
+        <source>On</source>
+        <translation type="unfinished">On</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="232"/>
-      <source>Off</source>
-      <translation type="unfinished">Off</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="232"/>
+        <source>Off</source>
+        <translation type="unfinished">Off</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state presence</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="175"/>
-      <source>Home</source>
-      <translation type="unfinished">Home</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="175"/>
+        <source>Home</source>
+        <translation type="unfinished">Home</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="234"/>
-      <source>Not home</source>
-      <translation type="unfinished">Not home</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="234"/>
+        <source>Not home</source>
+        <translation type="unfinished">Not home</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state problem</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="177"/>
-      <source>Problem</source>
-      <translation type="unfinished">Problem</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="177"/>
+        <source>Problem</source>
+        <translation type="unfinished">Problem</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="236"/>
-      <source>Ok</source>
-      <translation type="unfinished">Ok</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="236"/>
+        <source>Ok</source>
+        <translation type="unfinished">Ok</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state running</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="179"/>
-      <source>Running</source>
-      <translation type="unfinished">Running</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="179"/>
+        <source>Running</source>
+        <translation type="unfinished">Running</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="238"/>
-      <source>Not running</source>
-      <translation type="unfinished">Not running</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="238"/>
+        <source>Not running</source>
+        <translation type="unfinished">Not running</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state safety</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="181"/>
-      <source>Unsafe</source>
-      <translation type="unfinished">Unsafe</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="181"/>
+        <source>Unsafe</source>
+        <translation type="unfinished">Unsafe</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="240"/>
-      <source>Safe</source>
-      <translation type="unfinished">Safe</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="240"/>
+        <source>Safe</source>
+        <translation type="unfinished">Safe</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state smoke</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="183"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="183"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="242"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="242"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state sound</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="185"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="185"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="244"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="244"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state tamper</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="187"/>
-      <source>Tampering detected</source>
-      <translation type="unfinished">Tampering detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="187"/>
+        <source>Tampering detected</source>
+        <translation type="unfinished">Tampering detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="246"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="246"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state update</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="189"/>
-      <source>Update detected</source>
-      <translation type="unfinished">Update detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="189"/>
+        <source>Update detected</source>
+        <translation type="unfinished">Update detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="248"/>
-      <source>Up-to-date</source>
-      <translation type="unfinished">Up-to-date</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="248"/>
+        <source>Up-to-date</source>
+        <translation type="unfinished">Up-to-date</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state vibration</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="191"/>
-      <source>Detected</source>
-      <translation type="unfinished">Detected</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="191"/>
+        <source>Detected</source>
+        <translation type="unfinished">Detected</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="250"/>
-      <source>Clear</source>
-      <translation type="unfinished">Clear</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="250"/>
+        <source>Clear</source>
+        <translation type="unfinished">Clear</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state window</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="193"/>
-      <source>Open</source>
-      <translation type="unfinished">Open</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="193"/>
+        <source>Open</source>
+        <translation type="unfinished">Open</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="252"/>
-      <source>Closed</source>
-      <translation type="unfinished">Closed</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="252"/>
+        <source>Closed</source>
+        <translation type="unfinished">Closed</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Binary sensor state without device class</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="195"/>
-      <source>On</source>
-      <translation type="unfinished">On</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="195"/>
+        <source>On</source>
+        <translation type="unfinished">On</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="254"/>
-      <source>Off</source>
-      <translation type="unfinished">Off</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="254"/>
+        <source>Off</source>
+        <translation type="unfinished">Off</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Blind</name>
     <message>
-      <location filename="../../src/qml/components/entities/cover/deviceclass/Blind.qml" line="303"/>
-      <source>Stop</source>
-      <extracomment>Button caption to stop window blinds motion</extracomment>
-      <translation>Zatrzymaj</translation>
+        <location filename="../../src/qml/components/entities/cover/deviceclass/Blind.qml" line="303"/>
+        <source>Stop</source>
+        <extracomment>Button caption to stop window blinds motion</extracomment>
+        <translation>Zatrzymaj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Button state</name>
     <message>
-      <location filename="../../src/ui/entity/button.h" line="39"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/button.h" line="39"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/button.h" line="41"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/button.h" line="41"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/button.h" line="43"/>
-      <source>Available</source>
-      <translation>Dostępny</translation>
+        <location filename="../../src/ui/entity/button.h" line="43"/>
+        <source>Available</source>
+        <translation>Dostępny</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/button.h" line="45"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/button.h" line="45"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>ChaosSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="35"/>
+        <source>Chaos events</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="56"/>
+        <source>Frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="78"/>
+        <source>Intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="102"/>
+        <source>Surge (flash)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="117"/>
+        <source>Scramble (mutate)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="132"/>
+        <source>Freeze (stutter)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="148"/>
+        <source>Square burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="170"/>
+        <source>Square size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="194"/>
+        <source>Ripple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="218"/>
+        <source>Screen wipe</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="241"/>
+        <source>Scatter (burst)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="263"/>
+        <source>Scatter frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="285"/>
+        <source>Scatter trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Climate</name>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="346"/>
-      <source>Mode</source>
-      <extracomment>Climate device mode
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="21"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="346"/>
+        <source>Mode</source>
+        <extracomment>Climate device mode
 ----------
 Climate device state</extracomment>
-      <translation>Tryb</translation>
+        <translation>Tryb</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="27"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="328"/>
-      <source>Off</source>
-      <extracomment>Climate device state</extracomment>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="27"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="328"/>
+        <source>Off</source>
+        <extracomment>Climate device state</extracomment>
+        <translation>Wyłączone</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="38"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="331"/>
-      <source>Heat</source>
-      <extracomment>Climate device state</extracomment>
-      <translation>Ogrzewanie</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="38"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="331"/>
+        <source>Heat</source>
+        <extracomment>Climate device state</extracomment>
+        <translation>Ogrzewanie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="49"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="334"/>
-      <source>Cool</source>
-      <extracomment>Climate device state</extracomment>
-      <translation>Chłodzenie</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="49"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="334"/>
+        <source>Cool</source>
+        <extracomment>Climate device state</extracomment>
+        <translation>Chłodzenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="59"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="343"/>
-      <source>Auto</source>
-      <extracomment>Climate device state</extracomment>
-      <translation>Auto</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="59"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="343"/>
+        <source>Auto</source>
+        <extracomment>Climate device state</extracomment>
+        <translation>Auto</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="74"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="340"/>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="377"/>
-      <source>Fan</source>
-      <extracomment>Climate device state
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="74"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="340"/>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="377"/>
+        <source>Fan</source>
+        <extracomment>Climate device state
 ----------
 Climate fan</extracomment>
-      <translation>Wentylator</translation>
+        <translation>Wentylator</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="297"/>
-      <source>Current %1°</source>
-      <extracomment>Current temperature</extracomment>
-      <translation>Obecnie %1°</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="297"/>
+        <source>Current %1°</source>
+        <extracomment>Current temperature</extracomment>
+        <translation>Obecnie %1°</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="337"/>
-      <source>Heat/Cool</source>
-      <extracomment>Climate device state</extracomment>
-      <translation>Grzanie/chłodzenie</translation>
+        <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="337"/>
+        <source>Heat/Cool</source>
+        <extracomment>Climate device state</extracomment>
+        <translation>Grzanie/chłodzenie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Climate state</name>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="47"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/climate.h" line="47"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="49"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/climate.h" line="49"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="51"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/climate.h" line="51"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="53"/>
-      <source>Heat</source>
-      <translation>Ogrzewanie</translation>
+        <location filename="../../src/ui/entity/climate.h" line="53"/>
+        <source>Heat</source>
+        <translation>Ogrzewanie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="55"/>
-      <source>Cool</source>
-      <translation>Chłodzenie</translation>
+        <location filename="../../src/ui/entity/climate.h" line="55"/>
+        <source>Cool</source>
+        <translation>Chłodzenie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="57"/>
-      <source>Heat/Cool</source>
-      <translation>Grzanie/chłodzenie</translation>
+        <location filename="../../src/ui/entity/climate.h" line="57"/>
+        <source>Heat/Cool</source>
+        <translation>Grzanie/chłodzenie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="59"/>
-      <source>Fan</source>
-      <translation>Wentylator</translation>
+        <location filename="../../src/ui/entity/climate.h" line="59"/>
+        <source>Fan</source>
+        <translation>Wentylator</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/climate.h" line="61"/>
-      <source>Auto</source>
-      <translation>Auto</translation>
+        <location filename="../../src/ui/entity/climate.h" line="61"/>
+        <source>Auto</source>
+        <translation>Auto</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Color</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Color.qml" line="63"/>
-      <source>Adjust the color tone of the user interface. Using the sliders, choose a color. The user interface colors will be generated based on that color.</source>
-      <translation>Dostosuj kolorystykę interfejsu. Wybierz kolor, używając suwaków. Kolory interfejsu będą generowane na podstawie tego koloru.</translation>
+        <location filename="../../src/qml/settings/settings/Color.qml" line="63"/>
+        <source>Adjust the color tone of the user interface. Using the sliders, choose a color. The user interface colors will be generated based on that color.</source>
+        <translation>Dostosuj kolorystykę interfejsu. Wybierz kolor, używając suwaków. Kolory interfejsu będą generowane na podstawie tego koloru.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Color.qml" line="149"/>
-      <source>This is a darker text, in a darker container</source>
-      <translation>To jest ciemniejszy tekst, w ciemniejszym kontenerze</translation>
+        <location filename="../../src/qml/settings/settings/Color.qml" line="149"/>
+        <source>This is a darker text, in a darker container</source>
+        <translation>To jest ciemniejszy tekst, w ciemniejszym kontenerze</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Color.qml" line="157"/>
-      <source>Button</source>
-      <extracomment>Caption for a sample button</extracomment>
-      <translation>Przycisk</translation>
+        <location filename="../../src/qml/settings/settings/Color.qml" line="157"/>
+        <source>Button</source>
+        <extracomment>Caption for a sample button</extracomment>
+        <translation>Przycisk</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Color.qml" line="180"/>
-      <source>Main text color</source>
-      <translation>Główny kolor tekstu</translation>
+        <location filename="../../src/qml/settings/settings/Color.qml" line="180"/>
+        <source>Main text color</source>
+        <translation>Główny kolor tekstu</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>CommonToggles</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="38"/>
+        <source>Show clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="64"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="507"/>
+        <source>Charging only</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="84"/>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="121"/>
+        <source>Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="236"/>
+        <source>Size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="258"/>
+        <source>24-hour clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="279"/>
+        <source>Show date</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="299"/>
+        <source>Date size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="319"/>
+        <source>Date color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="434"/>
+        <source>Position</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="478"/>
+        <source>Show battery</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/CommonToggles.qml" line="530"/>
+        <source>Text size</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Configure</name>
     <message>
-      <location filename="../../src/qml/components/integrations/Configure.qml" line="142"/>
-      <source>By %1</source>
-      <extracomment>Integration driver developer name</extracomment>
-      <translation>Autor: %1</translation>
+        <location filename="../../src/qml/components/integrations/Configure.qml" line="142"/>
+        <source>By %1</source>
+        <extracomment>Integration driver developer name</extracomment>
+        <translation>Autor: %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="152"/>
-      <source>Name</source>
-      <translation>Nazwa</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="152"/>
+        <source>Name</source>
+        <translation>Nazwa</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="212"/>
-      <source>Required</source>
-      <translation>Wymagane</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="212"/>
+        <source>Required</source>
+        <translation>Wymagane</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="186"/>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="212"/>
-      <source>Optional</source>
-      <translation>Opcjonalne</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="186"/>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="212"/>
+        <source>Optional</source>
+        <translation>Opcjonalne</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="175"/>
-      <source>Password</source>
-      <translation>Hasło</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="175"/>
+        <source>Password</source>
+        <translation>Hasło</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="225"/>
-      <source>Add WiFi network</source>
-      <translation>Dodaj sieć Wi-Fi</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="225"/>
+        <source>Add WiFi network</source>
+        <translation>Dodaj sieć Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="260"/>
-      <source>Selected WiFi network</source>
-      <translation>Wybrana sieć Wi-Fi</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="260"/>
+        <source>Selected WiFi network</source>
+        <translation>Wybrana sieć Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="335"/>
-      <location filename="../../src/qml/components/integrations/Configure.qml" line="169"/>
-      <source>Next</source>
-      <translation>Dalej</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="335"/>
+        <location filename="../../src/qml/components/integrations/Configure.qml" line="169"/>
+        <source>Next</source>
+        <translation>Dalej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="375"/>
-      <source>Select WiFi network</source>
-      <translation>Wybierz sieć Wi-Fi</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="375"/>
+        <source>Select WiFi network</source>
+        <translation>Wybierz sieć Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Configure.qml" line="325"/>
-      <location filename="../../src/qml/components/integrations/Configure.qml" line="191"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/docks/Configure.qml" line="325"/>
+        <location filename="../../src/qml/components/integrations/Configure.qml" line="191"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ConnectionStatus</name>
     <message>
-      <location filename="../../src/qml/components/ConnectionStatus.qml" line="84"/>
-      <source>Connection status</source>
-      <extracomment>Headline for showing integration connection statuses</extracomment>
-      <translation>Stan połączenia</translation>
+        <location filename="../../src/qml/components/ConnectionStatus.qml" line="84"/>
+        <source>Connection status</source>
+        <extracomment>Headline for showing integration connection statuses</extracomment>
+        <translation>Stan połączenia</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ConnectionStatus.qml" line="132"/>
-      <source>No connection errors</source>
-      <translation>Brak błędów połączenia</translation>
+        <location filename="../../src/qml/components/ConnectionStatus.qml" line="132"/>
+        <source>No connection errors</source>
+        <translation>Brak błędów połączenia</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Country</name>
     <message>
-      <location filename="../../src/qml/onboarding/Country.qml" line="100"/>
-      <source>Select country</source>
-      <translation>Wybierz kraj</translation>
+        <location filename="../../src/qml/onboarding/Country.qml" line="100"/>
+        <source>Select country</source>
+        <translation>Wybierz kraj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Cover state</name>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="39"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/cover.h" line="39"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="41"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/cover.h" line="41"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="43"/>
-      <source>Opening</source>
-      <translation>Otwieranie</translation>
+        <location filename="../../src/ui/entity/cover.h" line="43"/>
+        <source>Opening</source>
+        <translation>Otwieranie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="45"/>
-      <source>Open</source>
-      <translation>Otwarto</translation>
+        <location filename="../../src/ui/entity/cover.h" line="45"/>
+        <source>Open</source>
+        <translation>Otwarto</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="47"/>
-      <source>Closing</source>
-      <translation>Zamykanie</translation>
+        <location filename="../../src/ui/entity/cover.h" line="47"/>
+        <source>Closing</source>
+        <translation>Zamykanie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/cover.h" line="49"/>
-      <source>Closed</source>
-      <translation>Zamknięto</translation>
+        <location filename="../../src/ui/entity/cover.h" line="49"/>
+        <source>Closed</source>
+        <translation>Zamknięto</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Current</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Current.qml" line="50"/>
-      <source>Current</source>
-      <extracomment>Sensor entity: electrical current, e.g. &quot;12 ampere&quot;</extracomment>
-      <translation>Natężenie</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Current.qml" line="48"/>
+        <source>Current</source>
+        <extracomment>Sensor entity: electrical current, e.g. &quot;12 ampere&quot;</extracomment>
+        <translation>Natężenie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Curtain</name>
     <message>
-      <location filename="../../src/qml/components/entities/cover/deviceclass/Curtain.qml" line="368"/>
-      <source>Stop</source>
-      <extracomment>Button caption to stop window blinds motion</extracomment>
-      <translation>Zatrzymaj</translation>
+        <location filename="../../src/qml/components/entities/cover/deviceclass/Curtain.qml" line="368"/>
+        <source>Stop</source>
+        <extracomment>Button caption to stop window blinds motion</extracomment>
+        <translation>Zatrzymaj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>DirectionGlitchSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="41"/>
+        <source>Direction change</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="65"/>
+        <source>Frequency</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="88"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="111"/>
+        <source>Glitch directions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="186"/>
+        <source>Trail fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="208"/>
+        <source>Trail speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml" line="232"/>
+        <source>Random color</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Discovery</name>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="104"/>
-      <source>Bluetooth is disabled. Discovery limited to network only.</source>
-      <translation>Bluetooth jest wyłączony. Wykrywanie ograniczone tylko do sieci.</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="104"/>
+        <source>Bluetooth is disabled. Discovery limited to network only.</source>
+        <translation>Bluetooth jest wyłączony. Wykrywanie ograniczone tylko do sieci.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="116"/>
-      <source>Bluetooth</source>
-      <translation>Bluetooth</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="116"/>
+        <source>Bluetooth</source>
+        <translation>Bluetooth</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="135"/>
-      <source>Tap discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.</source>
-      <translation type="unfinished">Tap discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="135"/>
+        <source>Tap discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.</source>
+        <translation type="unfinished">Tap discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="151"/>
-      <source>Discover</source>
-      <translation>Odkryj</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="151"/>
+        <source>Discover</source>
+        <translation>Odkryj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="164"/>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="248"/>
-      <source>Skip</source>
-      <translation>Pomiń</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="164"/>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="248"/>
+        <source>Skip</source>
+        <translation>Pomiń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="197"/>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="227"/>
-      <location filename="../../src/qml/components/integrations/Discovery.qml" line="85"/>
-      <location filename="../../src/qml/components/integrations/Discovery.qml" line="115"/>
-      <source>Discovering</source>
-      <extracomment>Title for searching for integrations to setup</extracomment>
-      <translation>Wykrywanie</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="197"/>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="227"/>
+        <location filename="../../src/qml/components/integrations/Discovery.qml" line="85"/>
+        <location filename="../../src/qml/components/integrations/Discovery.qml" line="115"/>
+        <source>Discovering</source>
+        <extracomment>Title for searching for integrations to setup</extracomment>
+        <translation>Wykrywanie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Discovery.qml" line="232"/>
-      <source>%1 dock(s) found</source>
-      <translation>Znaleziono stacji dokujących: %1</translation>
+        <location filename="../../src/qml/components/docks/Discovery.qml" line="232"/>
+        <source>%1 dock(s) found</source>
+        <translation>Znaleziono stacji dokujących: %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Discovery.qml" line="120"/>
-      <source>%1 integration(s) found</source>
-      <translation>Znaleziono %1 integracji</translation>
+        <location filename="../../src/qml/components/integrations/Discovery.qml" line="120"/>
+        <source>%1 integration(s) found</source>
+        <translation>Znaleziono %1 integracji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Discovery.qml" line="139"/>
-      <source>Integrations may require the Web Configurator for setup.</source>
-      <translation>Integracje mogą wymagać konfiguratora sieciowego dla konfiguracji.</translation>
+        <location filename="../../src/qml/components/integrations/Discovery.qml" line="139"/>
+        <source>Integrations may require the Web Configurator for setup.</source>
+        <translation>Integracje mogą wymagać konfiguratora sieciowego dla konfiguracji.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Discovery.qml" line="214"/>
-      <source>By %1</source>
-      <extracomment>Integration driver developer name</extracomment>
-      <translation>Autor: %1</translation>
+        <location filename="../../src/qml/components/integrations/Discovery.qml" line="214"/>
+        <source>By %1</source>
+        <extracomment>Integration driver developer name</extracomment>
+        <translation>Autor: %1</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Display</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="65"/>
-      <source>Auto brightness</source>
-      <extracomment>Title for indication of auto brightness functionality</extracomment>
-      <translation>Automatyczna jasność</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="65"/>
+        <source>Auto brightness</source>
+        <extracomment>Title for indication of auto brightness functionality</extracomment>
+        <translation>Automatyczna jasność</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="91"/>
-      <source>Automatically adjust the display brightness based on ambient lighting conditions.</source>
-      <translation>Automatycznie dostosuj jasność wyświetlacza zależnie do warunków oświetlenia otoczenia.</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="91"/>
+        <source>Automatically adjust the display brightness based on ambient lighting conditions.</source>
+        <translation>Automatycznie dostosuj jasność wyświetlacza zależnie do warunków oświetlenia otoczenia.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="113"/>
-      <source>Display brightness</source>
-      <translation>Jasność wyświetlacza</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="113"/>
+        <source>Display brightness</source>
+        <translation>Jasność wyświetlacza</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="165"/>
-      <source>Button backlight</source>
-      <extracomment>Title for button backlight functionality</extracomment>
-      <translation>Podświetlenie przycisku</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="165"/>
+        <source>Button backlight</source>
+        <extracomment>Title for button backlight functionality</extracomment>
+        <translation>Podświetlenie przycisku</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="188"/>
-      <source>When on, button backlight will automatically turn on in a dark room.</source>
-      <translation>Kiedy aktywne, podświetlenie przycisków zostanie włączone automatycznie w ciemnym pomieszczeniu.</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="188"/>
+        <source>When on, button backlight will automatically turn on in a dark room.</source>
+        <translation>Kiedy aktywne, podświetlenie przycisków zostanie włączone automatycznie w ciemnym pomieszczeniu.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Display.qml" line="210"/>
-      <source>Button backlight brightness</source>
-      <translation>Jasność podświetlenia przycisku</translation>
+        <location filename="../../src/qml/settings/settings/Display.qml" line="210"/>
+        <source>Button backlight brightness</source>
+        <translation>Jasność podświetlenia przycisku</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Dock</name>
     <message>
-      <location filename="../../src/qml/onboarding/Dock.qml" line="29"/>
-      <source>Dock setup</source>
-      <extracomment>Smart charging dock</extracomment>
-      <translation>Konfiguracja stacji dokującej</translation>
+        <location filename="../../src/qml/onboarding/Dock.qml" line="29"/>
+        <source>Dock setup</source>
+        <extracomment>Smart charging dock</extracomment>
+        <translation>Konfiguracja stacji dokującej</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Docks</name>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="68"/>
-      <location filename="../../src/qml/settings/Docks.qml" line="69"/>
-      <source>Add a new dock</source>
-      <translation>Dodaj nową stację dokującą</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="68"/>
+        <location filename="../../src/qml/settings/Docks.qml" line="69"/>
+        <source>Add a new dock</source>
+        <translation>Dodaj nową stację dokującą</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="368"/>
-      <source>Active</source>
-      <translation>Aktywny</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="368"/>
+        <source>Active</source>
+        <translation>Aktywny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="370"/>
-      <source>Connecting</source>
-      <translation>Łączenie</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="370"/>
+        <source>Connecting</source>
+        <translation>Łączenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="372"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="372"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="374"/>
-      <source>Idle</source>
-      <translation>Bezczynny</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="374"/>
+        <source>Idle</source>
+        <translation>Bezczynny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="376"/>
-      <source>Reconnecting</source>
-      <translation>Ponowne połączenie</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="376"/>
+        <source>Reconnecting</source>
+        <translation>Ponowne połączenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="389"/>
-      <source>Something is wrong</source>
-      <translation>Coś poszło nie tak</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="389"/>
+        <source>Something is wrong</source>
+        <translation>Coś poszło nie tak</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="403"/>
-      <source>Identify</source>
-      <translation>Identyfikuj</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="403"/>
+        <source>Identify</source>
+        <translation>Identyfikuj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Docks.qml" line="415"/>
-      <source>Connect</source>
-      <translation>Połącz</translation>
+        <location filename="../../src/qml/settings/Docks.qml" line="415"/>
+        <source>Connect</source>
+        <translation>Połącz</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Energy</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Energy.qml" line="49"/>
-      <source>Energy</source>
-      <translation>Energia</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Energy.qml" line="47"/>
+        <source>Energy</source>
+        <translation>Energia</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>EntityAdd</name>
     <message>
-      <location filename="../../src/qml/components/entities/EntityAdd.qml" line="17"/>
-      <source>Add entities</source>
-      <translation>Dodaj jednostki</translation>
+        <location filename="../../src/qml/components/entities/EntityAdd.qml" line="17"/>
+        <source>Add entities</source>
+        <translation>Dodaj jednostki</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityAdd.qml" line="37"/>
-      <source>Select entities</source>
-      <translation>Wybierz encje</translation>
+        <location filename="../../src/qml/components/entities/EntityAdd.qml" line="37"/>
+        <source>Select entities</source>
+        <translation>Wybierz encje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityAdd.qml" line="37"/>
-      <source>Please select entities to add by tapping in the list.</source>
-      <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
+        <location filename="../../src/qml/components/entities/EntityAdd.qml" line="37"/>
+        <source>Please select entities to add by tapping in the list.</source>
+        <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>EntityList</name>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="25"/>
-      <source>Add</source>
-      <translation>Dodaj</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="25"/>
+        <source>Add</source>
+        <translation>Dodaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="557"/>
-      <source>Select all</source>
-      <translation>Wybierz wszystkie</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="557"/>
+        <source>Select all</source>
+        <translation>Wybierz wszystkie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="143"/>
-      <source>Search</source>
-      <translation>Szukaj</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="143"/>
+        <source>Search</source>
+        <translation>Szukaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="268"/>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="557"/>
-      <source>Clear</source>
-      <translation>Wyczyść</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="268"/>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="557"/>
+        <source>Clear</source>
+        <translation>Wyczyść</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="279"/>
-      <source>Filters</source>
-      <translation>Filtry</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="279"/>
+        <source>Filters</source>
+        <translation>Filtry</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="297"/>
-      <source>Done</source>
-      <translation>Gotowe</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="297"/>
+        <source>Done</source>
+        <translation>Gotowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="331"/>
-      <source>Button</source>
-      <translation>Przycisk</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="331"/>
+        <source>Button</source>
+        <translation>Przycisk</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="337"/>
-      <source>Climate</source>
-      <translation>Klimat</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="337"/>
+        <source>Climate</source>
+        <translation>Klimat</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="343"/>
-      <source>Cover</source>
-      <translation>Osłona</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="343"/>
+        <source>Cover</source>
+        <translation>Osłona</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="349"/>
-      <source>Light</source>
-      <translation>Światło</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="349"/>
+        <source>Light</source>
+        <translation>Światło</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="355"/>
-      <source>Media player</source>
-      <translation>Odtwarzacz multimedialny</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="355"/>
+        <source>Media player</source>
+        <translation>Odtwarzacz multimedialny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="361"/>
-      <source>Sensor</source>
-      <translation>Czujnik</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="361"/>
+        <source>Sensor</source>
+        <translation>Czujnik</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="367"/>
-      <source>Switch</source>
-      <translation>Przełącznik</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="367"/>
+        <source>Switch</source>
+        <translation>Przełącznik</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="487"/>
-      <source>No entities</source>
-      <extracomment>No entities are in this list</extracomment>
-      <translation>Brak podmiotów</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="487"/>
+        <source>No entities</source>
+        <extracomment>No entities are in this list</extracomment>
+        <translation>Brak podmiotów</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityList.qml" line="619"/>
-      <source>Loading</source>
-      <extracomment>The application is loading</extracomment>
-      <translation>Ładowanie</translation>
+        <location filename="../../src/qml/components/entities/EntityList.qml" line="619"/>
+        <source>Loading</source>
+        <extracomment>The application is loading</extracomment>
+        <translation>Ładowanie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>EntityRename</name>
     <message>
-      <location filename="../../src/qml/components/entities/EntityRename.qml" line="119"/>
-      <source>Rename entity</source>
-      <translation>Zmień nazwę encji</translation>
+        <location filename="../../src/qml/components/entities/EntityRename.qml" line="119"/>
+        <source>Rename entity</source>
+        <translation>Zmień nazwę encji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityRename.qml" line="139"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/entities/EntityRename.qml" line="139"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/EntityRename.qml" line="150"/>
-      <source>Rename</source>
-      <extracomment>Label for button that will execute the action and rename the entity</extracomment>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/entities/EntityRename.qml" line="150"/>
+        <source>Rename</source>
+        <extracomment>Label for button that will execute the action and rename the entity</extracomment>
+        <translation>Zmień nazwę</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Finish</name>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="34"/>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="33"/>
-      <location filename="../../src/qml/onboarding/Finish.qml" line="19"/>
-      <source>You&apos;re all set</source>
-      <translation>Gotowe</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="34"/>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="33"/>
+        <location filename="../../src/qml/onboarding/Finish.qml" line="19"/>
+        <source>You&apos;re all set</source>
+        <translation>Gotowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="50"/>
-      <source>The integration has been added successfully.</source>
-      <translation>Integracja została dodana pomyślnie.</translation>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="50"/>
+        <source>The integration has been added successfully.</source>
+        <translation>Integracja została dodana pomyślnie.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="96"/>
-      <source>Version</source>
-      <translation>Wersja</translation>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="96"/>
+        <source>Version</source>
+        <translation>Wersja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="105"/>
-      <source>Developer</source>
-      <translation>Deweloper</translation>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="105"/>
+        <source>Developer</source>
+        <translation>Deweloper</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="117"/>
-      <source>Website</source>
-      <translation>Strona internetowa</translation>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="117"/>
+        <source>Website</source>
+        <translation>Strona internetowa</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="93"/>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="148"/>
-      <source>Oops</source>
-      <translation>Ups</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="93"/>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="148"/>
+        <source>Oops</source>
+        <translation>Ups</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="165"/>
-      <source>Something went wrong while setting up the integration.</source>
-      <translation>Coś poszło nie tak podczas konfigurowania integracji.</translation>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="165"/>
+        <source>Something went wrong while setting up the integration.</source>
+        <translation>Coś poszło nie tak podczas konfigurowania integracji.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="124"/>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="179"/>
-      <source>ERROR:</source>
-      <translation>BŁĄD:</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="124"/>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="179"/>
+        <source>ERROR:</source>
+        <translation>BŁĄD:</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="75"/>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="130"/>
-      <location filename="../../src/qml/onboarding/Finish.qml" line="261"/>
-      <source>Done</source>
-      <translation>Gotowe</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="75"/>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="130"/>
+        <location filename="../../src/qml/onboarding/Finish.qml" line="261"/>
+        <source>Done</source>
+        <translation>Gotowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="51"/>
-      <source>The dock has been added successfully.</source>
-      <translation>Dok został dodany pomyślnie.</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="51"/>
+        <source>The dock has been added successfully.</source>
+        <translation>Dok został dodany pomyślnie.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="64"/>
-      <source>%1 is ready to blast IR codes.</source>
-      <translation>%1 jest gotowy do nadawania kodów IR.</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="64"/>
+        <source>%1 is ready to blast IR codes.</source>
+        <translation>%1 jest gotowy do nadawania kodów IR.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="110"/>
-      <source>Something went wrong while setting up the dock.</source>
-      <translation>Coś poszło nie tak podczas ustawiania docku.</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="110"/>
+        <source>Something went wrong while setting up the dock.</source>
+        <translation>Coś poszło nie tak podczas ustawiania docku.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Finish.qml" line="148"/>
-      <location filename="../../src/qml/components/integrations/Finish.qml" line="208"/>
-      <source>Try again</source>
-      <translation>Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/docks/Finish.qml" line="148"/>
+        <location filename="../../src/qml/components/integrations/Finish.qml" line="208"/>
+        <source>Try again</source>
+        <translation>Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Finish.qml" line="35"/>
-      <source>You can add integrations or change configuration via the Web configurator.</source>
-      <translation>Możesz dodawać integracje lub zmieniać konfigurację za pomocą konfiguratora sieciowego.</translation>
+        <location filename="../../src/qml/onboarding/Finish.qml" line="35"/>
+        <source>You can add integrations or change configuration via the Web configurator.</source>
+        <translation>Możesz dodawać integracje lub zmieniać konfigurację za pomocą konfiguratora sieciowego.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Finish.qml" line="77"/>
-      <source>Web configurator enabled</source>
-      <translation>Web Configurator włączony</translation>
+        <location filename="../../src/qml/onboarding/Finish.qml" line="77"/>
+        <source>Web configurator enabled</source>
+        <translation>Web Configurator włączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Finish.qml" line="77"/>
-      <source>Web configurator disabled</source>
-      <translation>Web Configurator wyłączony</translation>
+        <location filename="../../src/qml/onboarding/Finish.qml" line="77"/>
+        <source>Web configurator disabled</source>
+        <translation>Web Configurator wyłączony</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Garage</name>
     <message>
-      <location filename="../../src/qml/components/entities/cover/deviceclass/Garage.qml" line="293"/>
-      <source>Stop</source>
-      <extracomment>Button caption to stop window blinds motion</extracomment>
-      <translation>Zatrzymaj</translation>
+        <location filename="../../src/qml/components/entities/cover/deviceclass/Garage.qml" line="293"/>
+        <source>Stop</source>
+        <extracomment>Button caption to stop window blinds motion</extracomment>
+        <translation>Zatrzymaj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>GeneralBehavior</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="37"/>
+        <source>Double-tap to close</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="65"/>
+        <source>Close on wake</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="94"/>
+        <source>DPAD interactive</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="119"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="204"/>
+        <source>Remember direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="145"/>
+        <source>Touchbar speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="172"/>
+        <source>Touch directions</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="191"/>
+        <source>Tap screen zones to change direction. Triple-tap center to close.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="230"/>
+        <source>Swipe speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="256"/>
+        <source>Idle screensaver</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="284"/>
+        <source>Idle timeout</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="313"/>
+        <source>Run after dismissal while docked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="319"/>
+        <source>Restart the screensaver after this many seconds of inactivity when on the dock.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="352"/>
+        <source>Atlas profiling overlay</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="370"/>
+        <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>GroupAdd</name>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="69"/>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="81"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="69"/>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="81"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="88"/>
-      <source>Group already exists</source>
-      <translation>Grupa już istnieje</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="88"/>
+        <source>Group already exists</source>
+        <translation>Grupa już istnieje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="163"/>
-      <source>Name your group</source>
-      <extracomment>Name for a group of entities</extracomment>
-      <translation>Nazwij swoją grupę</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="163"/>
+        <source>Name your group</source>
+        <extracomment>Name for a group of entities</extracomment>
+        <translation>Nazwij swoją grupę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="175"/>
-      <source>All lights</source>
-      <extracomment>Example for a group name</extracomment>
-      <translation>Wszystkie światła</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="175"/>
+        <source>All lights</source>
+        <extracomment>Example for a group name</extracomment>
+        <translation>Wszystkie światła</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="198"/>
-      <source>Next</source>
-      <translation>Dalej</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="198"/>
+        <source>Next</source>
+        <translation>Dalej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="188"/>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="404"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="188"/>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="404"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="223"/>
-      <source>Select entities to add</source>
-      <translation>Wybierz encje do dodania</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="223"/>
+        <source>Select entities to add</source>
+        <translation>Wybierz encje do dodania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="237"/>
-      <source>Search</source>
-      <translation>Szukaj</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="237"/>
+        <source>Search</source>
+        <translation>Szukaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="415"/>
-      <source>Add</source>
-      <extracomment>Button that will add the selected entities</extracomment>
-      <translation>Dodaj</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="415"/>
+        <source>Add</source>
+        <extracomment>Button that will add the selected entities</extracomment>
+        <translation>Dodaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="426"/>
-      <source>Select entities</source>
-      <translation>Wybierz encje</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="426"/>
+        <source>Select entities</source>
+        <translation>Wybierz encje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupAdd.qml" line="426"/>
-      <source>Please select entities to add by tapping in the list.</source>
-      <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
+        <location filename="../../src/qml/components/group/GroupAdd.qml" line="426"/>
+        <source>Please select entities to add by tapping in the list.</source>
+        <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>GroupEdit</name>
     <message>
-      <location filename="../../src/qml/components/group/GroupEdit.qml" line="164"/>
-      <source>Done</source>
-      <extracomment>Button caption</extracomment>
-      <translation>Gotowe</translation>
+        <location filename="../../src/qml/components/group/GroupEdit.qml" line="164"/>
+        <source>Done</source>
+        <extracomment>Button caption</extracomment>
+        <translation>Gotowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupEdit.qml" line="179"/>
-      <source>Add entities</source>
-      <translation>Dodaj jednostki</translation>
+        <location filename="../../src/qml/components/group/GroupEdit.qml" line="179"/>
+        <source>Add entities</source>
+        <translation>Dodaj jednostki</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupEdit.qml" line="195"/>
-      <source>Select entities</source>
-      <translation>Wybierz encje</translation>
+        <location filename="../../src/qml/components/group/GroupEdit.qml" line="195"/>
+        <source>Select entities</source>
+        <translation>Wybierz encje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupEdit.qml" line="195"/>
-      <source>Please select entities to add by tapping in the list.</source>
-      <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
+        <location filename="../../src/qml/components/group/GroupEdit.qml" line="195"/>
+        <source>Please select entities to add by tapping in the list.</source>
+        <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupEdit.qml" line="460"/>
-      <source>Add entity</source>
-      <translation>Dodaj funkcję</translation>
+        <location filename="../../src/qml/components/group/GroupEdit.qml" line="460"/>
+        <source>Add entity</source>
+        <translation>Dodaj funkcję</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>GroupRename</name>
     <message>
-      <location filename="../../src/qml/components/group/GroupRename.qml" line="119"/>
-      <source>Rename group</source>
-      <translation>Zmień nazwę grupy</translation>
+        <location filename="../../src/qml/components/group/GroupRename.qml" line="119"/>
+        <source>Rename group</source>
+        <translation>Zmień nazwę grupy</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupRename.qml" line="139"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/group/GroupRename.qml" line="139"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/group/GroupRename.qml" line="150"/>
-      <source>Rename</source>
-      <extracomment>Label for button that will execute the action and rename the group</extracomment>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/group/GroupRename.qml" line="150"/>
+        <source>Rename</source>
+        <extracomment>Label for button that will execute the action and rename the group</extracomment>
+        <translation>Zmień nazwę</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Humidity</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Humidity.qml" line="49"/>
-      <source>Humidity</source>
-      <translation>Wilgotność</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Humidity.qml" line="47"/>
+        <source>Humidity</source>
+        <translation>Wilgotność</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>IconSelector</name>
     <message>
-      <location filename="../../src/qml/components/IconSelector.qml" line="75"/>
-      <source>Select icon</source>
-      <translation>Wybierz ikonę</translation>
+        <location filename="../../src/qml/components/IconSelector.qml" line="75"/>
+        <source>Select icon</source>
+        <translation>Wybierz ikonę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/IconSelector.qml" line="105"/>
-      <source>Unfolded Icons</source>
-      <translation>Ikony Unfolded</translation>
+        <location filename="../../src/qml/components/IconSelector.qml" line="105"/>
+        <source>Unfolded Icons</source>
+        <translation>Ikony Unfolded</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/IconSelector.qml" line="125"/>
-      <source>Custom Icons</source>
-      <translation>Własne ikony</translation>
+        <location filename="../../src/qml/components/IconSelector.qml" line="125"/>
+        <source>Custom Icons</source>
+        <translation>Własne ikony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/IconSelector.qml" line="282"/>
-      <source>Close</source>
-      <translation>Zamknij</translation>
+        <location filename="../../src/qml/components/IconSelector.qml" line="282"/>
+        <source>Close</source>
+        <translation>Zamknij</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Info</name>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="148"/>
-      <source>External integration</source>
-      <translation>Integracja zewnętrzna</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="148"/>
+        <source>External integration</source>
+        <translation>Integracja zewnętrzna</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="148"/>
-      <source>Local integration</source>
-      <translation>Integracja lokalna</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="148"/>
+        <source>Local integration</source>
+        <translation>Integracja lokalna</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="268"/>
-      <source>Manage entities</source>
-      <translation>Zarządzaj funkcjami</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="268"/>
+        <source>Manage entities</source>
+        <translation>Zarządzaj funkcjami</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="286"/>
-      <source>configured entities</source>
-      <translation>skonfigurowanych encji</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="286"/>
+        <source>configured entities</source>
+        <translation>skonfigurowanych encji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="327"/>
-      <source>Connected</source>
-      <translation>Połączony</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="327"/>
+        <source>Connected</source>
+        <translation>Połączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="327"/>
-      <source>Disconnected</source>
-      <translation>Rozłączony</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="327"/>
+        <source>Disconnected</source>
+        <translation>Rozłączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="305"/>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="364"/>
-      <source>State</source>
-      <translation>Stan</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="305"/>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="364"/>
+        <source>State</source>
+        <translation>Stan</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="371"/>
-      <source>Enabled</source>
-      <translation>Włączony</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="371"/>
+        <source>Enabled</source>
+        <translation>Włączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="378"/>
-      <source>Id</source>
-      <translation>Id</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="378"/>
+        <source>Id</source>
+        <translation>Id</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="385"/>
-      <source>Version</source>
-      <translation>Wersja</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="385"/>
+        <source>Version</source>
+        <translation>Wersja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="392"/>
-      <source>Developer</source>
-      <translation>Deweloper</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="392"/>
+        <source>Developer</source>
+        <translation>Deweloper</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="400"/>
-      <source>Website</source>
-      <translation>Strona internetowa</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="400"/>
+        <source>Website</source>
+        <translation>Strona internetowa</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="558"/>
-      <source>Delete integration</source>
-      <translation>Usuń integrację</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="558"/>
+        <source>Delete integration</source>
+        <translation>Usuń integrację</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="592"/>
-      <source>Are you sure you want to delete the %1 integration?</source>
-      <translation>Czy na pewno chcesz usunąć integrację %1?</translation>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="592"/>
+        <source>Are you sure you want to delete the %1 integration?</source>
+        <translation>Czy na pewno chcesz usunąć integrację %1?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="241"/>
-      <source>Tap to edit name</source>
-      <translation>Dotknij, aby edytować nazwę</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="241"/>
+        <source>Tap to edit name</source>
+        <translation>Dotknij, aby edytować nazwę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="259"/>
-      <source>Something is wrong</source>
-      <translation>Coś poszło nie tak</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="259"/>
+        <source>Something is wrong</source>
+        <translation>Coś poszło nie tak</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="275"/>
-      <source>Identify</source>
-      <translation>Identyfikuj</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="275"/>
+        <source>Identify</source>
+        <translation>Identyfikuj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="287"/>
-      <source>Connect</source>
-      <translation>Połącz</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="287"/>
+        <source>Connect</source>
+        <translation>Połącz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="309"/>
-      <source>Active</source>
-      <translation>Aktywny</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="309"/>
+        <source>Active</source>
+        <translation>Aktywny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="311"/>
-      <source>Connecting</source>
-      <translation>Łączenie</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="311"/>
+        <source>Connecting</source>
+        <translation>Łączenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="313"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="313"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="315"/>
-      <source>Idle</source>
-      <translation>Bezczynny</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="315"/>
+        <source>Idle</source>
+        <translation>Bezczynny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="317"/>
-      <source>Reconnecting</source>
-      <translation>Ponowne połączenie</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="317"/>
+        <source>Reconnecting</source>
+        <translation>Ponowne połączenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="325"/>
-      <source>Connection type</source>
-      <translation>Rodzaj połączenia</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="325"/>
+        <source>Connection type</source>
+        <translation>Rodzaj połączenia</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="332"/>
-      <source>Service name</source>
-      <translation>Nazwa usługi</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="332"/>
+        <source>Service name</source>
+        <translation>Nazwa usługi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="340"/>
-      <source>Custom IP or URL</source>
-      <translation>Własne IP lub URL</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="340"/>
+        <source>Custom IP or URL</source>
+        <translation>Własne IP lub URL</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="341"/>
-      <source>Not set</source>
-      <translation>Nie ustawiono</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="341"/>
+        <source>Not set</source>
+        <translation>Nie ustawiono</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="349"/>
-      <source>Firmware version</source>
-      <translation>Wersja oprogramowania układowego</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="349"/>
+        <source>Firmware version</source>
+        <translation>Wersja oprogramowania układowego</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="376"/>
-      <source>Led brightness</source>
-      <translation>Jasność diody LED</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="376"/>
+        <source>Led brightness</source>
+        <translation>Jasność diody LED</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="411"/>
-      <source>Change password</source>
-      <translation>Zmień hasło</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="411"/>
+        <source>Change password</source>
+        <translation>Zmień hasło</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="447"/>
-      <source>Change WiFi settings</source>
-      <translation>Zmień ustawienia WiFi</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="447"/>
+        <source>Change WiFi settings</source>
+        <translation>Zmień ustawienia WiFi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="469"/>
-      <location filename="../../src/qml/components/docks/Info.qml" line="483"/>
-      <source>Factory reset</source>
-      <translation>Przywracanie ustawień fabrycznych</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="469"/>
+        <location filename="../../src/qml/components/docks/Info.qml" line="483"/>
+        <source>Factory reset</source>
+        <translation>Przywracanie ustawień fabrycznych</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="470"/>
-      <source>Are you sure you want to factory reset %1?</source>
-      <translation>Czy na pewno chcesz przywrócić ustawienia fabryczne %1?</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="470"/>
+        <source>Are you sure you want to factory reset %1?</source>
+        <translation>Czy na pewno chcesz przywrócić ustawienia fabryczne %1?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="476"/>
-      <source>Reset</source>
-      <translation>Zresetuj</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="476"/>
+        <source>Reset</source>
+        <translation>Zresetuj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="627"/>
-      <source>Delete dock</source>
-      <translation>Usuń stacje dokującą</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="627"/>
+        <source>Delete dock</source>
+        <translation>Usuń stacje dokującą</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="661"/>
-      <source>Are you sure you want to delete %1?</source>
-      <translation>Czy na pewno chcesz usunąć %1?</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="661"/>
+        <source>Are you sure you want to delete %1?</source>
+        <translation>Czy na pewno chcesz usunąć %1?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="680"/>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="611"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="680"/>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="611"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Info.qml" line="700"/>
-      <location filename="../../src/qml/components/integrations/Info.qml" line="631"/>
-      <source>Delete</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/components/docks/Info.qml" line="700"/>
+        <location filename="../../src/qml/components/integrations/Info.qml" line="631"/>
+        <source>Delete</source>
+        <translation>Usuń</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>InputField</name>
     <message>
-      <location filename="../../src/qml/components/InputField.qml" line="40"/>
-      <source>Input field is empty</source>
-      <translation>Pole wprowadzania danych jest puste</translation>
+        <location filename="../../src/qml/components/InputField.qml" line="40"/>
+        <source>Input field is empty</source>
+        <translation>Pole wprowadzania danych jest puste</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Integration</name>
     <message>
-      <location filename="../../src/qml/onboarding/Integration.qml" line="26"/>
-      <source>Integration setup</source>
-      <translation>Konfiguracja integracji</translation>
+        <location filename="../../src/qml/onboarding/Integration.qml" line="26"/>
+        <source>Integration setup</source>
+        <translation>Konfiguracja integracji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Integration.qml" line="44"/>
-      <source>Next</source>
-      <translation>Dalej</translation>
+        <location filename="../../src/qml/onboarding/Integration.qml" line="44"/>
+        <source>Next</source>
+        <translation>Dalej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Integration.qml" line="44"/>
-      <source>Skip</source>
-      <translation>Pomiń</translation>
+        <location filename="../../src/qml/onboarding/Integration.qml" line="44"/>
+        <source>Skip</source>
+        <translation>Pomiń</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Integrations</name>
     <message>
-      <location filename="../../src/qml/settings/Integrations.qml" line="303"/>
-      <source>Version: </source>
-      <translation>Wersja: </translation>
+        <location filename="../../src/qml/settings/Integrations.qml" line="303"/>
+        <source>Version: </source>
+        <translation>Wersja: </translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Integrations.qml" line="71"/>
-      <location filename="../../src/qml/settings/Integrations.qml" line="72"/>
-      <source>Add an integration</source>
-      <translation>Dodaj integrację</translation>
+        <location filename="../../src/qml/settings/Integrations.qml" line="71"/>
+        <location filename="../../src/qml/settings/Integrations.qml" line="72"/>
+        <source>Add an integration</source>
+        <translation>Dodaj integrację</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Language</name>
     <message>
-      <location filename="../../src/qml/onboarding/Language.qml" line="47"/>
-      <source>Select language</source>
-      <translation>Wybierz język</translation>
+        <location filename="../../src/qml/onboarding/Language.qml" line="47"/>
+        <source>Select language</source>
+        <translation>Wybierz język</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Light state</name>
     <message>
-      <location filename="../../src/ui/entity/light.h" line="67"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/light.h" line="67"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/light.h" line="69"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/light.h" line="69"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/light.h" line="71"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/light.h" line="71"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/light.h" line="73"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/light.h" line="73"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>LoadingScreen</name>
     <message>
-      <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="149"/>
-      <source>Tap to close</source>
-      <translation>Dotknij, aby zamknąć</translation>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="75"/>
+        <source>Sequence didn&apos;t finish within %1 seconds. Check configuration.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="391"/>
-      <source>Step %1/%2</source>
-      <extracomment>Indicating the activity steps</extracomment>
-      <translation>Krok %1/%2</translation>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="92"/>
+        <source>There was an error during the sequence.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="419"/>
-      <source>Delay %1 ms</source>
-      <extracomment>Current activity step is a delay of %1 miliseconds</extracomment>
-      <translation>Opóźnienie %1 ms</translation>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="95"/>
+        <source>The sequence timed out.</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="175"/>
+        <source>Tap to close</source>
+        <translation>Dotknij, aby zamknąć</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="428"/>
+        <source>Step %1/%2</source>
+        <extracomment>Indicating the activity steps</extracomment>
+        <translation>Krok %1/%2</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/LoadingScreen.qml" line="471"/>
+        <source>Delay %1 ms</source>
+        <extracomment>Current activity step is a delay of %1 miliseconds</extracomment>
+        <translation>Opóźnienie %1 ms</translation>
+    </message>
+</context>
+<context>
     <name>Localisation</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="72"/>
-      <source>Language</source>
-      <translation>Język</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="72"/>
+        <source>Language</source>
+        <translation>Język</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="93"/>
-      <source>Select language</source>
-      <translation>Wybierz język</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="93"/>
+        <source>Select language</source>
+        <translation>Wybierz język</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="147"/>
-      <source>Country</source>
-      <translation>Kraj</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="147"/>
+        <source>Country</source>
+        <translation>Kraj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="207"/>
-      <source>Select country</source>
-      <translation>Wybierz kraj</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="207"/>
+        <source>Select country</source>
+        <translation>Wybierz kraj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="262"/>
-      <source>Timezone</source>
-      <translation>Strefa czasowa</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="262"/>
+        <source>Timezone</source>
+        <translation>Strefa czasowa</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="291"/>
-      <source>Select timezone</source>
-      <translation>Wybierz strefę czasową</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="291"/>
+        <source>Select timezone</source>
+        <translation>Wybierz strefę czasową</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="348"/>
-      <source>24-hour time</source>
-      <extracomment>Title for indicating if 24h time visualisation is enabled</extracomment>
-      <translation>Czas 24-godzinny</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="348"/>
+        <source>24-hour time</source>
+        <extracomment>Title for indicating if 24h time visualisation is enabled</extracomment>
+        <translation>Czas 24-godzinny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="399"/>
-      <source>Unit System</source>
-      <extracomment>Like metric, imperial</extracomment>
-      <translation>System jednostek</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="399"/>
+        <source>Unit System</source>
+        <extracomment>Like metric, imperial</extracomment>
+        <translation>System jednostek</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Localisation.qml" line="411"/>
-      <source>Select unit system</source>
-      <translation>Wybierz system jednostek</translation>
+        <location filename="../../src/qml/settings/settings/Localisation.qml" line="411"/>
+        <source>Select unit system</source>
+        <translation>Wybierz system jednostek</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Macro state</name>
     <message>
-      <location filename="../../src/ui/entity/macro.h" line="36"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/macro.h" line="36"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/macro.h" line="38"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/macro.h" line="38"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/macro.h" line="40"/>
-      <source>Running</source>
-      <translation>Działa</translation>
+        <location filename="../../src/ui/entity/macro.h" line="40"/>
+        <source>Running</source>
+        <translation>Działa</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/macro.h" line="42"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/ui/entity/macro.h" line="42"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/macro.h" line="44"/>
-      <source>Completed</source>
-      <translation>Ukończone</translation>
+        <location filename="../../src/ui/entity/macro.h" line="44"/>
+        <source>Completed</source>
+        <translation>Ukończone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>MainContainer</name>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="49"/>
-      <source>Add entity</source>
-      <translation>Dodaj funkcję</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="53"/>
+        <source>Add entity</source>
+        <translation>Dodaj funkcję</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="57"/>
-      <source>Add group</source>
-      <translation>Dodaj grupę</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="61"/>
+        <source>Add group</source>
+        <translation>Dodaj grupę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="65"/>
-      <source>Reorder</source>
-      <translation>Przeorganizuj</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="69"/>
+        <source>Reorder</source>
+        <translation>Przeorganizuj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="71"/>
-      <source>Page is empty</source>
-      <translation>Strona jest pusta</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="75"/>
+        <source>Page is empty</source>
+        <translation>Strona jest pusta</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="71"/>
-      <source>There is nothing to reorder. Try adding entities or groups first.</source>
-      <translation>Nie ma nic do przeorganizowania. Spróbuj najpierw dodać funkcje lub grupy.</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="75"/>
+        <source>There is nothing to reorder. Try adding entities or groups first.</source>
+        <translation>Nie ma nic do przeorganizowania. Spróbuj najpierw dodać funkcje lub grupy.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="77"/>
-      <source>Show tips</source>
-      <translation>Pokaż wskazówki</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="81"/>
+        <source>Show tips</source>
+        <translation>Pokaż wskazówki</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="95"/>
-      <location filename="../../src/qml/MainContainer.qml" line="137"/>
-      <source>Rename</source>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="99"/>
+        <location filename="../../src/qml/MainContainer.qml" line="141"/>
+        <source>Rename</source>
+        <translation>Zmień nazwę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="103"/>
-      <source>Change icon</source>
-      <translation>Zmień ikonę</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="107"/>
+        <source>Change icon</source>
+        <translation>Zmień ikonę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="112"/>
-      <source>Remove</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="116"/>
+        <source>Remove</source>
+        <translation>Usuń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="145"/>
-      <source>Edit entities</source>
-      <translation>Edytuj funkcje</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="149"/>
+        <source>Edit entities</source>
+        <translation>Edytuj funkcje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="153"/>
-      <source>Delete</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="157"/>
+        <source>Delete</source>
+        <translation>Usuń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/MainContainer.qml" line="390"/>
-      <source>Profile is restricted</source>
-      <translation>Profil jest ograniczony</translation>
+        <location filename="../../src/qml/MainContainer.qml" line="394"/>
+        <source>Profile is restricted</source>
+        <translation>Profil jest ograniczony</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ManageEntities</name>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="91"/>
-      <source>Manage entities</source>
-      <translation>Zarządzaj funkcjami</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="91"/>
+        <source>Manage entities</source>
+        <translation>Zarządzaj funkcjami</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="138"/>
-      <source>Available: %1</source>
-      <extracomment>Tab caption that contains available entities</extracomment>
-      <translation>Dostępne: %1</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="138"/>
+        <source>Available: %1</source>
+        <extracomment>Tab caption that contains available entities</extracomment>
+        <translation>Dostępne: %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="159"/>
-      <source>Configured: %1</source>
-      <extracomment>Tab caption that contains configured entities</extracomment>
-      <translation>Skonfigurowane: %1</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="159"/>
+        <source>Configured: %1</source>
+        <extracomment>Tab caption that contains configured entities</extracomment>
+        <translation>Skonfigurowane: %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="203"/>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="224"/>
-      <source>Select entities</source>
-      <translation>Wybierz encje</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="203"/>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="224"/>
+        <source>Select entities</source>
+        <translation>Wybierz encje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="203"/>
-      <source>Please select entities to add by tapping in the list.</source>
-      <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="203"/>
+        <source>Please select entities to add by tapping in the list.</source>
+        <translation>Proszę wybrać funkcje do dodania, dotykając listy.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="224"/>
-      <source>Please select entities to remove by tapping in the list.</source>
-      <translation>Proszę wybrać encje do usunięcia, klikając na listę.</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="224"/>
+        <source>Please select entities to remove by tapping in the list.</source>
+        <translation>Proszę wybrać encje do usunięcia, klikając na listę.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="227"/>
-      <source>Remove</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/components/integrations/ManageEntities.qml" line="227"/>
+        <source>Remove</source>
+        <translation>Usuń</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>MatrixAppearance</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="37"/>
+        <source>Color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="135"/>
+        <source>Characters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="182"/>
+        <source>Font size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="209"/>
+        <source>Animation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="236"/>
+        <source>Column density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="263"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="290"/>
+        <source>Trail fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="318"/>
+        <source>Auto-rotate</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="344"/>
+        <source>Rotation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="371"/>
+        <source>Trail bend</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixAppearance.qml" line="400"/>
+        <source>Direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MatrixEffects</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="38"/>
+        <source>Invert trail</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="66"/>
+        <source>Head glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="89"/>
+        <source>Glow fade</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="115"/>
+        <source>Depth glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="139"/>
+        <source>Min size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="167"/>
+        <source>Rain layers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="195"/>
+        <source>Color layers</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="219"/>
+        <source>Intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="244"/>
+        <source>Overlay mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="270"/>
+        <source>Glitch effect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="295"/>
+        <source>Glitch intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="320"/>
+        <source>Column flash</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="343"/>
+        <source>Column stutter</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MatrixEffects.qml" line="366"/>
+        <source>Reverse glow</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Media platyer state</name>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="108"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="116"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="110"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="118"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="112"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="120"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="114"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="122"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="116"/>
-      <source>Playing</source>
-      <translation>Odtwarzanie</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="124"/>
+        <source>Playing</source>
+        <translation>Odtwarzanie</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="118"/>
-      <source>Paused</source>
-      <translation>Wstrzymano</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="126"/>
+        <source>Paused</source>
+        <translation>Wstrzymano</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="120"/>
-      <source>Standby</source>
-      <translation>Tryb oczekiwania</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="128"/>
+        <source>Standby</source>
+        <translation>Tryb oczekiwania</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/mediaPlayer.h" line="122"/>
-      <source>Buffering</source>
-      <translation>Buforowanie</translation>
+        <location filename="../../src/ui/entity/mediaPlayer.h" line="130"/>
+        <source>Buffering</source>
+        <translation>Buforowanie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>MediaBrowser</name>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="70"/>
+        <source>Play now</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="73"/>
+        <source>Play next</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="76"/>
+        <source>Add to queue</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="173"/>
+        <source>Album</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="174"/>
+        <source>App</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="175"/>
+        <source>Apps</source>
+        <translation type="unfinished">Aplikacje</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="176"/>
+        <source>Artist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="177"/>
+        <source>Channel</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="178"/>
+        <source>Channels</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="179"/>
+        <source>Composer</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="180"/>
+        <source>Directory</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="181"/>
+        <source>Episode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="182"/>
+        <source>Game</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="183"/>
+        <source>Genre</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="184"/>
+        <source>Image</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="185"/>
+        <source>Movie</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="186"/>
+        <source>Music</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="187"/>
+        <source>Playlist</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="188"/>
+        <source>Podcast</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="189"/>
+        <source>Radio</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="190"/>
+        <source>Season</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="191"/>
+        <source>Track</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="192"/>
+        <source>TV Show</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="193"/>
+        <source>URL</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="194"/>
+        <source>Video</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="303"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="515"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="538"/>
+        <source>Could not load media</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="304"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="516"/>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="539"/>
+        <source>An error occurred while loading media content.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="531"/>
+        <source>Retry</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="587"/>
+        <source>Browse</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="650"/>
+        <source>Search…</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="813"/>
+        <source>No results</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/media_player/MediaBrowser.qml" line="819"/>
+        <source>Try something else.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MediaComponent</name>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="420"/>
+        <source>All</source>
+        <translation type="unfinished">Wszystko</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="422"/>
+        <source>One</source>
+        <translation type="unfinished">Jeden</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="463"/>
+        <source>Sources</source>
+        <translation type="unfinished">Źródła</translation>
+    </message>
+</context>
+<context>
+    <name>MessageSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="38"/>
+        <source>Subliminal messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="62"/>
+        <source>In-stream injection</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="85"/>
+        <source>Overlay spanning</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="108"/>
+        <source>Flash mode</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="129"/>
+        <source>Interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="151"/>
+        <source>Duration</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="182"/>
+        <source>Hidden messages</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="230"/>
+        <source>Message interval</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="258"/>
+        <source>Random order</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="283"/>
+        <source>Message direction</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="329"/>
+        <source>Surrounding flash</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MessageSection.qml" line="352"/>
+        <source>Brightness pulse</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>MinimalSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="29"/>
+        <source>24-hour clock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="45"/>
+        <source>Font</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="78"/>
+        <source>Time color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="123"/>
+        <source>Date color</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="169"/>
+        <source>Clock size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="186"/>
+        <source>Date size</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>No option is selected in the select entity</name>
+    <message>
+        <location filename="../../src/ui/entity/select.cpp" line="119"/>
+        <source>None</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>NoPage</name>
     <message>
-      <location filename="../../src/qml/NoPage.qml" line="45"/>
-      <source>Tap here to add your first page</source>
-      <translation>Dotknij tutaj, aby dodać swoją pierwszą stronę</translation>
+        <location filename="../../src/qml/NoPage.qml" line="45"/>
+        <source>Tap here to add your first page</source>
+        <translation>Dotknij tutaj, aby dodać swoją pierwszą stronę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/NoPage.qml" line="45"/>
-      <source>No page found. Ask your administrator to setup pages.</source>
-      <translation>Nie znaleziono żadnej strony. Poproś administratora o skonfigurowanie stron.</translation>
+        <location filename="../../src/qml/NoPage.qml" line="45"/>
+        <source>No page found. Ask your administrator to setup pages.</source>
+        <translation>Nie znaleziono żadnej strony. Poproś administratora o skonfigurowanie stron.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>NoProfile</name>
     <message>
-      <location filename="../../src/qml/NoProfile.qml" line="22"/>
-      <source>There was an error loading the profile.</source>
-      <translation>Wystąpił błąd podczas ładowania profilu.</translation>
+        <location filename="../../src/qml/NoProfile.qml" line="22"/>
+        <source>There was an error loading the profile.</source>
+        <translation>Wystąpił błąd podczas ładowania profilu.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/NoProfile.qml" line="31"/>
-      <source>Select or add profile</source>
-      <translation>Wybierz lub dodaj profil</translation>
+        <location filename="../../src/qml/NoProfile.qml" line="31"/>
+        <source>Select or add profile</source>
+        <translation>Wybierz lub dodaj profil</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>NotificationDrawer</name>
     <message>
-      <location filename="../../src/qml/components/NotificationDrawer.qml" line="61"/>
-      <source>Display brightness</source>
-      <translation>Jasność wyświetlacza</translation>
+        <location filename="../../src/qml/components/NotificationDrawer.qml" line="61"/>
+        <source>Display brightness</source>
+        <translation>Jasność wyświetlacza</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/NotificationDrawer.qml" line="166"/>
-      <source>Clear all</source>
-      <translation>Wyczyść wszystko</translation>
+        <location filename="../../src/qml/components/NotificationDrawer.qml" line="166"/>
+        <source>Clear all</source>
+        <translation>Wyczyść wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/NotificationDrawer.qml" line="166"/>
-      <source>No notifications</source>
-      <translation>Brak powiadomień</translation>
+        <location filename="../../src/qml/components/NotificationDrawer.qml" line="166"/>
+        <source>No notifications</source>
+        <translation>Brak powiadomień</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>OnOff</name>
     <message>
-      <location filename="../../src/qml/components/entities/light/OnOff.qml" line="18"/>
-      <source>On</source>
-      <extracomment>Light device state</extracomment>
-      <translation>Włączone</translation>
+        <location filename="../../src/qml/components/entities/light/OnOff.qml" line="18"/>
+        <source>On</source>
+        <extracomment>Light device state</extracomment>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/light/OnOff.qml" line="18"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/qml/components/entities/light/OnOff.qml" line="18"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>OpenClose</name>
     <message>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="27"/>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="33"/>
-      <source>Unknown</source>
-      <extracomment>State of the cover entity (eg. blinds, shades)</extracomment>
-      <translation>Nieznany</translation>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="27"/>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="33"/>
+        <source>Unknown</source>
+        <extracomment>State of the cover entity (eg. blinds, shades)</extracomment>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="29"/>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="59"/>
-      <source>Open</source>
-      <translation>Otwarto</translation>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="29"/>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="59"/>
+        <source>Open</source>
+        <translation>Otwarto</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="31"/>
-      <source>Closed</source>
-      <translation>Zamknięto</translation>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="31"/>
+        <source>Closed</source>
+        <translation>Zamknięto</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="46"/>
-      <source>Close</source>
-      <translation>Zamknij</translation>
+        <location filename="../../src/qml/components/entities/cover/OpenClose.qml" line="46"/>
+        <source>Close</source>
+        <translation>Zamknij</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Outlet</name>
     <message>
-      <location filename="../../src/qml/components/entities/switch/deviceclass/Outlet.qml" line="42"/>
-      <source>On</source>
-      <extracomment>Switch device state</extracomment>
-      <translation>Włączone</translation>
+        <location filename="../../src/qml/components/entities/switch/deviceclass/Outlet.qml" line="42"/>
+        <source>On</source>
+        <extracomment>Switch device state</extracomment>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/switch/deviceclass/Outlet.qml" line="42"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/qml/components/entities/switch/deviceclass/Outlet.qml" line="42"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Page</name>
     <message>
-      <location filename="../../src/qml/components/Page.qml" line="418"/>
-      <source>Turn off</source>
-      <translation>Wyłącz</translation>
+        <location filename="../../src/qml/components/Page.qml" line="444"/>
+        <source>Turn off</source>
+        <translation>Wyłącz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Page.qml" line="439"/>
-      <source>Turn off all</source>
-      <translation>Wyłącz wszystko</translation>
+        <location filename="../../src/qml/components/Page.qml" line="462"/>
+        <source>Some devices are not ready</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Page.qml" line="466"/>
-      <source>%1 is %2</source>
-      <extracomment>Used to show the entity state: %1 is the entity name, %2 is the state</extracomment>
-      <translation>%1 jest %2</translation>
+        <location filename="../../src/qml/components/Page.qml" line="462"/>
+        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <source>%1 is not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Page.qml" line="549"/>
-      <source>Press and hold the Home button or use the Web Configurator to configure the page</source>
-      <extracomment>Web configurator is the name of the application, does not need translation</extracomment>
-      <translation>Naciśnij i przytrzymaj przycisk Home lub użyj Web Configuratora, aby skonfigurować stronę</translation>
+        <location filename="../../src/qml/components/Page.qml" line="462"/>
+        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <source>%1 are not connected yet. Tap Proceed to continue anyway.</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/components/Page.qml" line="462"/>
+        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <source>Proceed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/Page.qml" line="489"/>
+        <source>Turn off all</source>
+        <translation>Wyłącz wszystko</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/Page.qml" line="542"/>
+        <source>%1 is %2</source>
+        <extracomment>Used to show the entity state: %1 is the entity name, %2 is the state</extracomment>
+        <translation>%1 jest %2</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/Page.qml" line="625"/>
+        <source>Press and hold the Home button or use the Web Configurator to configure the page</source>
+        <extracomment>Web configurator is the name of the application, does not need translation</extracomment>
+        <translation>Naciśnij i przytrzymaj przycisk Home lub użyj Web Configuratora, aby skonfigurować stronę</translation>
+    </message>
+</context>
+<context>
     <name>PageAdd</name>
     <message>
-      <location filename="../../src/qml/components/PageAdd.qml" line="18"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/PageAdd.qml" line="18"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageAdd.qml" line="79"/>
-      <source>Name your page</source>
-      <extracomment>Title for the page selector menu</extracomment>
-      <translation>Nazwij swoją stronę</translation>
+        <location filename="../../src/qml/components/PageAdd.qml" line="79"/>
+        <source>Name your page</source>
+        <extracomment>Title for the page selector menu</extracomment>
+        <translation>Nazwij swoją stronę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageAdd.qml" line="91"/>
-      <source>Living room</source>
-      <extracomment>Placeholder example for a page name</extracomment>
-      <translation>Pokój dzienny</translation>
+        <location filename="../../src/qml/components/PageAdd.qml" line="91"/>
+        <source>Living room</source>
+        <extracomment>Placeholder example for a page name</extracomment>
+        <translation>Pokój dzienny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageAdd.qml" line="113"/>
-      <source>Add</source>
-      <extracomment>Label of button that will add a page defined here</extracomment>
-      <translation>Dodaj</translation>
+        <location filename="../../src/qml/components/PageAdd.qml" line="113"/>
+        <source>Add</source>
+        <extracomment>Label of button that will add a page defined here</extracomment>
+        <translation>Dodaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageAdd.qml" line="100"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/PageAdd.qml" line="100"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>PageRename</name>
     <message>
-      <location filename="../../src/qml/components/PageRename.qml" line="21"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/PageRename.qml" line="21"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageRename.qml" line="82"/>
-      <source>Rename page</source>
-      <translation>Zmień nazwę strony</translation>
+        <location filename="../../src/qml/components/PageRename.qml" line="82"/>
+        <source>Rename page</source>
+        <translation>Zmień nazwę strony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageRename.qml" line="115"/>
-      <source>Rename</source>
-      <extracomment>Label for button that will execute the action and rename the page</extracomment>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/PageRename.qml" line="115"/>
+        <source>Rename</source>
+        <extracomment>Label for button that will execute the action and rename the page</extracomment>
+        <translation>Zmień nazwę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageRename.qml" line="102"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/PageRename.qml" line="102"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>PageSelector</name>
     <message>
-      <location filename="../../src/qml/components/PageSelector.qml" line="168"/>
-      <source>Edit pages</source>
-      <extracomment>Title for the page selector menu</extracomment>
-      <translation>Edytuj strony</translation>
+        <location filename="../../src/qml/components/PageSelector.qml" line="161"/>
+        <source>Edit pages</source>
+        <extracomment>Title for the page selector menu</extracomment>
+        <translation>Edytuj strony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/PageSelector.qml" line="168"/>
-      <source>Select page</source>
-      <translation>Wybierz stronę</translation>
+        <location filename="../../src/qml/components/PageSelector.qml" line="161"/>
+        <source>Select page</source>
+        <translation>Wybierz stronę</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>PasswordChange</name>
     <message>
-      <location filename="../../src/qml/components/docks/PasswordChange.qml" line="52"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/docks/PasswordChange.qml" line="52"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/PasswordChange.qml" line="128"/>
-      <source>Change password</source>
-      <translation>Zmień hasło</translation>
+        <location filename="../../src/qml/components/docks/PasswordChange.qml" line="128"/>
+        <source>Change password</source>
+        <translation>Zmień hasło</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/PasswordChange.qml" line="162"/>
-      <source>Change</source>
-      <translation>Zmień</translation>
+        <location filename="../../src/qml/components/docks/PasswordChange.qml" line="162"/>
+        <source>Change</source>
+        <translation>Zmień</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/PasswordChange.qml" line="150"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/docks/PasswordChange.qml" line="150"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Pin</name>
     <message>
-      <location filename="../../src/qml/onboarding/Pin.qml" line="20"/>
-      <source>Administrator PIN</source>
-      <translation>Admin PIN</translation>
+        <location filename="../../src/qml/onboarding/Pin.qml" line="20"/>
+        <source>Administrator PIN</source>
+        <translation>Admin PIN</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Pin.qml" line="36"/>
-      <source>This PIN is the administrator PIN.</source>
-      <translation>Ten PIN jest kodem PIN administratora.</translation>
+        <location filename="../../src/qml/onboarding/Pin.qml" line="36"/>
+        <source>This PIN is the administrator PIN.</source>
+        <translation>Ten PIN jest kodem PIN administratora.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>PopupList</name>
     <message>
-      <location filename="../../src/qml/components/PopupList.qml" line="170"/>
-      <source>Search</source>
-      <translation>Szukaj</translation>
+        <location filename="../../src/qml/components/PopupList.qml" line="170"/>
+        <source>Search</source>
+        <translation>Szukaj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>PopupMenu</name>
     <message>
-      <location filename="../../src/qml/components/PopupMenu.qml" line="237"/>
-      <source>Close</source>
-      <extracomment>As in close the menu</extracomment>
-      <translation>Zamknij</translation>
+        <location filename="../../src/qml/components/PopupMenu.qml" line="247"/>
+        <source>Close</source>
+        <extracomment>As in close the menu</extracomment>
+        <translation>Zamknij</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Power</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Power.qml" line="49"/>
-      <source>Power</source>
-      <translation>Zasilanie</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Power.qml" line="47"/>
+        <source>Power</source>
+        <translation>Zasilanie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="76"/>
-      <source>Keep WiFi connected in standby</source>
-      <extracomment>Title for indication of wifi always on functionality</extracomment>
-      <translation>Utrzymuj WiFi połączone w trybie czuwania.</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="278"/>
+        <source>Keep WiFi connected in standby</source>
+        <extracomment>Title for indication of wifi always on functionality</extracomment>
+        <translation>Utrzymuj WiFi połączone w trybie czuwania.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="104"/>
-      <source>Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.</source>
-      <translation>Utrzymuje WiFi zawsze podłączone, nawet gdy urządzenie jest w stanie uśpienia. Pozwala na szybsze ponowne połączenie po wybudzeniu. Należy pamiętać, że włączenie tej funkcji nieco zmniejsza czas pracy baterii.</translation>
+        <source>Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.</source>
+        <translation type="vanished">Utrzymuje WiFi zawsze podłączone, nawet gdy urządzenie jest w stanie uśpienia. Pozwala na szybsze ponowne połączenie po wybudzeniu. Należy pamiętać, że włączenie tej funkcji nieco zmniejsza czas pracy baterii.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="128"/>
-      <source>Wakeup sensitivity</source>
-      <extracomment>Movement the remote reacts to wake up</extracomment>
-      <translation>Czułość na wybudzenie</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="389"/>
+        <source>Wakeup sensitivity</source>
+        <extracomment>Movement the remote reacts to wake up</extracomment>
+        <translation>Czułość na wybudzenie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="138"/>
-      <source>Amount of movement needed to wake up the remote.</source>
-      <translation>Ilość ruchu wymagana do przebudzenia pilota.</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="399"/>
+        <source>Amount of movement needed to wake up the remote.</source>
+        <translation>Ilość ruchu wymagana do przebudzenia pilota.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="153"/>
-      <source>Off</source>
-      <extracomment>Wakeup is turned off</extracomment>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="414"/>
+        <source>Off</source>
+        <extracomment>Wakeup is turned off</extracomment>
+        <translation>Wyłączone</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="155"/>
-      <source>Sensitivity</source>
-      <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
-      <translation>Czułość</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="416"/>
+        <source>Sensitivity</source>
+        <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
+        <translation>Czułość</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="193"/>
-      <source>Display off timeout</source>
-      <extracomment>How much time the display will turn off after</extracomment>
-      <translation>Limit czasu wyłączenia wyświetlacza</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="454"/>
+        <source>Display off timeout</source>
+        <extracomment>How much time the display will turn off after</extracomment>
+        <translation>Limit czasu wyłączenia wyświetlacza</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="213"/>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="214"/>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="270"/>
-      <source>%1 seconds</source>
-      <translation>%1 sekund</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="351"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="474"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="475"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="697"/>
+        <source>%1 seconds</source>
+        <translation>%1 sekund</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="250"/>
-      <source>Sleep timeout</source>
-      <extracomment>How much time the remote will enter sleep mode after</extracomment>
-      <translation>Limit czasu uśpienia</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="76"/>
+        <source>Suppress phantom wake-ups</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Power.qml" line="271"/>
-      <source>%1 minutes</source>
-      <translation>%1 minut</translation>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="94"/>
+        <source>Forces the device back to standby if a wake event happens with no user input within %1 ms.</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="107"/>
+        <source>Grace window after wake: %1 ms</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="132"/>
+        <source>Recent-input lookback: %1 ms</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="133"/>
+        <source>Recent-input lookback: disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="141"/>
+        <source>Skip the grace timer when a button-press arrived this recently before a wake.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="183"/>
+        <source>Keep awake while watching/listening</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="201"/>
+        <source>Resets the device&apos;s sleep countdown every 4.5 min while media is playing or you&apos;ve recently pressed a button.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="215"/>
+        <source>Idle timeout after last button: %1 seconds</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="241"/>
+        <source>Only when on charger or dock</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="306"/>
+        <source>Faster reconnect after wake; minor battery cost.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="328"/>
+        <source>Retry commands after wakeup</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="338"/>
+        <source>Retry commands within %1 second(s) after wakeup.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="350"/>
+        <source>Disabled</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="514"/>
+        <source>Screen off animations</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="523"/>
+        <source>Enabled</source>
+        <translation type="unfinished">Włączony</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="542"/>
+        <source>Fire when undocked</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="564"/>
+        <source>Style</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="677"/>
+        <source>Sleep timeout</source>
+        <extracomment>How much time the remote will enter sleep mode after</extracomment>
+        <translation>Limit czasu uśpienia</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="698"/>
+        <source>%1 minutes</source>
+        <translation>%1 minut</translation>
+    </message>
+</context>
+<context>
     <name>Poweroff</name>
     <message>
-      <location filename="../../src/qml/components/Poweroff.qml" line="110"/>
-      <source>Power off</source>
-      <extracomment>Caption for button to power off the remote</extracomment>
-      <translation>Wyłączenie zasilania</translation>
+        <location filename="../../src/qml/components/Poweroff.qml" line="110"/>
+        <source>Power off</source>
+        <extracomment>Caption for button to power off the remote</extracomment>
+        <translation>Wyłączenie zasilania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Poweroff.qml" line="150"/>
-      <location filename="../../src/qml/components/Poweroff.qml" line="208"/>
-      <source>Press and hold</source>
-      <translation>Naciśnij i przytrzymaj</translation>
+        <location filename="../../src/qml/components/Poweroff.qml" line="150"/>
+        <location filename="../../src/qml/components/Poweroff.qml" line="208"/>
+        <source>Press and hold</source>
+        <translation>Naciśnij i przytrzymaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Poweroff.qml" line="168"/>
-      <source>Reboot</source>
-      <extracomment>Caption for button to reboot the remote</extracomment>
-      <translation>Zrestartuj</translation>
+        <location filename="../../src/qml/components/Poweroff.qml" line="168"/>
+        <source>Reboot</source>
+        <extracomment>Caption for button to reboot the remote</extracomment>
+        <translation>Zrestartuj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Poweroff.qml" line="231"/>
-      <source>Cancel</source>
-      <extracomment>Caption for button to cancel the power off menu</extracomment>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/Poweroff.qml" line="231"/>
+        <source>Cancel</source>
+        <extracomment>Caption for button to cancel the power off menu</extracomment>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Profile</name>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="130"/>
-      <source>Software update</source>
-      <translation>Aktualizacja oprogramowania</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="130"/>
+        <source>Software update</source>
+        <translation>Aktualizacja oprogramowania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="136"/>
-      <source>Settings</source>
-      <translation>Ustawienia</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="136"/>
+        <source>Settings</source>
+        <translation>Ustawienia</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="142"/>
-      <source>Integrations</source>
-      <translation>Integracje</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="142"/>
+        <source>Integrations</source>
+        <translation>Integracje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="148"/>
-      <source>Docks</source>
-      <translation>Dokki</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="148"/>
+        <source>Docks</source>
+        <translation>Dokki</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="166"/>
-      <source>About</source>
-      <translation>Informacje</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="166"/>
+        <source>About</source>
+        <translation>Informacje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="234"/>
-      <source>Your current profile</source>
-      <translation>Twój obecny profil</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="234"/>
+        <source>Your current profile</source>
+        <translation>Twój obecny profil</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="331"/>
-      <source>Web configurator enabled</source>
-      <translation>Web Configurator włączony</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="331"/>
+        <source>Web configurator enabled</source>
+        <translation>Web Configurator włączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="331"/>
-      <source>Web configurator disabled</source>
-      <translation>Web Configurator wyłączony</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="331"/>
+        <source>Web configurator disabled</source>
+        <translation>Web Configurator wyłączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="554"/>
-      <source>Restricted</source>
-      <extracomment>Text explaining that the profile has restricted access</extracomment>
-      <translation>Ograniczony</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="554"/>
+        <source>Restricted</source>
+        <extracomment>Text explaining that the profile has restricted access</extracomment>
+        <translation>Ograniczony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="664"/>
-      <source>Scan to open
+        <location filename="../../src/qml/components/Profile.qml" line="664"/>
+        <source>Scan to open
 the Web Configurator</source>
-      <translation>Zeskanuj, aby włączyć konfigurator sieciowy</translation>
+        <translation>Zeskanuj, aby włączyć konfigurator sieciowy</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/Profile.qml" line="675"/>
-      <source>Tap to close</source>
-      <translation>Dotknij, aby zamknąć</translation>
+        <location filename="../../src/qml/components/Profile.qml" line="675"/>
+        <source>Tap to close</source>
+        <translation>Dotknij, aby zamknąć</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ProfileAdd</name>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="28"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="28"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="91"/>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="100"/>
-      <source>Profile already exists</source>
-      <translation>Profil już istnieje</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="91"/>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="100"/>
+        <source>Profile already exists</source>
+        <translation>Profil już istnieje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="101"/>
-      <source>The profile name you&apos;ve entered already exists. Would you like to continue with an existing profile?</source>
-      <translation>Wprowadzona nazwa profilu już istnieje. Czy chcesz kontynuować z istniejącym profilem?</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="101"/>
+        <source>The profile name you&apos;ve entered already exists. Would you like to continue with an existing profile?</source>
+        <translation>Wprowadzona nazwa profilu już istnieje. Czy chcesz kontynuować z istniejącym profilem?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="108"/>
-      <source>Choose existing</source>
-      <translation>Wybierz istniejący</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="108"/>
+        <source>Choose existing</source>
+        <translation>Wybierz istniejący</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="172"/>
-      <source>Profile name</source>
-      <translation>Nazwa profilu</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="172"/>
+        <source>Profile name</source>
+        <translation>Nazwa profilu</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="185"/>
-      <source>John</source>
-      <extracomment>Example for profile name</extracomment>
-      <translation>Jan</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="185"/>
+        <source>John</source>
+        <extracomment>Example for profile name</extracomment>
+        <translation>Jan</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="204"/>
-      <source>Add</source>
-      <extracomment>Label for button that add a profile</extracomment>
-      <translation>Dodaj</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="204"/>
+        <source>Add</source>
+        <extracomment>Label for button that add a profile</extracomment>
+        <translation>Dodaj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileAdd.qml" line="192"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/ProfileAdd.qml" line="192"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ProfileRename</name>
     <message>
-      <location filename="../../src/qml/components/ProfileRename.qml" line="27"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/ProfileRename.qml" line="27"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileRename.qml" line="98"/>
-      <source>Rename profile</source>
-      <translation>Zmień nazwę profilu</translation>
+        <location filename="../../src/qml/components/ProfileRename.qml" line="98"/>
+        <source>Rename profile</source>
+        <translation>Zmień nazwę profilu</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileRename.qml" line="111"/>
-      <source>John</source>
-      <extracomment>Example name for a profile</extracomment>
-      <translation>Jan</translation>
+        <location filename="../../src/qml/components/ProfileRename.qml" line="111"/>
+        <source>John</source>
+        <extracomment>Example name for a profile</extracomment>
+        <translation>Jan</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileRename.qml" line="138"/>
-      <source>Rename</source>
-      <extracomment>Button caption to execute the profile rename</extracomment>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/ProfileRename.qml" line="138"/>
+        <source>Rename</source>
+        <extracomment>Button caption to execute the profile rename</extracomment>
+        <translation>Zmień nazwę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileRename.qml" line="126"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/ProfileRename.qml" line="126"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>ProfileSwitch</name>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="212"/>
-      <source>Profiles</source>
-      <extracomment>User profiles</extracomment>
-      <translation>Profile</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="212"/>
+        <source>Profiles</source>
+        <extracomment>User profiles</extracomment>
+        <translation>Profile</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="294"/>
-      <source>Please enter the administrator PIN.</source>
-      <translation>Proszę wprowadzić kod PIN administratora.</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="294"/>
+        <source>Please enter the administrator PIN.</source>
+        <translation>Proszę wprowadzić kod PIN administratora.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="316"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="316"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="411"/>
-      <source>Rename</source>
-      <extracomment>Menu item for profile rename</extracomment>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="411"/>
+        <source>Rename</source>
+        <extracomment>Menu item for profile rename</extracomment>
+        <translation>Zmień nazwę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="421"/>
-      <source>Edit icon</source>
-      <extracomment>Menu item for changing icon</extracomment>
-      <translation>Edytuj ikonę</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="421"/>
+        <source>Edit icon</source>
+        <extracomment>Menu item for changing icon</extracomment>
+        <translation>Edytuj ikonę</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="430"/>
-      <source>Delete</source>
-      <extracomment>Menu item for profile delete</extracomment>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="430"/>
+        <source>Delete</source>
+        <extracomment>Menu item for profile delete</extracomment>
+        <translation>Usuń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="477"/>
-      <source>Add a new profile</source>
-      <translation>Dodaj nowy profil</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="477"/>
+        <source>Add a new profile</source>
+        <translation>Dodaj nowy profil</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="482"/>
-      <source>Normal</source>
-      <extracomment>Menu item for adding a normal profile</extracomment>
-      <translation>Normalny</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="482"/>
+        <source>Normal</source>
+        <extracomment>Menu item for adding a normal profile</extracomment>
+        <translation>Normalny</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/ProfileSwitch.qml" line="491"/>
-      <source>Restricted</source>
-      <extracomment>Menu item for adding a limited guest profile</extracomment>
-      <translation>Ograniczony</translation>
+        <location filename="../../src/qml/components/ProfileSwitch.qml" line="491"/>
+        <source>Restricted</source>
+        <extracomment>Menu item for adding a limited guest profile</extracomment>
+        <translation>Ograniczony</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Receiver</name>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="450"/>
-      <source>Live</source>
-      <translation>Na żywo</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="456"/>
+        <source>Live</source>
+        <translation>Na żywo</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="579"/>
-      <source>All</source>
-      <translation>Wszystko</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="585"/>
+        <source>All</source>
+        <translation>Wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="581"/>
-      <source>One</source>
-      <translation>Jeden</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="587"/>
+        <source>One</source>
+        <translation>Jeden</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="612"/>
-      <source>Sources</source>
-      <translation>Źródła</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Receiver.qml" line="634"/>
+        <source>Sources</source>
+        <translation>Źródła</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>ReconnectingHUD</name>
+    <message>
+        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="89"/>
+        <source>Reconnecting…</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Remote</name>
     <message>
-      <location filename="../../src/qml/components/entities/remote/deviceclass/Remote.qml" line="206"/>
-      <source>Empty page</source>
-      <translation>Pusta strona</translation>
+        <location filename="../../src/qml/components/entities/remote/deviceclass/Remote.qml" line="225"/>
+        <source>Empty page</source>
+        <translation>Pusta strona</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/remote/deviceclass/Remote.qml" line="218"/>
-      <source>You can add UI elements via the Web Configurator</source>
-      <translation>Możesz dodać elementy UI za pomocą Web Configuratora</translation>
+        <location filename="../../src/qml/components/entities/remote/deviceclass/Remote.qml" line="237"/>
+        <source>You can add UI elements via the Web Configurator</source>
+        <translation>Możesz dodać elementy UI za pomocą Web Configuratora</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Remote state</name>
     <message>
-      <location filename="../../src/ui/entity/remote.h" line="35"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/remote.h" line="35"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/remote.h" line="37"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/remote.h" line="37"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/remote.h" line="39"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/remote.h" line="39"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/remote.h" line="41"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/remote.h" line="41"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>RemoteName</name>
     <message>
-      <location filename="../../src/qml/onboarding/RemoteName.qml" line="71"/>
-      <source>Name your remote</source>
-      <translation>Nazwij pilota zdalnego sterowania</translation>
+        <location filename="../../src/qml/onboarding/RemoteName.qml" line="71"/>
+        <source>Name your remote</source>
+        <translation>Nazwij pilota zdalnego sterowania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/RemoteName.qml" line="99"/>
-      <source>Next</source>
-      <translation>Dalej</translation>
+        <location filename="../../src/qml/onboarding/RemoteName.qml" line="99"/>
+        <source>Next</source>
+        <translation>Dalej</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>RemoteOpen</name>
     <message>
-      <location filename="../../src/qml/components/RemoteOpen.qml" line="41"/>
-      <source>Do not operate the device disassembled.</source>
-      <translation>Nie obsługuj urządzenia zdemontowanego.</translation>
+        <location filename="../../src/qml/components/RemoteOpen.qml" line="41"/>
+        <source>Do not operate the device disassembled.</source>
+        <translation>Nie obsługuj urządzenia zdemontowanego.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/RemoteOpen.qml" line="53"/>
-      <source>The remote will turn off
+        <location filename="../../src/qml/components/RemoteOpen.qml" line="53"/>
+        <source>The remote will turn off
 in %1 seconds.</source>
-      <extracomment>
+        <extracomment>
  and %1 must be included</extracomment>
-      <translation>Pilot wyłączy się
+        <translation>Pilot wyłączy się
 za %1 sekund.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Rename</name>
     <message>
-      <location filename="../../src/qml/components/docks/Rename.qml" line="53"/>
-      <source>There was an error. Try again</source>
-      <translation>Wystąpił błąd. Spróbuj ponownie</translation>
+        <location filename="../../src/qml/components/docks/Rename.qml" line="53"/>
+        <source>There was an error. Try again</source>
+        <translation>Wystąpił błąd. Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Rename.qml" line="129"/>
-      <source>Rename dock</source>
-      <translation>Zmień nazwę stacji dokującej</translation>
+        <location filename="../../src/qml/components/docks/Rename.qml" line="129"/>
+        <source>Rename dock</source>
+        <translation>Zmień nazwę stacji dokującej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Rename.qml" line="148"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/components/docks/Rename.qml" line="148"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Rename.qml" line="160"/>
-      <source>Rename</source>
-      <translation>Zmień nazwę</translation>
+        <location filename="../../src/qml/components/docks/Rename.qml" line="160"/>
+        <source>Rename</source>
+        <translation>Zmień nazwę</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Reset</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="59"/>
-      <source>Resetting will delete all settings, configuration and any information saved on the remote. Data cannot be recovered. Continue?</source>
-      <translation>Zresetowanie usunie wszystkie ustawienia, konfiguracje oraz wszelkie informacje zapisane na pilocie. Dane nie mogą zostać odzyskane. Kontynuować?</translation>
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="59"/>
+        <source>Resetting will delete all settings, configuration and any information saved on the remote. Data cannot be recovered. Continue?</source>
+        <translation>Zresetowanie usunie wszystkie ustawienia, konfiguracje oraz wszelkie informacje zapisane na pilocie. Dane nie mogą zostać odzyskane. Kontynuować?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="68"/>
-      <source>Erase everything</source>
-      <translation>Wymaż wszystko</translation>
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="68"/>
+        <source>Erase everything</source>
+        <translation>Wymaż wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="131"/>
-      <source>Point of
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="131"/>
+        <source>Point of
 no return</source>
-      <extracomment>Factory reset, after this step, everything is deleted</extracomment>
-      <translation>Punkt bez powrotu</translation>
+        <extracomment>Factory reset, after this step, everything is deleted</extracomment>
+        <translation>Punkt bez powrotu</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="141"/>
-      <source>Confirming factory reset will erase all configuration and data. Data cannot be recovered.</source>
-      <translation>Potwierdzenie przywracania ustawień fabrycznych usunie całą konfigurację i dane. Danych nie będzie można odzyskać.</translation>
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="141"/>
+        <source>Confirming factory reset will erase all configuration and data. Data cannot be recovered.</source>
+        <translation>Potwierdzenie przywracania ustawień fabrycznych usunie całą konfigurację i dane. Danych nie będzie można odzyskać.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="148"/>
-      <source>Confirm</source>
-      <translation>Potwierdź</translation>
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="148"/>
+        <source>Confirm</source>
+        <translation>Potwierdź</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Reset.qml" line="159"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/settings/settings/Reset.qml" line="159"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>Select state</name>
+    <message>
+        <location filename="../../src/ui/entity/select.h" line="32"/>
+        <source>Unavailable</source>
+        <translation type="unfinished">Niedostępne</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/select.h" line="34"/>
+        <source>Unknown</source>
+        <translation type="unfinished">Nieznany</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/select.h" line="36"/>
+        <source>On</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>SelectWidget</name>
+    <message>
+        <location filename="../../src/qml/components/SelectWidget.qml" line="300"/>
+        <source>Select an option</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Sensor state</name>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="42"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="42"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="44"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="44"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/sensor.h" line="46"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/sensor.h" line="46"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Set_top_box</name>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="431"/>
-      <source>Live</source>
-      <translation>Na żywo</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="437"/>
+        <source>Live</source>
+        <translation>Na żywo</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="560"/>
-      <source>All</source>
-      <translation>Wszystko</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="566"/>
+        <source>All</source>
+        <translation>Wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="562"/>
-      <source>One</source>
-      <translation>Jeden</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="568"/>
+        <source>One</source>
+        <translation>Jeden</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="593"/>
-      <source>Sources</source>
-      <translation>Źródła</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Set_top_box.qml" line="615"/>
+        <source>Sources</source>
+        <translation>Źródła</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Settings</name>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="54"/>
-      <source>Display &amp; Brightness</source>
-      <translation>Ekran i jasność</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="66"/>
+        <source>Display &amp; Brightness</source>
+        <translation>Ekran i jasność</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="59"/>
-      <source>User interface</source>
-      <translation>Interfejs użytkownika</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="71"/>
+        <source>User interface</source>
+        <translation>Interfejs użytkownika</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="69"/>
-      <source>Sound &amp; Haptic</source>
-      <translation>Dźwięk i dotyk</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="76"/>
+        <source>Screensaver</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="79"/>
-      <source>Power Saving</source>
-      <translation>Oszczędzanie energii</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="86"/>
+        <source>Sound &amp; Haptic</source>
+        <translation>Dźwięk i dotyk</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="84"/>
-      <source>Wifi &amp; Bluetooth</source>
-      <translation>Wi-Fi i Bluetooth</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="91"/>
+        <source>Voice Control</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="89"/>
-      <source>Localisation</source>
-      <translation>Lokalizacja</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="96"/>
+        <source>Power Saving</source>
+        <translation>Oszczędzanie energii</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="94"/>
-      <source>Administrator PIN</source>
-      <translation>Admin PIN</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="101"/>
+        <source>Wifi &amp; Bluetooth</source>
+        <translation>Wi-Fi i Bluetooth</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/Settings.qml" line="99"/>
-      <source>Factory reset</source>
-      <translation>Przywracanie ustawień fabrycznych</translation>
+        <location filename="../../src/qml/settings/Settings.qml" line="106"/>
+        <source>Localisation</source>
+        <translation>Lokalizacja</translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/settings/Settings.qml" line="111"/>
+        <source>Administrator PIN</source>
+        <translation>Admin PIN</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/Settings.qml" line="116"/>
+        <source>Factory reset</source>
+        <translation>Przywracanie ustawień fabrycznych</translation>
+    </message>
+</context>
+<context>
     <name>SettingsNew</name>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="130"/>
-      <source>Software update</source>
-      <translation>Aktualizacja oprogramowania</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="130"/>
+        <source>Software update</source>
+        <translation>Aktualizacja oprogramowania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="136"/>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="217"/>
-      <source>Settings</source>
-      <translation>Ustawienia</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="136"/>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="217"/>
+        <source>Settings</source>
+        <translation>Ustawienia</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="142"/>
-      <source>Integrations</source>
-      <translation>Integracje</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="142"/>
+        <source>Integrations</source>
+        <translation>Integracje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="148"/>
-      <source>Docks</source>
-      <translation>Dokki</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="148"/>
+        <source>Docks</source>
+        <translation>Dokki</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="166"/>
-      <source>About</source>
-      <translation>Informacje</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="166"/>
+        <source>About</source>
+        <translation>Informacje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="277"/>
-      <source>Restricted</source>
-      <extracomment>Text explaining that the profile has restricted access</extracomment>
-      <translation>Ograniczony</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="277"/>
+        <source>Restricted</source>
+        <extracomment>Text explaining that the profile has restricted access</extracomment>
+        <translation>Ograniczony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="387"/>
-      <source>Scan to open
+        <location filename="../../src/qml/components/SettingsNew.qml" line="387"/>
+        <source>Scan to open
 the Web Configurator</source>
-      <translation>Zeskanuj, aby włączyć konfigurator sieciowy</translation>
+        <translation>Zeskanuj, aby włączyć konfigurator sieciowy</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/SettingsNew.qml" line="398"/>
-      <source>Tap to close</source>
-      <translation>Dotknij, aby zamknąć</translation>
+        <location filename="../../src/qml/components/SettingsNew.qml" line="398"/>
+        <source>Tap to close</source>
+        <translation>Dotknij, aby zamknąć</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Setup</name>
     <message>
-      <location filename="../../src/qml/components/integrations/Setup.qml" line="36"/>
-      <source>Integration setup</source>
-      <translation>Konfiguracja integracji</translation>
+        <location filename="../../src/qml/components/integrations/Setup.qml" line="36"/>
+        <source>Integration setup</source>
+        <translation>Konfiguracja integracji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/docks/Setup.qml" line="28"/>
-      <source>Dock setup</source>
-      <translation>Konfiguracja stacji dokującej</translation>
+        <location filename="../../src/qml/components/docks/Setup.qml" line="28"/>
+        <source>Dock setup</source>
+        <translation>Konfiguracja stacji dokującej</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>SoftwareUpdate</name>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="105"/>
-      <source>New software version is available</source>
-      <translation>Dostępna jest nowa wersja oprogramowania</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="105"/>
+        <source>New software version is available</source>
+        <translation>Dostępna jest nowa wersja oprogramowania</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="105"/>
-      <source>Your software is up to date</source>
-      <translation>Twoje oprogramowanie jest aktualne</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="105"/>
+        <source>Your software is up to date</source>
+        <translation>Twoje oprogramowanie jest aktualne</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="129"/>
-      <source>Current version</source>
-      <extracomment>Current software version</extracomment>
-      <translation>Obecna wersja</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="129"/>
+        <source>Current version</source>
+        <extracomment>Current software version</extracomment>
+        <translation>Obecna wersja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="167"/>
-      <source>New version</source>
-      <extracomment>New software version</extracomment>
-      <translation>Nowa wersja</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="167"/>
+        <source>New version</source>
+        <extracomment>New software version</extracomment>
+        <translation>Nowa wersja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="200"/>
-      <source>Pending</source>
-      <extracomment>Software update download state</extracomment>
-      <translation>Oczekuje</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="200"/>
+        <source>Pending</source>
+        <extracomment>Software update download state</extracomment>
+        <translation>Oczekuje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="202"/>
-      <source>Downloading</source>
-      <translation>Pobieranie</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="202"/>
+        <source>Downloading</source>
+        <translation>Pobieranie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="204"/>
-      <source>Downloaded</source>
-      <translation>Pobrane</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="204"/>
+        <source>Downloaded</source>
+        <translation>Pobrane</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="206"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="206"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="225"/>
-      <source>Release Notes</source>
-      <translation>Informacje o wersji</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="265"/>
+        <source>Release Notes</source>
+        <translation>Informacje o wersji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="236"/>
-      <source>Release notes</source>
-      <translation>Informacje o wersji</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="276"/>
+        <source>Release notes</source>
+        <translation>Informacje o wersji</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="256"/>
-      <source>Install</source>
-      <translation>Zainstaluj</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="296"/>
+        <source>Install</source>
+        <translation>Zainstaluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="256"/>
-      <source>Download</source>
-      <translation>Pobierz</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="296"/>
+        <source>Download</source>
+        <translation>Pobierz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="265"/>
-      <source>Low battery</source>
-      <translation>Niski poziom baterii</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="305"/>
+        <source>Low battery</source>
+        <translation>Niski poziom baterii</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="265"/>
-      <source>Minimum 50% battery charge is required to install software updates</source>
-      <translation>Do zainstalowania aktualizacji wymagane jest co najmniej 50% naładowania baterii</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="305"/>
+        <source>Minimum 50% battery charge is required to install software updates</source>
+        <translation>Do zainstalowania aktualizacji wymagane jest co najmniej 50% naładowania baterii</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="277"/>
-      <source>Check for update</source>
-      <translation>Sprawdź aktualizacje</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="317"/>
+        <source>Check for update</source>
+        <translation>Sprawdź aktualizacje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="301"/>
-      <source>Beta updates</source>
-      <translation>Aktualizacje beta</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="341"/>
+        <source>Beta updates</source>
+        <translation>Aktualizacje beta</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="312"/>
-      <source>Enabled</source>
-      <translation>Włączony</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="352"/>
+        <source>Enabled</source>
+        <translation>Włączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="338"/>
-      <source>Check for updates</source>
-      <extracomment>Title for indication of checking for software updates are enabled</extracomment>
-      <translation>Sprawdź aktualizacje</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="378"/>
+        <source>Check for updates</source>
+        <extracomment>Title for indication of checking for software updates are enabled</extracomment>
+        <translation>Sprawdź aktualizacje</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="365"/>
-      <source>Automatically check for updates.</source>
-      <translation>Automatyczna kontrola aktualizacji.</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="405"/>
+        <source>Automatically check for updates.</source>
+        <translation>Automatyczna kontrola aktualizacji.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="397"/>
-      <source>Auto update</source>
-      <extracomment>Title for indication of automatic software update is enabled</extracomment>
-      <translation>Automatyczna aktualizacja</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="437"/>
+        <source>Auto update</source>
+        <extracomment>Title for indication of automatic software update is enabled</extracomment>
+        <translation>Automatyczna aktualizacja</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="424"/>
-      <source>Automatically update the remote when new software is available. Updates are installed between %1 and %2</source>
-      <translation>Automatycznie aktualizuj pilota, gdy dostępne jest nowe oprogramowanie. Aktualizacje są instalowane między %1 a %2</translation>
+        <location filename="../../src/qml/settings/SoftwareUpdate.qml" line="464"/>
+        <source>Automatically update the remote when new software is available. Updates are installed between %1 and %2</source>
+        <translation>Automatycznie aktualizuj pilota, gdy dostępne jest nowe oprogramowanie. Aktualizacje są instalowane między %1 a %2</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Sound</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Sound.qml" line="61"/>
-      <source>Sound effects</source>
-      <translation>Efekty dźwiękowe</translation>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="61"/>
+        <source>Sound effects</source>
+        <translation>Efekty dźwiękowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Sound.qml" line="100"/>
-      <source>Sound effects volume</source>
-      <translation>Głośność efektów dźwiękowych</translation>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="100"/>
+        <source>Sound effects volume</source>
+        <translation>Głośność efektów dźwiękowych</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Sound.qml" line="145"/>
-      <source>Haptic feedback</source>
-      <translation>Wibracja przy dotknięciu</translation>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="145"/>
+        <source>Haptic feedback</source>
+        <translation>Wibracja przy dotknięciu</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Speaker</name>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="450"/>
-      <source>Live</source>
-      <translation>Na żywo</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="456"/>
+        <source>Live</source>
+        <translation>Na żywo</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="579"/>
-      <source>All</source>
-      <translation>Wszystko</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="585"/>
+        <source>All</source>
+        <translation>Wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="581"/>
-      <source>One</source>
-      <translation>Jeden</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="587"/>
+        <source>One</source>
+        <translation>Jeden</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="612"/>
-      <source>Sources</source>
-      <translation>Źródła</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Speaker.qml" line="634"/>
+        <source>Sources</source>
+        <translation>Źródła</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>StarfieldSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="27"/>
+        <source>Animation speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="44"/>
+        <source>Star density</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="59"/>
+        <source>Star size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="72"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="85"/>
+        <source>Star color</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Start</name>
     <message>
-      <location filename="../../src/qml/onboarding/Start.qml" line="54"/>
-      <source>Tap the screen to begin</source>
-      <translation>Dotknij ekranu, aby rozpocząć</translation>
+        <location filename="../../src/qml/onboarding/Start.qml" line="54"/>
+        <source>Tap the screen to begin</source>
+        <translation>Dotknij ekranu, aby rozpocząć</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>StatusBar</name>
     <message>
-      <location filename="../../src/qml/components/StatusBar.qml" line="110"/>
-      <source>Reorder</source>
-      <translation>Przeorganizuj</translation>
+        <location filename="../../src/qml/components/StatusBar.qml" line="111"/>
+        <source>Reorder</source>
+        <translation>Przeorganizuj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Streaming_box</name>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="431"/>
-      <source>Live</source>
-      <translation>Na żywo</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="437"/>
+        <source>Live</source>
+        <translation>Na żywo</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="560"/>
-      <source>All</source>
-      <translation>Wszystko</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="566"/>
+        <source>All</source>
+        <translation>Wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="562"/>
-      <source>One</source>
-      <translation>Jeden</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="568"/>
+        <source>One</source>
+        <translation>Jeden</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="593"/>
-      <source>Sources</source>
-      <translation>Źródła</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Streaming_box.qml" line="615"/>
+        <source>Sources</source>
+        <translation>Źródła</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Switch</name>
     <message>
-      <location filename="../../src/qml/components/entities/switch/deviceclass/Switch.qml" line="42"/>
-      <source>On</source>
-      <extracomment>Switch device state</extracomment>
-      <translation>Włączone</translation>
+        <location filename="../../src/qml/components/entities/switch/deviceclass/Switch.qml" line="42"/>
+        <source>On</source>
+        <extracomment>Switch device state</extracomment>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/switch/deviceclass/Switch.qml" line="42"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/qml/components/entities/switch/deviceclass/Switch.qml" line="42"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Switch state</name>
     <message>
-      <location filename="../../src/ui/entity/switch.h" line="39"/>
-      <source>Unavailable</source>
-      <translation>Niedostępne</translation>
+        <location filename="../../src/ui/entity/switch.h" line="39"/>
+        <source>Unavailable</source>
+        <translation>Niedostępne</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/switch.h" line="41"/>
-      <source>Unknown</source>
-      <translation>Nieznany</translation>
+        <location filename="../../src/ui/entity/switch.h" line="41"/>
+        <source>Unknown</source>
+        <translation>Nieznany</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/switch.h" line="43"/>
-      <source>On</source>
-      <translation>Włączone</translation>
+        <location filename="../../src/ui/entity/switch.h" line="43"/>
+        <source>On</source>
+        <translation>Włączone</translation>
     </message>
     <message>
-      <location filename="../../src/ui/entity/switch.h" line="45"/>
-      <source>Off</source>
-      <translation>Wyłączone</translation>
+        <location filename="../../src/ui/entity/switch.h" line="45"/>
+        <source>Off</source>
+        <translation>Wyłączone</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>TapSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="35"/>
+        <source>Tap effects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="41"/>
+        <source>Enable tap effects</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="60"/>
+        <source>Scatter burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="82"/>
+        <source>Trail count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="103"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="126"/>
+        <source>Flash shockwave</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="144"/>
+        <source>Character scramble</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="161"/>
+        <source>Stream spawn</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="183"/>
+        <source>Spawn count</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="204"/>
+        <source>Spawn length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="227"/>
+        <source>Show message</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="245"/>
+        <source>Square burst</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="267"/>
+        <source>Square size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="291"/>
+        <source>Ripple</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="309"/>
+        <source>Screen wipe</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="332"/>
+        <source>Randomize</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="354"/>
+        <source>Chance</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Temperature</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Temperature.qml" line="49"/>
-      <source>Temperature</source>
-      <translation>Temperatura</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Temperature.qml" line="47"/>
+        <source>Temperature</source>
+        <translation>Temperatura</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Terms</name>
     <message>
-      <location filename="../../src/qml/onboarding/Terms.qml" line="37"/>
-      <location filename="../../src/qml/onboarding/Terms.qml" line="130"/>
-      <source>Terms &amp; conditions</source>
-      <translation>Regulamin</translation>
+        <location filename="../../src/qml/onboarding/Terms.qml" line="37"/>
+        <location filename="../../src/qml/onboarding/Terms.qml" line="130"/>
+        <source>Terms &amp; conditions</source>
+        <translation>Regulamin</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Terms.qml" line="53"/>
-      <source>By using Unfolded Circle products you agree to the Terms &amp; conditions.
+        <location filename="../../src/qml/onboarding/Terms.qml" line="53"/>
+        <source>By using Unfolded Circle products you agree to the Terms &amp; conditions.
 
 You can read them on
 unfoldedcircle.com/legal
 or by scanning this QR code.
 Tap the QR code to show it on the screen.</source>
-      <translation>Używając produktów Unfolded Circle zgadzasz się na Regulamin.
+        <translation>Używając produktów Unfolded Circle zgadzasz się na Regulamin.
 
 Możesz go przeczytać na
 unfoldedcircle.com/legal
@@ -3013,893 +4076,1386 @@ lub skanując ten kod QR.
 Dotknij kodu QR, aby pokazać go na ekranie.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Terms.qml" line="86"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/onboarding/Terms.qml" line="86"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Terms.qml" line="97"/>
-      <source>Agree</source>
-      <extracomment>Agree to terms and conditions</extracomment>
-      <translation>Zgadzam się</translation>
+        <location filename="../../src/qml/onboarding/Terms.qml" line="97"/>
+        <source>Agree</source>
+        <extracomment>Agree to terms and conditions</extracomment>
+        <translation>Zgadzam się</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>ThemeSelector</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ThemeSelector.qml" line="29"/>
+        <source>Theme</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Timezone</name>
     <message>
-      <location filename="../../src/qml/onboarding/Timezone.qml" line="46"/>
-      <source>Select timezone</source>
-      <translation>Wybierz strefę czasową</translation>
+        <location filename="../../src/qml/onboarding/Timezone.qml" line="46"/>
+        <source>Select timezone</source>
+        <translation>Wybierz strefę czasową</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>TouchSlider</name>
     <message>
-      <location filename="../../src/qml/components/TouchSlider.qml" line="162"/>
-      <source>Not supported</source>
-      <translation>Nieobsługiwane</translation>
+        <source>Not supported</source>
+        <translation type="vanished">Nieobsługiwane</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>TouchSliderBrightness</name>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="56"/>
+        <source>Touch slider is not available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="57"/>
+        <source>%1 is not available. Please check your configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TouchSliderPosition</name>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="56"/>
+        <source>Touch slider is not available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="57"/>
+        <source>%1 is not available. Please check your configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TouchSliderSeek</name>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="67"/>
+        <source>Touch slider is not available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="68"/>
+        <source>%1 is not available. Please check your configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
+    <name>TouchSliderVolume</name>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="57"/>
+        <source>Touch slider is not available.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="58"/>
+        <source>%1 is not available. Please check your configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Tv</name>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="380"/>
-      <source>Nothing is playing</source>
-      <translation>Nic nie jest odtwarzane</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="387"/>
+        <source>Nothing is playing</source>
+        <translation>Nic nie jest odtwarzane</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="390"/>
-      <source>Open an app or use the directional keys to navigate.</source>
-      <translation>Otwórz aplikację lub użyj klawiszy kierunkowych, aby nawigować.</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="397"/>
+        <source>Open an app or use the directional keys to navigate.</source>
+        <translation>Otwórz aplikację lub użyj klawiszy kierunkowych, aby nawigować.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="476"/>
-      <source>Live</source>
-      <translation>Na żywo</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="483"/>
+        <source>Live</source>
+        <translation>Na żywo</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="607"/>
-      <source>All</source>
-      <translation>Wszystko</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="614"/>
+        <source>All</source>
+        <translation>Wszystko</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="609"/>
-      <source>One</source>
-      <translation>Jeden</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="616"/>
+        <source>One</source>
+        <translation>Jeden</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="640"/>
-      <source>Apps</source>
-      <translation>Aplikacje</translation>
+        <location filename="../../src/qml/components/entities/media_player/deviceclass/Tv.qml" line="663"/>
+        <source>Apps</source>
+        <translation>Aplikacje</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>TvStaticSettings</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="30"/>
+        <source>Snow intensity</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="48"/>
+        <source>Snow size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="66"/>
+        <source>Scanline strength</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="84"/>
+        <source>Scanline roll speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="102"/>
+        <source>Chroma bleed (VHS)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="122"/>
+        <source>Rolling tracking bar</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="139"/>
+        <source>Tracking bar speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="157"/>
+        <source>Tint</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="184"/>
+        <source>— Channel flash —</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="192"/>
+        <source>Flash on tap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="211"/>
+        <source>Auto flash bursts</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="228"/>
+        <source>Flash interval (seconds)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="248"/>
+        <source>Flash duration (ms)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="266"/>
+        <source>Flash brightness</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>Ui</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="63"/>
-      <source>Inverted button behaviour</source>
-      <translation>Odwrócone działanie przycisku</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="63"/>
+        <source>Inverted button behaviour</source>
+        <translation>Odwrócone działanie przycisku</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="89"/>
-      <source>Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.</source>
-      <translation>Odwraca funkcje przycisków na ekranie głównym: krótkie naciśnięcie otwiera ekran sterowania, długie naciśnięcie szybko przełącza.</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="89"/>
+        <source>Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.</source>
+        <translation>Odwraca funkcje przycisków na ekranie głównym: krótkie naciśnięcie otwiera ekran sterowania, długie naciśnięcie szybko przełącza.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="115"/>
-      <source>Show battery percentage</source>
-      <translation>Pokaż stan naładowania baterii w procentach</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="115"/>
+        <source>Show battery percentage</source>
+        <translation>Pokaż stan naładowania baterii w procentach</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="138"/>
-      <source>Always show the battery percentage next to the icon.</source>
-      <translation>Zawsze pokazuj procent baterii obok ikony.</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="138"/>
+        <source>Always show the battery percentage next to the icon.</source>
+        <translation>Zawsze pokazuj procent baterii obok ikony.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
-      <source>Activities on pages</source>
-      <translation>Aktywności na stronach</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
+        <source>Show battery indicator everywhere</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
-      <source>Show the running activities and playing media players in the page header.</source>
-      <translation>Pokaż aktywności i odtwarzane media w nagłówku strony.</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
+        <source>Shows the battery level indicator on all pages and activities.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
-      <source>Zoom media image</source>
-      <translation type="unfinished">Zoom media image</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="213"/>
+        <source>Show WiFi indicator everywhere</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Ui.qml" line="235"/>
-      <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
-      <translation type="unfinished">Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</translation>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="236"/>
+        <source>Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="262"/>
+        <source>Activities on pages</source>
+        <translation>Aktywności na stronach</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
+        <source>Show the running activities and playing media players in the page header.</source>
+        <translation>Pokaż aktywności i odtwarzane media w nagłówku strony.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="311"/>
+        <source>Zoom media image</source>
+        <translation type="unfinished">Zoom media image</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="334"/>
+        <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
+        <translation type="unfinished">Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="360"/>
+        <source>Coverflow in media browser</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="383"/>
+        <source>Use coverflow as the default view when opening the media browser.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="409"/>
+        <source>Show volume overlay</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="432"/>
+        <source>Display volume indicator overlay when volume keys are pressed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="458"/>
+        <source>Show shuffle button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="481"/>
+        <source>Show the shuffle toggle on the media player controls row.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="507"/>
+        <source>Show repeat button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="530"/>
+        <source>Show the repeat-mode toggle on the media player controls row.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="556"/>
+        <source>Show media browser button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="579"/>
+        <source>Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="605"/>
+        <source>Show source picker button</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="627"/>
+        <source>Show the source picker button on the media player controls row.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>UpdateProgress</name>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="59"/>
-      <source>Update in progress</source>
-      <translation>Aktualizacja w toku</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="65"/>
+        <source>Update in progress</source>
+        <translation>Aktualizacja w toku</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="87"/>
-      <source>Installing step %1/%2 %3%</source>
-      <translation>Instalowanie krok %1/%2 %3%</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="93"/>
+        <source>Installing step %1/%2 %3%</source>
+        <translation>Instalowanie krok %1/%2 %3%</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="98"/>
-      <source>Do not turn off the remote during the installation process!</source>
-      <translation>Nie wyłączaj pilota podczas instalacji!</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="104"/>
+        <source>Do not turn off the remote during the installation process!</source>
+        <translation>Nie wyłączaj pilota podczas instalacji!</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="120"/>
-      <source>Update success</source>
-      <translation>Aktualizacja zakończona pomyślnie</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="126"/>
+        <source>Update success</source>
+        <translation>Aktualizacja zakończona pomyślnie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="130"/>
-      <source>Software update was successful.%1The remote will reboot now.</source>
-      <translation>Aktualizacja oprogramowania zakończona pomyślnie.%1Pilot zostanie teraz uruchomiony ponownie.</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="136"/>
+        <source>Software update was successful.%1The remote will reboot now.</source>
+        <translation>Aktualizacja oprogramowania zakończona pomyślnie.%1Pilot zostanie teraz uruchomiony ponownie.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="153"/>
-      <source>Update failed</source>
-      <translation>Aktualizacja nie powiodła się</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="159"/>
+        <source>Update failed</source>
+        <translation>Aktualizacja nie powiodła się</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="164"/>
-      <source>There was an error during installing the update.</source>
-      <translation>Wystąpił błąd podczas instalacji aktualizacji.</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="170"/>
+        <source>There was an error during installing the update.</source>
+        <translation>Wystąpił błąd podczas instalacji aktualizacji.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="182"/>
-      <source>Back</source>
-      <translation>Wstecz</translation>
+        <location filename="../../src/qml/settings/softwareupdate/UpdateProgress.qml" line="188"/>
+        <source>Back</source>
+        <translation>Wstecz</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Voice</name>
     <message>
-      <location filename="../../src/qml/settings/settings/Voice.qml" line="59"/>
-      <source>Voice control</source>
-      <translation>Sterowanie głosowe</translation>
+        <source>Voice control</source>
+        <translation type="vanished">Sterowanie głosowe</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Voice.qml" line="85"/>
-      <source>Disabling voice control will still let you use voice dictation with integrations.
+        <source>Disabling voice control will still let you use voice dictation with integrations.
 
 Press and hold the voice button and say the command.</source>
-      <translation>Wyłączenie sterowania głosowego nadal umożliwia korzystanie z dyktowania głosowego wraz z integracjami.
+        <translation type="vanished">Wyłączenie sterowania głosowego nadal umożliwia korzystanie z dyktowania głosowego wraz z integracjami.
 
 Naciśnij i przytrzymaj przycisk głosowy i powiedz polecenie.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Voice.qml" line="108"/>
-      <source>Microphone</source>
-      <translation>Mikrofon</translation>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="64"/>
+        <source>Microphone</source>
+        <translation>Mikrofon</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Voice.qml" line="130"/>
-      <source>Disabling the microphone will completely turn it off. You won’t be able to use voice control or dictation with integrations</source>
-      <translation>Wyłączenie mikrofonu spowoduje jego całkowite wyłączenie. Nie będziesz mógł używać kontroli głosowej ani dyktowania w integracjach</translation>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="85"/>
+        <source>Disabling the microphone will completely turn it off.  You won’t be able to use voice assistants.</source>
+        <translation type="unfinished"></translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="113"/>
+        <source>Voice Assistant</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="120"/>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="140"/>
+        <source>None selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="135"/>
+        <source>Profile: %1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="137"/>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="141"/>
+        <source>No profile selected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="183"/>
+        <source>Use the Web Configurator to edit voice assistants.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="208"/>
+        <source>Speech response</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Voice.qml" line="229"/>
+        <source>Play speech response from Voice Assistant when supported.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Disabling the microphone will completely turn it off. You won’t be able to use voice control or dictation with integrations</source>
+        <translation type="vanished">Wyłączenie mikrofonu spowoduje jego całkowite wyłączenie. Nie będziesz mógł używać kontroli głosowej ani dyktowania w integracjach</translation>
+    </message>
+</context>
+<context>
+    <name>Voice assistant state</name>
+    <message>
+        <location filename="../../src/ui/entity/voiceAssistant.h" line="39"/>
+        <source>Unavailable</source>
+        <translation type="unfinished">Niedostępne</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/voiceAssistant.h" line="41"/>
+        <source>Unknown</source>
+        <translation type="unfinished">Nieznany</translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/voiceAssistant.h" line="43"/>
+        <source>On</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/voiceAssistant.h" line="45"/>
+        <source>Off</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>VoiceOverlay</name>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="53"/>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="494"/>
-      <source>Listening ...</source>
-      <extracomment>Waiting for audio/voice input</extracomment>
-      <translation>Nasłuchuję...</translation>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="38"/>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="644"/>
+        <source>Listening ...</source>
+        <extracomment>Waiting for audio/voice input</extracomment>
+        <translation>Nasłuchuję...</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="73"/>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="134"/>
-      <source>Set brightness %1%</source>
-      <translation>Ustaw jasność %1%</translation>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="91"/>
+        <source>Voice Assistant is not available.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="142"/>
-      <source>Entity was not recognised</source>
-      <translation>Nie rozpoznano jednostki</translation>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="117"/>
+        <source>Processing ...</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="151"/>
-      <source>Found %1 similar entities. Please select one to use</source>
-      <translation>Znaleziono %1 podobnych jednostek. Wybierz jedną do użycia</translation>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="256"/>
+        <source>There was an error.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="549"/>
-      <source>You can say commands like</source>
-      <translation>Możesz powiedzieć polecenia takie jak</translation>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="260"/>
+        <source>Request failed.</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/VoiceOverlay.qml" line="561"/>
-      <source>“Turn on the Living room lights”
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="263"/>
+        <source>Not authenticated.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="266"/>
+        <source>Missing rights to use voice assistant.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="269"/>
+        <source>Voice assistant not found. Please check configuration.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="272"/>
+        <source>There were too many requests. Please try again later.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="275"/>
+        <source>Internal server error.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="278"/>
+        <source>Voice assistant is unavailable.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/components/VoiceOverlay.qml" line="309"/>
+        <source>It’s taking longer than expected. Please try your request again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <source>Set brightness %1%</source>
+        <translation type="vanished">Ustaw jasność %1%</translation>
+    </message>
+    <message>
+        <source>Entity was not recognised</source>
+        <translation type="vanished">Nie rozpoznano jednostki</translation>
+    </message>
+    <message>
+        <source>Found %1 similar entities. Please select one to use</source>
+        <translation type="vanished">Znaleziono %1 podobnych jednostek. Wybierz jedną do użycia</translation>
+    </message>
+    <message>
+        <source>You can say commands like</source>
+        <translation type="vanished">Możesz powiedzieć polecenia takie jak</translation>
+    </message>
+    <message>
+        <source>“Turn on the Living room lights”
 “Start activity Watch TV”
 “Set Kitchen radiator temperature to 24º”</source>
-      <translation>„Włącz światła w salonie”
+        <translation type="vanished">„Włącz światła w salonie”
 „Rozpocznij aktywność Oglądanie TV”
 „Ustaw temperaturę grzejnika kuchennego na 24º”</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Voltage</name>
     <message>
-      <location filename="../../src/qml/components/entities/sensor/deviceclass/Voltage.qml" line="49"/>
-      <source>Voltage</source>
-      <translation>Napięcie</translation>
+        <location filename="../../src/qml/components/entities/sensor/deviceclass/Voltage.qml" line="47"/>
+        <source>Voltage</source>
+        <translation>Napięcie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>WebConfig</name>
     <message>
-      <location filename="../../src/qml/components/WebConfig.qml" line="80"/>
-      <source>Web Configurator</source>
-      <translation>Konfigurator sieciowy</translation>
+        <location filename="../../src/qml/components/WebConfig.qml" line="80"/>
+        <source>Web Configurator</source>
+        <translation>Konfigurator sieciowy</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/WebConfig.qml" line="142"/>
-      <source>Web configurator enabled</source>
-      <translation>Web Configurator włączony</translation>
+        <location filename="../../src/qml/components/WebConfig.qml" line="142"/>
+        <source>Web configurator enabled</source>
+        <translation>Web Configurator włączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/WebConfig.qml" line="142"/>
-      <source>Web configurator disabled</source>
-      <translation>Web Configurator wyłączony</translation>
+        <location filename="../../src/qml/components/WebConfig.qml" line="142"/>
+        <source>Web configurator disabled</source>
+        <translation>Web Configurator wyłączony</translation>
     </message>
     <message>
-      <location filename="../../src/qml/components/WebConfig.qml" line="329"/>
-      <source>Restricted</source>
-      <extracomment>Text explaining that the profile has restricted access</extracomment>
-      <translation>Ograniczony</translation>
+        <location filename="../../src/qml/components/WebConfig.qml" line="329"/>
+        <source>Restricted</source>
+        <extracomment>Text explaining that the profile has restricted access</extracomment>
+        <translation>Ograniczony</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Wifi</name>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="64"/>
-      <source>Select your WiFi network</source>
-      <translation>Wybierz sieć Wi-Fi</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="86"/>
+        <source>Select your WiFi network</source>
+        <translation>Wybierz sieć Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="88"/>
-      <source>Wi-Fi address</source>
-      <translation>Adres Wi-Fi</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="110"/>
+        <source>Wi-Fi address</source>
+        <translation>Adres Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="122"/>
-      <source>Skip</source>
-      <translation>Pomiń</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="146"/>
+        <source>Skip</source>
+        <translation>Pomiń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="147"/>
-      <source>Failed to connect</source>
-      <extracomment>Failed to connect to a wifi network</extracomment>
-      <translation>Nie udało się połączyć</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="171"/>
+        <source>Failed to connect</source>
+        <extracomment>Failed to connect to a wifi network</extracomment>
+        <translation>Nie udało się połączyć</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="163"/>
-      <source>Failed to connect to the WiFi network. You can try again or proceed without setting up a WiFi network. You can set up your WiFi network later in Settings. If you skip this step, dock and integration setup won&apos;t be possible now.</source>
-      <translation>Nie udało się połączyć z siecią Wi-Fi. Możesz spróbować ponownie lub kontynuować bez konfiguracji sieci Wi-Fi. Możesz skonfigurować sieć Wi-Fi później w Ustawieniach. Jeśli pominiesz ten krok, konfiguracja stacji dokującej i integracji nie będzie teraz możliwa.</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="187"/>
+        <source>Failed to connect to the WiFi network. You can try again or proceed without setting up a WiFi network. You can set up your WiFi network later in Settings. If you skip this step, dock and integration setup won&apos;t be possible now.</source>
+        <translation>Nie udało się połączyć z siecią Wi-Fi. Możesz spróbować ponownie lub kontynuować bez konfiguracji sieci Wi-Fi. Możesz skonfigurować sieć Wi-Fi później w Ustawieniach. Jeśli pominiesz ten krok, konfiguracja stacji dokującej i integracji nie będzie teraz możliwa.</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="170"/>
-      <source>Set up later</source>
-      <translation>Skonfiguruj później</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="194"/>
+        <source>Set up later</source>
+        <translation>Skonfiguruj później</translation>
     </message>
     <message>
-      <location filename="../../src/qml/onboarding/Wifi.qml" line="181"/>
-      <source>Try again</source>
-      <translation>Spróbuj ponownie</translation>
+        <location filename="../../src/qml/onboarding/Wifi.qml" line="205"/>
+        <source>Try again</source>
+        <translation>Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="86"/>
-      <source>Bluetooth</source>
-      <translation>Bluetooth</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="107"/>
+        <source>Bluetooth</source>
+        <translation>Bluetooth</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="127"/>
-      <source>WiFi</source>
-      <translation>Wi-Fi</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="148"/>
+        <source>WiFi</source>
+        <translation>Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="165"/>
-      <source>Active WiFi scanning</source>
-      <translation type="unfinished">Active WiFi scanning</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="186"/>
+        <source>Active WiFi scanning</source>
+        <translation type="unfinished">Active WiFi scanning</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="199"/>
-      <source>Actively scan for nearby WiFi networks in the configured interval: %1 seconds</source>
-      <translation type="unfinished">Actively scan for nearby WiFi networks in the configured interval: %1 seconds</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="220"/>
+        <source>Actively scan for nearby WiFi networks in the configured interval: %1 seconds</source>
+        <translation type="unfinished">Actively scan for nearby WiFi networks in the configured interval: %1 seconds</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="210"/>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="211"/>
-      <source>%1 seconds</source>
-      <translation type="unfinished">%1 seconds</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="231"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="232"/>
+        <source>%1 seconds</source>
+        <translation type="unfinished">%1 seconds</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="249"/>
-      <source>WiFi band</source>
-      <translation type="unfinished">WiFi band</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="270"/>
+        <source>WiFi band</source>
+        <translation type="unfinished">WiFi band</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="263"/>
-      <source>Select WiFi band</source>
-      <translation type="unfinished">Select WiFi band</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="284"/>
+        <source>Select WiFi band</source>
+        <translation type="unfinished">Select WiFi band</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="289"/>
-      <source>Known Networks</source>
-      <extracomment>known WiFi networks</extracomment>
-      <translation>Znane sieci</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="310"/>
+        <source>Known Networks</source>
+        <extracomment>known WiFi networks</extracomment>
+        <translation>Znane sieci</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="307"/>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="311"/>
-      <source>Delete all networks</source>
-      <translation>Usuń wszystkie sieci</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="328"/>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="332"/>
+        <source>Delete all networks</source>
+        <translation>Usuń wszystkie sieci</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="312"/>
-      <source>Are you sure you want to delete all WiFi networks?</source>
-      <translation>Czy na pewno chcesz usunąć wszystkie sieci WiFi?</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="333"/>
+        <source>Are you sure you want to delete all WiFi networks?</source>
+        <translation>Czy na pewno chcesz usunąć wszystkie sieci WiFi?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/Wifi.qml" line="318"/>
-      <source>Delete all</source>
-      <translation>Usuń wszystko</translation>
+        <location filename="../../src/qml/settings/settings/Wifi.qml" line="339"/>
+        <source>Delete all</source>
+        <translation>Usuń wszystko</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>WifiDiagnostics</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="100"/>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="109"/>
+        <source>None since boot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="110"/>
+        <source> s</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="111"/>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="112"/>
+        <source> min</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="112"/>
+        <source> h </source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="162"/>
+        <source>WiFi Diagnostics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="178"/>
+        <source>Signal strength</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="253"/>
+        <source>Link speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="277"/>
+        <source>Drops since boot</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="300"/>
+        <source>Current session</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="307"/>
+        <source>Disconnected</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="323"/>
+        <source>Time since last drop</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="339"/>
+        <source>Reset counters</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="343"/>
+        <source>Reset diagnostic counters?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="344"/>
+        <source>Are you sure you want to zero the drop counter and clear the RSSI history?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiDiagnostics.qml" line="347"/>
+        <source>Reset</source>
+        <translation type="unfinished">Zresetuj</translation>
+    </message>
+</context>
+<context>
     <name>WifiInfo</name>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="175"/>
-      <source>MAC address</source>
-      <translation>Adres MAC</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="208"/>
+        <source>Signal</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="204"/>
-      <source>IP address</source>
-      <translation>Adres IP</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="233"/>
+        <source>Link speed</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="233"/>
-      <source>Key management</source>
-      <translation type="unfinished">Key management</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="265"/>
+        <source>Throughput</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="249"/>
-      <source>Disconnect</source>
-      <translation type="unfinished">Disconnect</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="290"/>
+        <source>BSSID</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="249"/>
-      <source>Connect</source>
-      <translation type="unfinished">Connect</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="315"/>
+        <source>Channel</source>
+        <translation type="unfinished"></translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="264"/>
-      <source>Delete</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="350"/>
+        <source>MAC address</source>
+        <translation>Adres MAC</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="275"/>
-      <source>Close</source>
-      <translation>Zamknij</translation>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="379"/>
+        <source>IP address</source>
+        <translation>Adres IP</translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="408"/>
+        <source>Key management</source>
+        <translation type="unfinished">Key management</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="426"/>
+        <source>Disconnect</source>
+        <translation type="unfinished">Disconnect</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="426"/>
+        <source>Connect</source>
+        <translation type="unfinished">Connect</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="441"/>
+        <source>Reconnect</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="453"/>
+        <source>Diagnostics</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/WifiInfo.qml" line="459"/>
+        <source>Delete</source>
+        <translation>Usuń</translation>
+    </message>
+    <message>
+        <source>Close</source>
+        <translation type="vanished">Zamknij</translation>
+    </message>
+</context>
+<context>
     <name>WifiJoin</name>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="132"/>
-      <source>Join WiFi network?</source>
-      <translation>Połączyć z siecią Wi-Fi?</translation>
+        <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="132"/>
+        <source>Join WiFi network?</source>
+        <translation>Połączyć z siecią Wi-Fi?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="203"/>
-      <source>Join</source>
-      <extracomment>Join wifi network</extracomment>
-      <translation>Dołącz</translation>
+        <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="203"/>
+        <source>Join</source>
+        <extracomment>Join wifi network</extracomment>
+        <translation>Dołącz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="221"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/settings/settings/WifiJoin.qml" line="221"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>WifiNetworkList</name>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="31"/>
-      <source>Other Networks</source>
-      <translation type="unfinished">Other Networks</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="31"/>
+        <source>Other Networks</source>
+        <translation type="unfinished">Other Networks</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="157"/>
-      <source>No networks found</source>
-      <translation>Nie znaleziono sieci</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="158"/>
+        <source>No networks found</source>
+        <translation>Nie znaleziono sieci</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="168"/>
-      <source>Join other</source>
-      <extracomment>Join other wifi network</extracomment>
-      <translation>Połącz z inną siecią</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="169"/>
+        <source>Join other</source>
+        <extracomment>Join other wifi network</extracomment>
+        <translation>Połącz z inną siecią</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="194"/>
-      <source>Join and disable others</source>
-      <extracomment>Wifi network join</extracomment>
-      <translation type="unfinished">Join and disable others</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="195"/>
+        <source>Join and disable others</source>
+        <extracomment>Wifi network join</extracomment>
+        <translation type="unfinished">Join and disable others</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="204"/>
-      <source>Disable</source>
-      <extracomment>Wifi network enable or disable</extracomment>
-      <translation type="unfinished">Disable</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="205"/>
+        <source>Disable</source>
+        <extracomment>Wifi network enable or disable</extracomment>
+        <translation type="unfinished">Disable</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="204"/>
-      <source>Enable</source>
-      <translation type="unfinished">Enable</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="205"/>
+        <source>Enable</source>
+        <translation type="unfinished">Enable</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="213"/>
-      <source>Delete</source>
-      <extracomment>Wifi network delete</extracomment>
-      <translation type="unfinished">Delete</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="214"/>
+        <source>Delete</source>
+        <extracomment>Wifi network delete</extracomment>
+        <translation type="unfinished">Delete</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="216"/>
-      <source>Remove WiFi network</source>
-      <translation>Usuń sieć WiFi</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="217"/>
+        <source>Remove WiFi network</source>
+        <translation>Usuń sieć WiFi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="216"/>
-      <source>Are you sure you want to remove the network %1?</source>
-      <translation>Czy na pewno chcesz usunąć sieć %1?</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="217"/>
+        <source>Are you sure you want to remove the network %1?</source>
+        <translation>Czy na pewno chcesz usunąć sieć %1?</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="220"/>
-      <source>Remove</source>
-      <translation>Usuń</translation>
+        <location filename="../../src/qml/settings/settings/WifiNetworkList.qml" line="221"/>
+        <source>Remove</source>
+        <translation>Usuń</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>WifiPassword</name>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="104"/>
-      <source>Enter WiFi password for
+        <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="104"/>
+        <source>Enter WiFi password for
 %1</source>
-      <translation>Wprowadź hasło Wi-Fi dla
+        <translation>Wprowadź hasło Wi-Fi dla
 %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="118"/>
-      <source>Super secret</source>
-      <extracomment>Placeholder text for password</extracomment>
-      <translation>Super sekret</translation>
+        <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="118"/>
+        <source>Super secret</source>
+        <extracomment>Placeholder text for password</extracomment>
+        <translation>Super sekret</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="130"/>
-      <source>Join</source>
-      <extracomment>Join wifi network</extracomment>
-      <translation>Dołącz</translation>
+        <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="130"/>
+        <source>Join</source>
+        <extracomment>Join wifi network</extracomment>
+        <translation>Dołącz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="139"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/settings/settings/WifiPassword.qml" line="139"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>WifiSetup</name>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="103"/>
-      <source>Enter SSID</source>
-      <translation>Wprowadź SSID</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="103"/>
+        <source>Enter SSID</source>
+        <translation>Wprowadź SSID</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="116"/>
-      <source>Wifi network</source>
-      <translation>Sieć Wi-Fi</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="116"/>
+        <source>Wifi network</source>
+        <translation>Sieć Wi-Fi</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="125"/>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="193"/>
-      <source>Next</source>
-      <translation>Dalej</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="125"/>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="193"/>
+        <source>Next</source>
+        <translation>Dalej</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="134"/>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="228"/>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="301"/>
-      <source>Cancel</source>
-      <translation>Anuluj</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="134"/>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="228"/>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="301"/>
+        <source>Cancel</source>
+        <translation>Anuluj</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="153"/>
-      <source>Choose WiFi security for
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="153"/>
+        <source>Choose WiFi security for
 %1</source>
-      <translation>Wybierz zabezpieczenia Wi-Fi dla
+        <translation>Wybierz zabezpieczenia Wi-Fi dla
 %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="193"/>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="292"/>
-      <source>Join</source>
-      <extracomment>Join wifi network</extracomment>
-      <translation>Dołącz</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="193"/>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="292"/>
+        <source>Join</source>
+        <extracomment>Join wifi network</extracomment>
+        <translation>Dołącz</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="205"/>
-      <source>Select a security option</source>
-      <translation>Wybierz opcję zabezpieczeń</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="205"/>
+        <source>Select a security option</source>
+        <translation>Wybierz opcję zabezpieczeń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="205"/>
-      <source>Please select a security option</source>
-      <translation>Proszę wybrać opcję zabezpieczeń</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="205"/>
+        <source>Please select a security option</source>
+        <translation>Proszę wybrać opcję zabezpieczeń</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="266"/>
-      <source>Enter WiFi password for
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="266"/>
+        <source>Enter WiFi password for
 %1</source>
-      <translation>Wprowadź hasło Wi-Fi dla
+        <translation>Wprowadź hasło Wi-Fi dla
 %1</translation>
     </message>
     <message>
-      <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="280"/>
-      <source>Super secret</source>
-      <extracomment>Placeholder text for password</extracomment>
-      <translation>Super sekret</translation>
+        <location filename="../../src/qml/settings/settings/WifiSetup.qml" line="280"/>
+        <source>Super secret</source>
+        <extracomment>Placeholder text for password</extracomment>
+        <translation>Super sekret</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>Window</name>
     <message>
-      <location filename="../../src/qml/components/entities/cover/deviceclass/Window.qml" line="281"/>
-      <source>Stop</source>
-      <extracomment>Button caption to stop window blinds motion</extracomment>
-      <translation>Zatrzymaj</translation>
+        <location filename="../../src/qml/components/entities/cover/deviceclass/Window.qml" line="281"/>
+        <source>Stop</source>
+        <extracomment>Button caption to stop window blinds motion</extracomment>
+        <translation>Zatrzymaj</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>main</name>
     <message>
-      <location filename="../../src/qml/main.qml" line="628"/>
-      <source>Done</source>
-      <translation>Gotowe</translation>
+        <location filename="../../src/qml/main.qml" line="891"/>
+        <source>Done</source>
+        <translation>Gotowe</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::Config</name>
     <message>
-      <location filename="../../src/config/config.cpp" line="808"/>
-      <source>Error while loading configuration. Trying again.</source>
-      <translation>Błąd podczas ładowania konfiguracji. Ponawiam próbę.</translation>
+        <location filename="../../src/config/config.cpp" line="1014"/>
+        <source>Error while loading configuration. Trying again.</source>
+        <translation>Błąd podczas ładowania konfiguracji. Ponawiam próbę.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::SoftwareUpdate</name>
     <message>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="92"/>
-      <source>Update check failed</source>
-      <translation>Nie udało się sprawdzić aktualizacji</translation>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="103"/>
+        <source>Update check failed</source>
+        <translation>Nie udało się sprawdzić aktualizacji</translation>
     </message>
     <message>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="93"/>
-      <source>There was an error while checking for new updates. Please try again later.</source>
-      <translation>Wystąpił błąd podczas sprawdzania aktualizacji. Spróbuj ponownie później.</translation>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="104"/>
+        <source>There was an error while checking for new updates. Please try again later.</source>
+        <translation>Wystąpił błąd podczas sprawdzania aktualizacji. Spróbuj ponownie później.</translation>
     </message>
     <message>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="110"/>
-      <source>Update error</source>
-      <translation>Błąd aktualizacji</translation>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="123"/>
+        <source>Update error</source>
+        <translation>Błąd aktualizacji</translation>
     </message>
     <message>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="110"/>
-      <source>Couldn&apos;t start the software update. Please try again later.</source>
-      <translation>Nie udało się uruchomić aktualizacji oprogramowania. Spróbuj ponownie później.</translation>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="123"/>
+        <source>Couldn&apos;t start the software update. Please try again later.</source>
+        <translation>Nie udało się uruchomić aktualizacji oprogramowania. Spróbuj ponownie później.</translation>
     </message>
     <message>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="162"/>
-      <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="187"/>
-      <source>Software update has failed.</source>
-      <translation>Aktualizacja oprogramowania nie powiodła się.</translation>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="193"/>
+        <location filename="../../src/softwareupdate/softwareUpdate.cpp" line="220"/>
+        <source>Software update has failed.</source>
+        <translation>Aktualizacja oprogramowania nie powiodła się.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::Voice</name>
     <message>
-      <location filename="../../src/voice.cpp" line="151"/>
-      <source>Command was not recognised</source>
-      <translation>Polecenie nie zostało rozpoznane</translation>
+        <source>Command was not recognised</source>
+        <translation type="vanished">Polecenie nie zostało rozpoznane</translation>
     </message>
     <message>
-      <location filename="../../src/voice.cpp" line="174"/>
-      <source>Entity was not recognised</source>
-      <translation>Nie rozpoznano jednostki</translation>
+        <source>Entity was not recognised</source>
+        <translation type="vanished">Nie rozpoznano jednostki</translation>
     </message>
-  </context>
-  <context>
+    <message>
+        <location filename="../../src/voice.cpp" line="150"/>
+        <source>The service is temporarily unavailable.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="153"/>
+        <source>Incorrect audio format.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="156"/>
+        <source>I didn’t catch any text from your input. Could you repeat that?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="159"/>
+        <source>Please try rephrasing your request.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="162"/>
+        <source>I couldn’t generate the audio response.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="165"/>
+        <source>It’s taking longer than expected. Please try your request again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/voice.cpp" line="168"/>
+        <source>Something went wrong on our side. Please try again.</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>uc::core::Api</name>
     <message>
-      <location filename="../../src/core/core.cpp" line="1341"/>
-      <source>Connection error</source>
-      <translation>Błąd połączenia</translation>
+        <location filename="../../src/core/core.cpp" line="1368"/>
+        <source>Connection error</source>
+        <translation>Błąd połączenia</translation>
     </message>
     <message>
-      <location filename="../../src/core/core.cpp" line="1342"/>
-      <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
-      <translation>Wystąpił błąd podczas łączenia się z rdzeniem. Jeśli problem będzie się powtarzał, zrestartuj pilota.</translation>
+        <location filename="../../src/core/core.cpp" line="1369"/>
+        <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
+        <translation>Wystąpił błąd podczas łączenia się z rdzeniem. Jeśli problem będzie się powtarzał, zrestartuj pilota.</translation>
     </message>
     <message>
-      <location filename="../../src/core/core.cpp" line="1736"/>
-      <source>Authentication to core failed</source>
-      <translation>Autoryzacja w rdzeniu nie powiodła się</translation>
+        <location filename="../../src/core/core.cpp" line="1828"/>
+        <source>Authentication to core failed</source>
+        <translation>Autoryzacja w rdzeniu nie powiodła się</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::dock::DockController</name>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="113"/>
-      <source>Failed to start dock discovery</source>
-      <translation>Nie udało się uruchomić wykrywania stacji dokujących</translation>
+        <location filename="../../src/dock/dockController.cpp" line="113"/>
+        <source>Failed to start dock discovery</source>
+        <translation>Nie udało się uruchomić wykrywania stacji dokujących</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="113"/>
-      <source>There was an error starting dock discovery: %1</source>
-      <translation>Wystąpił błąd podczas uruchamiania wykrywania stacji dokujących: %1</translation>
+        <location filename="../../src/dock/dockController.cpp" line="113"/>
+        <source>There was an error starting dock discovery: %1</source>
+        <translation>Wystąpił błąd podczas uruchamiania wykrywania stacji dokujących: %1</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="119"/>
-      <location filename="../../src/dock/dockController.cpp" line="143"/>
-      <source>Try again</source>
-      <translation>Spróbuj ponownie</translation>
+        <location filename="../../src/dock/dockController.cpp" line="119"/>
+        <location filename="../../src/dock/dockController.cpp" line="143"/>
+        <source>Try again</source>
+        <translation>Spróbuj ponownie</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="137"/>
-      <source>Failed to stop dock discovery</source>
-      <translation>Nie udało się zatrzymać wykrywania stacji dokujących</translation>
+        <location filename="../../src/dock/dockController.cpp" line="137"/>
+        <source>Failed to stop dock discovery</source>
+        <translation>Nie udało się zatrzymać wykrywania stacji dokujących</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="137"/>
-      <source>There was an error stopping dock discovery: %1</source>
-      <translation>Wystąpił błąd podczas zatrzymywania wykrywania stacji dokujących: %1</translation>
+        <location filename="../../src/dock/dockController.cpp" line="137"/>
+        <source>There was an error stopping dock discovery: %1</source>
+        <translation>Wystąpił błąd podczas zatrzymywania wykrywania stacji dokujących: %1</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="412"/>
-      <source>Configuring</source>
-      <translation>Konfigurowanie</translation>
+        <location filename="../../src/dock/dockController.cpp" line="412"/>
+        <source>Configuring</source>
+        <translation>Konfigurowanie</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="415"/>
-      <source>Restarting</source>
-      <translation>Ponowne uruchomienie</translation>
+        <location filename="../../src/dock/dockController.cpp" line="415"/>
+        <source>Restarting</source>
+        <translation>Ponowne uruchomienie</translation>
     </message>
     <message>
-      <location filename="../../src/dock/dockController.cpp" line="418"/>
-      <source>Uploading</source>
-      <translation>Przesyłanie</translation>
+        <location filename="../../src/dock/dockController.cpp" line="418"/>
+        <source>Uploading</source>
+        <translation>Przesyłanie</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::hw::Battery</name>
     <message>
-      <location filename="../../src/hardware/battery.cpp" line="86"/>
-      <location filename="../../src/hardware/battery.cpp" line="92"/>
-      <source>Low battery</source>
-      <translation>Niski poziom baterii</translation>
+        <location filename="../../src/hardware/battery.cpp" line="96"/>
+        <location filename="../../src/hardware/battery.cpp" line="102"/>
+        <source>Low battery</source>
+        <translation>Niski poziom baterii</translation>
     </message>
     <message>
-      <location filename="../../src/hardware/battery.cpp" line="86"/>
-      <source>%1% battery remaining. Please charge the remote soon.</source>
-      <translation>Pozostało %1% baterii. Naładuj pilot wkrótce.</translation>
+        <location filename="../../src/hardware/battery.cpp" line="96"/>
+        <source>%1% battery remaining. Please charge the remote soon.</source>
+        <translation>Pozostało %1% baterii. Naładuj pilot wkrótce.</translation>
     </message>
     <message>
-      <location filename="../../src/hardware/battery.cpp" line="93"/>
-      <source>Low battery voltage detected. Charge the battery to 100% before using the remote again.</source>
-      <translation>Wykryto niskie napięcie baterii. Naładuj baterię do 100% przed ponownym użyciem pilota.</translation>
+        <location filename="../../src/hardware/battery.cpp" line="103"/>
+        <source>Low battery voltage detected. Charge the battery to 100% before using the remote again.</source>
+        <translation>Wykryto niskie napięcie baterii. Naładuj baterię do 100% przed ponownym użyciem pilota.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::hw::Wifi</name>
     <message>
-      <location filename="../../src/hardware/wifi.cpp" line="262"/>
-      <source>Failed to delete network. Wifi network does not exist.</source>
-      <translation>Nie udało się usunąć sieci. Sieć Wi-Fi nie istnieje.</translation>
+        <location filename="../../src/hardware/wifi.cpp" line="346"/>
+        <source>Failed to delete network. Wifi network does not exist.</source>
+        <translation>Nie udało się usunąć sieci. Sieć Wi-Fi nie istnieje.</translation>
     </message>
     <message>
-      <location filename="../../src/hardware/wifi.cpp" line="403"/>
-      <source>Wrong network key</source>
-      <translation>Nieprawidłowy klucz sieci</translation>
+        <location filename="../../src/hardware/wifi.cpp" line="498"/>
+        <source>Wrong network key</source>
+        <translation>Nieprawidłowy klucz sieci</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::integration::IntegrationController</name>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="229"/>
-      <source>Error while deleting integration</source>
-      <translation>Błąd podczas usuwania integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="229"/>
+        <source>Error while deleting integration</source>
+        <translation>Błąd podczas usuwania integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="244"/>
-      <source>Error while deleting integration driver</source>
-      <translation>Błąd podczas usuwania sterownika integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="244"/>
+        <source>Error while deleting integration driver</source>
+        <translation>Błąd podczas usuwania sterownika integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="267"/>
-      <source>Integration discovery failed to start</source>
-      <translation>Nie udało się rozpocząć wykrywania integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="267"/>
+        <source>Integration discovery failed to start</source>
+        <translation>Nie udało się rozpocząć wykrywania integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="288"/>
-      <source>Integration discovery failed to stop</source>
-      <translation>Nie udało się zatrzymać wykrywania integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="288"/>
+        <source>Integration discovery failed to stop</source>
+        <translation>Nie udało się zatrzymać wykrywania integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="305"/>
-      <source>Error getting integration driver metadata</source>
-      <translation>Błąd podczas pobierania metadanych sterownika integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="305"/>
+        <source>Error getting integration driver metadata</source>
+        <translation>Błąd podczas pobierania metadanych sterownika integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="334"/>
-      <source>Error getting integration driver</source>
-      <translation>Błąd podczas pobierania sterownika integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="334"/>
+        <source>Error getting integration driver</source>
+        <translation>Błąd podczas pobierania sterownika integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="350"/>
-      <location filename="../../src/integration/integrationController.cpp" line="366"/>
-      <source>Error while starting integration driver</source>
-      <translation>Błąd podczas uruchamiania sterownika integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="350"/>
+        <location filename="../../src/integration/integrationController.cpp" line="366"/>
+        <source>Error while starting integration driver</source>
+        <translation>Błąd podczas uruchamiania sterownika integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="382"/>
-      <source>Error while connecting to the integration</source>
-      <translation>Błąd podczas łączenia z integracją</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="382"/>
+        <source>Error while connecting to the integration</source>
+        <translation>Błąd podczas łączenia z integracją</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="398"/>
-      <source>Error while disconnecting to the integration</source>
-      <translation>Błąd podczas rozłączania z integracją</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="398"/>
+        <source>Error while disconnecting to the integration</source>
+        <translation>Błąd podczas rozłączania z integracją</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="426"/>
-      <location filename="../../src/integration/integrationController.cpp" line="441"/>
-      <location filename="../../src/integration/integrationController.cpp" line="509"/>
-      <location filename="../../src/integration/integrationController.cpp" line="572"/>
-      <location filename="../../src/integration/integrationController.cpp" line="646"/>
-      <source>Integration setup error. Aborting setup</source>
-      <translation>Błąd konfiguracji integracji. Przerywanie konfiguracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="426"/>
+        <location filename="../../src/integration/integrationController.cpp" line="441"/>
+        <location filename="../../src/integration/integrationController.cpp" line="509"/>
+        <location filename="../../src/integration/integrationController.cpp" line="572"/>
+        <location filename="../../src/integration/integrationController.cpp" line="646"/>
+        <source>Integration setup error. Aborting setup</source>
+        <translation>Błąd konfiguracji integracji. Przerywanie konfiguracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="465"/>
-      <location filename="../../src/integration/integrationController.cpp" line="596"/>
-      <location filename="../../src/integration/integrationController.cpp" line="655"/>
-      <source>Invalid data</source>
-      <translation>Nieprawidłowe dane</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="465"/>
+        <location filename="../../src/integration/integrationController.cpp" line="596"/>
+        <location filename="../../src/integration/integrationController.cpp" line="655"/>
+        <source>Invalid data</source>
+        <translation>Nieprawidłowe dane</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="470"/>
-      <location filename="../../src/integration/integrationController.cpp" line="601"/>
-      <location filename="../../src/integration/integrationController.cpp" line="658"/>
-      <source>The integration driver id does not exist.</source>
-      <translation>Identyfikator sterownika integracji nie istnieje.</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="470"/>
+        <location filename="../../src/integration/integrationController.cpp" line="601"/>
+        <location filename="../../src/integration/integrationController.cpp" line="658"/>
+        <source>The integration driver id does not exist.</source>
+        <translation>Identyfikator sterownika integracji nie istnieje.</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="478"/>
-      <location filename="../../src/integration/integrationController.cpp" line="609"/>
-      <location filename="../../src/integration/integrationController.cpp" line="666"/>
-      <source>Failed to start setup</source>
-      <translation>Nie udało się uruchomić konfiguracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="478"/>
+        <location filename="../../src/integration/integrationController.cpp" line="609"/>
+        <location filename="../../src/integration/integrationController.cpp" line="666"/>
+        <source>Failed to start setup</source>
+        <translation>Nie udało się uruchomić konfiguracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="479"/>
-      <location filename="../../src/integration/integrationController.cpp" line="610"/>
-      <location filename="../../src/integration/integrationController.cpp" line="667"/>
-      <source>There is already a running setup for this integration. Would you like to stop that?</source>
-      <translation>Jest już uruchomiona konfiguracja dla tej integracji. Czy chcesz ją zatrzymać?</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="479"/>
+        <location filename="../../src/integration/integrationController.cpp" line="610"/>
+        <location filename="../../src/integration/integrationController.cpp" line="667"/>
+        <source>There is already a running setup for this integration. Would you like to stop that?</source>
+        <translation>Jest już uruchomiona konfiguracja dla tej integracji. Czy chcesz ją zatrzymać?</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="487"/>
-      <location filename="../../src/integration/integrationController.cpp" line="618"/>
-      <location filename="../../src/integration/integrationController.cpp" line="675"/>
-      <source>Stop</source>
-      <translation>Zatrzymaj</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="487"/>
+        <location filename="../../src/integration/integrationController.cpp" line="618"/>
+        <location filename="../../src/integration/integrationController.cpp" line="675"/>
+        <source>Stop</source>
+        <translation>Zatrzymaj</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="492"/>
-      <location filename="../../src/integration/integrationController.cpp" line="623"/>
-      <location filename="../../src/integration/integrationController.cpp" line="680"/>
-      <source>The integration is already configured or doesn&apos;t allow to be set up again.</source>
-      <translation>Integracja jest już skonfigurowana lub nie pozwala na ponowną konfigurację.</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="492"/>
+        <location filename="../../src/integration/integrationController.cpp" line="623"/>
+        <location filename="../../src/integration/integrationController.cpp" line="680"/>
+        <source>The integration is already configured or doesn&apos;t allow to be set up again.</source>
+        <translation>Integracja jest już skonfigurowana lub nie pozwala na ponowną konfigurację.</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="495"/>
-      <location filename="../../src/integration/integrationController.cpp" line="626"/>
-      <location filename="../../src/integration/integrationController.cpp" line="683"/>
-      <source>Cannot start integration setup</source>
-      <translation>Nie można rozpocząć konfiguracji integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="495"/>
+        <location filename="../../src/integration/integrationController.cpp" line="626"/>
+        <location filename="../../src/integration/integrationController.cpp" line="683"/>
+        <source>Cannot start integration setup</source>
+        <translation>Nie można rozpocząć konfiguracji integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="557"/>
-      <source>Cannot stop the integration setup</source>
-      <translation>Nie można zatrzymać konfiguracji integracji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="557"/>
+        <source>Cannot stop the integration setup</source>
+        <translation>Nie można zatrzymać konfiguracji integracji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="771"/>
-      <source>Authorization error</source>
-      <translation>Błąd autoryzacji</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="771"/>
+        <source>Authorization error</source>
+        <translation>Błąd autoryzacji</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="774"/>
-      <source>Connection refused</source>
-      <translation>Połączenie odrzucone</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="774"/>
+        <source>Connection refused</source>
+        <translation>Połączenie odrzucone</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="777"/>
-      <location filename="../../src/integration/integrationController.cpp" line="783"/>
-      <source>Unknown error</source>
-      <translation>Nieznany błąd</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="777"/>
+        <location filename="../../src/integration/integrationController.cpp" line="783"/>
+        <source>Unknown error</source>
+        <translation>Nieznany błąd</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="780"/>
-      <source>Not found</source>
-      <translation>Nie znaleziono</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="780"/>
+        <source>Not found</source>
+        <translation>Nie znaleziono</translation>
     </message>
     <message>
-      <location filename="../../src/integration/integrationController.cpp" line="786"/>
-      <source>Timeout</source>
-      <translation>Limit czasu</translation>
+        <location filename="../../src/integration/integrationController.cpp" line="786"/>
+        <source>Timeout</source>
+        <translation>Limit czasu</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::ui::Controller</name>
     <message>
-      <location filename="../../src/ui/uiController.cpp" line="296"/>
-      <source>Error</source>
-      <translation>Błąd</translation>
+        <location filename="../../src/ui/uiController.cpp" line="298"/>
+        <source>Error</source>
+        <translation>Błąd</translation>
     </message>
     <message>
-      <location filename="../../src/ui/uiController.cpp" line="297"/>
-      <source>Deleting a current profile is not permitted. Please switch to another profile and try again.</source>
-      <translation>Usunięcie bieżącego profilu nie jest dozwolone. Proszę przełączyć się na inny profil i spróbować ponownie.</translation>
+        <location filename="../../src/ui/uiController.cpp" line="299"/>
+        <source>Deleting a current profile is not permitted. Please switch to another profile and try again.</source>
+        <translation>Usunięcie bieżącego profilu nie jest dozwolone. Proszę przełączyć się na inny profil i spróbować ponownie.</translation>
     </message>
     <message>
-      <location filename="../../src/ui/uiController.cpp" line="584"/>
-      <source>Profile update error</source>
-      <translation>Błąd aktualizacji profilu</translation>
+        <location filename="../../src/ui/uiController.cpp" line="586"/>
+        <source>Profile update error</source>
+        <translation>Błąd aktualizacji profilu</translation>
     </message>
     <message>
-      <location filename="../../src/ui/uiController.cpp" line="707"/>
-      <source>%1 error</source>
-      <translation>Błąd %1</translation>
+        <location filename="../../src/ui/uiController.cpp" line="709"/>
+        <source>%1 error</source>
+        <translation>Błąd %1</translation>
     </message>
     <message>
-      <location filename="../../src/ui/uiController.cpp" line="707"/>
-      <source>Error while connecting to %1, with id %2</source>
-      <translation>Błąd podczas łączenia się z %1, z id %2</translation>
+        <location filename="../../src/ui/uiController.cpp" line="709"/>
+        <source>Error while connecting to %1, with id %2</source>
+        <translation>Błąd podczas łączenia się z %1, z id %2</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
+    <name>uc::ui::EntityController</name>
+    <message>
+        <location filename="../../src/ui/entity/entityController.cpp" line="671"/>
+        <source>%1 is not responding</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/entityController.cpp" line="672"/>
+        <source>The command did not reach the device. Would you like to try again?</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/entityController.cpp" line="705"/>
+        <source>Error sending the command</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/ui/entity/entityController.cpp" line="706"/>
+        <source>%1 is not responding. Error code: %2</source>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>uc::ui::Group</name>
     <message>
-      <location filename="../../src/ui/group/group.cpp" line="178"/>
-      <source>%1 already exists in this group.</source>
-      <translation>%1 już istnieje w tej grupie.</translation>
+        <location filename="../../src/ui/group/group.cpp" line="178"/>
+        <source>%1 already exists in this group.</source>
+        <translation>%1 już istnieje w tej grupie.</translation>
     </message>
-  </context>
-  <context>
+</context>
+<context>
     <name>uc::ui::Page</name>
     <message>
-      <location filename="../../src/ui/page/page.cpp" line="181"/>
-      <source>%1 already exists on the page.</source>
-      <translation>%1 już istnieje na stronie.</translation>
+        <location filename="../../src/ui/page/page.cpp" line="181"/>
+        <source>%1 already exists on the page.</source>
+        <translation>%1 już istnieje na stronie.</translation>
     </message>
-  </context>
+</context>
 </TS>
