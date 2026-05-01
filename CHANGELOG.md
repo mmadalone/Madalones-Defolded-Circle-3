@@ -11,6 +11,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.25 — 2026-05-01 — release.json description fix + Mod 5/6 history note
+
+### Fixed
+- **Mod 5 description in `deploy/release.json`** carried the same misleading "prevents the 5-minute sleep timer" wording that v1.4.24 fixed in `Power.qml`. This text is publicly visible on the GitHub release page and in the `/api/system/install/ui` response, so leaving it stale would surface to anyone looking at the install logs or release notes. Rewritten to match the Power.qml subtitle: "resets the device's sleep countdown every 4.5 min via set_power_mode(NORMAL) pings while a media player is actively playing or recent media-control buttons are pressed."
+
+### Added
+- **Mod 6 description** updated with a brief one-line history note: "(v1.4.22 fixed the API call format that had silently broken Mod 5/6 since their respective releases; v1.4.23 added recent-input lookback to handle wake-press timing)." Lets a casual reader of the release page know that the v1.4.22-v1.4.24 release cluster is meaningful, not noise.
+
+### Architectural note
+- **Drift increase: zero.** Only `deploy/release.json` modified (+ version bumps).
+- **No code changes**, no QML changes, copy-only release.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`.
+
+---
+
 ## v1.4.24 — 2026-05-01 — Power.qml settings copy fixes
 
 ### Fixed
