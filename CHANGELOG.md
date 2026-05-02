@@ -11,6 +11,37 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.37 — 2026-05-02 — Audit-driven hygiene cleanup (path to A−)
+
+Bundled hygiene release driven by the v1.4.36 codebase audit. Four findings closed in single-purpose commits, single release tag at the end. **Zero binary changes** — no UCR3 deploy needed; the v1.4.37 install bundle ships the same compiled binary as v1.4.36 with an updated `release.json`. Tests + docs only.
+
+### Fixed
+- **9 `verify(true, "...")` smoke tests in integration suites replaced with observable post-state assertions** (audit N4). Down from 11 fakes at v1.4.26 → 9 at v1.4.36 entry → 0 at v1.4.37. `tst_matrixrain_lifecycle.qml` (3 tests) now `compare(rain.direction, "...")` + `verify(rain.running)` after each property sweep. `tst_config_propagation.qml::test_extremeValues` adds 4× `verify(prop > 0)` post-extremes + 4× round-trip `compare()` against restored defaults. `test_interactiveInputEnterAndSlow` adds a SignalSpy on `enterAction(QString)`. `tst_settings_navigation.qml::test_autoRepeatIgnored` adds `compare(spy.count, 1)` + `compare(signalArguments[0][0], "enter")` — verifying the comment's claim that was previously documentation, not assertion. `test_releaseWithoutPressIsSafe` adds `compare(spy.count, 0)`. `test_rapidPressReleaseCycles` adds `verify(spy.count <= 20)`. All use SignalSpy patterns already established in the same files. Tests keep their crash-safety value (signal spy creation requires test infra to not crash) while adding actual functional assertions.
+- **`BUILD.md:14` no longer hardcodes a previous developer's macOS user path** (audit N6). Replaced with platform-neutral guidance — reader is already in the repo, so `$(pwd)` suffices. Added the Windows + Git-Bash variant (`MSYS_NO_PATHCONV=1` + `pwd -W`) that's been documented in `CLAUDE.md` but missing from `BUILD.md`. The build doc is now self-contained for both platforms.
+
+### Added
+- **`STYLE_GUIDE.md` §1.11 — "Auto-revert is a crash safety net, not a validation review"** (audit N9). Documents the design principle: firmware auto-revert triggers on crashes / hangs / failed boot, not on silent state corruption. The v1.4.22 setPowerMode silent failure (every call returned HTTP 400 for 8 releases — Mod 5/6 broken, never auto-reverted, never logged) is the case study. Pairs with §1.5 (uncertainty signals) and §1.8 (research-first mandate). Code review remains the trust boundary.
+- **`docs/A11Y_AUDIT.md` first audit pass — static pre-pass** (audit N7 partial). Document was a never-run template (`Date: _not yet run_`) since 2026-04-14. §4 now contains static-analysis findings: all 17 pages + 5 themes verified at listed paths; 135 `ensureVisible` / `forceActiveFocus` calls across the audited tree; KeyNavigation chains present on every sub-page (range 2-26 refs); canonical `fonts.primaryFont(N)` / `secondaryFont(N)` font alias used with values 18-30 (one debug-overlay outlier flagged for review); no hardcoded `< 48` touch-target dimensions on interactive components. Manual on-device items (§2.4 visual theme readability, §2.5 wake/undock transitions, §3 cross-batch regressions including thermal soak) explicitly deferred to v1.4.38 with a checklist.
+
+### Architectural note
+- **Drift increase: zero new files.** Pure doc/test cleanup. No new compiled units; no Q_PROPERTY changes; no API surface changes; no QSettings keys added.
+- **CI gates still green.** Test count delta: -9 fake assertions, +19 real assertions (net +10 real). Per-file: tst_matrixrain_lifecycle +6, tst_config_propagation +8, tst_settings_navigation +5.
+- **A11Y_AUDIT.md now honestly says "partial pass with manual items deferred"** instead of "_not yet run_" / pretending. The v1.4.38 manual on-device pass will append a new dated entry, not overwrite this static pre-pass.
+
+### Path-to-A− status (post-v1.4.37)
+v1.4.36 audit identified 4 path-to-A− items. Status:
+- **N4 (fake tests)**: ✅ DONE this release.
+- **N6 (BUILD.md path)**: ✅ DONE this release.
+- **N7 (A11Y audit)**: ⚠️ PARTIAL — static pre-pass shipped this release; manual on-device pass deferred to v1.4.38.
+- **N9 (auto-revert doc)**: ✅ DONE this release.
+
+Codebase grade trajectory per audit: v1.4.26 = B → v1.4.36 = B+ → v1.4.37 = B+ heading to A− pending v1.4.38 a11y on-device verification.
+
+### Auto-revert safety net
+Active per `project_auto_revert_validated_on_uc3.md`. **Not exercised in v1.4.37** because no binary changes ship. v1.4.37 is a doc/test release; the binary in the install bundle is identical to v1.4.36's.
+
+---
+
 ## v1.4.36 — 2026-05-02 — B1 matrixrain decomposition (1445 → 746 LOC) + C1 ctor reorder + AP-UC-13 ext
 
 Largest single-file refactor in the project's history. `matrixrain.cpp` shrunk from 1445 to 746 LOC (-48 %) across three commits in three architectural phases, each independently CI-green and visually verified on UCR3 before the next commit. Closes path-to-A roadmap items B1 (MatrixRainItem decomposition) and C1 (ScreensaverConfig Battery deferred-connect hack). Zero behavior change; QML contract preserved verbatim across all five collaborator classes.

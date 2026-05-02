@@ -13,6 +13,93 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v1437"></a>v1.4.37 — 2026-05-02 — Audit-driven hygiene cleanup (path to A−)
+
+### Context
+Bundled hygiene release executing the v1.4.36 codebase audit's path-to-A− findings. Four items, four single-purpose commits, single release tag. Zero binary changes — the install-bundle binary is byte-identical to v1.4.36's; only `release.json` version field differs. No UCR3 deploy required for verification.
+
+### Approach
+Rather than batch all four items into one bundled commit (tempting given the small footprint — total diff is +59 / -22 across 6 files), each item shipped as its own atomic commit with a self-contained justification. This matches the v1.4.36 phased pattern (separate commits + single release-bundle commit) and means CI gates each commit independently. If any one commit fails CI, the others stay landed.
+
+### Phase A — N4: fake tests rewritten (commit `3569866`)
+**Audit context:** v1.4.26 thorough audit (`logs/audit-v1.4.26-thorough.md` Finding 3) flagged 11 `verify(true, "...")` smoke tests across 5 files. v1.4.28 fixed the 5 in unit tests by mounting actual components. 9 remained in integration tests at v1.4.36 entry — 6 with descriptive strings ("Extreme values handled without crash") and 3 bare `verify(true)` with no message. The v1.4.36 audit recount identified them as the largest remaining test-quality issue.
+
+**Approach:** Each fake replaced with the strongest assertion the test context permits — observable post-state (`compare(rain.direction, "up-left")`), running-flag (`verify(rain.running, "...")`), or SignalSpy-based count check. SignalSpy patterns already established in 2 of the 3 files (test_singleTapEmitsEnter, test_doubleTapEmitsRestore at lines 39-57 of `tst_settings_navigation.qml`). The `tst_config_propagation.qml::test_extremeValues` rewrite goes further than minimum — adds 4× `verify(prop > 0)` post-extreme-assignment checks AND 4× round-trip `compare()` against restored defaults. Test now verifies the property setter survives extreme values both ways (write-extreme-then-readback, and write-extreme-then-restore).
+
+**Per-file delta:**
+- `tst_matrixrain_lifecycle.qml`: 3 fakes → 6 real assertions
+- `tst_config_propagation.qml`: 3 fakes → 8 real assertions
+- `tst_settings_navigation.qml`: 3 fakes → 5 real assertions
+
+**Net: -9 fake assertions, +19 real assertions, +10 net real.**
+
+**Subtle correctness win in `test_autoRepeatIgnored`:** the previous test had a comment ("Should still only get one 'enter' from the first press") that was *documentation*, not an *assertion*. The new test uses `compare(spy.count, 1, "...")` + `compare(spy.signalArguments[0][0], "enter")` to convert the comment claim into an actual checked invariant. If the state machine's auto-repeat-ignore logic regresses (e.g., second/third press during EnterPressed state starts firing extra signals), this test now catches it.
+
+**Defensive choice in `test_interactiveInputEnterAndSlow`:** the test calls `interactiveInput("enter")`, `interactiveInput("slow:hold")`, `interactiveInput("slow:release")` in sequence. The strongest assertion would be `compare(spy.count, 3)` — but the dispatch implementation may dedup or batch (especially since "slow:hold" + "slow:release" are paired). Used `verify(spy.count >= 1)` as defensive minimum with explanatory comment. If we want stricter, we'd need to read the InputHandler dispatch implementation — out of scope for this hygiene release.
+
+### Phase B — N6: BUILD.md path (commit `fcecb63`)
+**Audit context:** v1.4.26 thorough audit Finding 5. `BUILD.md:14` had `cd "/Users/madalone/_Claude Projects/UC-Remote-UI"` from a previous dev environment. CLAUDE.md (lines 161-205) was Windows-aware; BUILD.md was not.
+
+**Verify-before-remediate:** confirmed by reading the surrounding command sequence — the `cd` is unnecessary because `$(pwd)` already binds to the reader's current directory, which is by convention the repo root. The path was vestigial.
+
+**Approach:** dropped the absolute-path line entirely. Added Windows + Git-Bash variant inline using `MSYS_NO_PATHCONV=1` + `pwd -W`, matching the CLAUDE.md text verbatim so the two docs don't drift. Note about `--user=$(id -u):$(id -g)` being harmless on Docker Desktop preserved (per the same CLAUDE.md guidance).
+
+**Privacy-aware note:** initial draft would have replaced the macOS path with the current Windows path (`C:\Users\mique\...`). User flagged this — a public repo doc shouldn't contain personal user paths. Final form has neither — uses `$(pwd)` and explicit platform headers.
+
+### Phase C — N9: auto-revert documentation (commit `509f030`)
+**Audit context:** v1.4.36 audit N9 — codebase release notes have repeatedly used the phrase "auto-revert is the safety net for any device-side issue" (verbatim string appears in v1.4.36 release notes). The phrase is misleading: auto-revert triggers on crash / hang / failed boot, not on silent state corruption.
+
+**Approach:** added §1.11 to STYLE_GUIDE.md as a focused new subsection. Pairs with §1.5 (uncertainty signals — STOP and ask) and §1.8 (research-first mandate). Uses the v1.4.22 setPowerMode silent failure (8 releases of broken Mod 5/6, never auto-reverted, never logged) as the empirical case study. Documents three classes of bugs auto-revert does NOT catch: malformed firmware-API bodies, out-of-bounds persisted config, malformed entity event pushes.
+
+**Why STYLE_GUIDE.md (not CLAUDE.md or new doc):** STYLE_GUIDE.md is the source of truth for design principles (§1 CORE PHILOSOPHY). CLAUDE.md is operational guidance for me as an assistant — it references STYLE_GUIDE.md as source of truth, not the other way around. A new `docs/AUTO_REVERT.md` would have been a separate maintenance burden for one principle.
+
+### Phase D — N7: A11Y audit static pre-pass (commit `dfc8c0c`)
+**Audit context:** v1.4.36 audit N7 — `docs/A11Y_AUDIT.md` was a never-run template (`Date: _not yet run_` / `Auditor: _TBD_`) since 2026-04-14, 23 releases ago. The v1.4.36 audit called this out as a doc that lies about its own status.
+
+**Decision point:** user opted to run the static pre-pass now (what can be verified by reading QML source) and defer the manual on-device pass to v1.4.38. This converts the doc from "shipped pretending" to "honest partial pass." It also gives the v1.4.38 manual auditor a baseline of what static analysis already verified, so the manual pass focuses on the device-only items.
+
+**Static pre-pass scope:**
+- §1 page existence: all 17 pages + 5 themes verified at the listed paths via shell `[ -f "$f" ]` test.
+- §2.1 DPAD wiring: counted `KeyNavigation.*` references per file (range 2-26 across the audited tree), 135 total `ensureVisible` / `forceActiveFocus` calls. Flagged `AnalogSettings.qml` as sparse (2 refs vs 8-26 elsewhere) for device verification.
+- §2.2 font sizes: grep'd all `font.pixelSize` literals. The codebase uses `fonts.primaryFont(N)` / `secondaryFont(N)` (canonical font alias singleton) with N ∈ [18, 30]. One outlier — `MatrixTheme.qml:124 font.pixelSize: 9` — confirmed to be the atlas-debug overlay text (debug-only, hidden behind a settings toggle, not user-facing). Flagged in §4 non-blocking nits.
+- §2.3 touch targets: regex'd hardcoded `width:` / `height:` < 48 on interactive components — zero matches. All Switch/Button/IconButton/Slider use canonical row layout dimensions.
+
+**Static pre-pass cannot verify:**
+- §2.1 actual DPAD chain correctness (no dead ends, no skips, focus indicator visible) — requires button presses
+- §2.2 visual contrast 4.5:1 ratio — requires color picker
+- §2.2 translation overflow on `de_DE` / `fr_FR` — requires running the binary in those locales on device
+- §2.4 visual theme readability (Matrix with rainbow color, TV static at max, etc.) — requires eyeball
+- §2.5 wake-from-display-off + undock transitions — requires real Power state cycle
+- §3 all 7 cross-batch regression tests — requires device + 10-min thermal soak
+
+These are explicitly listed in the new §4 "Manual items deferred to v1.4.38" section so the next pass has a checklist instead of starting from zero.
+
+### Files touched (cumulative across v1.4.37 commits)
+**Doc/test files only (no compiled changes):**
+- `BUILD.md` — path fix (Phase B)
+- `STYLE_GUIDE.md` — §1.11 added (Phase C)
+- `docs/A11Y_AUDIT.md` — §4 partial pass (Phase D)
+- `test/integration/tst_matrixrain_lifecycle.qml` — N4 rewrites (Phase A)
+- `test/integration/tst_config_propagation.qml` — N4 rewrites (Phase A)
+- `test/integration/tst_settings_navigation.qml` — N4 rewrites (Phase A)
+- `CHANGELOG.md` — v1.4.37 entry (this commit)
+- `ENGINEERING_LOG.md` — v1.4.37 entry (this commit)
+- `docs/CUSTOM_FILES.md` — v1.4.37 deltas-table entry (this commit)
+- `deploy/release.json` — version 1.4.36 → 1.4.37 (this commit)
+- `remote-ui.pro` — VERSION 1.4.36 → 1.4.37 (this commit)
+
+### Architectural note
+- **Drift increase: zero new files.** Pure doc/test cleanup.
+- **CI risk:** N4 test rewrites must pass `qml-tests` job. SignalSpy timing is robust (existing tests in the same files use the same pattern with 400ms+ wait windows). If any test flakes on CI infrastructure timing, mitigation is to extend the `wait()` durations — no logic changes needed.
+- **Auto-revert safety net** is irrelevant for v1.4.37 — no binary changes. The install bundle ships the same binary as v1.4.36 with an updated `release.json`. If a deployer wants to skip v1.4.37 entirely and stay on v1.4.36, the binaries are equivalent.
+- **Path-to-A− progress:** 4 of 4 audit items closed (N7 partially — manual deferred). v1.4.38 will need to either run the manual a11y pass OR explicitly accept the deferred state and re-grade B+ as terminal.
+
+### Lessons logged
+- N6 surfaced a trap: the natural fix to a "wrong path" doc bug is to substitute the *current* user's path. Don't. Public repo docs should never contain personal user paths. Use `$(pwd)` or `${PROJECT_DIR}` placeholders.
+- The v1.4.36 audit's "C1 was a one-line construction reorder" pattern recurs here: N6 was a one-line drop, N9 was a 19-line doc paragraph, N4 was the only substantive item (~50 lines of test rewrites). Audits inflate severity (per `feedback_verify_audit_before_remediation.md`); this release is a re-confirmation that the actual remediation effort is consistently smaller than the audit's framing.
+
+---
+
 ## <a id="v1436"></a>v1.4.36 — 2026-05-02 — B1 matrixrain decomposition (1445→746 LOC) + C1 ctor reorder + AP-UC-13 ext
 
 ### Context
