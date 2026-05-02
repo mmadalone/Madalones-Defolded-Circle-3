@@ -92,9 +92,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify the artifact
 ./scripts/verify-release.sh \
-    remote-ui-v1.2.2-UCR2-static.tar.gz \
+    remote-ui-v1.4.36-UC3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.2.2-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.36-UC3-static.tar.gz.asc
 ```
 
 Exit codes:

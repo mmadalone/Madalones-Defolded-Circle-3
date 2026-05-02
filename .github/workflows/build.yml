@@ -94,7 +94,7 @@ jobs:
       matrix:
         config:
           - {
-            name: "UCR2 aarch64", artifact: "UCR2", build: "static",
+            name: "UC3 aarch64", artifact: "UC3", build: "static",
             qmake-args: "CONFIG+=release CONFIG+=static",
             # madalone (v1.4.28, audit-driven): digest-pin the toolchain image
             # so CI builds are reproducible. BUILD.md and CLAUDE.md have always

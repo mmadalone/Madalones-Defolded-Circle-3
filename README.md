@@ -85,15 +85,15 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.26/remote-ui-v1.4.26-UCR2-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.26/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.36/remote-ui-v1.4.36-UC3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.36/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.4.26-UCR2-static.tar.gz remote-ui.hash
+./scripts/verify-release.sh remote-ui-v1.4.36-UC3-static.tar.gz remote-ui.hash
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.4.26-UCR2-static.tar.gz" \
+    --form "file=@remote-ui-v1.4.36-UC3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -165,9 +165,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.4.19-UCR2-static.tar.gz \
+    remote-ui-v1.4.36-UC3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.21-UCR2-static.tar.gz.asc
+    remote-ui-v1.4.36-UC3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
