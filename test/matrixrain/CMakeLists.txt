@@ -27,6 +27,7 @@ add_executable(testMatrixRain
     "../../src/ui/matrixrain.cpp"
     "../../src/ui/matrixrain/layerpipeline.cpp"
     "../../src/ui/matrixrain/atlasbuilder.cpp"
+    "../../src/ui/matrixrain/bindinghelper.cpp"
     "../../src/ui/matrixrain/singlelayerrenderer.cpp"
     "../../src/ui/matrixrain/inputhandler.cpp"
     "../../src/ui/rainsimulation.cpp"

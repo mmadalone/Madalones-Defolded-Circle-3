@@ -340,6 +340,11 @@ public:
     void setDepthEnabled(bool v)   { if (m_sim.setDepthEnabled(v)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit depthEnabledChanged(); } }
     void setDepthIntensity(int v)  { if (m_sim.setDepthIntensity(v)) { m_needsAtlasRebuild = true; m_needsReinit = true; if (!m_batchingUpdates) { polish(); update(); } emit depthIntensityChanged(); } }
     void setDepthOverlay(bool v)   { if (m_sim.setDepthOverlay(v)) { m_needsReinit = true; update(); emit depthOverlayChanged(); } }
+    // Layer pipeline toggle — moved from private to public in Phase C so
+    // BindingHelper::bindDepthAndLayers can call item->setLayersEnabled(...).
+    // Q_PROPERTY's WRITE meta-call already exposed it via QML's meta-object
+    // system; making it public for C++ matches that semantic.
+    void setLayersEnabled(bool v);
 
     // Fall-off setters — simulation-forwarded, no atlas rebuild, no reinit.
     // Must also propagate to layer sims when layers are enabled, otherwise
@@ -551,27 +556,17 @@ public:
     qint64        m_lastFirstPaintMs{0};
     qint64        m_lastCtorToPaintMs{0};
 
-    void setLayersEnabled(bool v);
     // Format + publish the phase-timing summary string. includeFirstPaint=true
     // when called from updatePaintNode (main thread blocked at sync point),
     // false from updatePolish (first-paint fields will show 0 until the next
     // paint). Writes m_lastBuildSummary and posts a main-thread signal emit.
     void publishBuildSummary(bool includeFirstPaint);
 
-    // bindToScreensaverConfig is sliced into 8 domain helpers. Each one owns
-    // BOTH the initial-sync setter calls AND the live-binding signal connects
-    // for its group, in the existing order. CRITICAL: the QSignalBlocker scope
-    // around m_batchingUpdates wraps ALL helpers — they MUST be called between
-    // the blocker enter and exit so the bulk sync produces ONE atlas rebuild
-    // at the end, not 60+ individual ones.
-    void bindAppearance(uc::ScreensaverConfig *sc);
-    void bindDirectionAndGravity(uc::ScreensaverConfig *sc);
-    void bindGlitch(uc::ScreensaverConfig *sc);
-    void bindChaos(uc::ScreensaverConfig *sc);
-    void bindTap(uc::ScreensaverConfig *sc);
-    void bindMessages(uc::ScreensaverConfig *sc);
-    void bindSubliminal(uc::ScreensaverConfig *sc);
-    void bindDepthAndLayers(uc::ScreensaverConfig *sc);
+    // bindToScreensaverConfig orchestrator stays here (touches m_batchingUpdates
+    // + private rebuild flags + polish/update). The 8 sliced bind*() helpers
+    // moved to src/ui/matrixrain/bindinghelper.{h,cpp} as static functions
+    // (BindingHelper::bindAppearance, etc.). The orchestrator calls those
+    // statics inside its QSignalBlocker scope.
 
     // Timer-start helpers — both early-return if m_displayOff so chaos bursts,
     // slowdown effects, speed changes, or any other callsite can't resurrect

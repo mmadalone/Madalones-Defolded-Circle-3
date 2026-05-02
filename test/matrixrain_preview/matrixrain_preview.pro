@@ -14,6 +14,7 @@ SOURCES += \
     ../../src/ui/matrixrain.cpp \
     ../../src/ui/matrixrain/layerpipeline.cpp \
     ../../src/ui/matrixrain/atlasbuilder.cpp \
+    ../../src/ui/matrixrain/bindinghelper.cpp \
     ../../src/ui/matrixrain/singlelayerrenderer.cpp \
     ../../src/ui/matrixrain/inputhandler.cpp \
     ../../src/ui/rainsimulation.cpp \
@@ -27,6 +28,7 @@ HEADERS += \
     ../../src/ui/matrixrain.h \
     ../../src/ui/matrixrain/layerpipeline.h \
     ../../src/ui/matrixrain/atlasbuilder.h \
+    ../../src/ui/matrixrain/bindinghelper.h \
     ../../src/ui/matrixrain/singlelayerrenderer.h \
     ../../src/ui/matrixrain/inputhandler.h \
     ../../src/ui/rainsimulation.h \

@@ -6,6 +6,7 @@
 #include "matrixrain/layerpipeline.h"
 #ifndef MATRIX_RAIN_TESTING
 #include "screensaverconfig.h"
+#include "matrixrain/bindinghelper.h"
 #endif
 
 #include <QOpenGLShaderProgram>
@@ -214,14 +215,14 @@ void MatrixRainItem::bindToScreensaverConfig() {
         const QSignalBlocker blocker(this);
         m_batchingUpdates = true;
 
-        bindAppearance(sc);
-        bindDirectionAndGravity(sc);
-        bindGlitch(sc);
-        bindChaos(sc);
-        bindTap(sc);
-        bindMessages(sc);
-        bindSubliminal(sc);
-        bindDepthAndLayers(sc);
+        BindingHelper::bindAppearance(this, sc);
+        BindingHelper::bindDirectionAndGravity(this, sc);
+        BindingHelper::bindGlitch(this, sc);
+        BindingHelper::bindChaos(this, sc);
+        BindingHelper::bindTap(this, sc);
+        BindingHelper::bindMessages(this, sc);
+        BindingHelper::bindSubliminal(this, sc);
+        BindingHelper::bindDepthAndLayers(this, sc);
 
         m_batchingUpdates = false;
     }
@@ -237,190 +238,11 @@ void MatrixRainItem::bindToScreensaverConfig() {
 #endif  // !MATRIX_RAIN_TESTING
 }
 
-#ifndef MATRIX_RAIN_TESTING
-// --- ScreensaverConfig binding helpers ---
-// Each helper owns BOTH the initial-sync setter calls AND the live-binding
-// signal connects for its property group, in the original order. Called
-// strictly between bindToScreensaverConfig's m_batchingUpdates=true/false
-// scope so initial-sync setters don't trigger 60+ individual atlas rebuilds.
-
-void MatrixRainItem::bindAppearance(uc::ScreensaverConfig *sc) {
-    // Initial sync: core appearance (atlas-affecting + simulation-forwarded)
-    setColor(sc->color());
-    setColorMode(sc->colorMode());
-    setSpeed(sc->speed());
-    setDensity(sc->density());
-    setTrailLength(sc->trailLength());
-    setFontSize(sc->fontSize());
-    setCharset(sc->charset());
-    setFadeRate(sc->fadeRate());
-    setGlow(sc->glow());
-    setGlowFade(sc->glowFade());
-    setDepthGlow(sc->depthGlow());
-    setDepthGlowMin(sc->depthGlowMin());
-    setInvertTrail(sc->invertTrail());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::colorChanged,        this, [this, sc]() { setColor(sc->color()); });
-    connect(sc, &uc::ScreensaverConfig::colorModeChanged,    this, [this, sc]() { setColorMode(sc->colorMode()); });
-    connect(sc, &uc::ScreensaverConfig::speedChanged,        this, [this, sc]() { setSpeed(sc->speed()); });
-    connect(sc, &uc::ScreensaverConfig::densityChanged,      this, [this, sc]() { setDensity(sc->density()); });
-    connect(sc, &uc::ScreensaverConfig::trailLengthChanged,  this, [this, sc]() { setTrailLength(sc->trailLength()); });
-    connect(sc, &uc::ScreensaverConfig::fontSizeChanged,     this, [this, sc]() { setFontSize(sc->fontSize()); });
-    connect(sc, &uc::ScreensaverConfig::charsetChanged,      this, [this, sc]() { setCharset(sc->charset()); });
-    connect(sc, &uc::ScreensaverConfig::fadeRateChanged,     this, [this, sc]() { setFadeRate(sc->fadeRate()); });
-    connect(sc, &uc::ScreensaverConfig::glowChanged,         this, [this, sc]() { setGlow(sc->glow()); });
-    connect(sc, &uc::ScreensaverConfig::glowFadeChanged,     this, [this, sc]() { setGlowFade(sc->glowFade()); });
-    connect(sc, &uc::ScreensaverConfig::depthGlowChanged,    this, [this, sc]() { setDepthGlow(sc->depthGlow()); });
-    connect(sc, &uc::ScreensaverConfig::depthGlowMinChanged, this, [this, sc]() { setDepthGlowMin(sc->depthGlowMin()); });
-    connect(sc, &uc::ScreensaverConfig::invertTrailChanged,  this, [this, sc]() { setInvertTrail(sc->invertTrail()); });
-}
-
-void MatrixRainItem::bindDirectionAndGravity(uc::ScreensaverConfig *sc) {
-    // Initial sync. gravityMode is initial-synced but NOT live-bound —
-    // MatrixTheme.qml manages it via localGravity (DPAD override pattern).
-    setDirection(sc->direction());
-    setGravityMode(sc->gravityMode());
-    setAutoRotateSpeed(sc->autoRotateSpeed());
-    setAutoRotateBend(sc->autoRotateBend());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::directionChanged,        this, [this, sc]() { setDirection(sc->direction()); });
-    // gravityMode NOT connected here — see comment above
-    connect(sc, &uc::ScreensaverConfig::autoRotateSpeedChanged,  this, [this, sc]() { setAutoRotateSpeed(sc->autoRotateSpeed()); });
-    connect(sc, &uc::ScreensaverConfig::autoRotateBendChanged,   this, [this, sc]() { setAutoRotateBend(sc->autoRotateBend()); });
-}
-
-void MatrixRainItem::bindGlitch(uc::ScreensaverConfig *sc) {
-    // Initial sync: glitch micro-effects (per-stream flash/stutter/reverse + direction trails)
-    setGlitch(sc->glitch());
-    setGlitchRate(sc->glitchRate());
-    setGlitchFlash(sc->glitchFlash());
-    setGlitchStutter(sc->glitchStutter());
-    setGlitchReverse(sc->glitchReverse());
-    setGlitchDirection(sc->glitchDirection());
-    setGlitchDirRate(sc->glitchDirRate());
-    setGlitchDirMask(sc->glitchDirMask());
-    setGlitchDirFade(sc->glitchDirFade());
-    setGlitchDirSpeed(sc->glitchDirSpeed());
-    setGlitchDirLength(sc->glitchDirLength());
-    setGlitchRandomColor(sc->glitchRandomColor());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::glitchChanged,            this, [this, sc]() { setGlitch(sc->glitch()); });
-    connect(sc, &uc::ScreensaverConfig::glitchRateChanged,        this, [this, sc]() { setGlitchRate(sc->glitchRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchFlashChanged,       this, [this, sc]() { setGlitchFlash(sc->glitchFlash()); });
-    connect(sc, &uc::ScreensaverConfig::glitchStutterChanged,     this, [this, sc]() { setGlitchStutter(sc->glitchStutter()); });
-    connect(sc, &uc::ScreensaverConfig::glitchReverseChanged,     this, [this, sc]() { setGlitchReverse(sc->glitchReverse()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirectionChanged,   this, [this, sc]() { setGlitchDirection(sc->glitchDirection()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirRateChanged,     this, [this, sc]() { setGlitchDirRate(sc->glitchDirRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirMaskChanged,     this, [this, sc]() { setGlitchDirMask(sc->glitchDirMask()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirFadeChanged,     this, [this, sc]() { setGlitchDirFade(sc->glitchDirFade()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirSpeedChanged,    this, [this, sc]() { setGlitchDirSpeed(sc->glitchDirSpeed()); });
-    connect(sc, &uc::ScreensaverConfig::glitchDirLengthChanged,   this, [this, sc]() { setGlitchDirLength(sc->glitchDirLength()); });
-    connect(sc, &uc::ScreensaverConfig::glitchRandomColorChanged, this, [this, sc]() { setGlitchRandomColor(sc->glitchRandomColor()); });
-}
-
-void MatrixRainItem::bindChaos(uc::ScreensaverConfig *sc) {
-    // Initial sync: chaos macro-effects (periodic bursts: surge/scramble/freeze/scatter/squareBurst/ripple/wipe)
-    setGlitchChaos(sc->glitchChaos());
-    setGlitchChaosFrequency(sc->glitchChaosFrequency());
-    setGlitchChaosSurge(sc->glitchChaosSurge());
-    setGlitchChaosScramble(sc->glitchChaosScramble());
-    setGlitchChaosFreeze(sc->glitchChaosFreeze());
-    setGlitchChaosScatter(sc->glitchChaosScatter());
-    setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst());
-    setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize());
-    setGlitchChaosRipple(sc->glitchChaosRipple());
-    setGlitchChaosWipe(sc->glitchChaosWipe());
-    setGlitchChaosIntensity(sc->glitchChaosIntensity());
-    setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
-    setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::glitchChaosChanged,                this, [this, sc]() { setGlitchChaos(sc->glitchChaos()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosFrequencyChanged,       this, [this, sc]() { setGlitchChaosFrequency(sc->glitchChaosFrequency()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosSurgeChanged,           this, [this, sc]() { setGlitchChaosSurge(sc->glitchChaosSurge()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScrambleChanged,        this, [this, sc]() { setGlitchChaosScramble(sc->glitchChaosScramble()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosFreezeChanged,          this, [this, sc]() { setGlitchChaosFreeze(sc->glitchChaosFreeze()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterChanged,         this, [this, sc]() { setGlitchChaosScatter(sc->glitchChaosScatter()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstChanged,     this, [this, sc]() { setGlitchChaosSquareBurst(sc->glitchChaosSquareBurst()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstSizeChanged, this, [this, sc]() { setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosRippleChanged,          this, [this, sc]() { setGlitchChaosRipple(sc->glitchChaosRipple()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosWipeChanged,            this, [this, sc]() { setGlitchChaosWipe(sc->glitchChaosWipe()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosIntensityChanged,       this, [this, sc]() { setGlitchChaosIntensity(sc->glitchChaosIntensity()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterRateChanged,     this, [this, sc]() { setGlitchChaosScatterRate(sc->glitchChaosScatterRate()); });
-    connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged,   this, [this, sc]() { setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
-}
-
-void MatrixRainItem::bindTap(uc::ScreensaverConfig *sc) {
-    // Initial sync: tap effect counts/lengths (effect mix is QML-side via interactiveInput tap:...)
-    setTapBurstCount(sc->tapBurstCount());
-    setTapBurstLength(sc->tapBurstLength());
-    setTapSpawnCount(sc->tapSpawnCount());
-    setTapSpawnLength(sc->tapSpawnLength());
-    setTapSquareBurstSize(sc->tapSquareBurstSize());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::tapBurstCountChanged,      this, [this, sc]() { setTapBurstCount(sc->tapBurstCount()); });
-    connect(sc, &uc::ScreensaverConfig::tapBurstLengthChanged,     this, [this, sc]() { setTapBurstLength(sc->tapBurstLength()); });
-    connect(sc, &uc::ScreensaverConfig::tapSpawnCountChanged,      this, [this, sc]() { setTapSpawnCount(sc->tapSpawnCount()); });
-    connect(sc, &uc::ScreensaverConfig::tapSpawnLengthChanged,     this, [this, sc]() { setTapSpawnLength(sc->tapSpawnLength()); });
-    connect(sc, &uc::ScreensaverConfig::tapSquareBurstSizeChanged, this, [this, sc]() { setTapSquareBurstSize(sc->tapSquareBurstSize()); });
-}
-
-void MatrixRainItem::bindMessages(uc::ScreensaverConfig *sc) {
-    // Initial sync
-    setMessagesEnabled(sc->messagesEnabled());
-    setMessages(sc->messages());
-    setMessageInterval(sc->messageInterval());
-    setMessageRandom(sc->messageRandom());
-    setMessageDirection(sc->messageDirection());
-    setMessageFlash(sc->messageFlash());
-    setMessagePulse(sc->messagePulse());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::messagesEnabledChanged,  this, [this, sc]() { setMessagesEnabled(sc->messagesEnabled()); });
-    connect(sc, &uc::ScreensaverConfig::messagesChanged,         this, [this, sc]() { setMessages(sc->messages()); });
-    connect(sc, &uc::ScreensaverConfig::messageIntervalChanged,  this, [this, sc]() { setMessageInterval(sc->messageInterval()); });
-    connect(sc, &uc::ScreensaverConfig::messageRandomChanged,    this, [this, sc]() { setMessageRandom(sc->messageRandom()); });
-    connect(sc, &uc::ScreensaverConfig::messageDirectionChanged, this, [this, sc]() { setMessageDirection(sc->messageDirection()); });
-    connect(sc, &uc::ScreensaverConfig::messageFlashChanged,     this, [this, sc]() { setMessageFlash(sc->messageFlash()); });
-    connect(sc, &uc::ScreensaverConfig::messagePulseChanged,     this, [this, sc]() { setMessagePulse(sc->messagePulse()); });
-}
-
-void MatrixRainItem::bindSubliminal(uc::ScreensaverConfig *sc) {
-    // Initial sync
-    setSubliminal(sc->subliminal());
-    setSubliminalInterval(sc->subliminalInterval());
-    setSubliminalDuration(sc->subliminalDuration());
-    setSubliminalStream(sc->subliminalStream());
-    setSubliminalOverlay(sc->subliminalOverlay());
-    setSubliminalFlash(sc->subliminalFlash());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::subliminalChanged,         this, [this, sc]() { setSubliminal(sc->subliminal()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalIntervalChanged, this, [this, sc]() { setSubliminalInterval(sc->subliminalInterval()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalDurationChanged, this, [this, sc]() { setSubliminalDuration(sc->subliminalDuration()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalStreamChanged,   this, [this, sc]() { setSubliminalStream(sc->subliminalStream()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalOverlayChanged,  this, [this, sc]() { setSubliminalOverlay(sc->subliminalOverlay()); });
-    connect(sc, &uc::ScreensaverConfig::subliminalFlashChanged,    this, [this, sc]() { setSubliminalFlash(sc->subliminalFlash()); });
-}
-
-void MatrixRainItem::bindDepthAndLayers(uc::ScreensaverConfig *sc) {
-    // Initial sync: 3D depth parallax + multi-grid depth (rain layers)
-    setDepthEnabled(sc->depthEnabled());
-    setDepthIntensity(sc->depthIntensity());
-    setDepthOverlay(sc->depthOverlay());
-    setLayersEnabled(sc->layersEnabled());
-
-    // Live binding
-    connect(sc, &uc::ScreensaverConfig::depthEnabledChanged,   this, [this, sc]() { setDepthEnabled(sc->depthEnabled()); });
-    connect(sc, &uc::ScreensaverConfig::depthIntensityChanged, this, [this, sc]() { setDepthIntensity(sc->depthIntensity()); });
-    connect(sc, &uc::ScreensaverConfig::depthOverlayChanged,   this, [this, sc]() { setDepthOverlay(sc->depthOverlay()); });
-    connect(sc, &uc::ScreensaverConfig::layersEnabledChanged,  this, [this, sc]() { setLayersEnabled(sc->layersEnabled()); });
-}
-#endif  // !MATRIX_RAIN_TESTING
+// ScreensaverConfig binding helpers (the 8 bind*() methods + their property-
+// group structure) moved to src/ui/matrixrain/bindinghelper.{h,cpp} as
+// static functions on the BindingHelper class. The orchestrator
+// bindToScreensaverConfig() above calls BindingHelper::bindAppearance(this, sc)
+// etc. inside its QSignalBlocker scope.
 
 void MatrixRainItem::geometryChanged(const QRectF &n, const QRectF &o) {
     QQuickItem::geometryChanged(n, o);
