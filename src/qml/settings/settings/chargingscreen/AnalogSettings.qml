@@ -35,7 +35,7 @@ ColumnLayout {
         font: fonts.primaryFont(30)
     }
     Text {
-        Layout.fillWidth: true; color: colors.medium
+        Layout.fillWidth: true; color: colors.light
         text: qsTr("Which hands animate when the display is about to turn off")
         font: fonts.primaryFont(20)
         wrapMode: Text.WordWrap

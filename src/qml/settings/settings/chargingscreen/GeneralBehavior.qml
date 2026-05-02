@@ -187,7 +187,7 @@ ColumnLayout {
         Text {
             visible: ScreensaverConfig.tapDirection
             Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
-            color: colors.medium; wrapMode: Text.WordWrap
+            color: colors.light; wrapMode: Text.WordWrap
             text: qsTr("Tap screen zones to change direction. Triple-tap center to close.")
             font: fonts.primaryFont(26)
         }
@@ -366,7 +366,7 @@ ColumnLayout {
         }
         Text {
             Layout.fillWidth: true; Layout.leftMargin: 10; Layout.rightMargin: 10
-            color: colors.medium; wrapMode: Text.WordWrap
+            color: colors.light; wrapMode: Text.WordWrap
             text: qsTr("Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.")
             font: fonts.primaryFont(26)
         }
