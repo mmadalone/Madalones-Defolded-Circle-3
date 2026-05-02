@@ -19,6 +19,7 @@
 > | Config / ScreensaverConfig bridge pattern | Our own custom code (established pattern) | ⚠️ Project-specific |
 > | GPU perf numbers (atlas rebuild) | Empirical testing on device | ⚠️ Empirical |
 > | UC3 SoC constraints | UC marketing materials + empirical | ⚠️ Partial |
+> | UCR3 firmware OpenAPI spec | `/doc/core-rest/openapi.yaml` (anonymous Swagger UI baked into firmware, OpenAPI 3.1.1) | ⚠️ Source-derived |
 >
 > **What this means for Claude Code:** Items marked ✅ can be trusted as-is. Items marked ⚠️ were derived from reading the actual UC source code or from empirical device testing — they are the best available truth, but there are no official UC docs to cross-reference. If the upstream codebase changes significantly after a `git fetch upstream`, re-verify ⚠️ items by reading the updated source before relying on them. There is no UC3 firmware modding community or published modding guide — this project is pioneering that space.
 
@@ -56,7 +57,21 @@
   - `Loader` for conditional components (not `visible: false` with full instantiation).
     - For `Repeater` with a non-trivial range: gate the **model**, not the wrapper. Use `model: cond ? N : 0` — `Repeater.model` evaluates regardless of any enclosing `visible:` / `enabled:`. Wrapper visibility gates rendering, not delegate instantiation. Severity scales with `to − from`. (v1.4.33: a 100–5000 Slider tick `Repeater` gated only by `Row { visible: showTicks }` materialized ~4,901 invisible Rectangles + O(N²) Row positioner reflows → 70-sec Settings → Power open on UCR3.)
   - `EntityController.load()` → `onEntityLoaded` for entity access (not raw WebSocket).
+  - `core::Api` wrappers for firmware calls (not raw WebSocket; not raw HTTP without first checking `/doc/core-rest/openapi.yaml` per §1.4.1).
 - **Prefer declarative property bindings over imperative JavaScript.** QML is a declarative language — use bindings for reactive UI updates. Use imperative JS only for complex logic that can't be expressed declaratively (multi-step calculations, network calls, state machine transitions). If a binding expression exceeds ~3 lines, extract it into a JS function — but the function should still *return* a value for binding, not imperatively set properties.
+
+#### §1.4.1 Firmware API discovery hierarchy (MANDATORY before any firmware-interaction code)
+
+Before adding ANY code path that talks to the UC core daemon — REST, WebSocket, or otherwise — walk this checklist top to bottom. Skipping it has cost us release cycles (Mod 5 hand-rolled `set_power_mode` ping loop while `/system/power/standby_inhibitors` was a documented native endpoint one Swagger-UI tab away).
+
+| # | Check | What it gets you |
+|---|---|---|
+| 1 | **Open the firmware OpenAPI spec** at `http://${UC3_HOST}/doc/core-rest/` (Swagger UI, anonymous). Spec is at `/doc/core-rest/openapi.yaml`. 137 endpoints across 15 tag categories: `activities`, `api-keys`, `auth`, `cfg`, `dock`, `entities`, `external-token`, `info`, `infrared`, `integrations`, `macros`, `profiles`, `remotes`, `resources`, `system`. | If a documented REST endpoint exists for what you want, **prefer REST over WS** for one-shot calls. |
+| 2 | **Search `src/core/enums.h::RequestTypes::Enum`** for related operation names. Then `git grep` to see whether the entry has actual call sites. | If wired (existing call sites): use the wrapper in `core::Api`. The codebase already trusts this RPC. |
+| 3 | **Identify orphan WS RPCs** — `RequestTypes::Enum` entries with zero call sites. Often indicate firmware features the upstream UI never wired up. | Wiring an orphan = enabling a latent firmware capability for free. Track record: v1.4.10 (`entityAdded`), v1.4.12 (`REASSOCIATE`), v1.4.14 (`set_power_mode`), v1.4.20. See `project_orphan_request_types_pattern.md`. |
+| 4 | **Undocumented territory** — neither REST nor `enums.h` has it. | Stop, flag to the user. Probing requires WS RPC name guessing, which is brittle. Don't reverse-engineer here without explicit go-ahead. |
+
+**Source-of-truth memos:** `reference_uc_core_rest_api.md`, `project_orphan_request_types_pattern.md`.
 
 ### §1.5 Uncertainty signals — stop and ask, don't guess (MANDATORY)
 - If you are **unsure about a Qt API, UC Core API, entity schema, or integration behavior**, STOP and tell the user. Do not guess.
@@ -109,6 +124,7 @@ Before generating **any** code (C++, QML, .pro changes, qrc registration), you M
 ### §1.8 Research-first mandate (MANDATORY)
 Before proposing or generating ANY solution:
 
+0. **For firmware-interaction code: walk §1.4.1's discovery hierarchy first.** Open `/doc/core-rest/openapi.yaml`, search `RequestTypes::Enum`, identify whether a documented REST endpoint or wired/orphan WS RPC already exists. **This is step zero** — if you skip it, you may hand-roll something the firmware already does natively. Tracked anti-pattern: AP-UC-44.
 1. **Read the design doc** — SCREENSAVER-IMPLEMENTATION.md.
 2. **Read the actual source** — Don't assume API behavior. Check headers (`sensor.h`, `entityController.h`, `config.h`, `matrixrain.h`). Check QML files for existing patterns.
 3. **Check for existing implementations** — Search the codebase for similar patterns before inventing new ones.
@@ -159,6 +175,29 @@ The UCR3 firmware automatically reverts the custom UI binary to stock if the bin
 **The trust boundary is code review, not auto-revert.** Treat auto-revert as the seatbelt — useful when something goes wrong, no excuse for skipping the brakes. Do not skip input validation review on `Api::set*` body construction, do not skip range clamping on persisted config, do not skip cross-checking that an entity push uses well-formed payloads, just because "auto-revert will catch it." It will not.
 
 This pairs with §1.5 (uncertainty signals — STOP and ask, don't guess) and §1.8 (research-first mandate). When in doubt about a firmware-side API contract, verify from headers, the upstream source, or a Logdy capture of a known-good message — never ship the guess and rely on auto-revert.
+
+### §1.12 Probe-first delivery for firmware-write RPCs (MANDATORY)
+
+When you're about to write code that *sends* a payload to the firmware — `core::Api::set*`, any new WS RPC body, any REST `POST` / `PUT` — the body shape MUST be confirmed against an empirical capture of a known-good message before the code lands. Reading the OpenAPI spec (§1.4.1) is necessary but not sufficient: REST URL field convention (`?power_mode=NORMAL`) and WS RPC body convention (`{"mode": "NORMAL"}`) are not interchangeable, and only a wire capture distinguishes them (AP-UC-47).
+
+**The four-step gate:**
+
+| # | Step | Artifact |
+|---|---|---|
+| 1 | Walk §1.4.1's discovery hierarchy. Identify the RPC name and transport. | Decision: REST endpoint, wired WS RPC, or orphan WS RPC |
+| 2 | Capture a known-good message — Logdy on a successful upstream-UI action, a curl probe to a public reference client, or a `pyUnfoldedCircle` SDK call traced over Logdy. | Capture file under `logs/` (gitignored), referenced in the build log |
+| 3 | Diff the captured body against the body your code will send, **field by field**. | Diff explicit in the build log or PR description |
+| 4 | Only now write the body. The first runtime call against the device confirms the contract — log success/failure to `qCInfo` so a regression is visible without a debug build. | Code |
+
+**Why mandatory:** v1.4.14 → v1.4.22 silent failure (`setPowerMode` body field `power_mode` instead of `mode`) ate 8 releases. The OpenAPI spec was internally consistent, the code compiled, the binary started cleanly, and auto-revert (§1.11) never tripped — every call returned HTTP 400 and Mods 5/6 were no-ops in production. A two-minute Logdy capture of an upstream-UI standby toggle would have shown the correct field name on day one.
+
+**Industry analog:** contract-first / API design-first development (Stoplight, Bump.sh, Moesif). Write against a verified contract, not a guessed one. The same shape — capture or generate the contract, then implement — is established in OpenAPI mocking, gRPC reflection, and embedded protocol reverse engineering.
+
+**Pairs with:** §1.4.1 (which surface), §1.5 (uncertainty), §1.11 (auto-revert is not a validation review), §13.4 (Logdy is the capture tool), AP-UC-47, AP-UC-49.
+
+**Exceptions:**
+- Read paths (`Api::get*`, anonymous endpoints `/api/pub/*`) — no body, no shape ambiguity.
+- Pre-existing wrappers — §1.12 applies forward from this revision; retroactive audit of `core::Api::set*` callsites is a separate task, not implied here.
 
 ---
 
@@ -234,7 +273,8 @@ Examples:
 
 1. ✅ Check `git status` — resolve any uncommitted changes from a previous session.
 2. ✅ Commit or stash anything dirty with a descriptive message.
-3. ✅ Only NOW may you edit files.
+3. ✅ **If the task touches firmware interaction (REST or WS):** confirm you've walked §1.4.1's API discovery hierarchy. (AP-UC-44)
+4. ✅ Only NOW may you edit files.
 
 If you realize mid-edit that you forgot: don't panic — `git diff` shows what changed. But skipping this deliberately is a violation (AP-UC-03).
 
@@ -250,6 +290,27 @@ When a task requires changes to multiple files (C++ + QML + config + .pro + .qrc
 git fetch upstream && git merge upstream/main
 ```
 Custom additions at END of lists in `config.h`, `remote-ui.pro`, `main.qrc` to minimize conflicts. Never reformat upstream files. Never rename upstream symbols. Never insert custom code in the middle of upstream functions.
+
+### §3.6 Pre-tag release gates (MANDATORY before `git tag`)
+
+A tag commits to a binary the world can install. v1.4.18 (6 releases shipped with mismatched VERSION fields), v1.4.27 → v1.4.32 (link-error chain on hardware tests), and v1.4.37 → v1.4.38 (audit-fix introduced a fresh bug) are the cost of skipping gates.
+
+The CI workflow `.github/workflows/build.yml:37-87` already enforces gates 1 + 2 on tag push. Running them locally before push saves a tag-rebuild roundtrip when they fail. Single-maintainer fork — `--no-verify`-equivalent skips defeat the gate.
+
+| # | Gate | Status | Verify locally with |
+|---|---|---|---|
+| 1 | `remote-ui.pro` `VERSION` == `deploy/release.json` `version` == tag string | MUST | grep both files; CI mirrors at `build.yml:44-67` |
+| 2 | `CHANGELOG.md` has a heading for the version | MUST | grep; CI mirrors at `build.yml:68-87` |
+| 3 | `git status --porcelain` empty (no untracked, no modified, no `_build_logs/` staged accidentally) | MUST | one command |
+| 4 | `lupdate` regen'd if any new `qsTr` strings landed | SHOULD | `git diff --stat resources/translations/` after running lupdate |
+| 5 | Local clean test build (`qmake && make`, plus `test/hardware/*.pro` + `test/qml/*.pro` if those changed) | SHOULD | exit code |
+| 6 | CI green on the commit you're about to tag (`build.yml`, `test.yml`, `code_guidelines.yml`, `tidy.yml`) | MUST | GH Actions UI |
+
+**Skippable when:** doc/test-only release with byte-identical binary to the prior tag — note the fact in the release notes (precedent: v1.4.37, v1.4.38). Gates 4 and 5 are SHOULD, not MUST, specifically to keep this skip clean.
+
+**No automation prescribed in this rev.** A `tools/release_gate.sh` mirroring gates 1-3 + 5 is a valid follow-up; out of scope here. The pre-commit hook stays focused on cpplint / clang-format (its current role at `.githooks/pre-commit`); release gates run at tag time, not commit time.
+
+**Pairs with:** §3.3 (BUILD-mode pre-flight is per edit; this is per tag), §11.1, AP-UC-50, AP-UC-51.
 
 ---
 
@@ -339,6 +400,14 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-17 | ⚠️ | QObject subclass missing `Q_OBJECT` macro | §6.5 |
 | AP-UC-18 | ⚠️ | Reimplemented virtual method missing `override` keyword or with redundant `virtual` in header | §6.5 |
 | AP-UC-19 | ⚠️ | Imperative JS setting QML properties where a declarative binding would work | §1.4 |
+| AP-UC-44 | ⚠️ | Wrote firmware-interaction code without consulting `/doc/core-rest/openapi.yaml` first (skipped §1.4.1) | §1.4.1 / §1.8 |
+| AP-UC-45 | ⚠️ | Polled state via Logdy log stream instead of a REST endpoint that exists for it | §13.4 |
+| AP-UC-46 | ❌ | Hand-rolled firmware functionality (timer loop, retry, state machine) when a documented native endpoint exists. Cautionary tale: Mod 5's `set_power_mode` ping vs `/system/power/standby_inhibitors`. | §13.2 |
+| AP-UC-47 | ⚠️ | REST URL query convention applied to WS RPC body (or vice versa). E.g., REST uses `?power_mode=NORMAL` query; WS RPC uses `{"mode": "NORMAL"}` body. They are NOT interchangeable. v1.4.22 cautionary tale (`project_setpowermode_field_bug.md`). | §13.2 |
+| AP-UC-48 | ℹ️ | Repeatedly polling a state when a push-event channel exists, or subscribing to events when a one-shot REST GET would do. | §13.2 |
+| AP-UC-49 | ❌ | Hand-rolled firmware-write RPC body without an empirical wire capture of a known-good message (skipped §1.12). v1.4.14 → v1.4.22 `setPowerMode` silent-failure precedent: 8 releases of HTTP 400, Mods 5/6 no-op in production, auto-revert never tripped. | §1.12 |
+| AP-UC-50 | ⚠️ | Audit-derived remediation shipped without re-verifying the audit's claim (LOC, code path, or architectural assumption may be stale). v1.4.26 → v1.4.33: chased a GridLayout perf hypothesis the audit named; actual cause was upstream Slider's `Repeater.model`. Memo: `feedback_verify_audit_before_remediation.md`. | §1.7, §1.8 |
+| AP-UC-51 | ⚠️ | Symptom fix landed before root cause was empirically confirmed (Logdy capture, probe log, or repro test). v1.4.37 → v1.4.38: a CI-test fix shipped on a wrong assumption about `InputHandler` dispatch path; symptom (red CI) was treated as cause. Confirm the fix actually addresses the failing premise before tagging. | §1.5 |
 
 ### Renderer / GPU
 
@@ -446,6 +515,38 @@ Always provide a safe default. Getters read directly from QSettings (not cached)
 
 ### §6.7 Config bridge singletons
 When QML needs **transformed** config values (speed/50.0, conditional logic, cross-property derivations), create a bridge singleton (`ScreensaverConfig` pattern). Raw values → `Config` directly.
+
+### §6.8 Shared firmware helpers (HTTP/REST + WS)
+
+When a mod needs to call the firmware over HTTP/REST (e.g., to hit an endpoint listed in `/doc/core-rest/openapi.yaml`), the helper goes in `core::Api` — not in the mod itself. This is the WS-API pattern extended to HTTP.
+
+**Why centralize:**
+- Auth resolution (basic / Bearer / cookie / loopback exemption) is one decision, not per-mod.
+- Connection state, host URL, and lifecycle are already managed by `core::Api`.
+- Future REST consumers reuse the same helper instead of each one rolling its own `QNetworkAccessManager`.
+
+**Pattern:** add typed wrappers (e.g., `core::Api::createStandbyInhibitor(...)`, `core::Api::deleteStandbyInhibitor(...)`) that mirror the WS-RPC wrapper style (`setPowerMode`, `setPowerSavingCfg`). Underlying transport is an implementation detail of `core::Api`. The mod calling code shouldn't care whether the wrapper hits REST or WS.
+
+**Don't:** embed `QNetworkAccessManager` inside `activitySessionKeeper.cpp`, `phantomWakeSuppressor.cpp`, or any other mod's logic. That fragments auth handling and duplicates infra. Today the codebase has zero authenticated REST consumers — the first one to land sets the pattern for the rest.
+
+See §13.3 for the auth ladder a shared helper should walk.
+
+### §6.9 QObject ownership and smart pointers
+
+Qt's parent-child memory model and the C++ Core Guidelines' smart-pointer rules (R.20-R.34) collide. Mixing `std::unique_ptr<T>` with a `T` that has a QObject parent causes double-deletion: the parent destructor frees the object first, then `unique_ptr` destruction frees it again. KDAB and cleanqt.io flag this as the most common Qt-plus-modern-C++ footgun.
+
+| Pattern | Use |
+|---|---|
+| QObject created with a parent | Raw pointer. Parent owns lifetime. Don't wrap in `unique_ptr`. |
+| QObject created without a parent (e.g., a singleton constructed in `main.cpp` and held for app lifetime) | `std::unique_ptr<T>` to enforce single-owner cleanup. |
+| Non-owning observer of a QObject that may outlive the observer | `QPointer<T>` — auto-nulls when the target is destroyed. Never raw pointer when the target is parented elsewhere. |
+| Shared ownership | Rare in this codebase. Prefer single-owner with `QPointer` observers. `std::shared_ptr<T>` only when refcount semantics are genuinely required. |
+
+**Anti-pattern:** `auto child = std::make_unique<MyClass>(parent);` where `parent` is a QObject. Either drop the parent (`make_unique<MyClass>()`) or drop the smart pointer (`new MyClass(parent)`) — pick one ownership model.
+
+**Forward-looking only.** This rule applies to new code from this revision; a retroactive scrub of existing `unique_ptr` / `QPointer` / parent-owned QObject usage is out of scope here.
+
+(Sources: C++ Core Guidelines R.20-R.34; Qt Wiki *Shared Pointers and QML Ownership*; KDAB *QObjects, Ownership, propagate_const*; cleanqt.io *Crash course in Qt for C++ developers, Part 4*.)
 
 ---
 
@@ -628,6 +729,20 @@ Entity IDs: `{prefix}.{ha_entity_id}` → `hass.main.sensor.living_room_temperat
 ### §8.6 Settings page decomposition
 Sub-pages when >12 items (ChargingScreen pattern with `chargingscreen/` subfolder).
 
+### §8.7 QML property value sources are unreachable from outside the component (TEST-ONLY)
+
+Animations attached via `<Type> on <Property>` syntax — `SequentialAnimation on opacity { ... }`, `RotationAnimation on rotation { ... }`, `Behavior on y { ... }` — register as Qt property value sources. **They do not appear in the parent's `children`, `resources`, or `data` lists.** A test file in another QML can't reach them via `findByObjectName` recursion; setting `objectName: "..."` on the animation is a no-op for traversal.
+
+Production is unaffected — within the source QML file, the animation's `id` is in scope so `running: hudRoot.active`-style bindings work as written. The unreachability is **TEST-ONLY**.
+
+**Two solutions:**
+- **(A) Trust the binding chain (preferred).** Verify the source-of-truth property (`readonly property bool active: SomeSingleton.someProperty`); trust Qt to propagate it to `running: hudRoot.active`. The test reads the source-of-truth property, not the animation.
+- **(B) Expose `property alias` on the component root** for direct test access. Cost: pollutes production surface with test-only properties.
+
+**When:** Option A when the binding chain is short and the source-of-truth property is exposed. Option B when the animation's triggering logic isn't derivable from a single root property.
+
+**Source incident:** v1.4.34 → v1.4.35 — `tst_reconnecting_hud.qml` shipped with `findByObjectName(banner, "hudPulse")` lookups; CI failed; replaced with a binding-chain test on `hud.active`. Memory: `feedback_qml_animation_value_sources.md`.
+
 ---
 
 ## §9 MOD ANATOMY — Template for New Features
@@ -658,6 +773,8 @@ src/qml/components/{feature}/art/         Art assets (compiled to qrc)
 - [ ] Q_PROPERTYs in `config.h`/`config.cpp` (at END)
 - [ ] Settings entry in `Settings.qml`
 - [ ] Update `docs/CUSTOM_FILES.md`
+
+**If the mod talks to the firmware** (REST, WS, or both): walk §1.4.1's API discovery hierarchy before writing the first line of transport code. Add any new transport wrappers to `core::Api` (§6.8), not to the mod itself. Authentication choices follow the §13.3 ladder. Diagnostics go through Logdy per §13.4 — for *debugging*, not for telemetry.
 
 ---
 
@@ -695,6 +812,9 @@ Before presenting generated code to the user:
 | Q14 | **Fallback** | Does the feature degrade gracefully when disabled/HA unavailable? | ⚠️ |
 | Q15 | **Typed properties** | Are QML properties declared with concrete types? | ⚠️ |
 | Q16 | **Node ownership** | Are QSGNode references NOT retained as class members? | ❌ |
+| Q17 | **Probe-first body shape** | For every firmware-write call, was the body diffed against a captured known-good message? (§1.12 / AP-UC-49) | ❌ |
+| Q18 | **Audit claim freshness** | For any audit-derived edit costing >30 min: have you re-read the current code and confirmed the claim, the LOC, and the simplest fix? (§1.8 / AP-UC-50) | ⚠️ |
+| Q19 | **Root cause empirical** | For any bug fix: do you have an empirical artifact (Logdy capture, probe log, repro test) confirming the root cause? Or are you patching a symptom? (AP-UC-51) | ⚠️ |
 
 ### §10.3 Periodic audit
 For full codebase audits (run quarterly or before major features):
@@ -739,6 +859,23 @@ One major deliverable per session. Don't start a second renderer in the same con
 ### §11.5 Turn threshold
 ~15 exchanges without shipping = pause and reassess scope.
 
+### §11.6 Propose style-guide updates from session learnings
+
+This guide is a living document. At end of session — or when you notice the trigger mid-session — propose a style-guide update if you've hit:
+
+- The same gotcha in two different sessions (codify so a third doesn't happen)
+- A new memory that captures a behavioral rule the guide doesn't have a section for
+- A firmware-API or upstream-merge surprise that future sessions will repeat without the rule
+- A pattern from a shipped mod worth generalizing (new template, new anti-pattern, new sub-§)
+
+**Process:** propose in one sentence — what the rule is and where it'd live (existing §, new sub-§, or new AP-UC). Wait for yes / no / defer. If yes, make the edit in the same session.
+
+**Don't propose:**
+- Speculative or tentative rules ("maybe we should…") — only add what's proven by repeated incidence
+- One-off observations — patterns only
+- Backlog items or TODOs — those belong in build logs or memory, not the guide
+- Anything `git log` or an existing memo already captures
+
 ---
 
 ## §12 UC3 HARDWARE CONSTRAINTS
@@ -752,12 +889,157 @@ One major deliverable per session. Don't start a second renderer in the same con
 | Battery | ~8.88 Wh Li-ion | displayOff gating MANDATORY |
 | Storage | 32 GB eMMC | Binary size matters |
 
+### §12.1 Disk I/O is slow on UC3 eMMC
+
+Empirical timing on UCR3 hardware: a 3.7 MB `QSaveFile` write took ~7 s; plain `QFile` ~12 s. Even `QFile::open` on a non-existent path blocks significantly. Two cache-revert incidents on this fork are direct consequences.
+
+**Never** put synchronous disk I/O in:
+- Render hot paths (renderer ticks, `updatePaintNode()`)
+- Startup-critical code (binary load, `Component.onCompleted`, `componentComplete()`)
+- `updatePolish()` callbacks
+- Any code on the GUI thread that fires more than once per second
+
+Use in-memory caching (static class members; see `AtlasBuilder::s_singleCacheKey` precedent in `src/ui/matrixrain/atlasbuilder.cpp`). If persistence is needed, defer to a background thread (`QtConcurrent::run`, `QThreadPool::globalInstance()->start(...)`) or trigger on `Power::Idle`.
+
+Memory: `feedback_uc3_disk_io.md`.
+
 ---
 
-## §13 COMMUNICATION STYLE
+## §13 FIRMWARE API & DIAGNOSTICS
+
+This section gathers what we know about talking to the UC core daemon and observing the firmware. It's the operational counterpart to §1.4.1 (the discovery checklist) — once you've decided *what* surface to call, this section covers *how* to call it correctly and how to debug when things misbehave.
+
+### §13.1 Sources of truth (where to look first)
+
+Before any firmware-interaction code, consult these in order:
+
+| Source | URL / path | Auth | Use for |
+|---|---|---|---|
+| Swagger UI | `http://${UC3_HOST}/doc/core-rest/` | Anonymous (docs only) | Browsing endpoints by tag, reading schemas |
+| OpenAPI spec | `http://${UC3_HOST}/doc/core-rest/openapi.yaml` | Anonymous | Programmatic search; save a local copy to `logs/core-openapi.yaml` (gitignored) |
+| WS RPC enum | `src/core/enums.h::RequestTypes::Enum` | N/A (declarations) | Searching for wired or orphan WS operations |
+| `core::Api` class | `src/core/core.{h,cpp}` | Existing WS auth | Existing wrappers — use these before adding new ones |
+
+**Status snapshot (2026-05-02):** 137 endpoints across 15 tag categories — `activities`, `api-keys`, `auth`, `cfg`, `dock`, `entities`, `external-token`, `info`, `infrared`, `integrations`, `macros`, `profiles`, `remotes`, `resources`, `system`. OpenAPI 3.1.1. Title: "Remote Two/3 REST Core-API". Memo: `reference_uc_core_rest_api.md`.
+
+### §13.2 REST vs WebSocket decision matrix
+
+Once an operation exists in *both* REST and WS form, pick by the call's shape — not by which one the codebase uses today.
+
+| Call shape | Prefer | Why |
+|---|---|---|
+| One-shot command (POST something, expect 200/201) | **REST** | Documented schema, version-stable, no field-shape footguns (AP-UC-47) |
+| One-shot read (GET current state) | **REST** | Same as above. Don't subscribe to events for a value you only need once. |
+| Long-lived push subscription (state changes you genuinely need pushed) | **WS** | Native bidirectional channel; REST has no equivalent. |
+| Operation only present in `enums.h`, not in OpenAPI | **WS** | REST may not implement it. Verify with the discovery hierarchy. |
+| Operation only present in OpenAPI, not in `enums.h` | **REST** | WS may not route the RPC name. The inhibitor API is the canonical example. |
+| Operation present in both but you're unsure | Read the spec, then `git grep` `enums.h` for call sites. If WS has zero callers it's an orphan — see §13.5. | |
+
+**Field-shape warning (AP-UC-47):** REST URL query parameters and WS RPC body fields are NOT interchangeable. The `power_mode` argument is `?power_mode=NORMAL` in REST URL convention but `{"mode": "NORMAL"}` as a WS RPC body field. Copying one shape to the other is the v1.4.22 silent failure that broke Mod 5 and Mod 6 across 8 releases. Memo: `project_setpowermode_field_bug.md`.
+
+**Polling vs push (AP-UC-48):** if the firmware emits push events for what you want, use them. If it doesn't, polling REST is fine — that's how state endpoints (`/system/power`, `/system/power/battery`) are designed to work. Don't fabricate event subscriptions where push events don't exist.
+
+### §13.3 Authentication
+
+The firmware accepts three documented auth schemes. Today's empirical probe (2026-05-02) confirmed all three work for the standby-inhibitor endpoints:
+
+| Scheme | Header / mechanism | When usable | Notes |
+|---|---|---|---|
+| **Basic auth** | `Authorization: Basic base64(web-configurator:PIN)` | Off-device tooling (curl, deploy scripts) | Documented in OpenAPI. Requires PIN — we have it for off-device probing but not for the on-device UI process. |
+| **Cookie session** | POST `/api/pub/login` with PIN → `Set-Cookie: id=...` → reuse cookie | Web-configurator-style frontends | Documented. Same PIN dependency as basic auth. |
+| **Bearer api_key** | `Authorization: Bearer <key>` | Long-lived programmatic clients | Mentioned in OpenAPI prose, NOT in formal `securitySchemes`. Mintable via `POST /auth/api_keys`. Existing keys on test device: `pyUnfoldedCircle`, `intg-manager`, `System Monitor Client 776`. |
+| **Loopback (hypothesis)** | None? | On-device UI talking to `127.0.0.1:8080` | The OpenAPI server list includes `http://localhost:8080/api`. Whether loopback bypasses auth is **unknown without on-device testing**. |
+
+**Auth ladder for new REST consumers:** any new REST helper added to `core::Api` (§6.8) should walk this ladder at first call and cache the result:
+
+1. Try no auth (loopback exemption hypothesis). One-shot probe at startup.
+2. Try the WS token from `UC_TOKEN_PATH` as a Bearer.
+3. If both fail: log it, fail-open (behave as if the feature is disabled), surface a `qCWarning` so Logdy captures the auth gap.
+
+**Anonymous endpoints** (no auth needed, useful as reachability probes): `/api/pub/version`, `/api/pub/status`, `/api/pub/health_check`, `/api/pub/login`. The OpenAPI spec marks these with `security: []` (empty array = override global security). Use `/api/pub/version` as a "is the device reachable?" check that doesn't burn an auth attempt.
+
+### §13.4 Logdy is diagnostic, not telemetry (AP-UC-45)
+
+Logdy is the WebSocket log stream baked into the firmware:
+
+- **URL:** `ws://${UC3_HOST}/log/ws`
+- **Auth:** anonymous
+- **Probe scripts:** `test/probe_logdy.py`, `test/probe_logdy_persist.py`
+
+**What it streams:** whatever the core service emits — typically connection state changes (dock reconnects, integration setup), errors, and a slice of system events.
+
+**What it does NOT stream:**
+- Battery capacity changes (use `GET /api/system/power/battery`)
+- Routine power-mode transitions for every transition (use `GET /api/system/power`)
+- Most internal state-machine ticks
+- **The custom `remote-ui` process's logs.** Logdy `/log/ws` is filtered to the `core` service. Our `qCDebug` / `qCInfo` / `qCWarning` output does **not** stream regardless of level; log-level promotion has no effect here. For custom-UI debugging, capture wire frames manually (the §13.6 probe table) or instrument via REST endpoints. Memory: `feedback_uc3_systemlogs_core_only.md`.
+
+**Empirical evidence:** a 60 s capture during idle on 2026-05-02 yielded 62 frames, almost all dock-reconnect retries. Zero battery events.
+
+**Use Logdy for:** "what's the firmware doing right now?" investigations — when you don't yet know what events exist or what triggered an unexpected behavior. Tail the stream while reproducing the bug.
+
+**Don't use Logdy for:** state polling, telemetry pipelines, drain measurement, anything where you need a known event at a known cadence. For state, REST is the answer. Memo: `feedback_uc3_systemlogs_core_only.md`.
+
+### §13.5 Orphan-RequestTypes pattern
+
+`enums.h::RequestTypes::Enum` declares every WS RPC the upstream UI knows about — but not all of them are wired. Entries with **zero call sites** in the codebase are "orphans" — RPC names declared but never sent.
+
+**Why orphans matter:** they often indicate firmware capabilities the upstream UI never bothered to surface. Wiring an orphan is essentially free — the firmware-side handler already exists; we just call it.
+
+**Track record:**
+- v1.4.10 — `entityAdded` (signal orphan, related): pre-existing latent upstream bug fixed
+- v1.4.12 — `REASSOCIATE` wired for the WiFi reconnect button (W4)
+- v1.4.14 — `set_power_mode` wired for ActivitySessionKeeper (Mod 5) — *though this turned out to be the wrong API; see §13.2 — REST inhibitor was the right answer*
+- v1.4.20 — wake-trigger gating (Mod 6 phantom-wake suppressor)
+
+**How to find an orphan:**
+1. Open `src/core/enums.h`, find an entry whose name describes what you want.
+2. `git grep -n "<name>"` across `src/`. If it appears only in `enums.h` itself and the enum-string conversion table, it's an orphan.
+3. Confirm the firmware-side handler exists (Swagger UI search, or send a test RPC and see if it returns OK or 4xx).
+
+**Caution:** the orphan-RPC route is more brittle than REST because the WS RPC name is undocumented. Prefer §1.4.1 step 1 (REST) before falling back to step 3 (orphan WS). Memo: `project_orphan_request_types_pattern.md`.
+
+### §13.6 Probing the device (no SSH by design)
+
+UCR3 has no shell access. The only diagnostic surfaces are REST, WS (including Logdy), and physical interaction with the device. Memos: `feedback_never_say_ssh_uc3.md`, `project_uc3_no_ssh.md`.
+
+**Probing workflow:**
+
+| Goal | Method |
+|---|---|
+| "Is the device reachable?" | `curl http://${UC3_HOST}/api/pub/version` (anonymous, fast, doesn't trigger auth) |
+| "Wake the device before probing other endpoints" | Hit `/api/system/power/battery` first — WoWLAN may not wake the chip in time for arbitrary endpoints (memo: `feedback_wowlan_phantom_wake.md`) |
+| "What endpoint do I need?" | Browse Swagger UI at `/doc/core-rest/`. Search by tag. |
+| "Does this endpoint actually do what the spec says?" | curl probe with basic auth (off-device) |
+| "What is the firmware doing right now?" | `python test/probe_logdy.py 60 'keyword1,keyword2'` |
+| "What WS RPCs is the UI sending?" | Logdy capture during the action you're investigating |
+
+**Where probe captures live:** `logs/` directory in the project root. Never `/tmp/` (resolves to `AppData/Local/Temp` on Windows Python and breaks on session restart). Memo: `feedback_logs_directory.md`.
+
+### §13.7 API version awareness (post-upstream-merge ritual)
+
+After every `git fetch upstream && git merge upstream/main`, run this as part of the post-merge sanity check:
+
+```bash
+curl -s http://${UC3_HOST}/api/pub/version
+```
+
+The `api` field tracks the firmware REST API version. Today (2026-05-02): `api: "0.17.6"`, `core: "0.71.1-bt"`, `ui: "1.4.38"`, `os: "2.9.1"`. If the `api` value bumps after a firmware update:
+
+- Re-download the OpenAPI spec to `logs/core-openapi.yaml` (overwrite previous).
+- Diff against the prior version to spot new endpoints (potentially new orphans to wire) or schema changes (potential breaking changes for our REST consumers).
+- Note the bump in CHANGELOG with a one-line summary of relevant changes.
+
+**Cautionary note:** `/api/pub/version` `ui` field is firmware-cached and may stay at the OLD git-describe until device reboot — trust `/api/system/install/ui` plus visual verification for our own UI version. Memo: `project_pub_version_ui_field_staleness.md`.
+
+---
+
+## §14 COMMUNICATION STYLE
 
 - Talk like Quark from DS9. Curse when it fits — for emphasis, frustration, or color.
 - Be direct. Don't over-explain obvious things.
+- **Default to plain language.** Lead with what changes and why it matters in real-world terms. API schemas, file paths, anti-pattern IDs, and code-level detail are for when the user is reviewing those artifacts — not the default shape of every reply. Tables and structured headings are for genuinely complex comparisons, not the default response.
+- **Confirm scope before deep multi-step planning.** For PR scoping, refactors, multi-file architecture changes, style-guide overhauls, and similar multi-step work: ask one or two clarifying questions about scope/preference *before* producing the full structured plan. Thoroughness about content coverage is fine when planning is invited; jumping straight to a 400-word matrix is not.
 - When reviewing, suggest concrete improvements with code.
 - Edit files directly when filesystem access is available.
 - Present options with trade-offs and let the user choose.
