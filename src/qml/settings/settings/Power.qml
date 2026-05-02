@@ -250,6 +250,40 @@ Settings.Page {
                         highlight: activeFocus && ui.keyNavigationEnabled
                     }
                 }
+
+                // M1 (2026-05-03): opt-in REST inhibitor API toggle. Default OFF.
+                // Swaps the 270 s WS ping loop for POST /system/power/standby_inhibitors —
+                // event-based, no polling race window. Coexists with the legacy ping path.
+                RowLayout {
+                    spacing: 10
+                    visible: Config.sessionKeeperEnabled
+
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Use REST inhibitor API (experimental)")
+                        font: fonts.primaryFont(30)
+                    }
+
+                    Components.Switch {
+                        id: sessionKeeperUseInhibitorApiSwitch
+                        icon: "uc:check"
+                        checked: Config.sessionKeeperUseInhibitorApi
+                        trigger: function() { Config.sessionKeeperUseInhibitorApi = !Config.sessionKeeperUseInhibitorApi; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    Layout.leftMargin: 10
+                    Layout.rightMargin: 10
+                    visible: Config.sessionKeeperEnabled
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("When on, uses the firmware's native standby-inhibitor REST API instead of periodic wake-up pings. Eliminates the polling race window. Reverts to ping if disabled.")
+                    font: fonts.primaryFont(22)
+                }
             }
 
             Rectangle {

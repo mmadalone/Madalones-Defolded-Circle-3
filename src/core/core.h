@@ -210,6 +210,16 @@ class Api : public QObject {
     // prefix. Triggered from main.cpp once on connected() if Config::probeRestAuth.
     Q_INVOKABLE void probeRestAuth();
 
+    // madalone (M1, 2026-05-03): standby_inhibitors REST helpers.
+    // Authenticated via Bearer <UC_TOKEN content> (Phase 0 H2 winner). Each method
+    // returns an internal request ID; success/failure observed via the corresponding
+    // resp* signal below. Body shape verified §1.12 by external curl wire-capture
+    // (logs/m1_wire_capture_*.txt, build log _build_logs/2026-05-03_m1.md).
+    int createStandbyInhibitor(const QString &who, const QString &why = QString(), int delaySec = -1);
+    int deleteStandbyInhibitor(const QString &id);
+    int listStandbyInhibitors();
+
+
  public:
     /**
      * @brief This response handler is used for common response result processing, that doesn't return anything special.
@@ -344,6 +354,13 @@ class Api : public QObject {
     void respFactoryResetToken(int reqId, int code, QString token);
     void respApiAccess(int reqId, int code, ApiAccess apiAccess);
 
+    // madalone (M1): REST inhibitor responses. httpCode reflects the actual HTTP
+    // status (201 on POST success, 200 on GET/DELETE success, 401 on auth failure,
+    // 409 on duplicate id, etc.). errorMessage is empty on 2xx, populated on non-2xx.
+    void respCreateInhibitor(int reqId, int httpCode, QString id, QString errorMessage);
+    void respDeleteInhibitor(int reqId, int httpCode, QString errorMessage);
+    void respListInhibitors(int reqId, int httpCode, QList<Inhibitor> inhibitors, QString errorMessage);
+
     void wifiStatusChanged(int reqId, int code, WifiStatus wifiStatus);
     void wifiScanStatusChanged(int reqId, int code, bool active, QList<AccessPointScan> scan);
     void wifiNetworksChanged(int reqId, int code, QList<SavedNetwork> networks);
@@ -469,6 +486,21 @@ class Api : public QObject {
 
     void probeStep(int hNum);
     void probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& authLabel);
+
+    // madalone (M1, 2026-05-03): persistent QNAM for production REST calls
+    // (standby_inhibitors etc). Separate from m_probeNam so probe re-runs don't
+    // entangle with inhibitor lifecycle. Internal request IDs are unsigned ints
+    // independent of WS m_requestId — REST and WS responses live on different
+    // signal channels and IDs need not be globally unique.
+    QNetworkAccessManager m_restNam;
+    unsigned int          m_restRequestId = 0;
+
+    // Shared REST helpers — factored from Phase 0 probe code so M1 and any future
+    // REST consumer reuse the same UC_TOKEN read + URL derivation + Bearer header
+    // construction. Implementation references the probe's logic at core.cpp:3611-3644.
+    QString    readUcToken() const;             // reads UC_TOKEN_PATH file, returns empty on failure
+    QUrl       restEndpoint(const QString &path) const;  // converts m_url scheme/host/port + appends path
+    QByteArray bearerHeader() const;            // "Bearer <token>" — empty if no token
 
     QTimer *m_keepAliveTimer;
     int     m_keepAliveInterval = 60000;

@@ -477,6 +477,20 @@ void Config::setSessionKeeperRequireAc(bool value)
     emit sessionKeeperRequireAcChanged();
 }
 
+// madalone (M1, 2026-05-03): standby_inhibitors REST API toggle.
+// Default OFF, user-controlled indefinitely (audit doc Q3). When ON, Mod 5's
+// effector swaps from WS ping → POST /system/power/standby_inhibitors.
+bool Config::getSessionKeeperUseInhibitorApi()
+{
+    return m_settings->value("power/sessionKeeperUseInhibitorApi", false).toBool();
+}
+
+void Config::setSessionKeeperUseInhibitorApi(bool value)
+{
+    m_settings->setValue("power/sessionKeeperUseInhibitorApi", value);
+    emit sessionKeeperUseInhibitorApiChanged();
+}
+
 // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences (purely UI-side, QSettings-backed).
 bool Config::getPhantomWakeSuppressEnabled()
 {

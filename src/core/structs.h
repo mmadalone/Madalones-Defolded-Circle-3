@@ -256,6 +256,20 @@ struct ApiAccess {
     QDateTime validTo;
 };
 
+// madalone (M1, 2026-05-03): represents one entry returned by
+// GET /api/system/power/standby_inhibitors. Mirrors the firmware's wire shape
+// captured 2026-05-02 (logs/m1_wire_capture_get.txt). Note: the field is
+// "elapsed" on the wire, NOT "created" as the OpenAPI spec at line 16734
+// claims — spec-vs-implementation drift, trust the capture.
+struct Inhibitor {
+    QString id;          // required; UUID when server-generated
+    QString who;         // required; descriptive client identifier
+    QString why;         // optional; descriptive reason
+    QString mode;        // required; "BLOCK" or "DELAY"
+    int     delay = 0;   // present only on mode=DELAY (seconds)
+    int     elapsed = 0; // seconds since inhibitor was created (firmware stopwatch)
+};
+
 struct AccessPointScan {
     QString bssid;
     int     frequency;

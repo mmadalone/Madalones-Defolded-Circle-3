@@ -386,6 +386,182 @@ class ActivitySessionKeeperTest : public QObject {
         // Should not have triggered a fresh ping.
         QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 1);
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // M1 (2026-05-03): standby_inhibitors REST API tests.
+    // ──────────────────────────────────────────────────────────────────────
+
+    // M1.1: With useInhibitorApi=true, inactive→active edge sends POST exactly once
+    //       with who="madalone.session-keeper" and no delay (BLOCK mode), and does
+    //       NOT start the WS ping timer (no setPowerMode call).
+    void test_evaluateSession_inhibitorApi_creates_on_active() {
+        m_keeper->setUseInhibitorApi(true);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+
+        // Inject the response the stub will emit on createStandbyInhibitor.
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "test-uuid-abc");
+
+        // Trigger inactive→active edge.
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();  // let QTimer::singleShot(0) fire the resp signal
+
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+        QCOMPARE(uc::test::MockCoreRecorder::lastInhibitorWho(), QString("madalone.session-keeper"));
+        QCOMPARE(uc::test::MockCoreRecorder::lastInhibitorDelay(), -1);  // BLOCK mode (delay omitted)
+        QVERIFY2(!uc::test::MockCoreRecorder::lastInhibitorWhy().isEmpty(),
+                 "why field should be populated for human-readable firmware logs");
+
+        // WS ping path must NOT fire when REST inhibitor path is active.
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+    }
+
+    // M1.2: After M1.1, active→inactive edge sends DELETE exactly once with the
+    //       stored ID. Toggle stays on; subsequent transitions correctly pair.
+    void test_evaluateSession_inhibitorApi_deletes_on_inactive() {
+        m_keeper->setUseInhibitorApi(true);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "test-uuid-1");
+
+        // Activate.
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+
+        uc::test::MockCoreRecorder::pushNextDeleteResponse(200);
+
+        // Deactivate (media stops + no idle timer arming).
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kOff);
+        QCoreApplication::processEvents();
+
+        QCOMPARE(uc::test::MockCoreRecorder::deleteInhibitorCallCount(), 1);
+        QCOMPARE(uc::test::MockCoreRecorder::lastDeletedInhibitorId(), QString("test-uuid-1"));
+        // Still no setPowerMode pings.
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+    }
+
+    // M1.3: onCoreConnected with useInhibitorApi=true triggers a list call;
+    //       any orphan with who="madalone.session-keeper" gets DELETE'd; if
+    //       currently active, a fresh inhibitor is created (option (b) per plan).
+    void test_inhibitorApi_orphanCleanup_on_reconnect() {
+        m_keeper->setUseInhibitorApi(true);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+
+        // Simulate a session that survived a disconnect — keeper is m_active=true
+        // but m_inhibitorId is empty (cleared on disconnect).
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "first-uuid");
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+
+        // Disconnect clears local inhibitorId but firmware-side still exists.
+        m_keeper->onCoreDisconnected();
+        // Re-arm (simulates the natural triggers re-firing post-reconnect).
+        m_keeper->setEnabled(true);  // force re-eval (onCoreDisconnected cleared m_active)
+        m_keeper->onPowerSupplyChanged(true);
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();
+        // The recovery path's create call also fires — track this baseline.
+        const int createCountBeforeReconnect = uc::test::MockCoreRecorder::createInhibitorCallCount();
+
+        // Inject the orphan list — one entry with our who.
+        uc::core::Inhibitor orphan;
+        orphan.id   = "orphan-uuid-1";
+        orphan.who  = "madalone.session-keeper";
+        orphan.mode = "BLOCK";
+        QList<uc::core::Inhibitor> orphans = { orphan };
+        uc::test::MockCoreRecorder::pushNextListResponse(200, orphans);
+        // The orphan-cleanup will trigger a fresh create after delete; queue that response too.
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "fresh-uuid");
+
+        // Trigger reconnect.
+        m_keeper->onCoreConnected();
+        QCoreApplication::processEvents();
+        QCoreApplication::processEvents();  // multiple rounds — list resp → delete + create
+
+        QCOMPARE(uc::test::MockCoreRecorder::listInhibitorsCallCount(), 1);
+        // 1 orphan delete from cleanup path.
+        QCOMPARE(uc::test::MockCoreRecorder::deleteInhibitorCallCount(), 1);
+        QCOMPARE(uc::test::MockCoreRecorder::lastDeletedInhibitorId(), QString("orphan-uuid-1"));
+        // Plus the freshly-recreated inhibitor.
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), createCountBeforeReconnect + 1);
+    }
+
+    // M1.4: Hard-fail on REST POST 401 (no silent fallback to ping path).
+    //       After the failed POST, m_inhibitorId stays empty; setPowerMode is never called.
+    void test_inhibitorApi_create_fails_hardFail() {
+        m_keeper->setUseInhibitorApi(true);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+
+        // Inject 401 response.
+        uc::test::MockCoreRecorder::pushNextCreateResponse(401, QString(), "Unauthorized");
+
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();
+
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+        // Hard-fail: no DELETE follow-up (nothing to delete), no WS fallback.
+        QCOMPARE(uc::test::MockCoreRecorder::deleteInhibitorCallCount(), 0);
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+        // Keeper's m_active stays true (state machine doesn't depend on the effector
+        // succeeding — that's the audit's hard-fail invariant).
+        QVERIFY(m_keeper->getActive());
+    }
+
+    // M1.5: Mid-session toggle flip WS → REST while active.
+    //       Ping timer stops; createStandbyInhibitor fires.
+    void test_inhibitorApi_midSessionToggleFlip_WStoREST() {
+        // Start in WS path with an active session.
+        m_keeper->setUseInhibitorApi(false);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 1);  // immediate ping
+
+        // Inject create response, then flip toggle ON.
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "midflip-uuid");
+        m_keeper->setUseInhibitorApi(true);
+        QCoreApplication::processEvents();
+
+        // POST fired exactly once on the flip.
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+        // No additional pings since the flip (the original 1 still stands; nothing new).
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 1);
+    }
+
+    // M1.6: Mid-session toggle flip REST → WS while active.
+    //       DELETE fires for the inhibitor; immediate fresh ping starts (resets the
+    //       firmware's standby_timeout_sec NOW, since we lose the inhibitor protection).
+    void test_inhibitorApi_midSessionToggleFlip_RESTtoWS() {
+        // Start in REST path with an active session.
+        m_keeper->setUseInhibitorApi(true);
+        m_keeper->setEnabled(true);
+        m_keeper->setRequireAcPower(true);
+        m_keeper->onPowerSupplyChanged(true);
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "rest-active-uuid");
+        m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
+        QCoreApplication::processEvents();
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+
+        // Flip OFF.
+        uc::test::MockCoreRecorder::pushNextDeleteResponse(200);
+        m_keeper->setUseInhibitorApi(false);
+        QCoreApplication::processEvents();
+
+        QCOMPARE(uc::test::MockCoreRecorder::deleteInhibitorCallCount(), 1);
+        QCOMPARE(uc::test::MockCoreRecorder::lastDeletedInhibitorId(), QString("rest-active-uuid"));
+        // Immediate ping fires on the WS handover.
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 1);
+    }
 };
 
 QTEST_MAIN(ActivitySessionKeeperTest)

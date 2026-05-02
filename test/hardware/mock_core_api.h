@@ -50,8 +50,11 @@
 
 #pragma once
 
+#include <QList>
 #include <QString>
 #include <QVariantMap>
+
+#include "../../src/core/structs.h"  // M1: uc::core::Inhibitor
 
 namespace uc {
 namespace test {
@@ -85,6 +88,39 @@ class MockCoreRecorder {
     // Default is true in test builds (no real connection but we want sendRequest to "succeed").
     static void setConnected(bool connected);
     static bool isConnected();
+
+    // ──────────────────────────────────────────────────────────────────────────
+    // M1 (2026-05-03): standby_inhibitors REST recording + response injection.
+    // ──────────────────────────────────────────────────────────────────────────
+    // The keeper's REST methods (createStandbyInhibitor / deleteStandbyInhibitor /
+    // listStandbyInhibitors) are stubbed to record args + emit the corresponding
+    // resp* signal asynchronously (QTimer::singleShot(0, ...)) so the keeper's
+    // QObject::connect(...) call ordering matches the production async behavior.
+    //
+    // Tests push the desired response BEFORE triggering the keeper edge:
+    //
+    //   MockCoreRecorder::pushNextCreateResponse(201, "test-uuid-abc");
+    //   keeper.onMediaPlayerStateChanged("entity1", Playing);  // triggers create
+    //   QCoreApplication::processEvents();                     // fire the QTimer
+    //   QCOMPARE(MockCoreRecorder::createInhibitorCallCount(), 1);
+    //   QCOMPARE(MockCoreRecorder::lastInhibitorWho(), "madalone.session-keeper");
+    static int     createInhibitorCallCount();
+    static QString lastInhibitorWho();
+    static QString lastInhibitorWhy();
+    static int     lastInhibitorDelay();   // -1 if delay was omitted (BLOCK mode)
+
+    static int     deleteInhibitorCallCount();
+    static QString lastDeletedInhibitorId();
+
+    static int             listInhibitorsCallCount();
+
+    // Tests push the response the next call should emit. Stubs auto-pop on use;
+    // a stub call without a pushed response uses the default (httpCode=201/200,
+    // empty error). pushNextListResponse takes the inhibitor list to emit.
+    static void pushNextCreateResponse(int httpCode, const QString& id, const QString& errorMessage = QString());
+    static void pushNextDeleteResponse(int httpCode, const QString& errorMessage = QString());
+    static void pushNextListResponse(int httpCode, const QList<uc::core::Inhibitor>& inhibitors,
+                                     const QString& errorMessage = QString());
 
  private:
     MockCoreRecorder() = delete;

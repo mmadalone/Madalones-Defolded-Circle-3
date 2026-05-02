@@ -107,10 +107,50 @@ void ActivitySessionKeeper::onCoreDisconnected() {
     m_activeMediaPlayers.clear();
     m_idleTimer.stop();
     m_pingTimer.stop();
+    // M1: WS is down — DELETE would fail. Just clear local state. Orphan cleanup
+    // on reconnect (onCoreConnected) handles the firmware-side inhibitor.
+    m_inhibitorId.clear();
+    m_inhibitorCreatePending = false;
     if (m_active) {
         m_active = false;
         emit activeChanged();
     }
+}
+
+// madalone (M1, 2026-05-03): orphan cleanup on (re)connect.
+// Lists existing inhibitors, deletes any with who=="madalone.session-keeper" left
+// behind by a prior process instance, then if currently m_active recreates fresh.
+void ActivitySessionKeeper::onCoreConnected() {
+    if (!m_useInhibitorApi) return;
+
+    const int reqId = m_core->listStandbyInhibitors();
+    auto* conn = new QMetaObject::Connection;
+    *conn = QObject::connect(m_core, &core::Api::respListInhibitors, this,
+        [this, reqId, conn](int respId, int httpCode, QList<core::Inhibitor> inhibitors, QString errorMessage) {
+            if (respId != reqId) return;
+            QObject::disconnect(*conn);
+            delete conn;
+            if (httpCode != 200) {
+                qCWarning(lcHw()) << "ActivitySessionKeeper orphan-list GET failed:" << httpCode << errorMessage;
+                return;
+            }
+            int orphans = 0;
+            for (const auto& inh : inhibitors) {
+                if (inh.who == QStringLiteral("madalone.session-keeper")) {
+                    qCDebug(lcHw()) << "ActivitySessionKeeper orphan cleanup; deleting" << inh.id;
+                    m_core->deleteStandbyInhibitor(inh.id);
+                    ++orphans;
+                }
+            }
+            // Local state was already cleared on disconnect; cleanup is firmware-side only.
+            if (orphans > 0) {
+                qCWarning(lcHw()) << "ActivitySessionKeeper orphan cleanup deleted" << orphans << "inhibitor(s)";
+            }
+            // Recreate fresh if we're currently in an active session.
+            if (m_active) {
+                activateInhibitor();
+            }
+        });
 }
 
 void ActivitySessionKeeper::evaluateSession() {
@@ -125,12 +165,102 @@ void ActivitySessionKeeper::evaluateSession() {
         emit activeChanged();
     }
 
-    if (m_active && !m_pingTimer.isActive()) {
-        ping();              // immediate first ping resets firmware timer to 300 s now
-        m_pingTimer.start();
-    } else if (!m_active && m_pingTimer.isActive()) {
-        m_pingTimer.stop();
+    // M1: dispatch effector by toggle. WS ping path = legacy default; REST inhibitor = opt-in.
+    if (m_active && !wasActive) {
+        // inactive → active edge
+        if (m_useInhibitorApi) {
+            activateInhibitor();
+        } else if (!m_pingTimer.isActive()) {
+            ping();              // immediate first ping resets firmware timer to 300 s now
+            m_pingTimer.start();
+        }
+    } else if (!m_active && wasActive) {
+        // active → inactive edge
+        if (m_useInhibitorApi) {
+            deactivateInhibitor();
+        } else if (m_pingTimer.isActive()) {
+            m_pingTimer.stop();
+        }
     }
+}
+
+// madalone (M1, 2026-05-03): mid-session toggle flip support.
+// User flipping the experimental REST toggle while an active session is in flight:
+// - WS → REST: stop ping timer, send POST.
+// - REST → WS: send DELETE, restart ping timer + immediate ping.
+// Toggle generally OFF in practice; this is the rare-but-correct path.
+void ActivitySessionKeeper::setUseInhibitorApi(bool use) {
+    if (m_useInhibitorApi == use) return;
+    m_useInhibitorApi = use;
+    emit useInhibitorApiChanged();
+    qCDebug(lcHw()) << "ActivitySessionKeeper useInhibitorApi:" << use;
+
+    if (!m_active) return;  // no session in flight — nothing to swap
+
+    if (use) {
+        // WS → REST
+        m_pingTimer.stop();
+        activateInhibitor();
+    } else {
+        // REST → WS
+        deactivateInhibitor();
+        ping();
+        m_pingTimer.start();
+    }
+}
+
+// madalone (M1): activate effector — POST a BLOCK inhibitor. Hard-fail on auth flake.
+void ActivitySessionKeeper::activateInhibitor() {
+    if (m_inhibitorCreatePending) return;  // POST already in flight
+    if (!m_inhibitorId.isEmpty()) return;  // already have one
+
+    m_inhibitorCreatePending = true;
+    const int reqId = m_core->createStandbyInhibitor(
+        QStringLiteral("madalone.session-keeper"),
+        QStringLiteral("media-playing or recent-input"));
+
+    auto* conn = new QMetaObject::Connection;
+    *conn = QObject::connect(m_core, &core::Api::respCreateInhibitor, this,
+        [this, reqId, conn](int respId, int httpCode, QString id, QString errorMessage) {
+            if (respId != reqId) return;
+            QObject::disconnect(*conn);
+            delete conn;
+            m_inhibitorCreatePending = false;
+            if (httpCode == 201 && !id.isEmpty()) {
+                m_inhibitorId = id;
+                qCDebug(lcHw()) << "ActivitySessionKeeper inhibitor created; id =" << id;
+                // Race: we may have gone inactive while POST was in flight.
+                if (!m_active) {
+                    qCDebug(lcHw()) << "ActivitySessionKeeper: session ended during POST; deleting immediately";
+                    deactivateInhibitor();
+                }
+            } else {
+                // Hard-fail per audit: log loudly, do NOT silently fall back to ping path.
+                qCWarning(lcHw()) << "ActivitySessionKeeper REST POST failed:" << httpCode << errorMessage;
+            }
+        });
+}
+
+// madalone (M1): deactivate effector — DELETE the stored inhibitor. Optimistic clear.
+void ActivitySessionKeeper::deactivateInhibitor() {
+    if (m_inhibitorId.isEmpty()) return;
+    const QString id = m_inhibitorId;
+    m_inhibitorId.clear();  // optimistic — orphan cleanup catches a failed DELETE on next reconnect
+
+    const int reqId = m_core->deleteStandbyInhibitor(id);
+    auto* conn = new QMetaObject::Connection;
+    *conn = QObject::connect(m_core, &core::Api::respDeleteInhibitor, this,
+        [reqId, conn, id](int respId, int httpCode, QString errorMessage) {
+            if (respId != reqId) return;
+            QObject::disconnect(*conn);
+            delete conn;
+            if (httpCode == 200 || httpCode == 204) {
+                qCDebug(lcHw()) << "ActivitySessionKeeper inhibitor deleted; id =" << id;
+            } else {
+                qCWarning(lcHw()) << "ActivitySessionKeeper REST DELETE failed:" << httpCode
+                                  << "id =" << id << "msg =" << errorMessage;
+            }
+        });
 }
 
 void ActivitySessionKeeper::ping() {

@@ -2999,7 +2999,7 @@ Climate fan</extracomment>
         <translation>Teljesítmény</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="278"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="312"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>Wifi csatlakoztatva marad készenlét közben</translation>
@@ -3009,54 +3009,54 @@ Climate fan</extracomment>
         <translation type="vanished">A WiFi mindig kapcsolódva marad, akkor is ha a készülék alvó állapotban van. Az ébredés után gyorsabb újracsatlakozást tesz lehetővé. Kérjük, vegye figyelembe, hogy ezen funkció bekapcsolása kicsit csökkenti az akkumulátor élettartamát.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="328"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="362"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="338"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="372"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="350"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="384"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="389"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="423"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Érzékenység felébresztése</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="399"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="433"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>A távirányító felébresztéséhez szükséges mozgás mennyisége.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="414"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="448"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Ki</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="416"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="450"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Érzékenység</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="454"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="488"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Kijelző kikapcsolási időtúllépés</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="351"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="474"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="475"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="697"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="385"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="508"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="509"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="731"/>
         <source>%1 seconds</source>
         <translation>%1 másodperc</translation>
     </message>
@@ -3111,38 +3111,48 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="306"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="265"/>
+        <source>Use REST inhibitor API (experimental)</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="284"/>
+        <source>When on, uses the firmware&apos;s native standby-inhibitor REST API instead of periodic wake-up pings. Eliminates the polling race window. Reverts to ping if disabled.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="340"/>
         <source>Faster reconnect after wake; minor battery cost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="514"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="548"/>
         <source>Screen off animations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="523"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="557"/>
         <source>Enabled</source>
         <translation type="unfinished">Engedélyezve</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="542"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="576"/>
         <source>Fire when undocked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="564"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="598"/>
         <source>Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="677"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="711"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Alvó mód időtúllépése</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="698"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="732"/>
         <source>%1 minutes</source>
         <translation>%1 perc</translation>
     </message>
@@ -5035,7 +5045,7 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1027"/>
+        <location filename="../../src/config/config.cpp" line="1041"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Hiba a konfiguráció betöltése közben. Újrapróbálkozás.</translation>
     </message>
@@ -5110,17 +5120,17 @@ Koppintson a QR-kódra, hogy megjelenítse a képernyőn.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1375"/>
+        <location filename="../../src/core/core.cpp" line="1377"/>
         <source>Connection error</source>
         <translation>Csatlakozási hiba</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1376"/>
+        <location filename="../../src/core/core.cpp" line="1378"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Hiba történt a Core-hoz csatlakozáskor. Ha a probléma továbbra is fennáll, indítsa újra a távirányítót.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1835"/>
+        <location filename="../../src/core/core.cpp" line="1837"/>
         <source>Authentication to core failed</source>
         <translation>A hitelesítés nem sikerült a Core-hoz</translation>
     </message>

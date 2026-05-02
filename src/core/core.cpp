@@ -4,6 +4,8 @@
 #include "core.h"
 
 #include <QDateTime>
+#include <QJsonArray>
+#include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
 #include <QSettings>
@@ -3608,26 +3610,12 @@ void Api::probeRestAuth() {
     m_probeRunning = true;
     writeProbeMarker(QStringLiteral("probeLastStage"), QStringLiteral("entered"));
 
-    // Derive REST base URL from the WS URL: ws://127.0.0.1:8080/ws → http://127.0.0.1:8080.
-    // QUrl handles scheme/host/port; explicitly set path to /api/system/power per the
-    // endpoint contract at openapi.yaml:10575-10595.
-    QUrl wsUrl(m_url);
-    m_probeEndpoint = QUrl();
-    m_probeEndpoint.setScheme(wsUrl.scheme() == "wss" ? "https" : "http");
-    m_probeEndpoint.setHost(wsUrl.host().isEmpty() ? "127.0.0.1" : wsUrl.host());
-    if (wsUrl.port() != -1) {
-        m_probeEndpoint.setPort(wsUrl.port());
-    }
-    m_probeEndpoint.setPath("/api/system/power");
+    // Derive REST endpoint via shared helper (factored for M1 reuse — see restEndpoint()).
+    m_probeEndpoint = restEndpoint(QStringLiteral("/api/system/power"));
 
-    // Read UC_TOKEN_PATH content (mirrors authenticate() at ~core.cpp:79-90).
-    // Used by H2 (Bearer) and H4 (Basic w/ token-as-PIN). If missing, those steps skip.
-    QFile tokFile(qgetenv("UC_TOKEN_PATH"));
-    if (tokFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
-        m_probeToken = QString::fromUtf8(tokFile.readAll()).trimmed();
-        tokFile.close();
-    } else {
-        m_probeToken.clear();
+    // Read UC_TOKEN via shared helper. Empty if UC_TOKEN_PATH unreadable; H2/H4 then skip.
+    m_probeToken = readUcToken();
+    if (m_probeToken.isEmpty()) {
         qCWarning(lcCore()) << "[REST Auth Probe] UC_TOKEN_PATH unreadable — H2/H4 will be skipped";
     }
 
@@ -3823,6 +3811,183 @@ void Api::probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& au
             return;
     }
     probeStep(next);
+}
+
+// ============================================================================
+// madalone (M1, 2026-05-03): shared REST helpers
+// ----------------------------------------------------------------------------
+// Factored from Phase 0 probe code so M1's standby_inhibitors and any future
+// REST consumer reuse the same UC_TOKEN read + URL derivation + Bearer header
+// construction. The probe uses these too (refactored at probeRestAuth()).
+// ============================================================================
+
+QString Api::readUcToken() const {
+    QFile tokFile(qgetenv("UC_TOKEN_PATH"));
+    if (!tokFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        return QString();
+    }
+    const QString content = QString::fromUtf8(tokFile.readAll()).trimmed();
+    tokFile.close();
+    return content;
+}
+
+QUrl Api::restEndpoint(const QString& path) const {
+    // Derive REST base URL from the WS URL: ws://127.0.0.1:8080/ws → http://127.0.0.1:8080.
+    QUrl wsUrl(m_url);
+    QUrl out;
+    out.setScheme(wsUrl.scheme() == "wss" ? "https" : "http");
+    out.setHost(wsUrl.host().isEmpty() ? QStringLiteral("127.0.0.1") : wsUrl.host());
+    if (wsUrl.port() != -1) {
+        out.setPort(wsUrl.port());
+    }
+    out.setPath(path);
+    return out;
+}
+
+QByteArray Api::bearerHeader() const {
+    const QString token = readUcToken();
+    if (token.isEmpty()) {
+        return QByteArray();
+    }
+    return QByteArray("Bearer ") + token.toUtf8();
+}
+
+// ============================================================================
+// madalone (M1, 2026-05-03): standby_inhibitors REST helpers
+// ----------------------------------------------------------------------------
+// Implementation notes from §1.12 wire capture (logs/m1_wire_capture_*.txt,
+// build log _build_logs/2026-05-03_m1.md):
+//
+//   POST  /api/system/power/standby_inhibitors
+//         Request body:  {"who":"...","why":"...","delay":N}  (delay omitted = BLOCK mode)
+//         Response 201:  {"id":"<server-generated-uuid>"}
+//
+//   GET   /api/system/power/standby_inhibitors
+//         Response 200:  [ {id, who, why, mode:"BLOCK"|"DELAY", delay?, elapsed} ]
+//         (NB: field is "elapsed" on wire, NOT "created" as OpenAPI spec at line
+//         16734 claims — spec/impl drift, trust the capture.)
+//
+//   DELETE /api/system/power/standby_inhibitors/{id}
+//         Response 200:  {"code":"OK","message":"Inhibitor removed"}
+//
+// Auth: Bearer <UC_TOKEN content> (Phase 0 H2 winner). The first call after
+// deploy logs the body + status at qCWarning so a regression is visible in
+// logs without a debug build (§1.12 step 4).
+// ============================================================================
+
+int Api::createStandbyInhibitor(const QString& who, const QString& why, int delaySec) {
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    // Build request body — JSON-serialised QJsonObject.
+    QJsonObject body;
+    body.insert(QStringLiteral("who"), who);
+    if (!why.isEmpty()) {
+        body.insert(QStringLiteral("why"), why);
+    }
+    if (delaySec >= 1) {
+        body.insert(QStringLiteral("delay"), delaySec);
+    }
+    const QByteArray bodyBytes = QJsonDocument(body).toJson(QJsonDocument::Compact);
+
+    QNetworkRequest req(restEndpoint(QStringLiteral("/api/system/power/standby_inhibitors")));
+    req.setHeader(QNetworkRequest::ContentTypeHeader, QStringLiteral("application/json"));
+    const QByteArray auth = bearerHeader();
+    if (!auth.isEmpty()) {
+        req.setRawHeader("Authorization", auth);
+    } else {
+        qCWarning(lcCore()) << "[M1 REST] createStandbyInhibitor: UC_TOKEN unreadable, request will likely 401";
+    }
+
+    qCWarning(lcCore()) << "[M1 REST] POST" << req.url().toString() << "body =" << bodyBytes;
+    QNetworkReply* reply = m_restNam.post(req, bodyBytes);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply]() {
+        const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray respBody = reply->readAll();
+        reply->deleteLater();
+
+        QString id;
+        QString errorMessage;
+        if (httpCode == 201) {
+            const QJsonDocument doc = QJsonDocument::fromJson(respBody);
+            id = doc.object().value(QStringLiteral("id")).toString();
+            qCWarning(lcCore()) << "[M1 REST] POST 201 id =" << id;
+        } else {
+            errorMessage = QString::fromUtf8(respBody.left(200));
+            qCWarning(lcCore()) << "[M1 REST] POST" << httpCode << "body =" << errorMessage;
+        }
+        emit respCreateInhibitor(reqId, httpCode, id, errorMessage);
+    });
+    return reqId;
+}
+
+int Api::deleteStandbyInhibitor(const QString& id) {
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    QUrl endpoint = restEndpoint(QStringLiteral("/api/system/power/standby_inhibitors/") + id);
+    QNetworkRequest req(endpoint);
+    const QByteArray auth = bearerHeader();
+    if (!auth.isEmpty()) {
+        req.setRawHeader("Authorization", auth);
+    }
+
+    qCWarning(lcCore()) << "[M1 REST] DELETE" << req.url().toString();
+    QNetworkReply* reply = m_restNam.deleteResource(req);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply, id]() {
+        const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray respBody = reply->readAll();
+        reply->deleteLater();
+
+        QString errorMessage;
+        if (httpCode == 200 || httpCode == 204) {
+            qCWarning(lcCore()) << "[M1 REST] DELETE" << httpCode << "id =" << id;
+        } else {
+            errorMessage = QString::fromUtf8(respBody.left(200));
+            qCWarning(lcCore()) << "[M1 REST] DELETE" << httpCode << "id =" << id << "body =" << errorMessage;
+        }
+        emit respDeleteInhibitor(reqId, httpCode, errorMessage);
+    });
+    return reqId;
+}
+
+int Api::listStandbyInhibitors() {
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    QNetworkRequest req(restEndpoint(QStringLiteral("/api/system/power/standby_inhibitors")));
+    const QByteArray auth = bearerHeader();
+    if (!auth.isEmpty()) {
+        req.setRawHeader("Authorization", auth);
+    }
+
+    qCWarning(lcCore()) << "[M1 REST] GET" << req.url().toString();
+    QNetworkReply* reply = m_restNam.get(req);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply]() {
+        const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray respBody = reply->readAll();
+        reply->deleteLater();
+
+        QList<Inhibitor> result;
+        QString          errorMessage;
+        if (httpCode == 200) {
+            const QJsonDocument doc = QJsonDocument::fromJson(respBody);
+            for (const QJsonValue& v : doc.array()) {
+                const QJsonObject obj = v.toObject();
+                Inhibitor inh;
+                inh.id   = obj.value(QStringLiteral("id")).toString();
+                inh.who  = obj.value(QStringLiteral("who")).toString();
+                inh.why  = obj.value(QStringLiteral("why")).toString();
+                inh.mode = obj.value(QStringLiteral("mode")).toString();
+                inh.delay   = obj.value(QStringLiteral("delay")).toInt(0);
+                inh.elapsed = obj.value(QStringLiteral("elapsed")).toInt(0);
+                result.append(inh);
+            }
+            qCWarning(lcCore()) << "[M1 REST] GET 200 inhibitors =" << result.size();
+        } else {
+            errorMessage = QString::fromUtf8(respBody.left(200));
+            qCWarning(lcCore()) << "[M1 REST] GET" << httpCode << "body =" << errorMessage;
+        }
+        emit respListInhibitors(reqId, httpCode, result, errorMessage);
+    });
+    return reqId;
 }
 
 }  // namespace core

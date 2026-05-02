@@ -26,7 +26,10 @@
 
 #include <QCoreApplication>
 #include <QJsonDocument>
+#include <QList>
+#include <QQueue>
 #include <QString>
+#include <QTimer>
 #include <QVariantMap>
 
 #include "../../src/core/core.h"
@@ -43,6 +46,23 @@ QString     g_lastPowerModeValue;
 QVariantMap g_lastSentMsgData;
 QString     g_lastSentRequestJson;
 bool        g_connected = true;  // default: keep "connected" so sendRequest doesn't early-return
+
+// M1: standby_inhibitors recording.
+int     g_createInhibitorCallCount = 0;
+QString g_lastInhibitorWho;
+QString g_lastInhibitorWhy;
+int     g_lastInhibitorDelay = -1;
+int     g_deleteInhibitorCallCount = 0;
+QString g_lastDeletedInhibitorId;
+int     g_listInhibitorsCallCount = 0;
+
+// M1: queued responses. Tests push the response the next call should emit.
+struct CreateResp { int httpCode; QString id; QString errorMessage; };
+struct DeleteResp { int httpCode; QString errorMessage; };
+struct ListResp   { int httpCode; QList<uc::core::Inhibitor> inhibitors; QString errorMessage; };
+QQueue<CreateResp> g_pendingCreateResponses;
+QQueue<DeleteResp> g_pendingDeleteResponses;
+QQueue<ListResp>   g_pendingListResponses;
 }  // namespace
 
 void MockCoreRecorder::reset() {
@@ -51,6 +71,17 @@ void MockCoreRecorder::reset() {
     g_lastSentMsgData.clear();
     g_lastSentRequestJson.clear();
     g_connected = true;
+    // M1
+    g_createInhibitorCallCount = 0;
+    g_lastInhibitorWho.clear();
+    g_lastInhibitorWhy.clear();
+    g_lastInhibitorDelay = -1;
+    g_deleteInhibitorCallCount = 0;
+    g_lastDeletedInhibitorId.clear();
+    g_listInhibitorsCallCount = 0;
+    g_pendingCreateResponses.clear();
+    g_pendingDeleteResponses.clear();
+    g_pendingListResponses.clear();
 }
 
 int MockCoreRecorder::setPowerModeCallCount() {
@@ -75,6 +106,28 @@ void MockCoreRecorder::setConnected(bool connected) {
 
 bool MockCoreRecorder::isConnected() {
     return g_connected;
+}
+
+// ──────────────────────────────────────────────────────────────────────────
+// M1 (2026-05-03): standby_inhibitors recorder accessors + response injection.
+// ──────────────────────────────────────────────────────────────────────────
+int     MockCoreRecorder::createInhibitorCallCount() { return g_createInhibitorCallCount; }
+QString MockCoreRecorder::lastInhibitorWho() { return g_lastInhibitorWho; }
+QString MockCoreRecorder::lastInhibitorWhy() { return g_lastInhibitorWhy; }
+int     MockCoreRecorder::lastInhibitorDelay() { return g_lastInhibitorDelay; }
+int     MockCoreRecorder::deleteInhibitorCallCount() { return g_deleteInhibitorCallCount; }
+QString MockCoreRecorder::lastDeletedInhibitorId() { return g_lastDeletedInhibitorId; }
+int     MockCoreRecorder::listInhibitorsCallCount() { return g_listInhibitorsCallCount; }
+
+void MockCoreRecorder::pushNextCreateResponse(int httpCode, const QString& id, const QString& errorMessage) {
+    g_pendingCreateResponses.enqueue({httpCode, id, errorMessage});
+}
+void MockCoreRecorder::pushNextDeleteResponse(int httpCode, const QString& errorMessage) {
+    g_pendingDeleteResponses.enqueue({httpCode, errorMessage});
+}
+void MockCoreRecorder::pushNextListResponse(int httpCode, const QList<uc::core::Inhibitor>& inhibitors,
+                                            const QString& errorMessage) {
+    g_pendingListResponses.enqueue({httpCode, inhibitors, errorMessage});
 }
 
 }  // namespace test
@@ -200,6 +253,88 @@ void Api::onKeepAliveTimerTimeout() {}
 void Api::startKeepAliveTimer() {}
 void Api::stopKeepAliveTimer() {}
 void Api::onReconnectTimerTimeout() {}
+
+// ──────────────────────────────────────────────────────────────────────────
+// M1 (2026-05-03): standby_inhibitors REST stubs.
+//
+// Each stub records args + emits the corresponding resp* signal on the next
+// event loop iteration via QTimer::singleShot(0, this, ...). This matches the
+// production async behavior (QNetworkReply::finished is async) so the keeper's
+// `auto* conn = new QMetaObject::Connection; *conn = QObject::connect(...)`
+// pattern (which sets up the connection AFTER the call) works correctly.
+//
+// Tests must call QCoreApplication::processEvents() (or QTest::qWait(0)) after
+// triggering a keeper edge to let the queued emit fire.
+//
+// Default response shape if test forgot to push: 201/{id="mock-uuid"} for create,
+// 200 for delete, 200/[] for list. Forces test failures to be obvious (a real
+// regression is more likely to be "wrong field" than "no response").
+// ──────────────────────────────────────────────────────────────────────────
+
+int Api::createStandbyInhibitor(const QString& who, const QString& why, int delaySec) {
+    uc::test::g_createInhibitorCallCount++;
+    uc::test::g_lastInhibitorWho   = who;
+    uc::test::g_lastInhibitorWhy   = why;
+    uc::test::g_lastInhibitorDelay = delaySec;
+
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    int     httpCode     = 201;
+    QString id           = QStringLiteral("mock-uuid");
+    QString errorMessage;
+    if (!uc::test::g_pendingCreateResponses.isEmpty()) {
+        const auto r = uc::test::g_pendingCreateResponses.dequeue();
+        httpCode     = r.httpCode;
+        id           = r.id;
+        errorMessage = r.errorMessage;
+    }
+
+    QTimer::singleShot(0, this, [this, reqId, httpCode, id, errorMessage]() {
+        emit respCreateInhibitor(reqId, httpCode, id, errorMessage);
+    });
+    return reqId;
+}
+
+int Api::deleteStandbyInhibitor(const QString& id) {
+    uc::test::g_deleteInhibitorCallCount++;
+    uc::test::g_lastDeletedInhibitorId = id;
+
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    int     httpCode = 200;
+    QString errorMessage;
+    if (!uc::test::g_pendingDeleteResponses.isEmpty()) {
+        const auto r = uc::test::g_pendingDeleteResponses.dequeue();
+        httpCode     = r.httpCode;
+        errorMessage = r.errorMessage;
+    }
+
+    QTimer::singleShot(0, this, [this, reqId, httpCode, errorMessage]() {
+        emit respDeleteInhibitor(reqId, httpCode, errorMessage);
+    });
+    return reqId;
+}
+
+int Api::listStandbyInhibitors() {
+    uc::test::g_listInhibitorsCallCount++;
+
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    int                        httpCode = 200;
+    QList<uc::core::Inhibitor> inhibitors;
+    QString                    errorMessage;
+    if (!uc::test::g_pendingListResponses.isEmpty()) {
+        const auto r = uc::test::g_pendingListResponses.dequeue();
+        httpCode     = r.httpCode;
+        inhibitors   = r.inhibitors;
+        errorMessage = r.errorMessage;
+    }
+
+    QTimer::singleShot(0, this, [this, reqId, httpCode, inhibitors, errorMessage]() {
+        emit respListInhibitors(reqId, httpCode, inhibitors, errorMessage);
+    });
+    return reqId;
+}
 
 }  // namespace core
 }  // namespace uc
