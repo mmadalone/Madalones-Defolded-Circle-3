@@ -1,4 +1,4 @@
-# Core-API Audit — 2026-05-03
+# Core-API Audit — 2026-05-02
 
 **Status:** research-only audit, no code changes. Output drives a multi-phase migration roadmap.
 
@@ -37,7 +37,7 @@ Two surprises shifted the plan:
 
 No (a) MIGRATE work proceeds without first answering: how does the custom-ui process running on the device authenticate to its own firmware's REST API? Today, `core::Api::authenticate()` (`core.cpp:69-101`) uses `UC_TOKEN_PATH` content as a WS RPC payload — it has never made a single authenticated REST call to the firmware. The four `QNetworkAccessManager` consumers (`voice.cpp`, `mediaPlayer.cpp` + headers) all hit external URLs (TTS audio, media artwork).
 
-### Spec evidence (verified 2026-05-03)
+### Spec evidence (verified 2026-05-02)
 
 - **Global security default** (`logs/core-openapi.yaml:71-73`): `basicAuth OR cookieAuth`. Bearer is **not** in this list.
 - **Defined securitySchemes** (lines 17296–17305): only `basicAuth` (HTTP Basic) and `cookieAuth` (cookie name `id`, `apiKey` type). **Bearer is absent.**
@@ -420,4 +420,4 @@ If a future audit wants to revisit one of these, the same four-bucket framework 
 
 ---
 
-*Audit conducted 2026-05-03. Spec version 0.45.2 (firmware 2.9.1). Custom code state: post-v1.4.38 + post-`b08a4ba` UCR3 artifact rename. Three parallel Explore agents + one synthesis pass + one verification pass against the spec to catch agent overreach (`feedback_verify_audit_before_remediation.md` triggered twice — system agent inflated `CreateStandbyInhibitor` schema and the WiFi MIGRATE bucket).*
+*Audit conducted 2026-05-02. Spec version 0.45.2 (firmware 2.9.1). Custom code state: post-v1.4.38 + post-`b08a4ba` UCR3 artifact rename. Three parallel Explore agents + one synthesis pass + one verification pass against the spec to catch agent overreach (`feedback_verify_audit_before_remediation.md` triggered twice — system agent inflated `CreateStandbyInhibitor` schema and the WiFi MIGRATE bucket).*
