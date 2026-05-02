@@ -13,6 +13,166 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v1436"></a>v1.4.36 — 2026-05-02 — B1 matrixrain decomposition (1445→746 LOC) + C1 ctor reorder + AP-UC-13 ext
+
+### Context
+Closes path-to-A roadmap items B1 (MatrixRainItem decomposition — STYLE_GUIDE §1.6 500-LOC compliance) and C1 (ScreensaverConfig Battery deferred-connect cleanup — audit-v1.4.26 brittle-hack remediation). Largest single-file refactor in the project's history. matrixrain.cpp shrunk from 1445 LOC to 746 LOC across three architecturally distinct phases, each independently CI-green and visually verified on UCR3 before the next phase commit. Three deploys to UCR3 (one per phase) all succeeded with `installed:true active:true` and observable behavior parity.
+
+### Why three phases instead of one bundled commit
+Each phase isolates one architectural responsibility. Bundling would have:
+- Multiplied review surface beyond what a single PR diff renders cleanly.
+- Made the auto-revert blast radius larger (each phase has its own UCR3 verification step; a bug in Phase B's friend-class state access pattern, for example, wouldn't have been catchable without separate Phase B deploy).
+- Obscured which extraction caused a regression if anything went wrong.
+- Forced reviewers to mentally diff three different patterns (stateless / QObject-with-timers / all-static) against each other simultaneously.
+
+The cumulative outcome is the same; the per-commit risk surface is much smaller. Safety tags pushed before each phase: `matrixrain-pre-extraction-2026-05-02`, `matrixrain-pre-phaseb-2026-05-02`, `matrixrain-pre-phasec-2026-05-02`.
+
+### Phase A — SingleLayerRenderer extraction (commit `534aa88`)
+**Pattern:** stateless-by-value, mirrors `LayerPipeline`. Pure C++, no Qt object system, no signals, no timers. Member by-value on `MatrixRainItem`. All state passed by parameter through `countVisibleQuads()` + `renderAll()`.
+
+**LOC moved:** ~310 (matrixrain.cpp 1445 → 1137).
+
+**Public surface (from `singlelayerrenderer.h:21-87`):**
+- `int countVisibleQuads(sim, atlas, &cellDrawn, &sortOrderScratch, glowFade) const` — counts visible quads for the single-layer path, fills `cellDrawn` with priority bytes for occlusion testing as a side effect. Caller MUST clear `cellDrawn` between `countVisibleQuads` and `renderAll`.
+- `void renderAll(verts, ixBuf, &vi, &ii, sim, atlas, ...) const` — renders the full single-layer pass: stream trails → residual cells → glitch trails → message flash → message overlay. Mirrors the pre-extraction sequence at the old `MatrixRainItem::updatePaintNode:664-668`.
+
+**Private helpers (5):** `renderStreamTrails`, `renderResidualCells`, `renderGlitchTrails`, `renderMessageFlash`, `renderMessageOverlay`. Verbatim move of `matrixrain.cpp:765-1000` bodies with member references rewritten as function parameters. No formula or condition changes.
+
+**Why not collapse into LayerPipeline:** the depth-on offset detail `cx += colSp * 0.35f` (single-layer's depth-on path nudges the column origin by 35 % of column-spacing for visual variation) doesn't appear in `LayerPipeline`'s render code. Trying to unify would have introduced a conditional in the multi-layer path or duplicated the offset in a rarely-exercised LayerPipeline branch. Separate class is the cleanest expression of the divergence.
+
+**CI failure recovery — the missed integration .pro file:** Phase A's first push hit a CI red on `Tests / Integration tests (QML)` because `test/integration/integration_test.pro` wasn't updated when `singlelayerrenderer` was registered in `remote-ui.pro`. The root issue: when adding files to `src/ui/matrixrain/`, **all 6 build files** must be updated symmetrically, not just `remote-ui.pro`:
+- `remote-ui.pro` (production)
+- `test/qml/matrixrain_qml_test.pro` (QML test bundle)
+- `test/integration/integration_test.pro` (integration test) — **missed in Phase A**
+- `test/matrixrain/matrixrain_test.pro` (matrixrain unit test) — **also missed in Phase A**
+- `CMakeLists.txt` if any (none for matrixrain at this time)
+- `.github/workflows/tidy.yml` (clang-tidy filter — `singlelayerrenderer.cpp` needs to be in the `MATRIX_RAIN_TESTING` filter to skip the bindinghelper.cpp guard)
+
+Recovery commit `2d5bd24` added `singlelayerrenderer` to the integration test pro + clang-tidy filter. Memory `feedback_extraction_build_file_completeness.md` saved so future extractions grep an existing file's references *before* scope estimation. Phase B and C each touched all 6 in the same commit; no recurrence.
+
+### Phase B — InputHandler extraction (commit `5245369`)
+**Pattern:** QObject-with-timers, mirrors `ActivitySessionKeeper` (Mod 5) and `PhantomWakeSuppressor` (Mod 6) in the hardware layer. Owns 2 `QTimer` members (300 ms double-tap, 500 ms hold). Friend of `MatrixRainItem` for state access.
+
+**LOC moved:** ~210 (matrixrain.cpp 1137 → 924).
+
+**State machine (from `inputhandler.h:53-67`):**
+```
+EnterIdle ──press──► EnterPressed (start 300ms + 500ms timers)
+  EnterPressed ──press again (< 300ms)──► emit "restore", → EnterIdle
+  EnterPressed ──500ms elapsed──► EnterHeld, emit "slow:hold"
+  EnterPressed ──300ms elapsed──► emit "enter", → EnterIdle
+  EnterHeld ──release──► emit "slow:release", → EnterIdle
+```
+
+**Public surface:** `interactiveInput()`, `enterPressed()`, `enterReleased()`, `resetEnterState()` plus 5 `handle*Input()` action handlers (direction, enter, slow, restore, tap) — kept public so `MatrixRainItem`'s private inline forwarders can preserve test access via `friend class MatrixRainTest`.
+
+**Signal forwarding for QML contract preservation:** `InputHandler` emits `enterAction(QString)`. `MatrixRainItem` ctor performs `connect(m_inputHandler, &InputHandler::enterAction, this, &MatrixRainItem::enterAction)` — a signal-to-signal forward. From the QML side, `MatrixRainItem::enterAction(QString)` is the same NOTIFY-shaped signal it always was; QML listeners see no contract change. This is the same forwarding pattern used in the v1.4.10 `entityAdded` orphan-signal fix and in the v1.4.12 `currentLinkInfoChanged` bundle-emit pattern.
+
+**Friend class for state access:** `class InputHandler` is declared `friend` on `MatrixRainItem`. `m_item` back-pointer reaches `m_item->memberName` for state flags, simulation, layer pipeline, and private timer helpers. The alternative — exposing those members through public getters/setters — would have polluted `MatrixRainItem`'s public surface with internals that have one and only one caller. Friend is the right minimization here, and the pattern is well-established by `ActivitySessionKeeper` accessing private state on hardware singletons through its `Friends` declaration.
+
+### Phase C — BindingHelper extraction (commit `b376ef4`)
+**Pattern:** all-static utility class, mirrors `AtlasBuilder`. No instances, no QObject, no signals, no friend declaration. Forward-declares `MatrixRainItem*` and `uc::ScreensaverConfig*` in the header to keep `bindinghelper.h` light; full includes happen in the `.cpp`.
+
+**LOC moved:** ~200 (matrixrain.cpp 924 → 746). Remaining 746 documented as a justified §1.6 exception.
+
+**Public surface (8 binding helpers, all `static void`, all `(MatrixRainItem* item, uc::ScreensaverConfig* sc)` signature):**
+- `bindAppearance` — color, speed, density, charset, glyph spacing
+- `bindDirectionAndGravity` — direction, auto-rotate, gravity float-movement
+- `bindGlitch` — char swap, brightness flash, column flash, stutter, reverse glow
+- `bindChaos` — surge, scramble, freeze, square burst, ripple, wipe, scatter
+- `bindTap` — tap-to-burst, tap-to-flash, tap-to-scramble, etc.
+- `bindMessages` — on-screen text rendering, message flash, message overlay
+- `bindSubliminal` — subliminal flash mode
+- `bindDepthAndLayers` — multi-layer toggle, depth-glow, layers-enabled
+
+Each helper performs initial-sync setter calls (`item->setX(sc->getX())`) followed by `Qt::AutoConnection` signal forwards (`connect(sc, &ScreensaverConfig::xChanged, item, &MatrixRainItem::setX)`). `Qt::AutoConnection` resolves to `DirectConnection` in this case because both sender and receiver live on the main thread; the timing is single-event-loop synchronous.
+
+**The `setLayersEnabled` move:** in `matrixrain.h`, `setLayersEnabled` was previously private. The Phase C binding-closure structure for `bindDepthAndLayers` needs to call `item->setLayersEnabled(sc->getLayersEnabled())` from outside `MatrixRainItem`. Bumped from private to public. Friend declaration on `BindingHelper` would have been the alternative, but `BindingHelper` deliberately has no QObject inheritance and no friend relationship — declaring it friend would have broken the all-static / no-instance invariant. Public is the minimal surface change.
+
+**The `#ifndef MATRIX_RAIN_TESTING` wrapper on `bindinghelper.cpp`:** test builds (matrixrain unit test) define `MATRIX_RAIN_TESTING`. The wrapper compiles `bindinghelper.cpp` to an empty translation unit in test builds. This avoids dragging the full `screensaverconfig.h` transitive include chain into the unit test (which doesn't link against `screensaverconfig.cpp` either). Same pattern is used by `LayerPipeline`'s test-build conditional includes.
+
+**The `QSignalBlocker` batching contract:** helpers MUST be called only inside `MatrixRainItem::bindToScreensaverConfig`'s `QSignalBlocker` scope (with `m_batchingUpdates = true`). The orchestrator owns the batching; helpers just do the wiring work. This contract is documented in `bindinghelper.h:12-15`.
+
+### C1 — ScreensaverConfig Battery deferred-connect cleanup (commit `218d6dd`)
+**Audit context:** `audit-v1.4.26-thorough.md` flagged the `QTimer::singleShot(500, [this]() { ... })` retry block in the previous `screensaverconfig.cpp` ctor as "brittle". The block existed because `ScreensaverConfig` was constructed before `hwController` in `main.cpp`, which meant `hw::Battery::instance()` returned `nullptr` at `ScreensaverConfig`'s ctor. The retry hack papered over the timing gap.
+
+**Verify-before-remediate (per `feedback_verify_audit_before_remediation.md`):** read `main.cpp` lines 125-135 to confirm the construction order *was* the actual root cause, not some other reason for the retry. Confirmed: `core::Api`, `Config`, `SoftwareUpdate`, `hwController`, then `ScreensaverConfig`, then `uiController`. Only requirement: `ScreensaverConfig` must construct AFTER `hwController` (which constructs `Battery` synchronously). Reordered.
+
+**Fix (1 line in `main.cpp`, ~10 lines in `screensaverconfig.cpp`):**
+- `main.cpp:125-135` — `ScreensaverConfig` declaration moved one line down, after `hwController`. Added comment block (5 lines) explaining the ordering invariant + the C1 cleanup history.
+- `screensaverconfig.cpp:43-53` — replaced the `QTimer::singleShot(500, [this]() { ... })` retry block with a synchronous `auto* batt = hw::Battery::instance(); Q_ASSERT(batt && "ScreensaverConfig constructed before Battery — check main.cpp order"); connect(batt, ..., this, ...);` 3-line direct connect.
+
+**Regression net:** the `Q_ASSERT` will fire at startup if anyone ever moves `ScreensaverConfig` ahead of `hwController` again. In release builds where Q_ASSERT compiles out, the `nullptr` deref would surface immediately during `connect()` — preferable to the silent degradation the previous timer hack masked.
+
+**Behavior parity:** Battery connections fire the same signals as before. UCR3 deploy (`installed:true active:true`) showed no observable startup delta. The whole reorder + signal connect sequence completes in the same QApplication event loop tick.
+
+### AP-UC-13 STYLE_GUIDE extension (commit `559498a`)
+**The pattern (cheap-hygiene combo):** `Repeater.model = showFoo ? <count> : 0` paired with `visible: showFoo` on the wrapping container. The wrapping `visible` only gates *rendering* — without the `model` gate, delegates instantiate regardless. Visual culling without instance culling = a Qt anti-pattern that wastes CPU at instantiation time and memory across the delegate's lifetime.
+
+**Case-study fixture:** v1.4.33 Settings → Power 70-second open delay. Slider's tick `Repeater` instantiated `to - from + 1` Rectangles regardless of `showTicks`, because the wrapping Row's `visible: showTicks` only gated rendering. The Mod 6 phantomWakeGraceSlider (range 100–5000, no ticks) created 4,901 invisible Rectangle delegates; the v1.4.23 phantomWakeLookbackSlider (range 0–2000, no ticks) added another 2,001. Combined Row positioner reflows pushed Settings → Power open time to ~70 s on UC3 ARM. v1.4.33's one-line `model:` gate fix (`showTicks ? (to-from+1) : 0`) cut this to sub-second.
+
+**Documentation site:** `STYLE_GUIDE.md` §1.4. Cross-referenced from CHANGELOG.md v1.4.33 and v1.4.36.
+
+### Description text consistency (commit `7f0c289`)
+**3 occurrences** of `colors.medium` → `colors.light` for cross-file uniformity:
+- `AnalogSettings.qml:38` — shutdown-hands picker subtitle
+- `GeneralBehavior.qml:190` — atlas-overlay description
+- `GeneralBehavior.qml:369` — docked-rearm slider helper text
+
+**Why:** every other description Text in the screensaver settings subtree uses `colors.light` (slightly brighter than `colors.medium`). These three were the only `colors.medium` remaining after the v1.4.24 power-settings copy fixes. Pure visual consistency sweep. No functional impact.
+
+### Files touched (cumulative across all v1.4.36 commits)
+**New custom files (6):**
+- `src/ui/matrixrain/singlelayerrenderer.h` (87 LOC)
+- `src/ui/matrixrain/singlelayerrenderer.cpp` (379 LOC)
+- `src/ui/matrixrain/inputhandler.h` (74 LOC)
+- `src/ui/matrixrain/inputhandler.cpp` (254 LOC)
+- `src/ui/matrixrain/bindinghelper.h` (38 LOC)
+- `src/ui/matrixrain/bindinghelper.cpp` (199 LOC)
+
+**Modified custom files:**
+- `src/ui/matrixrain.cpp` — 1445 → 746 LOC (-48 %), QML contract preserved verbatim
+- `src/ui/matrixrain.h` — `setLayersEnabled` private → public, 2 friend declarations added (InputHandler, BindingHelper not needed since BindingHelper is all-static)
+- `src/ui/screensaverconfig.cpp` — C1 ctor simplification, ~10 LOC delta
+
+**Modified upstream files:**
+- `src/main.cpp` — C1 construction reorder + comment, ~6 LOC delta
+- `src/qml/settings/settings/chargingscreen/AnalogSettings.qml` — 1 line color change
+- `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` — 2 line color changes
+- `STYLE_GUIDE.md` — AP-UC-13 extension paragraph
+- `.gitignore` — `.claude/settings.local.json` ignored
+- `remote-ui.pro` + `test/qml/matrixrain_qml_test.pro` + `test/integration/integration_test.pro` + `test/matrixrain/matrixrain_test.pro` + `.github/workflows/tidy.yml` — register 3 new helper modules
+
+### Verification protocol (executed during deploy)
+- Phase A deploy (commit `534aa88`) on UCR3 — matrix theme renders + DPAD + chaos burst all responsive. `installed:true active:true`.
+- Phase B deploy (commit `5245369`) — same, plus enter-button single-tap (`enter`), double-tap (`restore`), and 500 ms+ hold (`slow:hold` → `slow:release`) all dispatch correctly. Tested all four direction inputs (DPAD up/down/left/right). `installed:true active:true`.
+- Phase C deploy (commit `b376ef4`) — same, plus 4 property-category live-update test:
+  - **color:** Settings → matrix → primary color from green → red → green; updates without restart.
+  - **density:** density slider 100 % → 50 % → 100 %; column count adjusts in real time.
+  - **glitch:** glitch rate 0 → max → 0; visible flash effects appear and clear.
+  - **layers:** layers off → on → off; multi-depth-plane rendering toggles correctly.
+- C1 deploy (commit `218d6dd`) — `installed:true active:true`, no observable startup delta. Battery dock + undock + redock cycle: showBatteryChanged fires correctly; the absence of the 500 ms QTimer doesn't change behavior.
+
+### Architectural note
+- **Cumulative drift (v1.4.36):** 6 new compiled custom files. `docs/CUSTOM_FILES.md` count: 6 → 12 since v1.4.11 baseline.
+- **STYLE_GUIDE §1.6 500-LOC ceiling:** `matrixrain.cpp` at 746 LOC permanently exceeds the soft ceiling. The remaining content (QSGNode setup + QQuickItem lifecycle + render loop + 200+ Q_PROPERTY surface) is irreducibly complex. Documented as justified exception going forward; no Phase D planned.
+- **Five collaborator classes, three patterns** — `src/ui/matrixrain/` now demonstrates each pattern this codebase uses for non-orchestrator C++ helpers (stateless-by-value, QObject-with-timers, all-static utility). Future extractions in this codebase should pick from these three patterns rather than introduce new ones.
+- **Auto-revert safety net** active per `project_auto_revert_validated_on_uc3.md`. Re-enable after a fault: `curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=true" -u 'web-configurator:${UC3_PIN}'`.
+
+### Skipped / deferred (with reasons)
+- **B2 (ScreensaverConfig refactor — separate transforms from data)** — platform-blocked, not deferred. Qt 5.15 + macro-expanded `Q_SIGNALS` blocks mixed with manual `signals:` blocks force the dual-emit setter pattern; signal-to-signal connects don't trigger QML re-evaluation through this MOC edge case and break the screensaver. Captured in `project_screensaverconfig_dual_emit_required.md`.
+- **B3 (perf budget + CI benchmarks)** — over-engineered for this project size. The ~270 ms cascade fix in v1.4.26 + the 70 s slider fix in v1.4.33 were caught by spot-checking, not by automated benchmarks. CI cycle time is precious; benchmark variance under shared GitHub-hosted runners is poor.
+- **B4 (install signing)** — niche. The audit itself called it niche; no community member has asked for it. Not on critical path.
+- **C2 (override sweep)** — pure churn. `override` already used where it matters. Auto-fix-by-clang-tidy isn't worth the diff cost across the codebase.
+
+### Lessons logged today
+- `feedback_verify_audit_before_remediation.md` — audits inflate severity, miss simpler fixes, cite stale LOC. Three-strike evidence today: C1 (the audit said "deferred-connect retry hack"; verification showed it was a one-line construction reorder), B2 (the audit said "extract transforms"; verification showed Qt 5.15 platform constraint blocks it), B3 (the audit said "perf budget"; verification showed CI runner variance is too high to make benchmarks meaningful).
+- `feedback_extraction_build_file_completeness.md` — when adding files to `src/ui/matrixrain/`, all 6 build files must be updated symmetrically. Phase A's missed integration `.pro` is the case study.
+- `project_screensaverconfig_dual_emit_required.md` — Qt 5.15 platform constraint requires the dual-emit setter pattern. B2 cannot work; do not propose it.
+- `feedback_dont_invoke_fatigue.md` — don't invoke "fresh eyes" / fatigue framing. Claude doesn't get tired. Defer for context-window efficiency, not energy.
+
+---
+
 ## <a id="v1435"></a>v1.4.35 — 2026-05-01 — HUD test fix: SequentialAnimation/RotationAnimation are property value sources
 
 ### Symptom
