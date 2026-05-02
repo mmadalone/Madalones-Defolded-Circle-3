@@ -1,6 +1,6 @@
 # Madalone's Defolded Circle 3 — Custom Screensaver Firmware
 
-Custom firmware fork of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui) for the **Unfolded Circle Remote 3**, replacing the stock analog-clock charging screen with a GPU-accelerated screensaver system. **Custom firmware. Voids the warranty.** The install endpoint says so explicitly.
+**Custom firmware. Voids the warranty.** Fork of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui) for the **Unfolded Circle Remote 3**, replacing the stock analog-clock charging screen with a GPU-accelerated screensaver system.
 
 Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero Home Assistant dependency, clean fall-back to stock UI on install failure.
 
