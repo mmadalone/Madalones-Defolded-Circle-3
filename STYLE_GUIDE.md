@@ -466,9 +466,16 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 - Warnings: `-Wold-style-cast -Wfloat-equal -Woverloaded-virtual -Wshadow`
 
 ### §6.3 Include ordering
+
+Per [Qt Wiki Coding Conventions](https://wiki.qt.io/Coding_Conventions): specialized → generic Qt → STL → system, blank line between groups for readability.
+
 1. Own header (`#include "ui/matrixrain.h"`)
 2. Qt headers (`#include <QObject>`, `#include <QQuickItem>`)
 3. Project headers (`#include "../config/config.h"`)
+4. STL headers (`#include <memory>`, `#include <vector>`)
+5. System headers (`#include <unistd.h>`, `#include <fcntl.h>`)
+
+If `qplatformdefs.h` is ever included, it must be the **first** header — Qt requires this so platform-specific macro definitions take effect before any other parsing. The project doesn't use it today.
 
 ### §6.4 Namespace
 `uc` namespace (matches upstream).
@@ -538,7 +545,7 @@ Qt's parent-child memory model and the C++ Core Guidelines' smart-pointer rules 
 | Pattern | Use |
 |---|---|
 | QObject created with a parent | Raw pointer. Parent owns lifetime. Don't wrap in `unique_ptr`. |
-| QObject created without a parent (e.g., a singleton constructed in `main.cpp` and held for app lifetime) | `std::unique_ptr<T>` to enforce single-owner cleanup. |
+| QObject created without a parent (e.g., a singleton constructed in `main.cpp` and held for app lifetime) | `std::unique_ptr<T>` constructed via `std::make_unique<T>(...)` (per C++ Core Guidelines R.23) to enforce single-owner cleanup. |
 | Non-owning observer of a QObject that may outlive the observer | `QPointer<T>` — auto-nulls when the target is destroyed. Never raw pointer when the target is parented elsewhere. |
 | Shared ownership | Rare in this codebase. Prefer single-owner with `QPointer` observers. `std::shared_ptr<T>` only when refcount semantics are genuinely required. |
 
@@ -546,7 +553,11 @@ Qt's parent-child memory model and the C++ Core Guidelines' smart-pointer rules 
 
 **Forward-looking only.** This rule applies to new code from this revision; a retroactive scrub of existing `unique_ptr` / `QPointer` / parent-owned QObject usage is out of scope here.
 
-(Sources: C++ Core Guidelines R.20-R.34; Qt Wiki *Shared Pointers and QML Ownership*; KDAB *QObjects, Ownership, propagate_const*; cleanqt.io *Crash course in Qt for C++ developers, Part 4*.)
+**Sources:**
+- [C++ Core Guidelines R.20-R.34](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#R-resource) — smart-pointer ownership rules. Verbatim canonical: R.20 *"Use unique_ptr or shared_ptr to represent ownership"*, R.21 *"Prefer unique_ptr over shared_ptr unless you need to share ownership"*, R.23 *"Use make_unique() to make unique_ptrs"*.
+- [Qt Object Trees & Ownership](https://doc.qt.io/qt-5/objecttrees.html) — canonical doc for the QObject parent-child ownership model that conflicts with `std::unique_ptr`.
+- Qt Wiki *[Shared Pointers and QML Ownership](https://wiki.qt.io/Shared_Pointers_and_QML_Ownership)* — focuses on `QSharedPointer`, but the parent-ownership-collision principle generalizes to `std::unique_ptr`. Article notes: *"It is too dangerous to mix QSharedPointer ownership with the QObject parent/child ownership"*.
+- [cleanqt.io *Crash course in Qt for C++ developers, Part 4*](https://www.cleanqt.io/blog/crash-course-in-qt-for-c++-developers,-part-4) — practical patterns and code examples.
 
 ---
 
@@ -601,7 +612,7 @@ Qt's scene graph runs on a **separate render thread**. The `updatePaintNode()` c
 
 **Rule of thumb from Qt docs:** Only use classes with the `QSG` prefix inside `updatePaintNode()`.
 
-**Marking nodes dirty (MANDATORY):** After changing geometry or material properties on a node, you MUST call `node->markDirty(QSGNode::DirtyGeometry)` and/or `node->markDirty(QSGNode::DirtyMaterial)`. Without this, the scene graph doesn't know the node changed and won't re-render it. (AP-UC-27)
+**Marking nodes dirty (MANDATORY when bypassing helpers):** Most `QSGNode` setter methods (`QSGGeometryNode::setGeometry()`, `setMaterial()`, `appendChildNode()`, etc.) implicitly call `markDirty()` for you — Qt docs: *"Most of the functions on the node classes will implicitly call markDirty()."* You MUST call it explicitly only when you bypass those helpers — constructing geometry/material structs by hand and assigning them through low-level pointers, or modifying child-node trees outside the `appendChildNode()` family. The flags: `DirtyGeometry` (0x1000), `DirtyMaterial` (0x2000), `DirtyMatrix` (0x0100), `DirtyOpacity` (0x4000), `DirtyNodeAdded` (0x0400), `DirtyNodeRemoved` (0x0800), `DirtySubtreeBlocked` (0x0080). Without `markDirty()` on a manual modification, the scene graph won't re-render the node. (AP-UC-27; see [QSGNode docs](https://doc.qt.io/archives/qt-5.15/qsgnode.html))
 
 ```cpp
 // Example: updating geometry in updatePaintNode()
@@ -613,7 +624,7 @@ node->setMaterial(material);
 node->markDirty(QSGNode::DirtyMaterial);
 ```
 
-**Node ownership:** The scene graph manages node lifetime. Never retain `QSGNode` references in QQuickItem member variables — they can be destroyed by the scene graph at any time on the render thread. The `oldNode` parameter in `updatePaintNode(QSGNode *oldNode, ...)` is the only safe way to access your previous node. If `oldNode` is null, create a new one; otherwise, update the existing one.
+**Node ownership:** The scene graph manages node lifetime. Never retain `QSGNode` references in QQuickItem member variables — they can be destroyed by the scene graph at any time on the render thread. The `oldNode` parameter in `updatePaintNode(QSGNode *oldNode, ...)` is the only safe way to access your previous node. If `oldNode` is null, create a new one; otherwise, update the existing one. Child nodes appended via `appendChildNode()` get the `QSGNode::OwnedByParent` flag automatically — Qt docs: *"Assigning ownership to the scene graph is often preferable as it simplifies cleanup when the scene graph lives outside the GUI thread."* (AP-UC-23)
 
 **Destructor cleanup:** Copy the `MatrixRainNode` destructor pattern — clean up GPU resources (textures) on the render thread, not in the QQuickItem destructor (which runs on the GUI thread).
 
@@ -700,6 +711,16 @@ font { pixelSize: 14; family: "monospace" }
 font.pixelSize: 14
 font.family: "monospace"
 ```
+
+### §8.1.1 Qt 5.15 official syntax conventions (ℹ️ INFO)
+
+Three minor syntax conventions Qt's [official QML Coding Conventions](https://doc.qt.io/archives/qt-5.15/qml-codingconventions.html) call out that aren't worth their own AP-UC entries but worth aligning with for tooling and visual consistency with Qt's own examples:
+
+1. **Avoid square brackets for single-element lists.** Prefer `states: State { ... }` over `states: [ State { ... } ]`. Brackets are only required for multi-element lists.
+2. **Don't use semicolons in single-line expressions.** `text: "hello"` not `text: "hello";`.
+3. **Use semicolons consistently in multi-statement JS blocks.** All statements get a semicolon, or none do — pick one within a block and stick with it.
+
+These don't break anything; they're stylistic alignment with Qt's own examples and Qt Quick Designer / qmllint expectations.
 
 ### §8.2 Component naming & files
 PascalCase files: `MatrixTheme.qml`, `ScreenOffOverlay.qml`. Every `Loader` gets an `id`.
