@@ -141,6 +141,25 @@ All reviews, audits, and violation reports use exactly three severity tiers:
 
 **User override:** The user can say "skip X" for workflow preferences — but NOT for safety, git checkpoints, or displayOff gating. Push back on those.
 
+### §1.11 Auto-revert is a crash safety net, not a validation review
+
+The UCR3 firmware automatically reverts the custom UI binary to stock if the binary fails to start (verified empirically — see `project_auto_revert_validated_on_uc3.md`). It is tempting to treat this as a catch-all for risky deploys.
+
+**It is not.** Auto-revert triggers on:
+- Process crash / segfault during startup.
+- Hard hang detected by firmware watchdog.
+- The UI failing to register with the core daemon within the boot timeout.
+
+**It does NOT trigger on:**
+- A binary that starts cleanly but sends a malformed `setPowerMode` body that the firmware accepts and propagates into a corrupted downstream state. (v1.4.22 silent failure precedent: every `setPowerMode` call returned HTTP 400 for 8 releases — Mod 5 / Mod 6 were silently broken, never auto-reverted, never logged any error.)
+- A binary that starts cleanly but persists an out-of-bounds value to QSettings or a JSON state file, leaving the device in a degraded state on next boot.
+- A binary that starts cleanly but pushes a malformed entity event through the core daemon, corrupting integration state.
+- Any class of bug where the symptom is "wrong behavior" rather than "absent behavior."
+
+**The trust boundary is code review, not auto-revert.** Treat auto-revert as the seatbelt — useful when something goes wrong, no excuse for skipping the brakes. Do not skip input validation review on `Api::set*` body construction, do not skip range clamping on persisted config, do not skip cross-checking that an entity push uses well-formed payloads, just because "auto-revert will catch it." It will not.
+
+This pairs with §1.5 (uncertainty signals — STOP and ask, don't guess) and §1.8 (research-first mandate). When in doubt about a firmware-side API contract, verify from headers, the upstream source, or a Logdy capture of a known-good message — never ship the guess and rely on auto-revert.
+
 ---
 
 ## §2 OPERATIONAL MODES
