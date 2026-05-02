@@ -3391,7 +3391,7 @@ den Web-Konfigurator zu öffnen</translation>
 <context>
     <name>ReconnectingHUD</name>
     <message>
-        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="93"/>
+        <location filename="../../src/qml/components/overlays/ReconnectingHUD.qml" line="91"/>
         <source>Reconnecting…</source>
         <translation type="unfinished"></translation>
     </message>
