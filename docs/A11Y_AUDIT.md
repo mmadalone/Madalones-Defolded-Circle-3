@@ -95,13 +95,13 @@ Items discovered in prior batches that should stay verified:
 
 ## §4. Latest audit
 
-**Date:** 2026-05-02 (static pre-pass only — manual on-device audit deferred to v1.4.38)
+**Date:** 2026-05-02 (static pre-pass only — manual on-device audit deferred to a future release with UCR3 device time)
 **Auditor:** Claude Opus 4.7 (1M context), under direction of madalone
 **Firmware build:** `git describe --always` → `v1.4.37` baseline (this audit ran against post-v1.4.36 / pre-v1.4.37 head)
 
 ### Methodology
 
-This is a **static pre-pass** — what can be verified by reading the QML source without running on device. Items requiring physical UCR3 interaction (DPAD presses, visual contrast checks, thermal soak, wake-from-display-off behavior) are listed as `📋 manual-required` and deferred to v1.4.38 when device time is available.
+This is a **static pre-pass** — what can be verified by reading the QML source without running on device. Items requiring physical UCR3 interaction (DPAD presses, visual contrast checks, thermal soak, wake-from-display-off behavior) are listed as `📋 manual-required` and deferred to a future release when UCR3 device time is available.
 
 ### Findings
 
@@ -124,7 +124,7 @@ None found in static pre-pass. Device-found blocking issues to be added in the v
 - **`AnalogSettings.qml`** has only 2 `KeyNavigation` references (other sub-pages have 8-26). Static analysis can't tell if the page has fewer interactive items or a sparse focus chain. Verify on device whether DPAD up/down skips items.
 - **`MatrixTheme.qml:124`** `font.pixelSize: 9` is for the atlas debug overlay. Confirmed not user-facing in production (toggle hidden); but flag for review if the debug overlay ever surfaces in normal usage.
 
-### Manual items deferred to v1.4.38
+### Manual items deferred to a future device-time pass
 
 The following must be verified on a real UCR3 device (not Docker preview — it doesn't capture the 480×850 viewport exactly per §2 instructions):
 
@@ -135,7 +135,7 @@ The following must be verified on a real UCR3 device (not Docker preview — it 
 - §2.5 (wake-from-display-off, undock transition)
 - §3 (all 7 cross-batch regression tests including thermal + first-wake-from-fresh-boot)
 
-When v1.4.38 lands, run through the checklist on UCR3 and append a new "Date: 2026-XX-XX (manual on-device pass)" entry in this section. Don't overwrite this static pre-pass — append, so the partial-vs-full audit history stays auditable.
+When the on-device pass lands, run through the checklist on UCR3 and append a new "Date: 2026-XX-XX (manual on-device pass)" entry in this section. Don't overwrite this static pre-pass — append, so the partial-vs-full audit history stays auditable.
 
 ---
 

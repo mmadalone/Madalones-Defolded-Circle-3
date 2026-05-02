@@ -46,7 +46,7 @@ Bundled hygiene release driven by the v1.4.36 codebase audit. Four findings clos
 v1.4.36 audit identified 4 path-to-A− items. Status:
 - **N4 (fake tests)**: ✅ DONE this release.
 - **N6 (BUILD.md path)**: ✅ DONE this release.
-- **N7 (A11Y audit)**: ⚠️ PARTIAL — static pre-pass shipped this release; manual on-device pass deferred to v1.4.38.
+- **N7 (A11Y audit)**: ⚠️ PARTIAL — static pre-pass shipped this release; manual on-device pass deferred to a future release with UCR3 device time (originally targeted at v1.4.38, but v1.4.38 was a test-only CI fix and didn't include the manual pass).
 - **N9 (auto-revert doc)**: ✅ DONE this release.
 
 Codebase grade trajectory per audit: v1.4.26 = B → v1.4.36 = B+ → v1.4.37 = B+ heading to A− pending v1.4.38 a11y on-device verification.

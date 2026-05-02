@@ -118,7 +118,7 @@ Rather than batch all four items into one bundled commit (tempting given the sma
 - §2.5 wake-from-display-off + undock transitions — requires real Power state cycle
 - §3 all 7 cross-batch regression tests — requires device + 10-min thermal soak
 
-These are explicitly listed in the new §4 "Manual items deferred to v1.4.38" section so the next pass has a checklist instead of starting from zero.
+These are explicitly listed in the new §4 "Manual items deferred" section so the next pass has a checklist instead of starting from zero. (Original target was v1.4.38, but v1.4.38 ended up being a test-only CI fix; the manual pass is now deferred to a future release with UCR3 device time.)
 
 ### Files touched (cumulative across v1.4.37 commits)
 **Doc/test files only (no compiled changes):**
