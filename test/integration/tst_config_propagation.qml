@@ -168,13 +168,21 @@ Item {
             rain.trailLength = 500
             rain.fontSize = 100
             wait(50)
-            // If we got here, no crash
-            verify(true, "Extreme values handled without crash")
-            // Restore sane defaults
+            // After extreme values, properties are still readable (no NaN, no negative).
+            // Renderer accepts the assignment as-is or clamps internally; either is valid.
+            verify(rain.speed > 0, "Speed reads back as positive after extreme assignments")
+            verify(rain.density > 0, "Density reads back as positive after extreme assignments")
+            verify(rain.trailLength > 0, "TrailLength reads back as positive after extreme assignments")
+            verify(rain.fontSize > 0, "FontSize reads back as positive after extreme assignments")
+            // Restore sane defaults — verify the property-set round trip works after extremes
             rain.speed = 1.0
             rain.density = 0.7
             rain.trailLength = 25
             rain.fontSize = 16
+            fuzzyCompare(rain.speed, 1.0, 0.01, "Speed restored to default after extremes")
+            fuzzyCompare(rain.density, 0.7, 0.01, "Density restored to default after extremes")
+            compare(rain.trailLength, 25, "TrailLength restored to default after extremes")
+            compare(rain.fontSize, 16, "FontSize restored to default after extremes")
         }
 
         // --- Interactive input contract ---
@@ -188,7 +196,7 @@ Item {
             }
             rain.interactiveInput("restore")
             wait(50)
-            verify(true, "All 8 directions + restore accepted")
+            verify(rain.running, "Item still running after 8 direction inputs + restore")
             rain.running = false
         }
 
@@ -196,12 +204,15 @@ Item {
             rain.running = true
             rain.glitch = true
             rain.glitchChaos = true
+            var spy = createTemporaryObject(signalSpy, root, {target: rain, signalName: "enterAction"})
             wait(100)
             rain.interactiveInput("enter")
             rain.interactiveInput("slow:hold")
             wait(50)
             rain.interactiveInput("slow:release")
-            verify(true, "Enter + slow hold/release accepted")
+            // Each interactiveInput dispatch should fire the corresponding enterAction signal.
+            // Defensive >= 1 because dispatch implementation may dedup or batch.
+            verify(spy.count >= 1, "Interactive enter/slow dispatch should emit at least one enterAction (got " + spy.count + ")")
             rain.running = false
         }
 

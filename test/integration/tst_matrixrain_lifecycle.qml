@@ -44,8 +44,8 @@ Item {
                 rain.direction = dirs[i]
                 wait(50)  // let a frame render
             }
-            // If we got here without crashing, all directions work
-            verify(true)
+            compare(rain.direction, "up-left", "Direction property reflects last set value")
+            verify(rain.running, "Item still running after direction sweep")
         }
 
         function test_allCharsets() {
@@ -54,7 +54,8 @@ Item {
                 rain.charset = sets[i]
                 wait(100)  // atlas rebuild
             }
-            verify(true)
+            compare(rain.charset, "digits", "Charset property reflects last set value")
+            verify(rain.running, "Item still running after charset sweep")
         }
 
         function test_allColorModes() {
@@ -63,7 +64,8 @@ Item {
                 rain.colorMode = modes[i]
                 wait(100)  // atlas rebuild
             }
-            verify(true)
+            compare(rain.colorMode, "neon", "ColorMode property reflects last set value")
+            verify(rain.running, "Item still running after colorMode sweep")
         }
 
         function test_rapidPropertyChanges() {

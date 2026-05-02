@@ -94,30 +94,35 @@ Item {
         }
 
         function test_autoRepeatIgnored() {
+            var spy = createTemporaryObject(signalSpy, root, {target: rain, signalName: "enterAction"})
             rain.enterPressed()
-            // Second press while in "pressed" state should be ignored
+            // Second + third presses while in "pressed" state should be ignored (auto-repeat),
+            // not treated as additional double-tap candidates.
             rain.enterPressed()
             rain.enterPressed()
-            wait(400)
-            // Should still only get one "enter" from the first press
+            wait(400)  // let 300 ms double-tap timer expire — single-tap "enter" fires
             rain.enterReleased()
-            // No crash, no duplicate actions
-            verify(true, "Auto-repeat presses handled without crash")
+            compare(spy.count, 1, "Auto-repeat should still emit exactly one 'enter' from the initial press")
+            compare(spy.signalArguments[0][0], "enter", "First (and only) signal should be 'enter'")
         }
 
         function test_releaseWithoutPressIsSafe() {
+            var spy = createTemporaryObject(signalSpy, root, {target: rain, signalName: "enterAction"})
             rain.enterReleased()
             rain.enterReleased()
-            verify(true, "Release without press is safe")
+            compare(spy.count, 0, "Release without prior press should emit nothing")
         }
 
         function test_rapidPressReleaseCycles() {
+            var spy = createTemporaryObject(signalSpy, root, {target: rain, signalName: "enterAction"})
             for (var i = 0; i < 20; i++) {
                 rain.enterPressed()
                 rain.enterReleased()
             }
             wait(400)  // let any pending timers fire
-            verify(true, "Rapid press/release cycles handled without crash")
+            // Each press starts the state machine; each release before hold-threshold is a noop.
+            // The state machine cannot emit more signals than press events.
+            verify(spy.count <= 20, "Rapid cycles should not emit more signals than presses (got " + spy.count + ")")
         }
     }
 
