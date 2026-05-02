@@ -10,13 +10,25 @@ set -a; source .env.local; set +a
 
 ## Cross-compile for UC Remote 3 (ARM64)
 
+Run from the repo root. Requires Docker.
+
+**Linux / macOS:**
+
 ```bash
-cd "/Users/madalone/_Claude Projects/UC-Remote-UI"
 docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
     unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6
 ```
 
-Requires Docker. Output: `binaries/linux-arm64/release/remote-ui`
+**Windows + Git-Bash:** `$(pwd)` returns MSYS-style `/c/...` paths that Docker Desktop won't translate, and MSYS path conversion mangles `:/sources` if not disabled. Use `pwd -W` and `MSYS_NO_PATHCONV=1`:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
+    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6
+```
+
+`--user=$(id -u):$(id -g)` is harmless-but-ignored on Docker Desktop; kept on the Linux/macOS form for proper file ownership when running on a real Linux host.
+
+Output: `binaries/linux-arm64/release/remote-ui`
 
 > **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. To rotate the pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:
 >
