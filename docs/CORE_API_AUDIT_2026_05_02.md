@@ -14,10 +14,11 @@
 
 The audit covered ~58 in-scope endpoints across `system/*`, `cfg/*`, `auth/*`, `api-keys/*`. The single highest-value finding is the one we already knew about: **standby_inhibitors REST replaces Mod 5's 270 s ping race with an event-based contract**. Beyond that, almost everything that looked like a candidate is either already upstream-wired (most of `cfg/*` is plumbed by `Config::Q_PROPERTY` → WS RPC), or correctly WS-driven for the right reasons (Mod 3's WiFi diagnostics needs the live signal stream).
 
-Two surprises shifted the plan:
+Three surprises shifted the plan:
 
-1. **Phase 0 hypothesis ranking inverted.** The handoff guessed Bearer-via-`UC_TOKEN_PATH` was the most likely auth path. Spec verification today: Bearer is **advertised** in the intro (lines 38–43) but **not defined** in `securitySchemes` (lines 17296–17305). Only `basicAuth` and `cookieAuth` are formally declared, and global security is `basicAuth OR cookieAuth`. The empirically-verified `web-configurator:6984` Basic auth is now the leading hypothesis. The probe stays — but the success criterion order flips.
-2. **`/cfg/power_saving.standby_sec=0` disables standby entirely.** Mod 5 doesn't read it before pinging, so if a user sets `standby_sec=0` (no standby ever), every ping is a wasted RPC. This is a CONFLICT, but it dissolves naturally if we ship M1 — inhibitors don't care what `standby_sec` is set to.
+1. **Phase 0 hypothesis ranking inverted.** The handoff guessed Bearer-via-`UC_TOKEN_PATH` was the most likely auth path. Spec verification today: Bearer is **advertised** in the intro (lines 38–43) but **not defined** in `securitySchemes` (lines 17296–17305). Only `basicAuth` and `cookieAuth` are formally declared, and global security is `basicAuth OR cookieAuth`. The empirically-verified `web-configurator:6984` Basic auth is now the leading hypothesis.
+2. **The PIN is unobtainable without rotating it.** Source verification of `Config::getApiAccess`, `processApiAccess`, and `struct ApiAccess` confirms the firmware's `get_api_access` response only returns `{enabled, valid_to}` — no PIN field. The PIN is also not QSettings-backed, so it doesn't survive process restart. **The only way for the custom-ui to KNOW the PIN is to SET it.** This is a one-time destructive event that reorders the probe sequence (non-destructive H3/H2/H4 first; H1 with PIN regen last).
+3. **`/cfg/power_saving.standby_sec=0` disables standby entirely.** Mod 5 doesn't read it before pinging, so if a user sets `standby_sec=0` (no standby ever), every ping is a wasted RPC. This is a CONFLICT, but it dissolves naturally if we ship M1 — inhibitors don't care what `standby_sec` is set to.
 
 | Bucket | Count | Items |
 |---|---|---|
@@ -30,6 +31,8 @@ Two surprises shifted the plan:
 **Mod 4 v2 is M1.** It is the first concrete code change after Phase 0 unblocks. Estimated 6–10 hours focused work. The rest is small follow-ons or hold-state.
 
 **No CONFLICTS that block ship of v1.4.x.** Existing custom code coexists fine with the firmware's REST surface today; the firmware is just exposing more options than we've used.
+
+**All five open questions resolved (2026-05-02):** Q1 (PIN access — no non-destructive path; probe handles it), Q2 (probe is local-only build, no tagged release), Q3 (M1 ships behind default-off opt-in toggle), Q4 (N1 worth doing after M1), Q5 (D1 permanently deferred). Full Q&A table at the bottom of this doc.
 
 ---
 
@@ -44,40 +47,58 @@ No (a) MIGRATE work proceeds without first answering: how does the custom-ui pro
 - **Bearer mention in intro** (lines 38–43): `--header 'Authorization: Bearer $API_KEY'` example. This is documentation aspiration, not a declared security scheme. The spec contradicts itself.
 - **Empirical (handoff session, 2026-05-02):** `web-configurator:6984` Basic auth → 200 OK on `/api/system/power/standby_inhibitors`. `madalone:hehehe` user account → 401 Unauthorized.
 
-### Inverted hypothesis ranking
+### Hypothesis ranking — non-destructive-first ordering
 
-Compared to the handoff memo:
+Compared to the original handoff memo, the ranking is fully reworked: the new ordering puts read-only probes first and the (one) destructive probe last. **The PIN is unobtainable without rotating it** — see "PIN-access answer" below.
 
-| # | Hypothesis | Was | Now | Why the change |
+| # | Hypothesis | Side effect | Likelihood | Why |
 |---|---|---|---|---|
-| **H1** | Basic auth with PIN (`web-configurator:<PIN>`) | "burdensome" / unlikely | **HIGH** likelihood | Empirically verified externally; spec confirms `basicAuth` is a defined scheme. |
-| **H2** | Bearer via `UC_TOKEN_PATH` content | "high likelihood" | LOW likelihood | Bearer is not defined in `securitySchemes`. Intro mention is a doc bug. |
-| **H3** | Unauth from `127.0.0.1` (localhost trust) | possible | UNKNOWN | Spec says all non-`/api/pub` endpoints are secured, but special-case localhost paths exist in some firmwares; cheap to test. |
+| **H3** | No-auth from `127.0.0.1` (localhost trust) | None | UNKNOWN | Spec says all non-`/api/pub` is secured, but localhost-trust patterns exist in some firmwares. Test first because it's free. |
+| **H2** | Bearer via `UC_TOKEN_PATH` content | None | LOW | Bearer is not defined in `securitySchemes` (lines 17296–17305). Intro example at lines 38–43 contradicts the formal spec. Probably won't work but eliminates the option cheaply. |
+| **H4** | Basic with `web-configurator:<UC_TOKEN content>` | None | VERY LOW | Free to test. PIN is a 4-digit value (per `WebConfig.qml:209-280` UI), token is much longer — almost certainly will fail, but eliminates a "what if they're the same secret?" question. |
+| **H1** | Basic with regenerated PIN | **Destructive (one-time)** | **HIGH** likelihood | Empirically verified externally with `web-configurator:6984` → 200 OK on `/api/system/power/standby_inhibitors`. Run only if H3 + H2 + H4 all fail. |
+
+### PIN-access answer (Q1 resolved 2026-05-02)
+
+There is **no non-destructive path** for the custom-ui to obtain the firmware-side PIN. Source-verified:
+
+| Step | File:Line | What |
+|---|---|---|
+| 1 | `config.h:451` | Default value `m_webConfiguratorPin = "••••"` — placeholder, not real |
+| 2 | `core.cpp:1233-1234` `Api::getApiAccess()` | Sends `RequestTypes::get_api_access` |
+| 3 | `core.cpp:2750-2760` `Api::processApiAccess()` | Response only contains `{enabled, valid_to}` — **no PIN field** |
+| 4 | `structs.h:254-257` `struct ApiAccess` | Confirms — only `bool enabled` + `QDateTime validTo` |
+| 5 | `config.cpp:866-883` `generateNewWebConfigPin()` | Generates fresh PIN locally, calls `setApiAccess(true, newPin)`, caches `m_webConfiguratorPin = webConfiguratorPin` on success |
+| 6 | `config.cpp:948-983` `setWebConfiguratorEnabled(true)` | Same pattern — generate + setApiAccess + cache |
+| 7 | (grep `m_settings->value` in config.cpp) | **PIN is NOT QSettings-backed.** Every other custom Q_PROPERTY uses `m_settings->value()`/`setValue()`; webConfiguratorPin does not. **Does not survive process restart.** |
+| 8 | `WebConfig.qml:288` + `Finish.qml:221` | Only triggers for PIN regeneration — both user-initiated |
+
+**Implication:** to use H1, the custom-ui must call `setApiAccess(true, newPin)` itself — which rotates the PIN, invalidating the user's known value (e.g., the empirical `6984`). This is destructive but bounded to one event per probe run.
 
 ### Probe design
 
-Add `Q_INVOKABLE void Core::probeRestAuth()` debug method behind a `Config.probeRestAuth = true` flag. Fires three test `GET /api/system/power` calls in sequence at startup, logs each result via `qCInfo(lcCore)` for Logdy capture (`feedback_uc3_systemlogs_core_only.md` reminds us: `/api/system/logs` won't surface custom-ui entries; Logdy WS is the only way).
+Add `Q_INVOKABLE void Core::probeRestAuth()` debug method behind a `Config.probeRestAuth = true` flag. Fires hypotheses H3 → H2 → H4 → H1 sequentially against `GET /api/system/power`, logs each result via `qCInfo(lcCore)` for Logdy capture (`feedback_uc3_systemlogs_core_only.md` reminds us: `/api/system/logs` won't surface custom-ui entries; Logdy WS is the only way).
 
-| # | Hypothesis | Probe HTTP request | Success signal | Failure signal |
+| Order | Hypothesis | Probe HTTP request | Success signal | Failure signal |
 |---|---|---|---|---|
-| 1 | Basic with PIN | `GET /api/system/power` with `Authorization: Basic base64(web-configurator:<PIN>)` | 200 + `PowerModeResponse` JSON | 401 (wrong PIN format) / 400 (encoding) |
-| 2 | Bearer via UC_TOKEN_PATH | `GET /api/system/power` with `Authorization: Bearer <file content>` | 200 + JSON | 401 (Bearer not actually accepted) |
-| 3 | No auth from 127.0.0.1 | `GET http://127.0.0.1/api/system/power` no Authorization header | 200 + JSON | 401 (spec wins, no localhost-trust) |
+| 1 | H3 — localhost no-auth | `GET http://127.0.0.1/api/system/power` no Authorization header | 200 + `PowerModeResponse` JSON | 401 (no localhost-trust) |
+| 2 | H2 — Bearer via UC_TOKEN | `GET /api/system/power` with `Authorization: Bearer <file content>` | 200 + JSON | 401 (Bearer not actually accepted) |
+| 3 | H4 — Basic with token-as-PIN | `GET /api/system/power` with `Authorization: Basic base64("web-configurator:<UC_TOKEN content>")` | 200 + JSON | 401 (token isn't the PIN) |
+| 4 | H1 — Basic with regen PIN | Call `Config::generateNewWebConfigPin()`, then `GET /api/system/power` with `Authorization: Basic base64("web-configurator:" + m_webConfiguratorPin)` | 200 + JSON; **PIN is now rotated, log the new value to chat for user record** | 401 (auth still wrong somehow) |
+
+**Short-circuit rule:** if H3, H2, or H4 succeeds, **skip H1** — no need to rotate the PIN if a non-destructive path already works.
 
 ### Probe implementation outline
 
 1. **Spec the probe** — done above.
-2. **Implementation** — `Q_INVOKABLE void Core::probeRestAuth()` reads PIN from wherever it lives (TBD — open question Q1 below), reads `UC_TOKEN_PATH` content via existing `authenticate()` plumbing, fires 3 sequential `QNetworkRequest`s with detailed logging.
-3. **Gate** — `Config.probeRestAuth` toggle, default `false`. Set to `true` for one probe-only release; auto-runs at startup; revert in next release.
-4. **Capture** — Logdy WS catches `qCInfo(lcCore) << "REST Auth Probe #N..."` lines.
-5. **Document** — new memory `project_uc3_rest_auth_mechanism.md` records the answer.
-6. **Revert** — feature-gate the probe code (kept compilable, off by default) so we can re-run if a future firmware breaks this.
+2. **Implementation** — `Q_INVOKABLE void Core::probeRestAuth()` reads `UC_TOKEN_PATH` content via existing `authenticate()` plumbing (`core.cpp:80-85`), fires `QNetworkRequest`s in H3 → H2 → H4 order, short-circuits if any succeeds. Only if all three fail: call `Config::generateNewWebConfigPin()`, await success, then run H1. Each step logs at `qCInfo(lcCore)` with `[REST Auth Probe Hn]` prefix for Logdy filterability.
+3. **Gate** — `Config.probeRestAuth` toggle, default `false`. Auto-runs at startup if true.
+4. **Cadence** — local-only build per Q2 (no tagged release). Build → flash → capture → discard binary. Probe code stays in the working tree feature-gated.
+5. **Capture** — Logdy WS catches the `[REST Auth Probe Hn]` lines.
+6. **Document** — new memory `project_uc3_rest_auth_mechanism.md` records the answer + (if H1 fired) the new PIN value the user will need to know.
+7. **Revert** — feature-gate the probe code (kept compilable, off by default) so we can re-run if a future firmware breaks this.
 
-### Critical open question — where does the custom-ui get the PIN?
-
-`Config::getWebConfiguratorPin()` returns `"••••"` per the handoff — that's a UI placeholder, not the real PIN. The real PIN is generated by the firmware and shown on screen during initial setup; the UI displays it but doesn't necessarily store it in a process-readable location. Possible answers: (a) a config file we haven't found yet, (b) the same `UC_TOKEN_PATH`-like mechanism but for the PIN, (c) the PIN is the WS auth token itself (if so, H2 effectively *is* H1 with different framing). The probe must answer this before H1 can be implemented.
-
-**Phase 0 is one release of focused work, ~4–6 hours.** Everything below depends on it.
+**Phase 0 is one local-only build of focused work, ~4–6 hours.** Everything below depends on it.
 
 ---
 
@@ -138,12 +159,12 @@ Called from `evaluateSession()` (line 116) via repeating 270 s `m_pingTimer` (co
    - Was-active → now-inactive edge: call `deleteStandbyInhibitor(m_inhibitorId)`. Clear the field.
    - Drop `m_pingTimer` entirely.
 3. **Crash safety.** On `core::Api::disconnected` (already wired at line 33), we lose our `m_inhibitorId` reference but the firmware-side inhibitor lives on indefinitely (blocking type). On reconnect, call `GET /system/power/standby_inhibitors`, find any with `who == "madalone.session-keeper"`, delete them. Fresh start. This handles UI crashes, restart-on-deploy, OTA updates.
-4. **Config toggle for safe rollout.** New `Q_PROPERTY(bool sessionKeeperUseInhibitorApi)` defaulting `false`. v1.4.39 ships dormant; user opts in via Settings → Power → "Use REST inhibitor API (experimental)". Flip default after a 2-week soak window.
+4. **Config toggle for safe rollout.** New `Q_PROPERTY(bool sessionKeeperUseInhibitorApi)` defaulting `false` (per Q3 — user-controlled opt-in, no auto-flip in a later release). User opts in via Settings → Power → "Use REST inhibitor API (experimental)". The toggle stays user-driven indefinitely; the WS ping path remains the default. **PIN handling:** if Phase 0 lands on H1 (PIN regen needed), enabling the toggle for the first time triggers a one-time `Config::generateNewWebConfigPin()` call. The new PIN is shown in the existing Settings → WebConfig page (already bound to `m_webConfiguratorPin`). Persist the PIN in QSettings (`power/m1RestPin`) so it survives reboots without re-rotating.
 5. **Tests.** `test/hardware/keeper_test/*` already has the WS-side test scaffolding (49 methods per `project_path_to_a_post_v1_4_35.md`). Add 5 new tests for the REST path with mocked `QNetworkAccessManager` (or a thin `IRestClient` adapter for testability). At minimum: create-on-active, delete-on-inactive, orphan-cleanup-on-reconnect, 401-fallback-to-WS, 409-on-duplicate.
 
 #### Risk callouts
 
-- **Phase 0 dependency.** Cannot start until auth path is empirically known. If H1 (Basic with PIN) wins, we need a way for the keeper code to access the PIN at runtime — likely a new helper on `core::Api` that `probeRestAuth` also exposes.
+- **Phase 0 dependency.** Cannot start until auth path is empirically known. If H1 (Basic with regenerated PIN) wins, the keeper triggers PIN regen + QSettings persistence on first toggle-enable (per Q1 resolution + step #4 above). If H3 (localhost no-auth) wins, no PIN handling needed at all.
 - **Inhibitor orphaning.** Crash → blocking inhibitor sticks until reboot. Mitigation #3 above (cleanup on reconnect) handles the common case. The pathological case (UI crashes mid-handoff between disconnect and reconnect, then a *different* process re-creates an inhibitor) is bounded — worst case the user notices the device staying awake and reboots once.
 - **Fallback strategy.** If REST auth flakes mid-session (unlikely but possible — token rotation, firmware glitch), do we fall back to the WS ping path? **Recommend: no.** Hard-fail the inhibitor call, log loudly, and let the firmware's normal standby fire. Silent fallback to the WS path masks the auth failure that the probe was supposed to surface.
 - **The `standby_sec=0` edge case dissolves.** Today, if a user has `standby_sec=0` (no standby), Mod 5's pings are wasted no-ops. With M1, the inhibitor is a no-op too (nothing to inhibit), but it doesn't fire any RPCs — so zero waste. Free win.
@@ -353,14 +374,15 @@ So D1 is technically a MIGRATE candidate. But:
 ```
 ┌─ Phase 0 ──────────────────────────────────────────────────────────┐
 │  REST auth probe                              S    blocking         │
-│  v1.4.39 (or whatever the next release is)    ~4–6 h focused        │
+│  Local-only build (Q2 — no tagged release)    ~4–6 h focused        │
+│  H3 → H2 → H4 → H1 sequence; H1 destructive   one-time PIN rotation │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
 ┌─ Phase 1 ──────────────────────────────────────────────────────────┐
 │  M1 — standby_inhibitors swap (Mod 5)         M    ~6–10 h          │
-│  v1.4.40 (feature-flagged off)                                       │
-│  v1.4.4N (default-on after 2-week soak)                              │
+│  v1.4.40 (feature-flagged off, user-opt-in only — Q3)               │
+│  No auto-flip. Toggle stays user-controlled indefinitely.            │
 └─────────────────────────────────────────────────────────────────────┘
                               │
                               ▼
@@ -382,27 +404,29 @@ Permanently DEFER: D1 (Mod 6 stays on WS).
 
 ---
 
-## Open questions for the user
+## Open questions — RESOLVED 2026-05-02
 
-(Concrete enough to answer in one sentence each.)
-
-1. **PIN access at runtime.** Where does the custom-ui process actually have access to the web-configurator PIN? Is it stored in a config file, derivable from `UC_TOKEN_PATH`, or do we need to add a path for the user to enter it once at first run? This blocks the Phase 0 probe implementation.
-2. **Probe release cadence.** Should the Phase 0 probe binary ship as a tagged release (v1.4.39-probe) that you deploy + capture + revert, or as an unreleased local build you flash, capture from, and discard? The latter avoids GH Releases noise but is harder to reproduce later if needed.
-3. **M1 rollout strategy.** Default-off feature flag with manual user opt-in, or default-off-then-flip in a follow-up release? My recommendation is the latter (less friction for testing) but the former is more conservative.
-4. **N1 priority.** Worth it now (after M1) or defer until a user asks? My read is "now" — adaptive brightness is the kind of feature people don't think to request but appreciate when it lands.
-5. **D1 — agree to defer Mod 6 indefinitely?** Or do you want a follow-up audit checkpoint in 6 months to re-evaluate (e.g., "if firmware deprecates WS RPCs, revisit")?
+| # | Question | Answer |
+|---|---|---|
+| Q1 | PIN access at runtime | **No non-destructive path exists.** Verified from source — `getApiAccess` returns only `{enabled, valid_to}`, PIN is not QSettings-backed, no env-var path. The probe handles this by trying H3/H2/H4 (non-destructive) first; H1 (PIN regen) runs only as a last resort. M1 ships behind a default-off opt-in toggle so any PIN rotation is user-controlled. See "PIN-access answer" subsection above. |
+| Q2 | Probe release cadence | **Local-only build.** No tagged release. Build → flash → capture → discard binary. Probe code stays in the working tree feature-gated for re-runs. |
+| Q3 | M1 rollout strategy | **Default-off feature flag with manual user opt-in.** `Config.sessionKeeperUseInhibitorApi` ships `false`. User toggles via Settings → Power → "Use REST inhibitor API (experimental)". No auto-flip in a later release; the toggle stays user-controlled. |
+| Q4 | N1 priority | **Worth doing after M1.** Sequence in Phase 2 immediately after M1 ships and soaks. |
+| Q5 | D1 — defer Mod 6 indefinitely | **Agreed.** Permanent DEFER. No follow-up audit checkpoint planned — re-evaluate only if a future firmware deprecates the WS `setPowerMode` RPC. |
 
 ---
 
-## Appendix A — Auth probe parking lot
+## Appendix A — Auth probe outcomes parking lot
 
-If H1 (Basic with PIN) fails the probe, the backup plan tree:
+Outcome tree for the H3 → H2 → H4 → H1 probe sequence:
 
-- **H2 fails too** → fall back to H3 (no-auth from 127.0.0.1). If that works, REST is "trusted localhost only" — accept the limitation, document it, proceed with M1 using no-auth REST.
-- **H2 fails AND H3 fails** → audit hits a hard wall. Options: (a) ask UC team directly via GitHub Issues / Discord with the probe Logdy capture as evidence, (b) reverse-engineer the upstream web-configurator's REST auth flow (it must work somehow — it's a web app talking to the same API), (c) abandon the audit's MIGRATE bucket entirely; M1 stays WS, defer the whole thing as "wait for UC to publish proper auth docs."
-- **All three pass** → bonus problem of choosing the right one. Bearer (if it works) is cleanest; Basic is most documented; localhost no-auth is fastest. Likely Bearer wins by default.
+- **H3 passes** → REST is "trusted localhost only." Cleanest possible answer — no PIN handling, no token reuse. M1 ships using direct localhost REST calls. Document the limitation: any future REST consumer must run on the device itself.
+- **H2 passes** → Bearer-via-UC_TOKEN works. Reuse `core.cpp:80-85` token reading. M1 builds an `Authorization: Bearer ...` helper on `core::Api` and uses it for inhibitor calls. **Spec is wrong** about Bearer not being supported — file an upstream issue against `unfoldedcircle/core-api`.
+- **H4 passes** → Surprise discovery — token IS the PIN. H1 strategy auto-resolves (no rotation needed); use the same token for both WS auth and REST Basic. This would be the cleanest possible outcome but is the least likely.
+- **H3 + H2 + H4 all fail, H1 passes** → Basic-with-regenerated-PIN works. Document the new PIN. M1 strategy: rotate PIN once on first toggle-enable, persist in QSettings (`power/m1RestPin`), use for all subsequent inhibitor calls. The existing `WebConfig.qml` page surfaces the PIN to the user automatically since it's bound to `m_webConfiguratorPin`.
+- **All four fail** → Audit hits a hard wall. Options: (a) ask UC team directly via GitHub Issues / Discord with the probe Logdy capture as evidence, (b) reverse-engineer the upstream web-configurator's REST auth flow (it must work somehow — it's a web app talking to the same API), (c) abandon the audit's MIGRATE bucket; M1 stays on WS, defer indefinitely as "wait for UC to publish proper auth docs."
 
-The probe code itself should ALWAYS test all three even if one succeeds — gives us future-proofing data.
+The probe code SHOULD short-circuit (skip later hypotheses if an earlier one succeeds, especially the destructive H1) BUT log each attempted-or-skipped hypothesis explicitly so Logdy gives a complete picture for future re-runs.
 
 ## Appendix B — What this audit did NOT cover
 
