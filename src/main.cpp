@@ -124,9 +124,14 @@ int main(int argc, char *argv[]) {
 
     uc::core::Api                          core(socketUrl, &app);
     uc::Config                             config(&core, &app);
-    uc::ScreensaverConfig                  screensaverConfig(&app);
     uc::SoftwareUpdate                     softwareUpdate(&core, &app);
     uc::hw::Controller                     hwController(model, &core, &config, &app);
+    // ScreensaverConfig MUST be constructed AFTER hwController so hw::Battery::instance()
+    // is non-null when ScreensaverConfig's ctor wires its showBatteryChanged signal to
+    // Battery::powerSupplyChanged / isChargingChanged. Pre-2026-05-02 this lived above
+    // hwController and used a QTimer::singleShot(500, ...) retry to paper over the gap;
+    // C1 cleanup eliminated the brittleness by reordering construction.
+    uc::ScreensaverConfig                  screensaverConfig(&app);
     uc::ui::Controller                     uiController(model, width, height, &engine, &config, &core, &app);
     uc::integration::IntegrationController integrationController(&core, config.getLanguage(), &app);
     uc::dock::DockController               dockController(&core, &app);

@@ -4,7 +4,6 @@
 #include "screensaverconfig.h"
 
 #include <QCoreApplication>
-#include <QTimer>
 #include <QtMath>
 
 #include "../hardware/battery.h"
@@ -41,21 +40,16 @@ ScreensaverConfig::ScreensaverConfig(QObject *parent)
     connect(this, &ScreensaverConfig::showBatteryEnabledChanged, this, &ScreensaverConfig::showBatteryChanged);
     connect(this, &ScreensaverConfig::batteryDockedOnlyChanged,  this, &ScreensaverConfig::showBatteryChanged);
 
-    // Battery may not exist yet at construction; connect when it appears.
+    // Battery is guaranteed to exist at this point because main.cpp constructs
+    // ScreensaverConfig AFTER hwController (which creates Battery synchronously).
+    // Pre-C1 (2026-05-02) ScreensaverConfig was constructed before hwController and
+    // a QTimer::singleShot(500, ...) retry papered over the gap — that hack is now
+    // unnecessary. If anyone moves ScreensaverConfig back ahead of hwController,
+    // this Q_ASSERT will fire at startup instead of silently degrading.
     auto *batt = hw::Battery::instance();
-    if (batt) {
-        connect(batt, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
-        connect(batt, &hw::Battery::isChargingChanged,  this, &ScreensaverConfig::showBatteryChanged);
-    } else {
-        QTimer::singleShot(500, this, [this]() {
-            auto *b = hw::Battery::instance();
-            if (b) {
-                connect(b, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
-                connect(b, &hw::Battery::isChargingChanged,  this, &ScreensaverConfig::showBatteryChanged);
-                emit showBatteryChanged();
-            }
-        });
-    }
+    Q_ASSERT(batt && "ScreensaverConfig constructed before Battery — check main.cpp order");
+    connect(batt, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
+    connect(batt, &hw::Battery::isChargingChanged,  this, &ScreensaverConfig::showBatteryChanged);
 }
 
 QObject *ScreensaverConfig::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
