@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.38 — 2026-05-02 — Test-only CI fix for v1.4.37 regression
+
+**Binary identical to v1.4.37.** This release exists solely to attach a green CI run to the latest tag — v1.4.37's `Tests / Integration tests (QML)` job failed on a test-code bug I introduced in the v1.4.37 hygiene release. No behavior change for users; if you installed v1.4.37, there's no functional reason to update to v1.4.38 (the install bundle's binary is identical).
+
+### Fixed
+- **`tst_config_propagation.qml::test_interactiveInputEnterAndSlow`** asserted `spy.count >= 1` on the `enterAction(QString)` signal, but `spy.count` was 0. Root cause: misread of the InputHandler architecture in the v1.4.37 N4 rewrite (commit `3569866`). `interactiveInput(action)` is the *imperative-dispatch* path — it executes the action directly (chaos burst for `"enter"`, tick-rate change for `"slow:hold/release"`) rather than going through the timer-driven `enterPressed`/`enterReleased` state machine that emits `enterAction` signals. Only the state-machine path fires that signal. Fix: dropped the SignalSpy + assertion; replaced with `verify(rain.running, "...")`. Test still verifies the 3-dispatch sequence doesn't crash AND the renderer survives — a real assertion, just weaker than the spy version would have been if the dispatch had gone through the signal path. Comment added in-place to flag the dispatch-vs-state-machine distinction so future readers don't repeat the same misread.
+
+### Architectural note
+- **Drift increase: zero new files. Zero binary changes.** The fix is a 7-line edit to a single test file. No production code touched.
+- **The v1.4.37 audit-derived assertion was wrong about its own architectural understanding.** This is a footnote on the `feedback_verify_audit_before_remediation.md` lesson — even when remediating an audit finding, *re-verify the architectural assumption you're encoding into the assertion*. The N4 rewrite assumed `interactiveInput` ↔ `enterAction` were on the same dispatch path; reading the InputHandler header would have caught it. Filed as an extension to the meta-lesson.
+- **Auto-revert safety net** is still irrelevant for v1.4.38 — like v1.4.37, no binary changes ship. The only observable difference between v1.4.37 and v1.4.38 install tarballs is the `release.json` version field.
+
+---
+
 ## v1.4.37 — 2026-05-02 — Audit-driven hygiene cleanup (path to A−)
 
 Bundled hygiene release driven by the v1.4.36 codebase audit. Four findings closed in single-purpose commits, single release tag at the end. **Zero binary changes** — no UCR3 deploy needed; the v1.4.37 install bundle ships the same compiled binary as v1.4.36 with an updated `release.json`. Tests + docs only.

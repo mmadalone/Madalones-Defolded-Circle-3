@@ -13,6 +13,52 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v1438"></a>v1.4.38 — 2026-05-02 — Test-only CI fix for v1.4.37 regression
+
+### Context
+v1.4.37 shipped the audit-driven hygiene cleanup that closed 4 path-to-A− findings. CI on the v1.4.37 tag failed on `Tests / Integration tests (QML)` after ~16 seconds of test execution. JUnit XML showed 1 failure across 41 tests:
+
+```
+testcase result="fail" name="ConfigPropagation::test_interactiveInputEnterAndSlow"
+failure: 'Interactive enter/slow dispatch should emit at least one enterAction (got 0)' returned FALSE
+```
+
+Binary unaffected — v1.4.37's install bundle works correctly. The failure is in test code introduced by the v1.4.37 N4 rewrite (commit `3569866`). v1.4.38 exists solely to attach a green CI run to the latest tag.
+
+### Root cause
+In the v1.4.37 N4 rewrite I added a SignalSpy on `enterAction(QString)` to `test_interactiveInputEnterAndSlow`, asserting `spy.count >= 1` after dispatching `interactiveInput("enter")`, `interactiveInput("slow:hold")`, `interactiveInput("slow:release")`. The assumption: each `interactiveInput()` dispatch should fire the corresponding `enterAction` signal.
+
+Wrong. `interactiveInput(action)` is the *imperative-dispatch* path — defined in `src/ui/matrixrain/inputhandler.h` lines 27-40 with a comment explicitly distinguishing it from the timer-driven path:
+
+> Public API — called by MatrixRainItem's Q_INVOKABLE shims (matrixrain.h).
+
+`interactiveInput` calls one of `handleDirectionInput`, `handleEnterInput`, `handleSlowInput`, etc. — these execute the action directly (chaos burst for `"enter"`, tick-rate change for `"slow:hold/release"`).
+
+The `enterAction(QString)` signal is fired by the *state machine* path: `enterPressed()` / `enterReleased()` / timer expiration → emit. The two paths exist for a reason: the state machine is for hardware button events that need debouncing + double-tap detection + hold detection; `interactiveInput` is the test/QML hook that bypasses all that timing and fires the action immediately. A test that wants to verify dispatch went through the action handler can't use the state-machine signal.
+
+Should have caught this by reading inputhandler.h before writing the assertion. Did not. Audit-derived rewrites are not exempt from §1.5 (uncertainty signals — STOP and ask, don't guess) or §1.8 (research-first mandate) — even when the audit finding is yours.
+
+### Fix
+Single 7-line edit to `tst_config_propagation.qml`:
+
+- Removed the `var spy = createTemporaryObject(signalSpy, ...)` setup.
+- Removed the `verify(spy.count >= 1, "...")` assertion.
+- Added `verify(rain.running, "Item still running after interactive enter + slow:hold + slow:release dispatch sequence")` — a real assertion (renderer survives the dispatch sequence), just weaker than the spy version *would have been* if the dispatch had gone through the signal path.
+- Added inline comment explaining the dispatch-vs-state-machine distinction so future readers don't repeat the misread.
+
+### Verification
+CI on commit `ecd6dc2`: all 41 integration tests passing, all jobs green. v1.4.38 tagged at the test-fix commit. No other commits between v1.4.37 and v1.4.38; the binary in the install bundle is byte-identical between the two release tarballs.
+
+### Architectural note
+- **Drift increase: zero new files. Zero binary changes.**
+- **Path-to-A− status unchanged from v1.4.37:** still 4 of 4 audit items closed (N7 partial). Manual on-device A11Y pass remains the gate to terminal A−.
+- **Auto-revert irrelevant.** Same install-bundle binary as v1.4.37.
+
+### Lessons logged
+- **The v1.4.37 ENGINEERING_LOG entry's "Lessons logged" section claimed "audits inflate severity; the actual remediation effort is consistently smaller than the audit's framing."** v1.4.38 is the counter-data-point: while the *effort* was small, the *risk surface* of audit-derived test rewrites was bigger than I gave it credit for. Specifically — when adding new SignalSpy assertions during a remediation pass, re-verify the signal-path architecture before encoding it into a test. The cost of getting it wrong is a failed CI gate on the release tag, which is exactly the kind of thing the audit-driven cleanup was supposed to prevent. Updated `feedback_verify_audit_before_remediation.md`'s spirit: the verify-before-remediate principle applies to the *remediation* itself, not just the audit's claims.
+
+---
+
 ## <a id="v1437"></a>v1.4.37 — 2026-05-02 — Audit-driven hygiene cleanup (path to A−)
 
 ### Context
