@@ -5079,7 +5079,7 @@ Naciśnij i przytrzymaj przycisk głosowy i powiedz polecenie.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1014"/>
+        <location filename="../../src/config/config.cpp" line="1027"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Błąd podczas ładowania konfiguracji. Ponawiam próbę.</translation>
     </message>
@@ -5162,17 +5162,17 @@ Naciśnij i przytrzymaj przycisk głosowy i powiedz polecenie.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1368"/>
+        <location filename="../../src/core/core.cpp" line="1375"/>
         <source>Connection error</source>
         <translation>Błąd połączenia</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1369"/>
+        <location filename="../../src/core/core.cpp" line="1376"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Wystąpił błąd podczas łączenia się z rdzeniem. Jeśli problem będzie się powtarzał, zrestartuj pilota.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1828"/>
+        <location filename="../../src/core/core.cpp" line="1835"/>
         <source>Authentication to core failed</source>
         <translation>Autoryzacja w rdzeniu nie powiodła się</translation>
     </message>

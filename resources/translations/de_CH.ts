@@ -5034,7 +5034,7 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1014"/>
+        <location filename="../../src/config/config.cpp" line="1027"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fähler bim Lade vo de Konfiguration. Versuechs nomol.</translation>
     </message>
@@ -5109,17 +5109,17 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1368"/>
+        <location filename="../../src/core/core.cpp" line="1375"/>
         <source>Connection error</source>
         <translation>Verbindigsfähler</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1369"/>
+        <location filename="../../src/core/core.cpp" line="1376"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Bim Verbinde ufe Core Service isch en Fähler ufträtte. We ds Problem wyterhi bestoht, start d Fernbedienig nöi.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1828"/>
+        <location filename="../../src/core/core.cpp" line="1835"/>
         <source>Authentication to core failed</source>
         <translation>Authentifizierig mitem Core Service fehlgschlage</translation>
     </message>

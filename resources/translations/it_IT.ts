@@ -5034,7 +5034,7 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1014"/>
+        <location filename="../../src/config/config.cpp" line="1027"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Errore durante il caricamento della configurazione. Riprovo.</translation>
     </message>
@@ -5109,17 +5109,17 @@ Tocca il codice QR per mostrarlo sullo schermo.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1368"/>
+        <location filename="../../src/core/core.cpp" line="1375"/>
         <source>Connection error</source>
         <translation>Errore di connessione</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1369"/>
+        <location filename="../../src/core/core.cpp" line="1376"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Si è verificato un errore durante la connessione al core. Se il problema persiste, riavvia il telecomando.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1828"/>
+        <location filename="../../src/core/core.cpp" line="1835"/>
         <source>Authentication to core failed</source>
         <translation>Autenticazione al core fallita</translation>
     </message>

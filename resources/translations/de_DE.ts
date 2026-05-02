@@ -5035,7 +5035,7 @@ Tippe auf den QR-Code, um zu Vergrößern.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1014"/>
+        <location filename="../../src/config/config.cpp" line="1027"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fehler beim Laden der Konfiguration. Versuche es erneut.</translation>
     </message>
@@ -5110,17 +5110,17 @@ Tippe auf den QR-Code, um zu Vergrößern.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1368"/>
+        <location filename="../../src/core/core.cpp" line="1375"/>
         <source>Connection error</source>
         <translation>Verbindungsfehler</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1369"/>
+        <location filename="../../src/core/core.cpp" line="1376"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Beim Verbinden auf den Core Service ist ein Fehler aufgetreten. Wenn das Problem weiterhin besteht, starte die Fernbedienung neu.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1828"/>
+        <location filename="../../src/core/core.cpp" line="1835"/>
         <source>Authentication to core failed</source>
         <translation>Authentifizierung mit Core Service fehlgeschlagen</translation>
     </message>

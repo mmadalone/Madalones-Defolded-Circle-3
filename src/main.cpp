@@ -211,6 +211,28 @@ int main(int argc, char *argv[]) {
     suppressor->setInputLookbackMs(config.getPhantomWakeSuppressInputLookbackMs());
     suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
 
+    // ========================================================================
+    // madalone (Phase 0, 2026-05-02): one-shot REST auth probe trigger.
+    // ------------------------------------------------------------------------
+    // PHASE 0 RESOLVED — Bearer via UC_TOKEN content (H2) wins. See
+    // .claude-memory/project_uc3_rest_auth_mechanism.md for the empirical
+    // outcome. The Q_INVOKABLE method + QSettings markers + setDeviceName
+    // side-effects in core.cpp stay in tree for future re-runs.
+    //
+    // Auto-fire is gated on Config::probeRestAuth — set the QSettings key
+    // "debug/probeRestAuth" to true on the device to re-run.
+    // ========================================================================
+    if (config.getProbeRestAuth()) {
+        auto* probeConn = new QMetaObject::Connection;
+        *probeConn = QObject::connect(&core, &uc::core::Api::connected, &core,
+            [&core, probeConn]() {
+                QObject::disconnect(*probeConn);
+                delete probeConn;
+                qCWarning(lcApp()) << "[REST Auth Probe] WS connected; firing probe (Config::probeRestAuth=true)";
+                core.probeRestAuth();
+            });
+    }
+
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(

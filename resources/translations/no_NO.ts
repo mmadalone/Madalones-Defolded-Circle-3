@@ -5082,7 +5082,7 @@ Trykk og hold stemmeknappen nede og si kommandoen.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1014"/>
+        <location filename="../../src/config/config.cpp" line="1027"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Feil under lasting av konfigurasjon. Prøver igjen.</translation>
     </message>
@@ -5165,17 +5165,17 @@ Trykk og hold stemmeknappen nede og si kommandoen.</translation>
 <context>
     <name>uc::core::Api</name>
     <message>
-        <location filename="../../src/core/core.cpp" line="1368"/>
+        <location filename="../../src/core/core.cpp" line="1375"/>
         <source>Connection error</source>
         <translation>Tilkoblingsfeil</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1369"/>
+        <location filename="../../src/core/core.cpp" line="1376"/>
         <source>There was an error connecting to the core. If the issue persists, restart the remote.</source>
         <translation>Det oppsto en feil ved tilkobling til kjernen. Hvis problemet vedvarer, start fjernkontrollen på nytt.</translation>
     </message>
     <message>
-        <location filename="../../src/core/core.cpp" line="1828"/>
+        <location filename="../../src/core/core.cpp" line="1835"/>
         <source>Authentication to core failed</source>
         <translation>Autentisering til kjernen mislyktes</translation>
     </message>

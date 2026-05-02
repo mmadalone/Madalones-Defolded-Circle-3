@@ -516,6 +516,19 @@ void Config::setPhantomWakeSuppressInputLookbackMs(int ms)
     emit phantomWakeSuppressInputLookbackMsChanged();
 }
 
+// madalone (Phase 0, 2026-05-02): REST auth probe gate (one-shot debug flag).
+// Stored under "debug/probeRestAuth" to keep diagnostic flags out of "power/*".
+bool Config::getProbeRestAuth()
+{
+    return m_settings->value("debug/probeRestAuth", false).toBool();
+}
+
+void Config::setProbeRestAuth(bool value)
+{
+    m_settings->setValue("debug/probeRestAuth", value);
+    emit probeRestAuthChanged();
+}
+
 bool Config::getShowShuffleButton()
 {
     return m_settings->value("ui/showShuffleButton", true).toBool();

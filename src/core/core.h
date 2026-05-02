@@ -5,9 +5,15 @@
 #include <QFile>
 #include <QJsonDocument>
 #include <QMetaEnum>
+#include <QNetworkAccessManager>
 #include <QObject>
 #include <QTimer>
+#include <QUrl>
 #include <QWebSocket>
+
+QT_BEGIN_NAMESPACE
+class QNetworkReply;
+QT_END_NAMESPACE
 
 #include "enums.h"
 #include "structs.h"
@@ -195,6 +201,14 @@ class Api : public QObject {
     // power mode
     int getPowerMode();
     int setPowerMode(PowerEnums::PowerMode mode);  // madalone: keeper feature; firmware resets standby_timeout_sec on transition to NORMAL
+
+    // madalone (Phase 0, 2026-05-02): one-shot REST auth probe.
+    // Fires GET /api/system/power against the local firmware in H3 → H2 → H4 → H1
+    // order, short-circuits on first 200 OK. H1 is destructive (calls
+    // Config::generateNewWebConfigPin) and only runs if the three non-destructive
+    // hypotheses all fail. Each step logs at qCInfo(lcCore) with "[REST Auth Probe Hn]"
+    // prefix. Triggered from main.cpp once on connected() if Config::probeRestAuth.
+    Q_INVOKABLE void probeRestAuth();
 
  public:
     /**
@@ -445,6 +459,16 @@ class Api : public QObject {
     QString      m_url;
     QWebSocket   m_webSocket;
     unsigned int m_requestId = 0;
+
+    // madalone (Phase 0): dedicated QNAM for the REST auth probe. Kept separate
+    // from the WS path so probe lifecycle doesn't entangle with the websocket.
+    QNetworkAccessManager m_probeNam;
+    bool                  m_probeRunning = false;  // re-entrancy guard
+    QUrl                  m_probeEndpoint;
+    QString               m_probeToken;            // UC_TOKEN_PATH content (for H2/H4)
+
+    void probeStep(int hNum);
+    void probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& authLabel);
 
     QTimer *m_keepAliveTimer;
     int     m_keepAliveInterval = 60000;

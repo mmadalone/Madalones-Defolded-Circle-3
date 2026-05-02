@@ -102,6 +102,11 @@ class Config : public QObject {
     Q_PROPERTY(int phantomWakeSuppressGraceMs READ getPhantomWakeSuppressGraceMs WRITE setPhantomWakeSuppressGraceMs NOTIFY phantomWakeSuppressGraceMsChanged)
     // madalone (v1.4.23): recent-input lookback for skip-grace logic
     Q_PROPERTY(int phantomWakeSuppressInputLookbackMs READ getPhantomWakeSuppressInputLookbackMs WRITE setPhantomWakeSuppressInputLookbackMs NOTIFY phantomWakeSuppressInputLookbackMsChanged)
+    // madalone (Phase 0, 2026-05-02): one-shot REST auth probe gate. Default off.
+    // When true, Core::probeRestAuth() auto-fires once after the WS connected() signal,
+    // running the H3 → H2 → H4 → H1 sequence and logging each step via qCInfo(lcCore)
+    // for Logdy capture. H1 (PIN regen) only fires if all prior hypotheses fail.
+    Q_PROPERTY(bool probeRestAuth READ getProbeRestAuth WRITE setProbeRestAuth NOTIFY probeRestAuthChanged)
     Q_PROPERTY(bool showShuffleButton READ getShowShuffleButton WRITE setShowShuffleButton NOTIFY showShuffleButtonChanged)
     Q_PROPERTY(bool showRepeatButton READ getShowRepeatButton WRITE setShowRepeatButton NOTIFY showRepeatButtonChanged)
     Q_PROPERTY(bool showMediaBrowserButton READ getShowMediaBrowserButton WRITE setShowMediaBrowserButton NOTIFY showMediaBrowserButtonChanged)
@@ -202,6 +207,9 @@ class Config : public QObject {
     // madalone (v1.4.23)
     int  getPhantomWakeSuppressInputLookbackMs();
     void setPhantomWakeSuppressInputLookbackMs(int ms);
+    // madalone (Phase 0): REST auth probe gate
+    bool getProbeRestAuth();
+    void setProbeRestAuth(bool value);
 
     bool getShowShuffleButton();
     void setShowShuffleButton(bool value);
@@ -366,6 +374,8 @@ class Config : public QObject {
     void phantomWakeSuppressGraceMsChanged();
     // madalone (v1.4.23)
     void phantomWakeSuppressInputLookbackMsChanged();
+    // madalone (Phase 0)
+    void probeRestAuthChanged();
     void showShuffleButtonChanged();
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();

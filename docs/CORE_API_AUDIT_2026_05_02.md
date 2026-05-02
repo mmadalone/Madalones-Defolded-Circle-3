@@ -36,7 +36,27 @@ Three surprises shifted the plan:
 
 ---
 
-## Phase 0 — REST auth probe (mandatory blocker)
+## Phase 0 — RESOLVED 2026-05-02 EOD: H2 wins (Bearer via UC_TOKEN content)
+
+**Empirical outcome:** the probe ran on UCR3 (firmware 2.9.1) and short-circuited at H2. `Authorization: Bearer <UC_TOKEN_PATH content>` returns 200 OK on `GET http://127.0.0.1:8080/api/system/power`. **No PIN handling required for M1.**
+
+The hypothesis ranking inversion below (Basic-with-PIN expected to win) was wrong about Bearer. The OpenAPI spec contradiction (Bearer mentioned in intro but absent from `securitySchemes`) reflects the spec — but empirically the firmware accepts Bearer regardless. File an upstream issue against `unfoldedcircle/core-api` to add Bearer to `securitySchemes`; low priority since our code uses the empirical contract.
+
+| # | Hypothesis | Result |
+|---|---|---|
+| H3 | No-auth localhost | **401** — no localhost-trust pattern |
+| H2 | Bearer via UC_TOKEN | **200** ✓ WINNER |
+| H4/H1 | (token-as-PIN / regen PIN) | not reached (probe short-circuited at H2) |
+
+**M1 implications:** build an `Authorization: Bearer <token>` helper on `core::Api` reusing the existing `UC_TOKEN_PATH` read at `core.cpp:79-90`. No QSettings PIN persistence, no PIN-rotation UI, no destructive first-enable side-effects. Cleanest possible outcome from Appendix A.
+
+See `.claude-memory/project_uc3_rest_auth_mechanism.md` for the full empirical writeup including diagnostic trickery (Logdy WS does NOT capture remote-ui-custom logs in firmware 2.9.1; the probe used `Config::setDeviceName` as an externally-observable side-effect channel).
+
+The detailed analysis below is preserved as historical context — Phase 0 implementation, hypothesis design, and the "PIN-access answer" subsection were correct in spirit but the destructive H1 path turned out to be unnecessary.
+
+---
+
+## Phase 0 — REST auth probe (original plan, preserved for context)
 
 No (a) MIGRATE work proceeds without first answering: how does the custom-ui process running on the device authenticate to its own firmware's REST API? Today, `core::Api::authenticate()` (`core.cpp:69-101`) uses `UC_TOKEN_PATH` content as a WS RPC payload — it has never made a single authenticated REST call to the firmware. The four `QNetworkAccessManager` consumers (`voice.cpp`, `mediaPlayer.cpp` + headers) all hit external URLs (TTS audio, media artwork).
 

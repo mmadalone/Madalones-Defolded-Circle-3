@@ -3,6 +3,13 @@
 
 #include "core.h"
 
+#include <QDateTime>
+#include <QNetworkReply>
+#include <QNetworkRequest>
+#include <QSettings>
+#include <memory>
+
+#include "../config/config.h"  // madalone (Phase 0): probeRestAuth uses generateNewWebConfigPin
 #include "../logging.h"
 #include "../ui/notification.h"
 #include "../util.h"
@@ -3567,6 +3574,255 @@ void Api::processResponseMediaSearch(int reqId, int code, QVariant msgData) {
     pagination.page  = paginationMap.value("page", 1).toInt();
 
     emit respMediaSearch(reqId, code, items, pagination);
+}
+
+// ============================================================================
+// madalone (Phase 0, 2026-05-02): one-shot REST auth probe
+// ----------------------------------------------------------------------------
+// Sequentially fires GET /api/system/power against the local firmware in
+//   H3 (no-auth localhost) → H2 (Bearer via UC_TOKEN) → H4 (Basic w/ token-as-PIN)
+//   → H1 (Basic with regenerated PIN — DESTRUCTIVE, last resort).
+// Short-circuits on first 200 OK. H1 only fires if H3+H2+H4 all return non-200.
+// Each step logs at qCInfo(lcCore) with "[REST Auth Probe Hn]" prefix; the new
+// PIN value (only present after H1's rotation) logs at qCWarning so it's easy
+// to spot in Logdy. See docs/CORE_API_AUDIT_2026_05_02.md "Phase 0" + the memo
+// project_phase_0_auth_hypothesis_inverted.md for the why behind the ordering.
+// ============================================================================
+
+// madalone (Phase 0 diagnostic): persist a step marker to QSettings ("debug/probeLast*")
+// so probe progress can be observed even if Logdy/journal don't capture qCWarning. Read
+// back later via /api/system/backup/export → grep "debug/probe*" in the conf file.
+static void writeProbeMarker(const QString& key, const QString& value) {
+    QSettings s;
+    s.setValue(QStringLiteral("debug/") + key, value);
+    s.setValue(QStringLiteral("debug/probeLastSeenAt"),
+               QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
+    s.sync();
+}
+
+void Api::probeRestAuth() {
+    if (m_probeRunning) {
+        qCWarning(lcCore()) << "[REST Auth Probe] already running, ignoring re-entry";
+        return;
+    }
+    m_probeRunning = true;
+    writeProbeMarker(QStringLiteral("probeLastStage"), QStringLiteral("entered"));
+
+    // Derive REST base URL from the WS URL: ws://127.0.0.1:8080/ws → http://127.0.0.1:8080.
+    // QUrl handles scheme/host/port; explicitly set path to /api/system/power per the
+    // endpoint contract at openapi.yaml:10575-10595.
+    QUrl wsUrl(m_url);
+    m_probeEndpoint = QUrl();
+    m_probeEndpoint.setScheme(wsUrl.scheme() == "wss" ? "https" : "http");
+    m_probeEndpoint.setHost(wsUrl.host().isEmpty() ? "127.0.0.1" : wsUrl.host());
+    if (wsUrl.port() != -1) {
+        m_probeEndpoint.setPort(wsUrl.port());
+    }
+    m_probeEndpoint.setPath("/api/system/power");
+
+    // Read UC_TOKEN_PATH content (mirrors authenticate() at ~core.cpp:79-90).
+    // Used by H2 (Bearer) and H4 (Basic w/ token-as-PIN). If missing, those steps skip.
+    QFile tokFile(qgetenv("UC_TOKEN_PATH"));
+    if (tokFile.open(QIODevice::ReadOnly | QIODevice::Text)) {
+        m_probeToken = QString::fromUtf8(tokFile.readAll()).trimmed();
+        tokFile.close();
+    } else {
+        m_probeToken.clear();
+        qCWarning(lcCore()) << "[REST Auth Probe] UC_TOKEN_PATH unreadable — H2/H4 will be skipped";
+    }
+
+    qCWarning(lcCore()) << "[REST Auth Probe] starting; endpoint =" << m_probeEndpoint.toString()
+                     << "ws-url-source =" << m_url
+                     << "token-len =" << m_probeToken.length();
+
+    writeProbeMarker(QStringLiteral("probeEndpoint"), m_probeEndpoint.toString());
+    writeProbeMarker(QStringLiteral("probeTokenLen"), QString::number(m_probeToken.length()));
+
+    // v3 diagnostic: side-effect proves the probe ran. setDeviceName is observable
+    // via /api/cfg/device. If after deploy the device name flips to "PROBE-V3-RAN-<token-len>",
+    // probeRestAuth() was reached and Config singleton was accessible. This bypasses the
+    // upstream onResult/respApiAccess signal-mismatch bug (set_api_access response goes
+    // to respApiAccess but Config::generateNewWebConfigPin uses onResult on respResult,
+    // so its success callback never fires; that's why H1 PIN rotation fails silently).
+    ::uc::Config* cfgInstance = ::uc::Config::instance();
+    if (cfgInstance) {
+        const QString marker = QStringLiteral("PROBE-V3-RAN-tk%1").arg(m_probeToken.length());
+        cfgInstance->setDeviceName(marker);
+        qCWarning(lcCore()) << "[REST Auth Probe] DEVICE NAME → " << marker;
+        writeProbeMarker(QStringLiteral("probeDeviceNameSet"), marker);
+    }
+
+    probeStep(3);  // H3 first (non-destructive, no auth header)
+}
+
+void Api::probeStep(int hNum) {
+    QNetworkRequest req(m_probeEndpoint);
+    QString         authLabel;
+
+    switch (hNum) {
+        case 3:
+            // H3: no Authorization header. Tests localhost-trust pattern.
+            authLabel = QStringLiteral("none");
+            break;
+
+        case 2:
+            // H2: Bearer via UC_TOKEN content.
+            if (m_probeToken.isEmpty()) {
+                qCWarning(lcCore()) << "[REST Auth Probe H2] no UC_TOKEN; skipping → H4";
+                probeStep(4);
+                return;
+            }
+            req.setRawHeader("Authorization", QByteArray("Bearer ") + m_probeToken.toUtf8());
+            authLabel = QStringLiteral("Bearer");
+            break;
+
+        case 4:
+            // H4: Basic with web-configurator:UC_TOKEN. Eliminates "what if they're the same secret?"
+            if (m_probeToken.isEmpty()) {
+                qCWarning(lcCore()) << "[REST Auth Probe H4] no UC_TOKEN; skipping → H1";
+                probeStep(1);
+                return;
+            }
+            {
+                const QByteArray cred = (QStringLiteral("web-configurator:") + m_probeToken).toUtf8();
+                req.setRawHeader("Authorization", QByteArray("Basic ") + cred.toBase64());
+            }
+            authLabel = QStringLiteral("Basic (token-as-PIN)");
+            break;
+
+        case 1: {
+            // H1: DESTRUCTIVE — calls generateNewWebConfigPin() to rotate, then re-tests Basic with
+            // the new PIN. Never short-circuited from BEFORE this point — only fires if H3+H2+H4
+            // all returned non-200. Per the audit doc PIN-access answer, this is the only known
+            // way for the custom-ui to *learn* a usable PIN (the firmware doesn't expose a read
+            // path). Old PIN (e.g. user's empirical 6984) gets invalidated.
+            qCWarning(lcCore()) << "[REST Auth Probe H1] DESTRUCTIVE — calling generateNewWebConfigPin()";
+
+            // ::uc::Config (the QSettings-backed singleton) — fully qualified to skip past
+            // uc::core::Config (the DTO struct in structs.h:241) that name-lookup finds first.
+            ::uc::Config* cfg = ::uc::Config::instance();
+            if (!cfg) {
+                qCCritical(lcCore()) << "[REST Auth Probe H1] Config::instance() is null; aborting probe";
+                m_probeRunning = false;
+                return;
+            }
+
+            // Connect-once to webConfiguratorPinChanged: disconnect from inside the lambda after
+            // first emission. shared_ptr keeps the Connection alive across the lambda invocation.
+            auto conn = std::make_shared<QMetaObject::Connection>();
+            // Safety timeout: if generateNewWebConfigPin's underlying setApiAccess fails, the
+            // success signal never fires. Cap at 10 s so the probe doesn't hang forever in
+            // m_probeRunning=true state. Logdy capture window is short anyway.
+            auto* timeout = new QTimer(this);
+            timeout->setSingleShot(true);
+            timeout->setInterval(10000);
+
+            QObject::connect(timeout, &QTimer::timeout, this, [this, conn, timeout]() {
+                QObject::disconnect(*conn);
+                qCCritical(lcCore()) << "[REST Auth Probe H1] PIN rotation timed out — generateNewWebConfigPin()"
+                                        " never emitted webConfiguratorPinChanged. All hypotheses FAILED.";
+                ::uc::Config* cfgFail = ::uc::Config::instance();
+                if (cfgFail) cfgFail->setDeviceName(QStringLiteral("PROBE-FAIL-H1-TIMEOUT"));
+                m_probeRunning = false;
+                timeout->deleteLater();
+            });
+
+            *conn = QObject::connect(cfg, &::uc::Config::webConfiguratorPinChanged, this,
+                [this, conn, timeout](QString newPin) {
+                    QObject::disconnect(*conn);
+                    timeout->stop();
+                    timeout->deleteLater();
+
+                    // Log the new PIN at WARNING level so it's findable in Logdy.
+                    qCWarning(lcCore()) << "[REST Auth Probe H1] PIN ROTATED — new PIN =" << newPin;
+                    writeProbeMarker(QStringLiteral("probeNewPin"), newPin);
+                    writeProbeMarker(QStringLiteral("probeLastStage"),
+                                     QStringLiteral("H1_pin_rotated"));
+
+                    QNetworkRequest r(m_probeEndpoint);
+                    const QByteArray cred = (QStringLiteral("web-configurator:") + newPin).toUtf8();
+                    r.setRawHeader("Authorization", QByteArray("Basic ") + cred.toBase64());
+                    qCWarning(lcCore()) << "[REST Auth Probe H1] GET" << m_probeEndpoint.toString()
+                                     << "auth-type = Basic (regenerated PIN)";
+                    QNetworkReply* reply = m_probeNam.get(r);
+                    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
+                        probeOnReplyFinished(1, reply, QStringLiteral("Basic (regenerated PIN)"));
+                    });
+                });
+
+            timeout->start();
+            cfg->generateNewWebConfigPin();
+            return;
+        }
+
+        default:
+            qCCritical(lcCore()) << "[REST Auth Probe] unknown hypothesis number" << hNum;
+            m_probeRunning = false;
+            return;
+    }
+
+    qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe H%1] GET").arg(hNum)
+                     << m_probeEndpoint.toString()
+                     << "auth-type =" << authLabel;
+    writeProbeMarker(QStringLiteral("probeLastStage"),
+                     QStringLiteral("H%1_sent_%2").arg(hNum).arg(authLabel));
+    QNetworkReply* reply = m_probeNam.get(req);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, hNum, authLabel, reply]() {
+        probeOnReplyFinished(hNum, reply, authLabel);
+    });
+}
+
+void Api::probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& authLabel) {
+    const int        status      = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+    const QByteArray body        = reply->readAll();
+    QString          bodyPreview = QString::fromUtf8(body.left(100));
+    bodyPreview.replace('\n', QStringLiteral("\\n"));
+    bodyPreview.replace('\r', QStringLiteral(""));
+
+    qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe H%1] status =").arg(hNum) << status
+                     << "body =" << bodyPreview;
+    reply->deleteLater();
+    writeProbeMarker(QStringLiteral("probeLastStage"),
+                     QStringLiteral("H%1_status_%2").arg(hNum).arg(status));
+    writeProbeMarker(QStringLiteral("probeH%1Status").arg(hNum),
+                     QString::number(status));
+
+    if (status == 200) {
+        qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe] WINNER: H%1 (%2)").arg(hNum).arg(authLabel);
+        writeProbeMarker(QStringLiteral("probeWinner"),
+                         QStringLiteral("H%1 (%2)").arg(hNum).arg(authLabel));
+        // v4 diagnostic: also flip device name to the winner so it's externally observable
+        // via /api/cfg/device — the only outside-the-process channel we have for results.
+        ::uc::Config* cfg = ::uc::Config::instance();
+        if (cfg) {
+            const QString winName = QStringLiteral("PROBE-WIN-H%1").arg(hNum);
+            cfg->setDeviceName(winName);
+            qCWarning(lcCore()) << "[REST Auth Probe] DEVICE NAME (winner) → " << winName;
+        }
+        m_probeRunning = false;
+        return;
+    }
+
+    // Non-200 → escalate per H3 → H2 → H4 → H1 chain.
+    int next = -1;
+    switch (hNum) {
+        case 3: next = 2; break;
+        case 2: next = 4; break;
+        case 4: next = 1; break;
+        case 1:
+            qCWarning(lcCore()) << "[REST Auth Probe] all hypotheses FAILED — final status =" << status;
+            {
+                ::uc::Config* cfg = ::uc::Config::instance();
+                if (cfg) cfg->setDeviceName(QStringLiteral("PROBE-FAIL-ALL"));
+            }
+            m_probeRunning = false;
+            return;
+        default:
+            qCCritical(lcCore()) << "[REST Auth Probe] reply for unknown hypothesis" << hNum;
+            m_probeRunning = false;
+            return;
+    }
+    probeStep(next);
 }
 
 }  // namespace core
