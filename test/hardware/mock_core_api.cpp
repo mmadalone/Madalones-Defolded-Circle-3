@@ -336,5 +336,16 @@ int Api::listStandbyInhibitors() {
     return reqId;
 }
 
+// madalone (Phase 0): Q_INVOKABLE void Api::probeRestAuth() declaration in core.h
+// generates a moc metacall stub that the test binary links. The keeper/suppressor
+// don't call probeRestAuth, but moc resolves the symbol regardless — without this
+// no-op stub the test binary fails to link with `undefined reference to
+// 'uc::core::Api::probeRestAuth()'`. CI Hardware-tests caught this on the v1.4.39
+// push (Phase 0 was local-only-build per audit Q2 so it never went through CI).
+void Api::probeRestAuth() {
+    // intentionally no-op: probe is a one-shot diagnostic gated on Config.probeRestAuth;
+    // unit tests don't exercise it.
+}
+
 }  // namespace core
 }  // namespace uc
