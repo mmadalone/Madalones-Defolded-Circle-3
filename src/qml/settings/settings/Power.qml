@@ -251,9 +251,8 @@ Settings.Page {
                     }
                 }
 
-                // M1 (2026-05-03): opt-in REST inhibitor API toggle. Default OFF.
-                // Swaps the 270 s WS ping loop for POST /system/power/standby_inhibitors —
-                // event-based, no polling race window. Coexists with the legacy ping path.
+                // M1 (2026-05-03): REST inhibitor API toggle. Default ON — REST is the
+                // canonical firmware path; WS ping is the fallback if disabled.
                 RowLayout {
                     spacing: 10
                     visible: Config.sessionKeeperEnabled
@@ -262,7 +261,7 @@ Settings.Page {
                         Layout.fillWidth: true
                         wrapMode: Text.WordWrap
                         color: colors.offwhite
-                        text: qsTr("Use REST inhibitor API (experimental)")
+                        text: qsTr("Use REST inhibitor API")
                         font: fonts.primaryFont(30)
                     }
 
@@ -281,7 +280,7 @@ Settings.Page {
                     visible: Config.sessionKeeperEnabled
                     wrapMode: Text.WordWrap
                     color: colors.light
-                    text: qsTr("When on, uses the firmware's native standby-inhibitor REST API instead of periodic wake-up pings. Eliminates the polling race window. Reverts to ping if disabled.")
+                    text: qsTr("Uses the firmware's native standby-inhibitor REST API. Event-based, no polling race window. Disable to fall back to periodic wake-up pings if the inhibitor API misbehaves.")
                     font: fonts.primaryFont(22)
                 }
             }

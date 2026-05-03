@@ -478,11 +478,19 @@ void Config::setSessionKeeperRequireAc(bool value)
 }
 
 // madalone (M1, 2026-05-03): standby_inhibitors REST API toggle.
-// Default OFF, user-controlled indefinitely (audit doc Q3). When ON, Mod 5's
-// effector swaps from WS ping → POST /system/power/standby_inhibitors.
+// Default ON since 2026-05-03 — REST inhibitor is the canonical firmware path
+// (UC's own core uses it for activity / web-configurator inhibitors). The
+// 270 s WS ping loop the keeper used pre-M1 was AP-UC-46 (hand-rolled func
+// when a documented native endpoint exists). Bearer auth shares the SAME
+// UC_TOKEN as the WS auth path — if it breaks, WS breaks too, so there's no
+// realistic "REST broken / WS still works" failure mode. Hard-fail design
+// makes any future firmware breakage visible within hours (sessions go to
+// standby unexpectedly + qCWarning logs). The audit Q3 "no auto-flip
+// indefinitely" decision was made before Phase 0 + smokes confirmed; revised
+// after end-to-end verification on UCR3 firmware 2.9.1.
 bool Config::getSessionKeeperUseInhibitorApi()
 {
-    return m_settings->value("power/sessionKeeperUseInhibitorApi", false).toBool();
+    return m_settings->value("power/sessionKeeperUseInhibitorApi", true).toBool();
 }
 
 void Config::setSessionKeeperUseInhibitorApi(bool value)

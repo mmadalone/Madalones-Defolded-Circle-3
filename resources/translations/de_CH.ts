@@ -2999,7 +2999,7 @@ Climate fan</extracomment>
         <translation>Leistung</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="312"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="311"/>
         <source>Keep WiFi connected in standby</source>
         <extracomment>Title for indication of wifi always on functionality</extracomment>
         <translation>WiFi-Verbindig im Standby</translation>
@@ -3009,54 +3009,54 @@ Climate fan</extracomment>
         <translation type="vanished">Halt WiFi immer verbunde, o we ds Grät im Ruhezustand isch. Ermöglicht e schnälleri Widerverbindig nachem Ufwache. Bitte beachte, dass dieFunktion d Akkulaufziit chli verchürzt.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="362"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="361"/>
         <source>Retry commands after wakeup</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="372"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="371"/>
         <source>Retry commands within %1 second(s) after wakeup.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="384"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="383"/>
         <source>Disabled</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="423"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="422"/>
         <source>Wakeup sensitivity</source>
         <extracomment>Movement the remote reacts to wake up</extracomment>
         <translation>Ufwach-Empfindlichkeit</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="433"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="432"/>
         <source>Amount of movement needed to wake up the remote.</source>
         <translation>Bewegig, wo brucht wird, um d Fernbedienig ufzwecke.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="448"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="447"/>
         <source>Off</source>
         <extracomment>Wakeup is turned off</extracomment>
         <translation>Aus</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="450"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="449"/>
         <source>Sensitivity</source>
         <extracomment>More sensitive wakeup setting, as in the remote will be more sensitive to movement</extracomment>
         <translation>Empfindlichkeit</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="488"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="487"/>
         <source>Display off timeout</source>
         <extracomment>How much time the display will turn off after</extracomment>
         <translation>Timeout Bildschirm abschalte</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="385"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="384"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="507"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="508"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="509"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="731"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="730"/>
         <source>%1 seconds</source>
         <translation>%1 Sekunde</translation>
     </message>
@@ -3111,48 +3111,48 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="265"/>
-        <source>Use REST inhibitor API (experimental)</source>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="264"/>
+        <source>Use REST inhibitor API</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="284"/>
-        <source>When on, uses the firmware&apos;s native standby-inhibitor REST API instead of periodic wake-up pings. Eliminates the polling race window. Reverts to ping if disabled.</source>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="283"/>
+        <source>Uses the firmware&apos;s native standby-inhibitor REST API. Event-based, no polling race window. Disable to fall back to periodic wake-up pings if the inhibitor API misbehaves.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="340"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="339"/>
         <source>Faster reconnect after wake; minor battery cost.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="548"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="547"/>
         <source>Screen off animations</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="557"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="556"/>
         <source>Enabled</source>
         <translation type="unfinished">Aktiviert</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="576"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="575"/>
         <source>Fire when undocked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="598"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="597"/>
         <source>Style</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="711"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="710"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Ruhezustand nach</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="732"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="731"/>
         <source>%1 minutes</source>
         <translation>%1 Minute</translation>
     </message>
@@ -5044,7 +5044,7 @@ Tippe auf den QR-Code, um zu vergrössern.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1041"/>
+        <location filename="../../src/config/config.cpp" line="1049"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Fähler bim Lade vo de Konfiguration. Versuechs nomol.</translation>
     </message>

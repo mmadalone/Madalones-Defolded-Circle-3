@@ -97,10 +97,12 @@ class Config : public QObject {
     Q_PROPERTY(bool sessionKeeperEnabled READ getSessionKeeperEnabled WRITE setSessionKeeperEnabled NOTIFY sessionKeeperEnabledChanged)
     Q_PROPERTY(int sessionKeeperIdleSec READ getSessionKeeperIdleSec WRITE setSessionKeeperIdleSec NOTIFY sessionKeeperIdleSecChanged)
     Q_PROPERTY(bool sessionKeeperRequireAc READ getSessionKeeperRequireAc WRITE setSessionKeeperRequireAc NOTIFY sessionKeeperRequireAcChanged)
-    // madalone (M1, 2026-05-03): opt-in toggle to swap Mod 5's WS ping loop for
-    // POST /system/power/standby_inhibitors. Default OFF; user-controlled
-    // indefinitely (audit Q3 — no auto-flip in a future release). Bearer auth
-    // via UC_TOKEN content (Phase 0 H2 winner).
+    // madalone (M1, 2026-05-03): toggle to swap Mod 5's WS ping loop for
+    // POST /system/power/standby_inhibitors. Default ON since 2026-05-03 —
+    // REST inhibitor is the canonical firmware path (AP-UC-46: WS ping was
+    // a workaround for an endpoint that already existed). Bearer auth via
+    // UC_TOKEN content (Phase 0 H2 winner). Toggle remains user-controllable
+    // for fallback if a future firmware breaks the inhibitor API.
     Q_PROPERTY(bool sessionKeeperUseInhibitorApi READ getSessionKeeperUseInhibitorApi WRITE setSessionKeeperUseInhibitorApi NOTIFY sessionKeeperUseInhibitorApiChanged)
     // madalone (v1.4.20, Mod 6): PhantomWakeSuppressor preferences (QSettings-backed)
     Q_PROPERTY(bool phantomWakeSuppressEnabled READ getPhantomWakeSuppressEnabled WRITE setPhantomWakeSuppressEnabled NOTIFY phantomWakeSuppressEnabledChanged)
