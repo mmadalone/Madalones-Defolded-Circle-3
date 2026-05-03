@@ -24,7 +24,6 @@ Three surprises shifted the plan:
 |---|---|---|
 | MIGRATE | 1 | M1 standby_inhibitors swap (Mod 5) |
 | CONFLICT | 1 | C1 Mod 5 vs `cfg/power_saving.standby_sec=0` (auto-resolves with M1) |
-| NEW MOD | 3 | N1 ambient-light adaptation (med), N2 log shipper (low), N3 button LED color (cosmetic) |
 | DEFER | 1 | D1 Mod 6 force-LOW_POWER REST swap (works on WS, no race to fix) |
 | N/A | ~52 | Documented per category below |
 
@@ -32,7 +31,7 @@ Three surprises shifted the plan:
 
 **No CONFLICTS that block ship of v1.4.x.** Existing custom code coexists fine with the firmware's REST surface today; the firmware is just exposing more options than we've used.
 
-**All five open questions resolved (2026-05-02):** Q1 (PIN access — no non-destructive path; probe handles it), Q2 (probe is local-only build, no tagged release), Q3 (M1 ships behind default-off opt-in toggle), Q4 (N1 worth doing after M1), Q5 (D1 permanently deferred). Full Q&A table at the bottom of this doc.
+**Four open questions resolved (2026-05-02):** Q1 (PIN access — no non-destructive path; probe handles it), Q2 (probe is local-only build, no tagged release), Q3 (M1 rollout strategy), Q5 (D1 permanently deferred). Full Q&A table at the bottom of this doc.
 
 ---
 
@@ -193,7 +192,7 @@ Called from `evaluateSession()` (line 116) via repeating 270 s `m_pingTimer` (co
 #### Dependencies
 
 - **Blocked by:** Phase 0 auth probe.
-- **Blocks:** N1 (ambient-light adaptation), N2 (log shipper), and any other REST-using mod — they all need the same auth foundation that M1 establishes.
+- **Blocks:** any future REST-using mod — all such mods will reuse the auth foundation M1 establishes.
 - **Resolves:** C1 (the standby_sec=0 race).
 
 ---
@@ -234,92 +233,7 @@ This is a soft conflict (no user-visible bug, no broken behavior), but it's an e
 
 ---
 
-## (c) NEW MOD — 3 findings
-
-### N1 — Ambient-light adaptation for screensaver brightness (medium priority)
-
-**Affected files:** new mod or extension of Mod 1 (matrixrain / ChargingScreen). `src/qml/components/ChargingScreen.qml`, `src/ui/screensaverconfig_macros.h`, possibly `src/ui/matrixrain.cpp`.
-
-**Effort:** M (8–12 h for a polished feature with config UI).
-
-#### Endpoint
-
-`GET /system/sensors/ambient_light` (`logs/core-openapi.yaml:10761-10778`). Returns `AmbientLight` schema (`logs/core-openapi.yaml:16768`+ — intensity field, integer 0-65535 per the handoff's earlier note).
-
-#### Sketch
-
-Poll the sensor at low cadence (~30 s) when screensaver is active. Map intensity → screensaver brightness multiplier. Dim Matrix rain glyphs in dark rooms; brighten them in bright rooms. Battery + eye-strain win for any UCR3 used in a bedroom/living-room context where ambient light varies.
-
-Settings UI: new "Adaptive brightness" toggle in Settings → Screensaver → General Behavior, alongside the existing v1.4.15 "Run after dismissal while docked" slider.
-
-#### Risk callouts
-
-- **Phase 0 dependency.** REST poll needs auth.
-- **Sensor availability.** UCR3 has the sensor (handoff confirms via spec); UCR2 may or may not. Schema/feature-detection needed before exposing the toggle.
-- **Don't over-tune.** Map intensity → multiplier with hysteresis to avoid flicker as someone walks past the sensor. Probably a 5-second EWMA on the intensity value before applying.
-- **Compete with `cfg/display.auto_brightness`?** Display brightness is upstream-managed. Our adaptation should target only the screensaver layer; let the firmware own the LCD backlight.
-
-#### Dependencies
-
-- **Blocked by:** Phase 0.
-- **Blocks:** none.
-
----
-
-### N2 — Log shipper / on-device diagnostic capture (low priority)
-
-**Affected files:** new mod entirely; settings page in `src/qml/settings/settings/`; new `src/hardware/logShipper.{h,cpp}` candidate.
-
-**Effort:** M (8–12 h for a privacy-aware MVP).
-
-#### Endpoint
-
-`GET /system/logs` (`logs/core-openapi.yaml:10333-10430`). Query-based log retrieval with filters: priority (`p`, 0-8, default 5), services (`s`, CSV), `from`/`to` (ISO 8601), text search (`q`), `boot_ids`. Returns JSON array of `SystemLogEntry` or text (tab-separated) up to 10K entries.
-
-#### Sketch
-
-User-triggered (Settings → Diagnostics → "Capture logs and email me a link") rather than always-on telemetry. On trigger: pull last N minutes of `core` + `web` + `ui` logs, compress, POST to a user-configurable destination (their own gist/pastebin/Sentry). Include a context header (firmware version, mod versions, recent settings).
-
-#### Why this is lower priority than it looks
-
-Per `feedback_uc3_systemlogs_core_only.md`, `/api/system/logs` filters by service and **never shows our custom-ui entries** at any priority level. So the practical value is capturing *firmware* logs around an issue, not capturing our own qCDebug output (Logdy WS is the only path for ours). That makes N2 a *firmware diagnostic* aid, not a *custom-mod diagnostic* aid. Useful when reporting a firmware bug to UC; less useful for our own debugging where Logdy already covers the gap.
-
-#### Risk callouts
-
-- **Privacy.** System logs may contain Wi-Fi SSIDs, integration tokens, paired devices. Require explicit opt-in per destination, redact sensitive substrings before shipping.
-- **Phase 0 dependency.** REST auth needed.
-- **Rate limiting.** Cap at 1 capture per 10 minutes; exponential back-off on 429.
-- **Boot-ID semantics.** A capture spanning a reboot needs explicit `boot_ids=` to include both. UX-wise, default to current-boot-only.
-
-#### Dependencies
-
-- **Blocked by:** Phase 0.
-- **Blocks:** none.
-
----
-
-### N3 — Button LED static_color picker (cosmetic, lowest priority)
-
-**Affected files:** `src/config/config.{h,cpp}` (new Q_PROPERTY); new QML color picker, likely as a sub-page of Settings → UI.
-
-**Effort:** S (~6 h if firmware feature-detection works cleanly, M if device-class gating is finicky).
-
-#### Endpoint
-
-`/cfg/button` (`logs/core-openapi.yaml:7210-7269`). Schema includes `static_color` field — RGB or preset, plus `features` array including `RGB_COLOR` and `ZONES`. We expose `buttonBrightness` and `buttonAutoBrightness` (Config.h:56-58) but never `static_color`.
-
-#### Why low priority
-
-Pure cosmetic. No user has asked. Backwards-compatible with all device classes (gate the picker on `features.includes("RGB_COLOR")`). Defer until a user request lands; document it here so we don't re-discover it.
-
-#### Risk callouts
-
-- **Schema definition for `StaticButtonColor`** is referenced but not pasted into this audit — needs verification (hex string vs preset enum) before wiring.
-- **No conflict with brightness.** Spec lists them as independent; our existing brightness slider keeps working.
-
----
-
-## (d) DEFER — 1 finding
+## (c) DEFER — 1 finding
 
 ### D1 — Mod 6 force-LOW_POWER could move to REST, but no win
 
@@ -343,7 +257,7 @@ So D1 is technically a MIGRATE candidate. But:
 
 ---
 
-## (e) N/A — Documented per category
+## (d) N/A — Documented per category
 
 ### `system/*` (24 endpoints)
 
@@ -401,16 +315,8 @@ So D1 is technically a MIGRATE candidate. But:
                               ▼
 ┌─ Phase 1 ──────────────────────────────────────────────────────────┐
 │  M1 — standby_inhibitors swap (Mod 5)         M    ~6–10 h          │
-│  v1.4.40 (feature-flagged off, user-opt-in only — Q3)               │
-│  No auto-flip. Toggle stays user-controlled indefinitely.            │
-└─────────────────────────────────────────────────────────────────────┘
-                              │
-                              ▼
-┌─ Phase 2 (parallelizable) ─────────────────────────────────────────┐
-│  N1 — ambient-light adaptation                M    ~8–12 h          │
-│  N2 — log shipper (low priority)              M    ~8–12 h          │
-│  N3 — button color picker (cosmetic)          S    ~6 h             │
-│  C1 — auto-resolved by M1 (no code)           0 h                   │
+│  Ships in v1.4.39 (toggle default ON after empirical verification)  │
+│  C1 auto-resolves with M1 (no separate code).                       │
 └─────────────────────────────────────────────────────────────────────┘
 
 Permanently DEFER: D1 (Mod 6 stays on WS).
@@ -418,8 +324,7 @@ Permanently DEFER: D1 (Mod 6 stays on WS).
 
 ### Sequencing rationale
 
-- **Phase 0 → Phase 1 → Phase 2** is sequential because Phase 0 establishes the REST auth helper that all subsequent phases reuse. Trying to ship M1 in parallel with the probe would mean either two passes through `core::Api`'s REST layer or speculative implementation.
-- **Phase 2 items are independent** of each other and can ship in any order based on user demand. N3 is so cosmetic it should only ship if requested.
+- **Phase 0 → Phase 1** is sequential because Phase 0 establishes the REST auth helper that M1 reuses. Trying to ship M1 in parallel with the probe would mean either two passes through `core::Api`'s REST layer or speculative implementation.
 - **No phase blocks v1.4.x maintenance work.** A11Y manual pass (open per `project_path_to_a_post_v1_4_35.md`), upstream merges, bug fixes proceed in parallel.
 
 ---
@@ -430,8 +335,7 @@ Permanently DEFER: D1 (Mod 6 stays on WS).
 |---|---|---|
 | Q1 | PIN access at runtime | **No non-destructive path exists.** Verified from source — `getApiAccess` returns only `{enabled, valid_to}`, PIN is not QSettings-backed, no env-var path. The probe handles this by trying H3/H2/H4 (non-destructive) first; H1 (PIN regen) runs only as a last resort. M1 ships behind a default-off opt-in toggle so any PIN rotation is user-controlled. See "PIN-access answer" subsection above. |
 | Q2 | Probe release cadence | **Local-only build.** No tagged release. Build → flash → capture → discard binary. Probe code stays in the working tree feature-gated for re-runs. |
-| Q3 | M1 rollout strategy | **Default-off feature flag with manual user opt-in.** `Config.sessionKeeperUseInhibitorApi` ships `false`. User toggles via Settings → Power → "Use REST inhibitor API (experimental)". No auto-flip in a later release; the toggle stays user-controlled. |
-| Q4 | N1 priority | **Worth doing after M1.** Sequence in Phase 2 immediately after M1 ships and soaks. |
+| Q3 | M1 rollout strategy | **Shipped behind `Config.sessionKeeperUseInhibitorApi` toggle.** Initial default OFF for M1 implementation; flipped ON in a follow-up commit (`25a2050`) after Phase 0 + 4 lifecycle smokes confirmed end-to-end behavior. Toggle remains user-controlled for fallback. |
 | Q5 | D1 — defer Mod 6 indefinitely | **Agreed.** Permanent DEFER. No follow-up audit checkpoint planned — re-evaluate only if a future firmware deprecates the WS `setPowerMode` RPC. |
 
 ---
