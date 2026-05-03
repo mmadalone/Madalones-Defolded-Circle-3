@@ -134,19 +134,24 @@ void ActivitySessionKeeper::onCoreConnected() {
                 qCWarning(lcHw()) << "ActivitySessionKeeper orphan-list GET failed:" << httpCode << errorMessage;
                 return;
             }
+            // Cleanup loop: delete any inhibitor with our `who` EXCEPT the one we currently track.
+            // Realistic scenario: UI crashes mid-session, restarts, entity events refire BEFORE
+            // onCoreConnected fires (signal-slot connection order). Keeper has already created a
+            // fresh inhibitor (m_inhibitorId="new") and the firmware has BOTH "new" and the
+            // pre-crash orphan. Deleting all matches would nuke our active one.
             int orphans = 0;
             for (const auto& inh : inhibitors) {
-                if (inh.who == QStringLiteral("madalone.session-keeper")) {
+                if (inh.who == QStringLiteral("madalone.session-keeper") && inh.id != m_inhibitorId) {
                     qCDebug(lcHw()) << "ActivitySessionKeeper orphan cleanup; deleting" << inh.id;
                     m_core->deleteStandbyInhibitor(inh.id);
                     ++orphans;
                 }
             }
-            // Local state was already cleared on disconnect; cleanup is firmware-side only.
             if (orphans > 0) {
                 qCWarning(lcHw()) << "ActivitySessionKeeper orphan cleanup deleted" << orphans << "inhibitor(s)";
             }
-            // Recreate fresh if we're currently in an active session.
+            // If active but no current id (lost tracking across disconnect, no events refired yet),
+            // create fresh. activateInhibitor() early-returns if we already have one or have a POST in flight.
             if (m_active) {
                 activateInhibitor();
             }

@@ -444,52 +444,58 @@ class ActivitySessionKeeperTest : public QObject {
     }
 
     // M1.3: onCoreConnected with useInhibitorApi=true triggers a list call;
-    //       any orphan with who="madalone.session-keeper" gets DELETE'd; if
-    //       currently active, a fresh inhibitor is created (option (b) per plan).
+    //       any orphan with who="madalone.session-keeper" gets DELETE'd EXCEPT
+    //       the one we currently track (m_inhibitorId). Production scenario:
+    //       UI crashes mid-session, restarts, entity events refire BEFORE
+    //       onCoreConnected (signal-slot ordering), keeper creates a fresh
+    //       inhibitor — firmware now has BOTH the new one AND the pre-crash
+    //       orphan. Cleanup must skip the new one.
     void test_inhibitorApi_orphanCleanup_on_reconnect() {
         m_keeper->setUseInhibitorApi(true);
         m_keeper->setEnabled(true);
         m_keeper->setRequireAcPower(true);
         m_keeper->onPowerSupplyChanged(true);
 
-        // Simulate a session that survived a disconnect — keeper is m_active=true
-        // but m_inhibitorId is empty (cleared on disconnect).
+        // Initial activation (pre-disconnect).
         uc::test::MockCoreRecorder::pushNextCreateResponse(201, "first-uuid");
         m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
         QCoreApplication::processEvents();
         QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), 1);
 
-        // Disconnect clears local inhibitorId but firmware-side still exists.
+        // Disconnect clears local inhibitorId; firmware-side "first-uuid" persists as an orphan.
         m_keeper->onCoreDisconnected();
-        // Re-arm (simulates the natural triggers re-firing post-reconnect).
-        m_keeper->setEnabled(true);  // force re-eval (onCoreDisconnected cleared m_active)
+        // Entity events refire post-reconnect (simulated). Keeper re-activates and POSTs fresh.
+        m_keeper->setEnabled(true);
         m_keeper->onPowerSupplyChanged(true);
+        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "current-uuid");
         m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
         QCoreApplication::processEvents();
-        // The recovery path's create call also fires — track this baseline.
-        const int createCountBeforeReconnect = uc::test::MockCoreRecorder::createInhibitorCallCount();
+        // Now keeper tracks "current-uuid"; firmware-side has BOTH "first-uuid" (orphan) AND "current-uuid".
+        const int createCountBeforeCleanup = uc::test::MockCoreRecorder::createInhibitorCallCount();
+        QCOMPARE(createCountBeforeCleanup, 2);
 
-        // Inject the orphan list — one entry with our who.
+        // Inject the list response — both inhibitors present.
         uc::core::Inhibitor orphan;
-        orphan.id   = "orphan-uuid-1";
+        orphan.id   = "first-uuid";
         orphan.who  = "madalone.session-keeper";
         orphan.mode = "BLOCK";
-        QList<uc::core::Inhibitor> orphans = { orphan };
-        uc::test::MockCoreRecorder::pushNextListResponse(200, orphans);
-        // The orphan-cleanup will trigger a fresh create after delete; queue that response too.
-        uc::test::MockCoreRecorder::pushNextCreateResponse(201, "fresh-uuid");
+        uc::core::Inhibitor current;
+        current.id   = "current-uuid";
+        current.who  = "madalone.session-keeper";
+        current.mode = "BLOCK";
+        uc::test::MockCoreRecorder::pushNextListResponse(200, { orphan, current });
 
-        // Trigger reconnect.
+        // Trigger onCoreConnected (production-wired to core::Api::connected in main.cpp).
         m_keeper->onCoreConnected();
         QCoreApplication::processEvents();
-        QCoreApplication::processEvents();  // multiple rounds — list resp → delete + create
+        QCoreApplication::processEvents();  // list resp → delete loop
 
         QCOMPARE(uc::test::MockCoreRecorder::listInhibitorsCallCount(), 1);
-        // 1 orphan delete from cleanup path.
+        // Exactly 1 delete: the orphan ("first-uuid"). The currently-tracked "current-uuid" must NOT be deleted.
         QCOMPARE(uc::test::MockCoreRecorder::deleteInhibitorCallCount(), 1);
-        QCOMPARE(uc::test::MockCoreRecorder::lastDeletedInhibitorId(), QString("orphan-uuid-1"));
-        // Plus the freshly-recreated inhibitor.
-        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), createCountBeforeReconnect + 1);
+        QCOMPARE(uc::test::MockCoreRecorder::lastDeletedInhibitorId(), QString("first-uuid"));
+        // No new create fired — we already have a tracked inhibitor; activateInhibitor() early-returns.
+        QCOMPARE(uc::test::MockCoreRecorder::createInhibitorCallCount(), createCountBeforeCleanup);
     }
 
     // M1.4: Hard-fail on REST POST 401 (no silent fallback to ping path).
