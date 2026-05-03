@@ -11,6 +11,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.39 — 2026-05-03 — Mod 5 v2: standby_inhibitors REST replaces 270 s WS ping race
+
+Mod 5 (Active Session Keeper) gets a structural rewrite of its effector. Same state machine, same Settings UI, same defaults — but the underlying mechanism that keeps the device in NORMAL during active sessions is now the firmware's native `POST /system/power/standby_inhibitors` REST endpoint instead of a 270-second `setPowerMode(NORMAL)` ping loop. Event-based contract eliminates the polling race window. **Default ON** — REST inhibitor is the firmware's canonical path; the prior WS ping loop was AP-UC-46 (a workaround for an endpoint that already existed). User can flip OFF in Settings → Power if a future firmware OTA breaks the inhibitor API.
+
+### Why this matters
+
+- **Race window closed.** Pre-v1.4.39: with the firmware's standby_timeout_sec at ~300 s and Mod 5's pings at 270 s, if a session ended 260 s into a cycle there were only 40 s of inhibition left — enough that WoWLAN-induced phantom wakes plus multi-second WS round-trip latency had nuked TV/movie sessions in the wild. Post-v1.4.39: the BLOCK inhibitor holds indefinitely from the firmware's perspective; no race window exists.
+- **Bonus phantom-wake reduction during active sessions.** A BLOCK inhibitor pins the device in NORMAL, so the LOW_POWER ↔ NORMAL transitions that trigger phantom-wake events can't fire while the session is running. Mod 6 still owns idle-period phantom-wake suppression, but has nothing to catch during active media use.
+- **Cleaner architecture.** UC's own firmware uses `standby_inhibitors` for activity / web-configurator / charger / setup inhibitors. Mod 5 v1's WS ping was the off-pattern; v2 puts us on the canonical path UC uses internally.
+
+### Added
+- **`Config.sessionKeeperUseInhibitorApi` Q_PROPERTY** — opt-in/out toggle in Settings → Power, default ON. Stored at `power/sessionKeeperUseInhibitorApi`. When OFF, the legacy WS ping loop runs instead.
+- **REST infrastructure on `core::Api`** — `createStandbyInhibitor(who, why, delaySec=-1)` / `deleteStandbyInhibitor(id)` / `listStandbyInhibitors()` with corresponding response signals. Authenticated via `Authorization: Bearer` over UC_TOKEN_PATH content. Reusable foundation for any future REST consumer.
+- **`struct Inhibitor` in `src/core/structs.h`** — wire-shape mirror of the firmware's `Inhibitor` GET response (note: the field is `elapsed`, not `created` as the OpenAPI spec says — verified §1.12 wire capture, trust the wire).
+- **Orphan cleanup on reconnect** — keeper's `onCoreConnected()` slot lists existing inhibitors filtered by `who == "madalone.session-keeper"`, deletes any orphans from a previous crashed instance, then if currently active recreates fresh.
+- **Mid-session toggle flip support in both directions** — flipping the toggle while a session is active correctly hands over (delete + ping for REST→WS, stop ping + create for WS→REST).
+
+### Changed
+- **`ActivitySessionKeeper::evaluateSession()` dispatch** — the inactive→active and active→inactive edges now choose between the WS ping path or the REST inhibitor path based on `m_useInhibitorApi`. Hard-fail on REST auth flake (no silent fallback to ping path) — the user notices and can flip OFF if needed.
+- **`Settings → Power` page** gains a sub-toggle "Use REST inhibitor API" with a description explaining the trade-off. Visible inside the existing `sessionKeeperEnabled` block.
+
+### Phase 0 — REST auth probe (foundational)
+- New `Q_INVOKABLE Core::probeRestAuth()` — sequentially fires `GET /api/system/power` in H3 (no-auth localhost) → H2 (Bearer) → H4 (Basic w/ token-as-PIN) → H1 (Basic with regenerated PIN — destructive) order, short-circuits on first 200. Used to establish the firmware's REST auth contract; H2 wins on UCR3 firmware 2.9.1 (Bearer accepted despite NOT being declared in OpenAPI `securitySchemes`).
+- Probe code stays in tree feature-gated on `Config.probeRestAuth` (default false) for future re-runs if a firmware OTA changes the auth contract.
+
+### Verified end-to-end on UCR3 firmware 2.9.1
+6 lifecycle smokes pass: REST path activates and cleans up cleanly (back-to-back add/remove cycles in one session); orphan cleanup across `RESTART_UI` mid-session works (orphan deleted, fresh inhibitor created); PIN unchanged (no rotation); mid-session toggle flip OFF correctly hands back to WS ping path; auto-revert NOT triggered.
+
+### Architectural notes
+- **`/system/power/standby_inhibitors` is the canonical firmware path.** UC's own core uses it for activity / web-configurator / charger / integration-setup inhibitors — observed all of these in firmware logs during smoke testing. Mod 5 v1's WS ping was AP-UC-46 (hand-rolled when a documented native endpoint exists); v2 puts us back on-pattern.
+- **Bearer auth shares the SAME UC_TOKEN as the WS auth path.** If Bearer ever breaks, WS breaks too (same secret, same firmware-side validator). No realistic "REST broken / WS still works" failure mode justifies a default-OFF stance after Phase 0 verified Bearer empirically.
+- **The OpenAPI spec contradicts itself on Bearer.** Lines 38–43 mention `Authorization: Bearer $API_KEY` in the intro; lines 17296–17305 (`securitySchemes`) only declare `basicAuth` and `cookieAuth`. Bearer is empirically accepted regardless. File an upstream issue against `unfoldedcircle/core-api` to add Bearer to `securitySchemes` (low priority since our code uses the empirical contract).
+- **Wire-format drift caught by §1.12 pre-coding capture.** The OpenAPI spec at line 16734 declares the response field as `created`; the running firmware returns `elapsed`. Trust the wire, not the spec.
+
+---
+
 ## v1.4.38 — 2026-05-02 — Test-only CI fix for v1.4.37 regression
 
 **Binary identical to v1.4.37.** This release exists solely to attach a green CI run to the latest tag — v1.4.37's `Tests / Integration tests (QML)` job failed on a test-code bug I introduced in the v1.4.37 hygiene release. No behavior change for users; if you installed v1.4.37, there's no functional reason to update to v1.4.38 (the install bundle's binary is identical).
