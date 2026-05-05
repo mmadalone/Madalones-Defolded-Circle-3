@@ -309,6 +309,22 @@ void Config::setSoundVolume(int volume) {
     }
 }
 
+// madalone: dock-chime variant picker. Local QSettings only (firmware doesn't know about
+// our chime variants). 1..6 mapped by SoundEffects::chimeFileName().
+int Config::getDockChimeVariant() {
+    int v = m_settings->value("sound/dockChimeVariant", 1).toInt();
+    if (v < 1 || v > 6) v = 1;
+    return v;
+}
+
+void Config::setDockChimeVariant(int variant) {
+    if (variant < 1 || variant > 6) return;
+    if (variant != getDockChimeVariant()) {
+        m_settings->setValue("sound/dockChimeVariant", variant);
+        emit dockChimeVariantChanged(variant);
+    }
+}
+
 void Config::setDisplayAutoBrightness(bool enabled) {
     if (m_displayAutoBrightness != enabled) {
         int id = m_core->setDisplayCfg(getDisplayBrightness(), enabled);

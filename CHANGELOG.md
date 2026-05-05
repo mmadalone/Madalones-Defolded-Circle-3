@@ -11,6 +11,120 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.41 — 2026-05-06 — Dock chime polish: no chopping, no boot-while-docked unclear-able
+
+Three polish fixes on top of v1.4.40, all centered on the dock-chime UX. No new functional surface area; bundle layout, Config Q_PROPERTYs, and the wav file set are unchanged.
+
+### Why this matters
+
+Two bugs surfaced post-v1.4.40 that turned the otherwise-restored audio into something the user explicitly flagged: (a) the chime was getting chopped up mid-playback at every dock event, (b) the screensaver became completely unclearable when the device booted while docked (had to force-restart). Both are edge cases v1.4.40 missed; both are now fixed cleanly without breaking the normal-case path.
+
+### Fixed
+
+- **Dock chime no longer chops up at docking** (`src/qml/main.qml`). v1.4.40's dock handler called `chargingScreenLoader.active = true` immediately followed by `SoundEffects.play(BatteryCharge)` on the same JS tick. ChargingScreen.qml is heavyweight (Matrix rain shader compile, glyph atlas build, GPU buffer upload) — its async load saturates the main thread and starves the ALSA audio thread on UCR3's quad-core ARM, producing audible buffer underruns mid-playback. **Fix**: play chime FIRST (audio thread gets head-start), then defer screensaver activation by 350 ms via a new `dockChimeGraceTimer`. 350 ms covers all 6 chime durations except Bell's tail, which is already exponentially-decayed by then — the audible-energy portion is well clear before screensaver loading hits the main thread. Short enough that the screensaver appearance still feels responsive.
+
+- **Screensaver no longer becomes unclearable when the device boots while docked** (`src/qml/main.qml`). The firmware pumps `Battery.powerSupply = true` as part of its initial state push within the first ~1-2 seconds of QML startup — before `InputController`, `ButtonNavigation`, and the Popup parent chain are fully wired. The screensaver opened but its tap and key handlers couldn't capture input, leaving the user with an unclearable screen until force-restart (one of yesterday's incidents during the diagnostic deploy cycle). **Fix**: `_bootGraceActive` flag tracks the first 3 s after QML load (via a `Component.onCompleted`-equivalent `running: true` Timer). During the grace window, dock events use a 2 s activation delay (gives QML/input subsystems time to settle) and skip the audio chime since it's not a user-initiated dock event. After the grace window, normal runtime behavior (350 ms + chime). The `dockChimeGraceTimer.interval` is set per-call (350 vs 2000) before each `restart()`. Also handles the dock-then-undock race during the grace window: undock branch calls `dockChimeGraceTimer.stop()` so the screensaver doesn't open after the user has already pulled the remote.
+
+- **Settings → Sound → Dock chime description text legibility** (`src/qml/settings/settings/Sound.qml`). Bumped from `18 pt / colors.medium` (the first iteration's "subtle hint" styling) to `22 pt / colors.light` — matches the v1.4.36 description-text consistency sweep applied to the rest of the settings pages. User reported the text was "too small and too dark" — now reads cleanly against the dark background.
+
+### Changed
+
+- **Loudness tuning** (`tools/gen_sounds.py::write_wav()`). v1.4.40 went through three iterations: drive=1.6 (too quiet) → drive=3.0 + pre_gain=1.5 (too choppy on long chime tails — brick-wall limiting squashed Bell's overtone stack flat against the ceiling, producing intermodulation distortion that sounded like clicking/buzzing) → drive=2.2 + pre_gain=1.2 (final). The 2.2 setting keeps the tails breathing while staying ~6-8 dB louder than the original synthesis. Peak normalize target stays at 1.0 (full int16 range) — wavs use the entire dynamic range. Per-file post-saturation peaks now in the 0.87-1.00 range (vs 0.98-1.00 with drive=3.0); the saturator does less work per sample = cleaner sound.
+
+### Architecture / files modified
+
+- **Modified**: `src/qml/main.qml` — added `dockChimeGraceTimer` (350 ms / 2000 ms variable interval), `_bootGraceActive` property + `bootGraceTimer` (3 s startup window), reordered powerSupplyChanged handler (chime first, screensaver deferred), undock branch stops both timers, ~25 LOC net.
+- **Modified**: `src/qml/settings/settings/Sound.qml` — description text font 18 → 22, color `colors.medium` → `colors.light`.
+- **Modified**: `tools/gen_sounds.py` — `write_wav()` defaults pre_gain 1.5 → 1.2, soft_drive 3.0 → 2.2.
+- **Bumped**: `remote-ui.pro VERSION` 1.4.40 → 1.4.41 (CI `build.yml:44-55` enforces match with `release.json`); `deploy/release.json version` 1.4.40 → 1.4.41.
+
+### Verification
+
+End-to-end on UCR3 firmware 2.9.2:
+- **Dock chime cleanliness**: dock device with display awake — chime plays cleanly through to its tail before screensaver appears.
+- **Boot-while-docked dismissibility**: trigger UI restart via `POST /api/system/install/ui?void_warranty=yes` (or physical hardware reset) while docked. Screensaver appears ~2 s after boot. Tap or DPAD dismisses cleanly.
+- **No-regression on normal runtime dock**: undock + redock during runtime — chime plays + screensaver appears as before, dismissible on tap/DPAD.
+- **No regression on quick dock-then-undock**: dock + undock within 2 s during boot — no screensaver appears (boot grace timer was stopped on undock).
+
+### Out of scope (follow-up)
+
+- **Filing the firmware regression with UC** — same diagnostic line is the bug evidence; whether `UC_SOUND_EFFECTS_PATH` is set for stock-UI launches in 2.9.2 is still unverified (would require disabling our custom UI to test, deferred).
+- **Stock-UI audio comparison** — answers whether 2.9.2 audio loss is custom-UI specific or universal. Skipped to avoid the disable/re-enable disruption.
+
+## v1.4.40 — 2026-05-05 — Audio restored under firmware 2.9.2 + dock chime picker (6 variants)
+
+UC firmware 2.9.2 silently dropped the env var that custom-ui (and presumably stock too) reads to locate the on-disk sound effects. Diagnostic captured the breadcrumb cleanly via `/api/system/logs?s=custom-ui&q=UC_SOUND` after deploying instrumented `qCWarning(lcCore())` lines:
+
+```
+WARN  uc.core: UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup
+WARN  uc.core: Default audio output device: "default"
+```
+
+Consequence: `SoundEffects::createEffects()` short-circuited at the empty-path guard (`src/ui/soundEffects.cpp:111`, the v1.4.6 hygiene addition), all 5 `QSoundEffect*` stayed `nullptr`, every `play()` call no-opped against null pointers. **No clicks, no confirms, no error sounds, no dock chime** — for the same reason. Audio sink itself was healthy (`Default audio output device: "default"`); only the wav-file path resolution was broken.
+
+This fix is self-contained — bundles all sound effects directly in our deploy archive, falls back to that location when the firmware env var is empty, and adds a Settings → Sound → Dock chime picker so users can choose between 6 variants. Forward-compatible: when (if) UC restores `UC_SOUND_EFFECTS_PATH` in 2.9.3+, the env wins and stock sounds are used transparently.
+
+### Why this matters
+
+- **Audio was completely gone on 2.9.2.** Not just the dock chime — clicks, confirms, error tones too. Forum reports started rolling in a few days after the 2.9.2 OTA.
+- **Self-contained recovery.** Our build no longer depends on the firmware shipping sound assets at the documented env path. If 2.9.3 moves them again, custom-ui still works.
+- **Bonus UX win.** While we were in there, added a Settings → Sound → Dock chime picker — 6 variants, tap-to-preview-and-select pattern matching the existing screensaver theme picker.
+
+### Added
+
+- **`Settings → Sound → Dock chime` picker** — 6 variants in a 3-column grid, tap to both save and preview. Persisted via QSettings key `sound/dockChimeVariant` (1-6, default 1 = Warp).
+
+  | Variant | Filename | Character |
+  |---|---|---|
+  | 1 — Warp (default) | `zap_future.wav` | Sci-fi descending sweep + harmonic + shimmer |
+  | 2 — Ascend | `zap_arpeggio.wav` | 4-note rising arpeggio (C5–E5–G5–C6) |
+  | 3 — Bell | `zap_bell.wav` | Single mellow tone with overtones + 500 ms decay |
+  | 4 — Chord | `zap_dyad.wav` | Two-tone perfect-fifth dyad (A4 + E5) |
+  | 5 — Pulse | `zap_synthwave.wav` | AM-modulated 6 Hz tremolo on 660 Hz carrier |
+  | 6 — Zap | `zap_strike.wav` | Sawtooth pitch-plummet 4000→200 Hz + crackle + sub-bass rumble |
+
+- **`Config::dockChimeVariant` Q_PROPERTY** (int, 1-6, default 1, QSettings-backed at `sound/dockChimeVariant`). Bounds-clamped on read and write — out-of-range values silently fall back to 1.
+
+- **`SoundEffects::setDockChimeVariant(int)` runtime swap** — deletes the old `m_effectBatteryCharge` (`deleteLater()`, safe under in-flight playback), creates a fresh `QSoundEffect` from the chosen wav, and calls `play(BatteryCharge)` once for immediate audio preview. Wired via `Config::dockChimeVariantChanged → SoundEffects::setDockChimeVariant` in `uiController.cpp`.
+
+- **`SoundEffects::chimeFileName(int)` static** — single source of truth for variant-to-filename mapping. Variant 1 keeps the stock filename `zap_future.wav` for forward-compat with any future firmware that restores `UC_SOUND_EFFECTS_PATH`.
+
+- **10 bundled wav files in `deploy/config/`** (4 UI + 6 chimes, ~420 KB total): `click.wav`, `click_lo.wav`, `confirm.wav`, `error.wav`, `zap_future.wav`, `zap_arpeggio.wav`, `zap_bell.wav`, `zap_dyad.wav`, `zap_synthwave.wav`, `zap_strike.wav`. CC0 1.0 Universal — public domain, no attribution required. Generated by `tools/gen_sounds.py` (numpy synthesis: short tone bursts with attack/release envelopes, sweeps, harmonic stacks).
+
+- **`tools/gen_sounds.py`** — numpy-based wav generator. Self-contained, regenerates the full bundle in <1 s. Three-stage loudness pipeline in `write_wav()`: pre-gain 1.5x → tanh saturation drive=3.0 → peak-normalize to 1.0 (full int16 range). Net loudness boost vs first-iteration synthesis ~12-15 dB perceived RMS, brick-wall limited to prevent clipping pops. Tested against UCR3's small speaker — slightly grittier than original studio-recorded UC sounds but substantially more audible at default volume.
+
+### Fixed
+
+- **Click sound at volume slider release was silent on first iteration.** 25 ms duration + 2400 Hz pure sine fell below the speaker's audible threshold + ALSA buffer-flush latency. Re-tuned to 60 ms at 1500 Hz with peak 0.9 + tiny noise burst at the start for "click" texture. Audible now.
+
+- **All sound effects silenced under firmware 2.9.2** — the env var that pointed to the stock wav directory was dropped. `SoundEffects::createEffects()` empty-path guard (added v1.4.6 to silence boot-time decode warnings) now had its silencing intent realized for real. **Fixed by:**
+  - **`src/ui/uiController.cpp:71`** — added `UC_SOUND_EFFECTS_PATH` empty-fallback. When the env var is empty, reads `qgetenv("UC_CONFIG_HOME")` instead — same env our font (`glyphatlas.cpp:51`) and screensaver json (`screensaverconfig.cpp:21`) already use. Bundle layout: wavs live flat in `deploy/config/` alongside font and json (firmware install endpoint rejects nested directories under `./config/` with `400 "Could not extract archive"` — discovered empirically; the OpenAPI spec only documents `./bin`, `./config`, `./data` as allowed). Env wins if non-empty, so future firmware that restores the env transparently uses stock sounds.
+
+### Diagnostic Instrumentation
+
+- **`src/ui/soundEffects.cpp` `qCDebug(lcUi()) → qCWarning(lcCore())`** — diagnostic lines kept as a future-regression detector. The bare `uc.ui` category is silenced before journald in firmware 2.9.x (and `qCDebug` is dropped entirely; only WARN+ surfaces at the REST log endpoint). Re-routed all 5 SoundEffects diagnostic lines to `uc.core` at WARN level so they actually surface via `/api/system/logs?s=custom-ui&q=Default+audio`.
+
+  - `Default audio output device: "<name>"` (boot-time, always logs the active sink)
+  - `UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup` (boot-time, only if both env empty AND fallback also empty)
+  - `Sound effect file missing, skipping: <path>` (boot-time, per-file existence check)
+  - `Sound effects volume changed to: <N>` (runtime, on Config change)
+  - `Sound effects enabled changed to: <bool>` (runtime, on Config change)
+
+  Adds 5 lines per boot to the `custom-ui` log stream — cheap, useful, leaves a breadcrumb if 2.9.3 changes anything else about the audio path.
+
+### Architecture / files modified
+
+- **Modified upstream**: `src/ui/uiController.cpp` (newly modified — env-empty fallback at line 71), `src/ui/soundEffects.cpp` (already-modified by v1.4.6, diagnostic loglevel re-routed)
+- **New custom files**: `tools/gen_sounds.py`, `deploy/config/click.wav`, `click_lo.wav`, `confirm.wav`, `error.wav`, `zap_future.wav`, `zap_arpeggio.wav`, `zap_bell.wav`, `zap_dyad.wav`, `zap_synthwave.wav`, `zap_strike.wav`
+- **New custom Q_PROPERTY**: `Config.dockChimeVariant` (int, QSettings-backed at `sound/dockChimeVariant`)
+- **New custom QML**: 5-button grid section in `src/qml/settings/settings/Sound.qml` (mirrors existing `ThemeSelector.qml` pattern); also raised the existing `contentY > 1100` cap to `> 1450` to accommodate the new grid
+
+### Known limitations / follow-up
+
+- **Sounds are CC0 substitutes, not stock UC originals.** The originals aren't downloadable — UC's firmware images aren't public, and we can't pull files off the device without shell access. Users who want the original UC dock chime can replace `deploy/config/zap_future.wav` with the stock file and redeploy — same filename, same fallback path.
+- **Filing the firmware regression with UC** at `unfoldedcircle/feature-and-bug-tracker` is independent follow-up. The captured diagnostic line is the bug evidence.
+- **Loudness ceiling.** Wavs are now peak-normalized to 1.0 (full int16 range) with brick-wall soft-clipping for max RMS. Anything beyond would require either bumping the volume slider's max above 100 (`QSoundEffect::setVolume` >1.0; mixed Linux backend support) or accepting hardware speaker physics.
+
 ## v1.4.39 — 2026-05-03 — Mod 5 v2: standby_inhibitors REST replaces 270 s WS ping race
 
 Mod 5 (Active Session Keeper) gets a structural rewrite of its effector. Same state machine, same Settings UI, same defaults — but the underlying mechanism that keeps the device in NORMAL during active sessions is now the firmware's native `POST /system/power/standby_inhibitors` REST endpoint instead of a 270-second `setPowerMode(NORMAL)` ping loop. Event-based contract eliminates the polling race window. **Default ON** — REST inhibitor is the firmware's canonical path; the prior WS ping loop was AP-UC-46 (a workaround for an endpoint that already existed). User can flip OFF in Settings → Power if a future firmware OTA breaks the inhibitor API.

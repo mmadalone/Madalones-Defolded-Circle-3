@@ -22,10 +22,17 @@ class SoundEffects : public QObject {
 
  public:
     explicit SoundEffects(int volume, bool enabled, const QString &effectsDir, hw::HardwareModel::Enum model,
-                          QObject *parent = nullptr);
+                          QObject *parent = nullptr, int initialChimeVariant = 1);
     ~SoundEffects();
 
     void initialize();
+
+    // madalone: pick which dock-chime wav file is loaded. 1..5; bounds-clamped silently.
+    void setDockChimeVariant(int variant);
+
+    // madalone: filename for a given chime variant (1..5). Variant 1 returns "zap_future.wav"
+    // for stock-firmware filename compatibility; 2..5 return descriptive names.
+    static QString chimeFileName(int variant);
 
     enum SoundEffect {
         Click,
@@ -73,6 +80,7 @@ class SoundEffects : public QObject {
 
     int  m_volume;
     bool m_enabled;
+    int  m_dockChimeVariant = 1;   // madalone: tracks which chime wav m_effectBatteryCharge holds.
 
  private:
     void createEffects(const QAudioDeviceInfo &deviceInfo);

@@ -31,8 +31,9 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            if (contentY > 1100) {
-                contentY = 1100;
+            // madalone: cap raised from 1100 to 1450 to accommodate the dock-chime variant grid.
+            if (contentY > 1450) {
+                contentY = 1450;
             }
         }
 
@@ -121,6 +122,74 @@ Settings.Page {
                     KeyNavigation.up: soundEffectsSwitch
                     KeyNavigation.down: buttonBacklightSwitch
                     highlight: activeFocus && ui.keyNavigationEnabled
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** DOCK CHIME VARIANT (madalone) **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                Layout.fillWidth: true
+                spacing: 10
+
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.offwhite
+                    text: qsTr("Dock chime")
+                    font: fonts.primaryFont(30)
+                }
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("Tap a variant to preview and select. The chime plays when you place the remote on the dock.")
+                    font: fonts.primaryFont(22)
+                }
+
+                GridLayout {
+                    Layout.fillWidth: true
+                    columns: 3
+                    rowSpacing: 10
+                    columnSpacing: 10
+
+                    Repeater {
+                        model: [
+                            { variant: 1, label: qsTr("Warp") },
+                            { variant: 2, label: qsTr("Ascend") },
+                            { variant: 3, label: qsTr("Bell") },
+                            { variant: 4, label: qsTr("Chord") },
+                            { variant: 5, label: qsTr("Pulse") },
+                            { variant: 6, label: qsTr("Zap") }
+                        ]
+                        Rectangle {
+                            Layout.fillWidth: true
+                            Layout.preferredHeight: 50
+                            radius: 8
+                            color: Config.dockChimeVariant === modelData.variant ? colors.offwhite : colors.dark
+                            border { color: colors.medium; width: 1 }
+                            Text {
+                                anchors.centerIn: parent
+                                text: modelData.label
+                                color: Config.dockChimeVariant === modelData.variant ? colors.black : colors.offwhite
+                                font: fonts.primaryFont(22)
+                                elide: Text.ElideRight
+                                width: parent.width - 12
+                                horizontalAlignment: Text.AlignHCenter
+                            }
+                            Components.HapticMouseArea {
+                                anchors.fill: parent
+                                onClicked: Config.dockChimeVariant = modelData.variant
+                            }
+                        }
+                    }
                 }
             }
 

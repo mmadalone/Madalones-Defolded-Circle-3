@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Sound effects path fallback to $UC_CONFIG_HOME/sounds when
+// UC_SOUND_EFFECTS_PATH is empty (firmware 2.9.2 dropped the env var; bundled wavs restore audio).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "uiController.h"
@@ -67,8 +69,15 @@ Controller::Controller(HardwareModel::Enum model, int width, int height, QQmlApp
     m_engine->rootContext()->setContextProperty("resource", &m_resources);
 
     // load controllers
+    // madalone: firmware 2.9.2 dropped UC_SOUND_EFFECTS_PATH; fall back to $UC_CONFIG_HOME, where
+    // we bundle the wavs alongside the font and screensaver json. The install endpoint rejects
+    // nested directories under ./config/ ("Could not extract archive" 400), so wavs live flat.
+    QByteArray effectsDir = qgetenv("UC_SOUND_EFFECTS_PATH");
+    if (effectsDir.isEmpty()) {
+        effectsDir = qgetenv("UC_CONFIG_HOME");
+    }
     m_soundEffects = new SoundEffects(m_config->getSoundVolume(), m_config->getSoundEnabled(),
-                                      qgetenv("UC_SOUND_EFFECTS_PATH"), m_model, this);
+                                      effectsDir, m_model, this, m_config->getDockChimeVariant());
     m_soundEffects->initialize();
     qmlRegisterSingletonType<SoundEffects>("SoundEffects", 1, 0, "SoundEffects", &SoundEffects::qmlInstance);
 
@@ -99,6 +108,10 @@ Controller::Controller(HardwareModel::Enum model, int width, int height, QQmlApp
                      [=](bool enabled) { m_soundEffects->setEnabled(enabled); });
     QObject::connect(m_config, &Config::soundVolumeChanged, this,
                      [=](int volume) { m_soundEffects->setVolume(volume); });
+    // madalone: dock-chime variant picker — Sound.qml writes Config; we forward to SoundEffects
+    // which rebuilds m_effectBatteryCharge from the chosen wav file and previews it.
+    QObject::connect(m_config, &Config::dockChimeVariantChanged, this,
+                     [=](int variant) { m_soundEffects->setDockChimeVariant(variant); });
 
     QObject::connect(m_config, &Config::languageChanged, m_entityController, &EntityController::onLanguageChanged);
     QObject::connect(m_config, &Config::unitSystemChanged, m_entityController, &EntityController::onUnitSystemChanged);

@@ -522,6 +522,23 @@ ApplicationWindow {
         // to drive the screen-off countdown's subtraction rule.
         property bool _nextOpenViaIdleTimer: false
 
+        // madalone (v1.4.40): startup-grace flag for boot-while-docked detection.
+        // When the device boots while already on the dock, Battery.powerSupply pumps
+        // its initial state (true) before InputController / ButtonNavigation /
+        // QML Popup parenting are fully wired. The screensaver opens but its tap +
+        // button-press dismiss handlers don't route — leaving the user with an
+        // unclearable screen until force-restart. _bootGraceActive=true during the
+        // first 3 s after QML load; powerSupplyChanged uses a longer activation
+        // delay (2 s) and skips the audio chime when this flag is set.
+        property bool _bootGraceActive: true
+        Timer {
+            id: bootGraceTimer
+            interval: 3000
+            repeat: false
+            running: true
+            onTriggered: root._bootGraceActive = false
+        }
+
         // Helper: whether the screensaver should auto-open on battery idle.
         // Strictly gated by the 'Idle screensaver' toggle — when off, no
         // auto-open regardless of other settings. The screen-off animation
@@ -558,6 +575,26 @@ ApplicationWindow {
             interval: ScreensaverConfig.reopenWhileDockedSec * 1000
             onTriggered: {
                 if (Battery.powerSupply && !chargingScreenLoader.active && !ui.editMode) {
+                    chargingScreenLoader.active = true;
+                }
+            }
+        }
+
+        // madalone (v1.4.40): grace delay between dock chime and screensaver async load.
+        // ChargingScreen.qml is heavyweight (Matrix rain shader compile, glyph atlas build,
+        // GPU buffer upload). Loading it on the same JS tick as SoundEffects.play() saturates
+        // the main thread, starves the ALSA audio thread, and produces audible buffer
+        // underruns ("choppy" chime). 350 ms is long enough to cover all 6 chime variants
+        // (longest is Bell at 500 ms; we cover 70 % which is enough — the tail is already
+        // exponentially-decayed by then) and short enough that the screensaver appearance
+        // still feels responsive.
+        Timer {
+            id: dockChimeGraceTimer
+            repeat: false
+            running: false
+            interval: 350
+            onTriggered: {
+                if (Battery.powerSupply && !chargingScreenLoader.active) {
                     chargingScreenLoader.active = true;
                 }
             }
@@ -618,10 +655,25 @@ ApplicationWindow {
                 function onPowerSupplyChanged(value) {
                     if (value) {
                         idleScreensaverTimer.stop();
-                        chargingScreenLoader.active = true;
-                        SoundEffects.play(SoundEffects.BatteryCharge);
+                        if (root._bootGraceActive) {
+                            // madalone (v1.4.40): boot-while-docked. Initial Battery state pump
+                            // happens before InputController / ButtonNavigation / Popup parenting
+                            // are fully wired — opening the screensaver here leaves it undismissible.
+                            // Defer 2 s instead of 350 ms (gives QML/input subsystems time to
+                            // settle), and skip the chime since this isn't a user-initiated dock.
+                            dockChimeGraceTimer.interval = 2000;
+                            dockChimeGraceTimer.restart();
+                        } else {
+                            // Normal dock event: play chime FIRST (audio thread gets head-start),
+                            // then defer screensaver load by 350 ms so ChargingScreen.qml's
+                            // heavyweight QML/GPU init doesn't starve the ALSA audio thread.
+                            SoundEffects.play(SoundEffects.BatteryCharge);
+                            dockChimeGraceTimer.interval = 350;
+                            dockChimeGraceTimer.restart();
+                        }
                     } else {
                         dockedRearmTimer.stop();   // madalone (v1.4.15): undocked → no docked rearm
+                        dockChimeGraceTimer.stop(); // madalone (v1.4.40): undocked before grace fired
                         // Honor 'Close on wake' toggle — keeps undock consistent with motion wake.
                         if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.close();

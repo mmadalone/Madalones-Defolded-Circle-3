@@ -3819,17 +3819,57 @@ the Web Configurator</source>
 <context>
     <name>Sound</name>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="61"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="62"/>
         <source>Sound effects</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="100"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="101"/>
         <source>Sound effects volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="145"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="146"/>
+        <source>Dock chime</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="153"/>
+        <source>Tap a variant to preview and select. The chime plays when you place the remote on the dock.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="165"/>
+        <source>Warp</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="166"/>
+        <source>Ascend</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="167"/>
+        <source>Bell</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="168"/>
+        <source>Chord</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="169"/>
+        <source>Pulse</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="170"/>
+        <source>Zap</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="214"/>
         <source>Haptic feedback</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5017,7 +5057,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="891"/>
+        <location filename="../../src/qml/main.qml" line="943"/>
         <source>Done</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5025,7 +5065,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1049"/>
+        <location filename="../../src/config/config.cpp" line="1065"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5332,27 +5372,27 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>uc::ui::Controller</name>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="298"/>
+        <location filename="../../src/ui/uiController.cpp" line="311"/>
         <source>Error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="299"/>
+        <location filename="../../src/ui/uiController.cpp" line="312"/>
         <source>Deleting a current profile is not permitted. Please switch to another profile and try again.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="586"/>
+        <location filename="../../src/ui/uiController.cpp" line="599"/>
         <source>Profile update error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="709"/>
+        <location filename="../../src/ui/uiController.cpp" line="722"/>
         <source>%1 error</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="709"/>
+        <location filename="../../src/ui/uiController.cpp" line="722"/>
         <source>Error while connecting to %1, with id %2</source>
         <translation type="unfinished"></translation>
     </message>

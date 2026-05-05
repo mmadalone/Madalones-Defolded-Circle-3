@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Reroute SoundEffects diagnostic logs to qCWarning(lcCore) — bare uc.ui and
+// new uc.ui.sound are silenced before journald in firmware 2.9.x; uc.core also drops INFO; only WARN+ surfaces.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "soundEffects.h"
@@ -13,7 +15,7 @@ namespace ui {
 SoundEffects *SoundEffects::s_instance = nullptr;
 
 SoundEffects::SoundEffects(int volume, bool enabled, const QString &effectsDir, hw::HardwareModel::Enum model,
-                           QObject *parent)
+                           QObject *parent, int initialChimeVariant)
     : QObject(parent),
       m_effectsDir(effectsDir),
       m_effectClick(nullptr),
@@ -24,6 +26,9 @@ SoundEffects::SoundEffects(int volume, bool enabled, const QString &effectsDir, 
       m_model(model),
       m_volume(volume),
       m_enabled(enabled) {
+    if (initialChimeVariant >= 1 && initialChimeVariant <= 6) {
+        m_dockChimeVariant = initialChimeVariant;
+    }
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 }
@@ -36,13 +41,13 @@ void SoundEffects::initialize() {
     QAudioDeviceInfo deviceInfo = QAudioDeviceInfo::defaultOutputDevice();
     createEffects(deviceInfo);
 
-    qCDebug(lcUi()) << "Default audio output device:" << deviceInfo.deviceName();
+    qCWarning(lcCore()) << "Default audio output device:" << deviceInfo.deviceName();
 }
 
 void SoundEffects::setVolume(int volume) {
     if (m_volume != volume) {
         m_volume = volume;
-        qCDebug(lcUi()) << "Sound effects volume changed to:" << m_volume;
+        qCWarning(lcCore()) << "Sound effects volume changed to:" << m_volume;
         emit volumeChanged();
     }
 }
@@ -50,7 +55,7 @@ void SoundEffects::setVolume(int volume) {
 void SoundEffects::setEnabled(bool value) {
     if (m_enabled != value) {
         m_enabled = value;
-        qCDebug(lcUi()) << "Sound effects enabled changed to:" << m_enabled;
+        qCWarning(lcCore()) << "Sound effects enabled changed to:" << m_enabled;
         emit enabledChanged();
     }
 }
@@ -108,14 +113,14 @@ void SoundEffects::createEffects(const QAudioDeviceInfo &deviceInfo) {
     // when UC_SOUND_EFFECTS_PATH isn't in the environment (dev env, or
     // a partially-configured firmware). play() null-checks each pointer.
     if (m_effectsDir.isEmpty()) {
-        qCDebug(lcUi()) << "UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup";
+        qCWarning(lcCore()) << "UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup";
         return;
     }
 
     auto makeEffect = [&](const QString &filename) -> QSoundEffect * {
         const QString path = m_effectsDir + QStringLiteral("/") + filename;
         if (!QFileInfo::exists(path)) {
-            qCDebug(lcUi()) << "Sound effect file missing, skipping:" << path;
+            qCWarning(lcCore()) << "Sound effect file missing, skipping:" << path;
             return nullptr;
         }
         auto *effect = new QSoundEffect(deviceInfo, this);
@@ -127,7 +132,58 @@ void SoundEffects::createEffects(const QAudioDeviceInfo &deviceInfo) {
     m_effectClickLow      = makeEffect(QStringLiteral("click_lo.wav"));
     m_effectConfirm       = makeEffect(QStringLiteral("confirm.wav"));
     m_effectError         = makeEffect(QStringLiteral("error.wav"));
-    m_effectBatteryCharge = makeEffect(QStringLiteral("zap_future.wav"));
+    m_effectBatteryCharge = makeEffect(chimeFileName(m_dockChimeVariant));
+}
+
+// madalone: filename lookup for dock-chime variant 1..6. Out-of-range values fall back to
+// variant 1 (warp / stock zap_future.wav for firmware-set-path compatibility).
+QString SoundEffects::chimeFileName(int variant) {
+    switch (variant) {
+        case 2:  return QStringLiteral("zap_arpeggio.wav");
+        case 3:  return QStringLiteral("zap_bell.wav");
+        case 4:  return QStringLiteral("zap_dyad.wav");
+        case 5:  return QStringLiteral("zap_synthwave.wav");
+        case 6:  return QStringLiteral("zap_strike.wav");
+        case 1:
+        default: return QStringLiteral("zap_future.wav");
+    }
+}
+
+void SoundEffects::setDockChimeVariant(int variant) {
+    if (variant < 1 || variant > 6) variant = 1;
+    if (variant == m_dockChimeVariant && m_effectBatteryCharge != nullptr) {
+        return;  // no change
+    }
+    m_dockChimeVariant = variant;
+
+    // Tear down the old QSoundEffect (deleteLater is safe even if currently playing — the
+    // effect's own audio thread will release after pending samples flush).
+    if (m_effectBatteryCharge) {
+        m_effectBatteryCharge->deleteLater();
+        m_effectBatteryCharge = nullptr;
+    }
+
+    if (m_effectsDir.isEmpty()) {
+        qCWarning(lcCore()) << "Cannot reload dock chime: UC_SOUND_EFFECTS_PATH (or fallback) is empty";
+        return;
+    }
+
+    const QString filename = chimeFileName(m_dockChimeVariant);
+    const QString path     = m_effectsDir + QStringLiteral("/") + filename;
+    if (!QFileInfo::exists(path)) {
+        qCWarning(lcCore()) << "Dock chime variant" << m_dockChimeVariant << "missing file:" << path;
+        return;
+    }
+
+    QAudioDeviceInfo deviceInfo = QAudioDeviceInfo::defaultOutputDevice();
+    auto *effect                = new QSoundEffect(deviceInfo, this);
+    effect->setSource(QUrl::fromLocalFile(path));
+    m_effectBatteryCharge = effect;
+    qCWarning(lcCore()) << "Dock chime variant changed to:" << m_dockChimeVariant << filename;
+
+    // Preview the new chime so the user hears the change immediately. play() respects
+    // m_enabled and m_volume already.
+    play(BatteryCharge);
 }
 
 }  // namespace ui

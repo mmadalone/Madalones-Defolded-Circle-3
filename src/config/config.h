@@ -47,6 +47,8 @@ class Config : public QObject {
 
     Q_PROPERTY(bool soundEnabled READ getSoundEnabled WRITE setSoundEnabled NOTIFY soundEnabledChanged)
     Q_PROPERTY(int soundVolume READ getSoundVolume WRITE setSoundVolume NOTIFY soundVolumeChanged)
+    // madalone: dock-chime variant picker. 1..5; default 1 (warp). Local QSettings only.
+    Q_PROPERTY(int dockChimeVariant READ getDockChimeVariant WRITE setDockChimeVariant NOTIFY dockChimeVariantChanged)
 
     Q_PROPERTY(bool displayAutoBrightness READ getDisplayAutoBrightness WRITE setDisplayAutoBrightness NOTIFY
                    displayAutoBrightnessChanged)
@@ -173,6 +175,8 @@ class Config : public QObject {
     void setSoundEnabled(bool enabled);
     int  getSoundVolume() { return m_soundVolume; }
     void setSoundVolume(int volume);
+    int  getDockChimeVariant();
+    void setDockChimeVariant(int variant);
 
     bool getDisplayAutoBrightness() { return m_displayAutoBrightness; }
     void setDisplayAutoBrightness(bool enabled);
@@ -339,6 +343,7 @@ class Config : public QObject {
 
     void soundEnabledChanged(bool value);
     void soundVolumeChanged(int volume);
+    void dockChimeVariantChanged(int variant);
 
     void displayAutoBrightnessChanged(bool value);
     void displayBrightnessChanged(int brightness);
