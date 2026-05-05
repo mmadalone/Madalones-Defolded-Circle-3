@@ -1038,7 +1038,111 @@ UCR3 has no shell access. The only diagnostic surfaces are REST, WS (including L
 
 **Where probe captures live:** `logs/` directory in the project root. Never `/tmp/` (resolves to `AppData/Local/Temp` on Windows Python and breaks on session restart). Memo: `feedback_logs_directory.md`.
 
-### §13.7 API version awareness (post-upstream-merge ritual)
+### §13.7 Don't trust firmware-set env vars to be stable across releases (AP-UC-53)
+
+UCR3 firmware passes a small set of env vars to launched processes — `UC_CONFIG_HOME`, `UC_DATA_HOME`, `UC_TOKEN_PATH`, `UC_RESOURCE_PATH`, `UC_LEGAL_PATH`, `UC_HAPTIC_DEV_PATH`, `UC_TOUCHSLIDER_DEV_PATH`, `UC_SOCKET_URL`, `UC_MODEL`, `UC_DISPLAY_SCALE`, `UC_ONBOARDING_PATH`. The set is not contractually documented anywhere — neither in the OpenAPI spec nor in the install endpoint description; the spec only documents `UC_CONFIG_HOME` and `UC_DATA_HOME`. Anything else is a de-facto runtime convention that the firmware can change between releases without breaking its own bundled UI (which may have moved to absolute paths or sandbox-set values internally).
+
+**Empirical evidence (v1.4.41):** Firmware 2.9.2 ships with `UC_SOUND_EFFECTS_PATH` empty for custom-UI launches. Pre-2.9.2 status unverified — could have been set previously and dropped, could have never been set for custom-UI installs. Either way, depending on the env var without a fallback meant `SoundEffects::createEffects()` short-circuited at the empty-path guard, all 5 `QSoundEffect*` stayed null, and `play()` no-opped against null pointers — silencing every UI sound (clicks, confirms, errors, dock chime) for every custom-UI user on 2.9.2.
+
+**Mitigation pattern:**
+
+```cpp
+// Read the env var first (forward-compat: env wins if firmware restores it).
+QByteArray effectsDir = qgetenv("UC_SOUND_EFFECTS_PATH");
+if (effectsDir.isEmpty()) {
+    // Fall back to a path we control — bundled assets in deploy/config/
+    // surface at $UC_CONFIG_HOME at runtime, which is documented (only
+    // UC_CONFIG_HOME and UC_DATA_HOME are contracted by the install spec).
+    effectsDir = qgetenv("UC_CONFIG_HOME");
+}
+m_soundEffects = new SoundEffects(... effectsDir ...);
+```
+
+**Rule:** for every `qgetenv("UC_*")` call where an empty value would silently break a feature, either (a) document the dependency explicitly in CUSTOM_FILES.md and accept the risk, or (b) provide a fallback path the bundle controls. Memos: `project_uc3_rest_auth_mechanism.md` (similar lesson re: Bearer not being declared but accepted), the v1.4.40/v1.4.41 audio-restore work in CHANGELOG.
+
+**Bundle layout caveat:** `deploy/config/` cannot contain sub-directories — firmware install endpoint rejects with `400 "Could not extract archive"` despite the OpenAPI spec only documenting `./bin`, `./config`, `./data` as allowed top-level dirs (silent on sub-directory rules). Bundle resources flat alongside whatever's already there (font, screensaver json, wav files all coexist in `deploy/config/`).
+
+### §13.8 Audio path: don't run heavyweight QML async loads on the same JS tick as `SoundEffects.play()` (AP-UC-54)
+
+UCR3's quad-core ARM is small enough that main-thread QML work can starve the ALSA audio thread mid-playback, producing audible buffer underruns ("choppy" sounds). This was specifically the v1.4.40 dock-chime bug: `chargingScreenLoader.active = true` triggers `ChargingScreen.qml`'s heavyweight async load (Matrix rain shader compile, glyph atlas build, GPU buffer upload) on the same JS tick as the dock chime starts playing — and the audio backend underruns within the first ~100 ms.
+
+**Pattern to avoid:**
+
+```qml
+// BAD — main thread saturates while audio is mid-playback.
+function onPowerSupplyChanged(value) {
+    if (value) {
+        chargingScreenLoader.active = true;            // heavy QML/GPU init
+        SoundEffects.play(SoundEffects.BatteryCharge); // audio thread starves
+    }
+}
+```
+
+**Pattern to use (v1.4.41 solution):**
+
+```qml
+Timer {
+    id: dockChimeGraceTimer
+    interval: 350    // covers all 6 chime durations except Bell's tail (exponentially-decayed by then)
+    repeat: false
+    running: false
+    onTriggered: { if (Battery.powerSupply && !chargingScreenLoader.active) chargingScreenLoader.active = true; }
+}
+
+function onPowerSupplyChanged(value) {
+    if (value) {
+        SoundEffects.play(SoundEffects.BatteryCharge);  // audio thread gets head-start
+        dockChimeGraceTimer.restart();                  // 350 ms later: heavy QML/GPU init
+    }
+}
+```
+
+**Rule:** if a JS handler triggers both `SoundEffects.play()` and ANY heavy QML/GPU operation (Loader async load, large Repeater instantiation, shader compile, large texture upload), play the audio first and defer the heavy operation by ≥ 250 ms via a single-shot Timer. The user-perceived delay between dock-event and screensaver-appearance is unnoticeable; the audio underrun is very noticeable.
+
+**Edge cases to handle in the deferring Timer:**
+- Stop the timer on the inverse event (e.g., undock cancels a pending dock-chime-grace activation) so quick toggles don't double-fire.
+- Test for state validity in the timer's `onTriggered` (e.g., `Battery.powerSupply && !chargingScreenLoader.active`) — the state may have changed during the grace window.
+
+### §13.9 Don't open Popups during the firmware's initial state pump (AP-UC-55)
+
+When `remote-ui` boots while the device is already in some "interesting" state (docked, in low-power, etc.), the firmware pumps that state to the UI within the first 1-2 seconds of QML loading — before `InputController`, `ButtonNavigation`, and the QML Popup parent chain are fully wired. A Popup opened during that window is **visible but undismissible**: its tap and key handlers don't capture input because they're attached to a half-initialized scene.
+
+**Empirical evidence (v1.4.41):** Boot-while-docked → `Battery.powerSupply = true` pumped → existing handler called `chargingScreenLoader.active = true` → screensaver opened → user could tap and DPAD all they wanted, but `chargingScreenRoot.close()` never fired because the input scope was wrong. Force-restart was the only escape.
+
+**Mitigation pattern (3-second startup grace):**
+
+```qml
+property bool _bootGraceActive: true
+Timer {
+    id: bootGraceTimer
+    interval: 3000      // 3 s window after QML load
+    repeat: false
+    running: true       // start immediately at QML init
+    onTriggered: root._bootGraceActive = false
+}
+
+function onPowerSupplyChanged(value) {
+    if (value) {
+        if (root._bootGraceActive) {
+            // Boot-while-docked: defer Popup activation longer (give input subsystems time to wire).
+            // Skip auxiliary actions (dock chime, etc.) since this isn't a user-initiated event.
+            dockChimeGraceTimer.interval = 2000;       // 2 s instead of 350 ms
+            dockChimeGraceTimer.restart();
+        } else {
+            // Normal runtime event — full chime + 350 ms screensaver grace.
+            SoundEffects.play(SoundEffects.BatteryCharge);
+            dockChimeGraceTimer.interval = 350;
+            dockChimeGraceTimer.restart();
+        }
+    }
+}
+```
+
+**Rule:** for any Popup that auto-opens in response to firmware-pushed state, gate the auto-open behind a 3-second startup grace. During the grace window, either skip the auto-open entirely or defer it by ≥ 2 seconds so the input subsystem has time to wire up. After the grace window, normal behavior. Memo: see `src/qml/main.qml`'s `_bootGraceActive` property + `dockChimeGraceTimer` interval branching for the v1.4.41 reference implementation.
+
+**Why 3 seconds for the grace window:** empirically covers QML engine load + InputController init + ButtonNavigation registration + Popup parent attachment on UCR3's quad-core ARM. The existing v1.4.6 fix in `ChargingScreen.qml::onOpened` (calling `buttonNavigation.takeControl()` unconditionally even if `themeLoader.item` isn't ready) reduces but doesn't eliminate the race — the input scope can still be wrong if the Popup parent itself isn't fully attached. The 2-second post-grace activation delay in the boot-while-docked branch is the second line of defense.
+
+### §13.10 API version awareness (post-upstream-merge ritual)
 
 After every `git fetch upstream && git merge upstream/main`, run this as part of the post-merge sanity check:
 
