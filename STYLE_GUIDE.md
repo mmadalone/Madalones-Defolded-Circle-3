@@ -409,6 +409,10 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-50 | ⚠️ | Audit-derived remediation shipped without re-verifying the audit's claim (LOC, code path, or architectural assumption may be stale). v1.4.26 → v1.4.33: chased a GridLayout perf hypothesis the audit named; actual cause was upstream Slider's `Repeater.model`. Memo: `feedback_verify_audit_before_remediation.md`. | §1.7, §1.8 |
 | AP-UC-51 | ⚠️ | Symptom fix landed before root cause was empirically confirmed (Logdy capture, probe log, or repro test). v1.4.37 → v1.4.38: a CI-test fix shipped on a wrong assumption about `InputHandler` dispatch path; symptom (red CI) was treated as cause. Confirm the fix actually addresses the failing premise before tagging. | §1.5 |
 | AP-UC-52 | ⚠️ | New `Q_INVOKABLE`/signal/slot/`Q_PROPERTY` accessor added to a `Q_OBJECT` class that has a `test/hardware/mock_*.cpp` stub but no corresponding stub for the new symbol. moc generates a metacall reference; the test binary fails to link with `undefined reference to ...`. v1.4.39 case study: Phase 0's `Q_INVOKABLE void Api::probeRestAuth()` (commit `9af426a`) was a local-only build per audit Q2 — never went through CI's Hardware-tests workflow. The M1 push tagged for v1.4.39 surfaced the missing stub, blocked the tag until `fa3c11d` added a no-op `void Api::probeRestAuth() {}` to `mock_core_api.cpp`. Pattern check: any new MOC-instrumented member on a class with a stubbed test counterpart needs a parallel stub. | §6 |
+| AP-UC-53 | ⚠️ | Trusting `qgetenv("UC_*")` to return a non-empty value without a fallback. Only `UC_CONFIG_HOME` and `UC_DATA_HOME` are contractually documented for custom-UI installs; everything else is a de-facto runtime convention the firmware can change between releases. v1.4.41 case study: firmware 2.9.2 ships with `UC_SOUND_EFFECTS_PATH` empty for custom-UI launches, silencing all UI sound effects. Mitigation: provide a fallback to `$UC_CONFIG_HOME` for any env that gates a feature. | §13.7 |
+| AP-UC-54 | ❌ | Calling `SoundEffects.play()` on the same JS tick as a heavy QML/GPU operation (Loader async load, large Repeater instantiation, shader compile, large texture upload). The main thread saturates and starves the audio thread, producing audible ALSA buffer underruns. v1.4.40 dock chime case study. Mitigation: defer the heavy operation by ≥ 250 ms via single-shot Timer, OR use AP-UC-56's pattern (audio fires from popup.onOpened after heavy work is done). | §13.8, §13.10 |
+| AP-UC-55 | ❌ | Auto-opening a Popup in response to firmware-pushed initial state during the first 1-2 s of QML load — Popup parent attachment, InputController, and ButtonNavigation aren't fully wired yet, so the popup opens but is undismissible. v1.4.41 boot-while-docked case study. Mitigation: 3 s startup grace flag + 2 s deferred activation during the grace window. | §13.9 |
+| AP-UC-56 | ℹ️ | Reverse pattern of AP-UC-54 — fire audio from `Popup.onOpened` instead of before/during the popup load. Eliminates contention without requiring a grace-timer-tuned-per-chime; trade-off is dock-to-first-audio latency rises from 0 ms to ~450 ms (popup transition duration). v1.4.43 reference implementation: `Config.dockChimeAfterScreensaver` toggle. Use when (a) audio is bound to a popup-opening trigger, AND (b) audio's exact timing relative to the physical event isn't critical. | §13.10 |
 
 ### Renderer / GPU
 
@@ -1142,7 +1146,64 @@ function onPowerSupplyChanged(value) {
 
 **Why 3 seconds for the grace window:** empirically covers QML engine load + InputController init + ButtonNavigation registration + Popup parent attachment on UCR3's quad-core ARM. The existing v1.4.6 fix in `ChargingScreen.qml::onOpened` (calling `buttonNavigation.takeControl()` unconditionally even if `themeLoader.item` isn't ready) reduces but doesn't eliminate the race — the input scope can still be wrong if the Popup parent itself isn't fully attached. The 2-second post-grace activation delay in the boot-while-docked branch is the second line of defense.
 
-### §13.10 API version awareness (post-upstream-merge ritual)
+### §13.10 Audio after Popup.onOpened — the contention-free playback pattern (AP-UC-56)
+
+Companion / refinement of §13.8. When you must combine audio playback with a popup that triggers heavy QML/GPU initialization, the cleanest known fix on UCR3 is to **fire the audio from the popup's `onOpened` handler**, not before. By the time `Popup.onOpened` fires, all heavy work is done:
+- QML object instantiation: complete (between `Loader.active=true` and `Loader.Ready`)
+- Shader compilation: complete (in the renderer's first construction)
+- Glyph atlas / GPU buffer upload: complete (first paint)
+- Popup transition animation: complete (this is what `onOpened` actually signals — Qt docs)
+
+After `onOpened`, the renderer is in steady-state per-frame mode (~2-5 ms main-thread cost per frame on UCR3), which leaves plenty of CPU for the audio thread to refill its ALSA buffer.
+
+**Comparison to §13.8's grace-timer fix:**
+
+| Pattern | Audio timing | Visual timing | Trade-off |
+|---|---|---|---|
+| §13.8 grace timer | Plays at t=0 (immediate) | Visible at t = chimeMs+100 (delayed for long chimes) | Long chimes → long visual delay |
+| §13.10 onOpened-fire | Plays at t ≈ 450 ms (after popup transitions in) | Visible at t = 200-450 ms | Audio confirmation slightly delayed; visual + audio synchronized |
+
+Reference implementation in v1.4.43 (`Config.dockChimeAfterScreensaver` toggle, default ON):
+
+```qml
+// main.qml — set the flag, activate Loader immediately, no chime here
+property bool _nextOpenViaDock: false
+function onPowerSupplyChanged(value) {
+    if (value) {
+        if (root._bootGraceActive) { /* boot-while-docked grace, see §13.9 */ }
+        else if (Config.dockChimeAfterScreensaver) {
+            root._nextOpenViaDock = true;
+            chargingScreenLoader.active = true;
+        } else { /* legacy §13.8 path */ }
+    }
+}
+// Loader.onStatusChanged — propagate flag to popup, gated on Battery state
+onStatusChanged: {
+    if (status == Loader.Ready) {
+        item._openedViaDock = root._nextOpenViaDock && Battery.powerSupply;
+        root._nextOpenViaDock = false;
+        item.open();
+    }
+}
+
+// ChargingScreen.qml — fire audio AFTER popup transitions in
+property bool _openedViaDock: false
+onOpened: {
+    // ... popup state init, takeControl, etc ...
+    if (chargingScreenRoot._openedViaDock) {
+        chargingScreenRoot._openedViaDock = false;
+        SoundEffects.play(SoundEffects.BatteryCharge);
+    }
+}
+```
+
+**Rule:** prefer this pattern when (a) the audio cue is bound to a state transition that triggers heavy popup loading, AND (b) the audio cue's exact timing relative to the physical event isn't critical. If audio cue must be immediate (e.g., haptic + audio confirmation of a button press), use §13.8's grace timer instead.
+
+**Why a flag-and-gate instead of just calling play() in onOpened unconditionally:** popups can open through multiple triggers (idle timer, wake from suspend, dock event). Only some of those should fire the chime. The flag mechanism lets the calling site declare intent ("this open is from a dock event"), which the popup's onOpened consumes. Same pattern as the existing `_openedViaIdleTimer` flag for the screen-off countdown's idle-baseline subtraction rule.
+
+**Battery.powerSupply gate at flag propagation** prevents stale flags from quick dock-then-undock during the async load — if the user pulled the remote between `_nextOpenViaDock=true` and `Loader.Ready`, the chime shouldn't fire. The gate is at flag-propagation (in `Loader.onStatusChanged`) rather than at the play() site so the flag isn't carried into a future open() call.
+
+### §13.11 API version awareness (post-upstream-merge ritual)
 
 After every `git fetch upstream && git merge upstream/main`, run this as part of the post-merge sanity check:
 
