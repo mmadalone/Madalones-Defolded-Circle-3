@@ -3819,57 +3819,87 @@ the Web Configurator</source>
 <context>
     <name>Sound</name>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="62"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="63"/>
         <source>Sound effects</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="101"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="102"/>
         <source>Sound effects volume</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="146"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="147"/>
         <source>Dock chime</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="153"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="154"/>
         <source>Tap a variant to preview and select. The chime plays when you place the remote on the dock.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="165"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="166"/>
         <source>Warp</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="166"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="167"/>
         <source>Ascend</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="167"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="168"/>
         <source>Bell</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="168"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="169"/>
         <source>Chord</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="169"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="170"/>
         <source>Pulse</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="170"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="171"/>
         <source>Zap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Sound.qml" line="214"/>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="172"/>
+        <source>Pwr Down</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="173"/>
+        <source>Pwr Hold</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="174"/>
+        <source>Pwr Up 1</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="175"/>
+        <source>Pwr Up 2</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="176"/>
+        <source>TOS</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="177"/>
+        <source>TOS Long</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Sound.qml" line="221"/>
         <source>Haptic feedback</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5057,7 +5087,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="943"/>
+        <location filename="../../src/qml/main.qml" line="958"/>
         <source>Done</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5065,7 +5095,7 @@ Tap the QR code to show it on the screen.</source>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="1065"/>
+        <location filename="../../src/config/config.cpp" line="1066"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation type="unfinished"></translation>
     </message>

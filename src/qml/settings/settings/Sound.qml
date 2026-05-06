@@ -31,9 +31,10 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            // madalone: cap raised from 1100 to 1450 to accommodate the dock-chime variant grid.
-            if (contentY > 1450) {
-                contentY = 1450;
+            // madalone: cap raised to 1600 to accommodate the 12-variant dock-chime grid
+            // (4 rows × 3 columns; was 1450 with 6 variants in 2 rows).
+            if (contentY > 1600) {
+                contentY = 1600;
             }
         }
 
@@ -162,12 +163,18 @@ Settings.Page {
 
                     Repeater {
                         model: [
-                            { variant: 1, label: qsTr("Warp") },
-                            { variant: 2, label: qsTr("Ascend") },
-                            { variant: 3, label: qsTr("Bell") },
-                            { variant: 4, label: qsTr("Chord") },
-                            { variant: 5, label: qsTr("Pulse") },
-                            { variant: 6, label: qsTr("Zap") }
+                            { variant: 1,  label: qsTr("Warp") },
+                            { variant: 2,  label: qsTr("Ascend") },
+                            { variant: 3,  label: qsTr("Bell") },
+                            { variant: 4,  label: qsTr("Chord") },
+                            { variant: 5,  label: qsTr("Pulse") },
+                            { variant: 6,  label: qsTr("Zap") },
+                            { variant: 7,  label: qsTr("Pwr Down") },
+                            { variant: 8,  label: qsTr("Pwr Hold") },
+                            { variant: 9,  label: qsTr("Pwr Up 1") },
+                            { variant: 10, label: qsTr("Pwr Up 2") },
+                            { variant: 11, label: qsTr("TOS") },
+                            { variant: 12, label: qsTr("TOS Long") }
                         ]
                         Rectangle {
                             Layout.fillWidth: true

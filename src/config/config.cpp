@@ -310,15 +310,16 @@ void Config::setSoundVolume(int volume) {
 }
 
 // madalone: dock-chime variant picker. Local QSettings only (firmware doesn't know about
-// our chime variants). 1..6 mapped by SoundEffects::chimeFileName().
+// our chime variants). 1..12 mapped by SoundEffects::chimeFileName() — variants 1-6 are
+// generated synth chimes (tools/gen_sounds.py), variants 7-12 are user-curated wavs.
 int Config::getDockChimeVariant() {
     int v = m_settings->value("sound/dockChimeVariant", 1).toInt();
-    if (v < 1 || v > 6) v = 1;
+    if (v < 1 || v > 12) v = 1;
     return v;
 }
 
 void Config::setDockChimeVariant(int variant) {
-    if (variant < 1 || variant > 6) return;
+    if (variant < 1 || variant > 12) return;
     if (variant != getDockChimeVariant()) {
         m_settings->setValue("sound/dockChimeVariant", variant);
         emit dockChimeVariantChanged(variant);

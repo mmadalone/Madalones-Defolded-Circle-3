@@ -584,10 +584,10 @@ ApplicationWindow {
         // ChargingScreen.qml is heavyweight (Matrix rain shader compile, glyph atlas build,
         // GPU buffer upload). Loading it on the same JS tick as SoundEffects.play() saturates
         // the main thread, starves the ALSA audio thread, and produces audible buffer
-        // underruns ("choppy" chime). 350 ms is long enough to cover all 6 chime variants
-        // (longest is Bell at 500 ms; we cover 70 % which is enough — the tail is already
-        // exponentially-decayed by then) and short enough that the screensaver appearance
-        // still feels responsive.
+        // underruns ("choppy" chime). The original 350 ms covered all 6 synth chimes (max
+        // ~500 ms duration). v1.4.42 added 6 user-curated wavs with durations up to ~3 s,
+        // so the grace duration is now chime-variant-aware: max(350, chimeMs + 100).
+        // Boot-while-docked branch overrides this to 2000 ms (no chime fires there anyway).
         Timer {
             id: dockChimeGraceTimer
             repeat: false
@@ -598,6 +598,18 @@ ApplicationWindow {
                     chargingScreenLoader.active = true;
                 }
             }
+        }
+
+        // Per-variant chime duration in ms. Indexed by Config.dockChimeVariant - 1.
+        // Updated when gen_sounds.py regenerates wavs; values match what the wav writer
+        // produces for synth chimes (1-6) and the source duration of user wavs (7-12).
+        readonly property var _chimeDurationsMs: [
+             340,  360,  500,  280,  400,  250,    // 1-6: synth (Warp/Ascend/Bell/Chord/Pulse/Zap)
+            1750,  940, 2930, 1800, 1860, 2490     // 7-12: user (PwrDown/PwrHold/Up1/Up2/TOS/TOSLong)
+        ]
+        function _chimeGraceForVariant(v) {
+            if (v < 1 || v > 12) v = 1;
+            return Math.max(350, _chimeDurationsMs[v - 1] + 100);
         }
 
         Connections {
@@ -665,10 +677,13 @@ ApplicationWindow {
                             dockChimeGraceTimer.restart();
                         } else {
                             // Normal dock event: play chime FIRST (audio thread gets head-start),
-                            // then defer screensaver load by 350 ms so ChargingScreen.qml's
-                            // heavyweight QML/GPU init doesn't starve the ALSA audio thread.
+                            // then defer screensaver load by chime-variant-aware grace duration
+                            // so ChargingScreen.qml's heavyweight QML/GPU init doesn't starve the
+                            // ALSA audio thread mid-playback. Synth chimes (1-6) are short enough
+                            // for the 350 ms floor; user wavs (7-12) are 1-3 s long and need a
+                            // proportionally longer grace.
                             SoundEffects.play(SoundEffects.BatteryCharge);
-                            dockChimeGraceTimer.interval = 350;
+                            dockChimeGraceTimer.interval = root._chimeGraceForVariant(Config.dockChimeVariant);
                             dockChimeGraceTimer.restart();
                         }
                     } else {

@@ -48,8 +48,9 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0 → v1.4.41):**
+**UI chrome beyond the screensaver (v1.3.0 → v1.4.42):**
 
+- **Dock chime picker expanded to 12 variants + variant-aware grace duration** (v1.4.42) — 6 user-curated wavs added to the existing 6 synth chimes (`Pwr Down`, `Pwr Hold`, `Pwr Up 1`, `Pwr Up 2`, `TOS`, `TOS Long`). Picker grid grows from 2×3 to 4×3. Source files in `chimes/` stay pristine; `tools/gen_sounds.py` processes copies through a louder pipeline (`pre_gain=1.5, drive=3.5` vs synth's `1.2, 2.2`) for ~3 dB more perceived RMS on the user wavs. Variant-aware dock-chime grace duration in `main.qml`: short synth chimes keep the 350 ms floor, longer user wavs (up to 2.93 s) get `max(350, chimeMs + 100)` so they play through cleanly before the screensaver async-load hits the audio thread. Trade-off the user picks when picking the variant: short = snappy screensaver, long = clean chime + delayed screensaver. Boot-while-docked behavior unchanged.
 - **Audio restored under firmware 2.9.2 + dock chime picker** (v1.4.41, with the audio-fix portion landing on the same v1.4.41 release after a never-tagged v1.4.40 draft) — UCR3 firmware 2.9.2 ships without the system env var that custom-UI builds use to locate sound effect files; result was every `play()` call no-opped against null pointers, killing all UI feedback at once (dock chime, button clicks, confirmation tones, error tones). Fix bundles 4 UI sounds + 6 dock-chime variants directly in `deploy/config/`, with a fallback in `uiController.cpp` that resolves to `$UC_CONFIG_HOME` when the env is empty (env still wins if non-empty, so a future firmware that restores the path uses stock sounds transparently). New **Settings → Sound → Dock chime** picker with 6 variants (Warp / Ascend / Bell / Chord / Pulse / Zap, tap-to-preview-and-select), `Config.dockChimeVariant` Q_PROPERTY 1-6 persisted via QSettings, `SoundEffects::setDockChimeVariant(int)` rebuilds `m_effectBatteryCharge` from the chosen wav at runtime. All sounds CC0, generated via `tools/gen_sounds.py` (numpy synthesis, 16-bit PCM stereo at 44.1 kHz — mono produces `snd_pcm_hw_params_set_channels: err = -22` from UCR3's ALSA backend; ~6-8 dB perceived loudness boost via tanh saturation + peak-normalize-to-1.0 in `write_wav()`). Two paired UX fixes also in v1.4.41: dock chime no longer chops up at docking (350 ms grace timer in `main.qml` defers the heavyweight `ChargingScreen.qml` async load so it doesn't starve the ALSA audio thread mid-playback), and the screensaver no longer becomes unclearable when the device boots while docked (3 s startup grace + 2 s screensaver activation delay handles the race where the firmware's initial `Battery.powerSupply = true` pump arrives before `InputController` / `ButtonNavigation` / Popup parenting are fully wired). Diagnostic instrumentation in `soundEffects.cpp` (`qCWarning(lcCore())` covering audio device + path + per-file existence) retained as a future-regression detector — visible at boot via `/api/system/logs?s=custom-ui&q=Default+audio`.
 - **Mod 5 v2: standby_inhibitors REST swap** (v1.4.39) — Active Session Keeper's effector switches from the legacy 270 s `setPowerMode(NORMAL)` WS ping loop to the firmware's native `POST /api/system/power/standby_inhibitors` REST endpoint. Event-based contract eliminates the 270 s vs 300 s race window where session activity stopping just before a ping cycle could let the firmware's standby timer expire and nuke the session. New `Config.sessionKeeperUseInhibitorApi` toggle in Settings → Power, **default ON** for fresh installs (REST inhibitor is the firmware's canonical path; the prior WS ping loop was AP-UC-46 — a workaround for an endpoint that already existed). Bonus side-effect: BLOCK inhibitor pins the device in NORMAL during sessions, so the `LOW_POWER ↔ NORMAL` transitions that trigger phantom-wake events can't fire while a session is running — Mod 6 still owns idle-period suppression. Authenticated via `Authorization: Bearer <UC_TOKEN content>` (Phase 0 REST auth probe established this is the firmware's accepted REST auth contract on UCR3 firmware 2.9.1, despite Bearer not being declared in OpenAPI `securitySchemes`). Verified end-to-end with 6 lifecycle smokes: activate, cleanup, orphan recovery on UI restart, mid-session toggle flip, PIN unchanged, no auto-revert. Fall back to the legacy ping path by toggling OFF if a future firmware OTA breaks the inhibitor API.
 - **Settings → Power UI polish + render fix** (v1.4.24, v1.4.26) — readability fixes for the lookback help text (font 20 → 24, `colors.medium` → `colors.light`) and accuracy fix for the Mod 5 subtitle ("Prevents the 5-minute sleep timer" → accurate "Resets the device's sleep countdown every 4.5 min ... while a media player is actively playing or recent media-control buttons are pressed"). v1.4.26 replaces the screen-off-style picker's `GridLayout` with `Item` + computed-position `Repeater` children — eliminates the ~270 ms cascade on entering Settings → Power → Screen off animations.
@@ -89,15 +90,15 @@ Quick version for anyone who's already set up:
 
 ```bash
 # 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.41/remote-ui-v1.4.41-UCR3-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.41/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.42/remote-ui-v1.4.42-UCR3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.42/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.4.41-UCR3-static.tar.gz remote-ui.hash
+./scripts/verify-release.sh remote-ui-v1.4.42-UCR3-static.tar.gz remote-ui.hash
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.4.41-UCR3-static.tar.gz" \
+    --form "file=@remote-ui-v1.4.42-UCR3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -169,9 +170,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.4.41-UCR3-static.tar.gz \
+    remote-ui-v1.4.42-UCR3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.41-UCR3-static.tar.gz.asc
+    remote-ui-v1.4.42-UCR3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -257,7 +258,7 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
 
-**v1.4.41** (2026-05-02) — **B1 matrixrain decomposition.** Largest single-file refactor in the project's history: `matrixrain.cpp` shrunk 1445 → 746 LOC (-48 %) across three architectural phases, each independently CI-green and visually verified on UCR3. New helpers in `src/ui/matrixrain/`: `SingleLayerRenderer` (Phase A — stateless render path, mirrors LayerPipeline), `InputHandler` (Phase B — QObject-with-timers, owns enter-button state machine + 2 internal timers, mirrors ActivitySessionKeeper / PhantomWakeSuppressor), `BindingHelper` (Phase C — all-static, 8 ScreensaverConfig binding helpers, mirrors AtlasBuilder). QML contract preserved verbatim. Also: C1 `ScreensaverConfig` Battery-deferred-connect cleanup (drops `QTimer::singleShot(500, ...)` retry hack via `main.cpp` construction reorder), STYLE_GUIDE §1.4 AP-UC-13 extension covering Repeater `model:` gating, settings description text consistency sweep (3× `colors.medium` → `colors.light`).
+**v1.4.36** (2026-05-02) — **B1 matrixrain decomposition.** Largest single-file refactor in the project's history: `matrixrain.cpp` shrunk 1445 → 746 LOC (-48 %) across three architectural phases, each independently CI-green and visually verified on UCR3. New helpers in `src/ui/matrixrain/`: `SingleLayerRenderer` (Phase A — stateless render path, mirrors LayerPipeline), `InputHandler` (Phase B — QObject-with-timers, owns enter-button state machine + 2 internal timers, mirrors ActivitySessionKeeper / PhantomWakeSuppressor), `BindingHelper` (Phase C — all-static, 8 ScreensaverConfig binding helpers, mirrors AtlasBuilder). QML contract preserved verbatim. Also: C1 `ScreensaverConfig` Battery-deferred-connect cleanup (drops `QTimer::singleShot(500, ...)` retry hack via `main.cpp` construction reorder), STYLE_GUIDE §1.4 AP-UC-13 extension covering Repeater `model:` gating, settings description text consistency sweep (3× `colors.medium` → `colors.light`).
 
 **v1.4.21** (2026-04-30) — Reconnect HUD overhaul + WiFi-everywhere toggle. `ReconnectingHUD` bumped 60 → 120 px, font 24 → 32, spinner 36 → 56, `colors.dark` → `colors.medium`, added 3-second opacity pulse so the post-wake banner is hard to miss. New `WifiStatusChip.qml` (~50 lines) + `Settings → UI → Show WiFi indicator everywhere` (default on) puts the always-visible signal-strength chip on every entity / activity detail page, just left of the battery chip — mirrors `StatusBar.qml`'s WiFi indicator (Mod 4 W3). When chip is on, the existing weak-signal warning icon hides because the chip carries the disconnected-state info. CI workflow `build.yml:151` patched to stage the install-bundle layout (`release.json + bin/remote-ui + config/`) before tarring — fixes a long-standing release bug where the published tarball was rejected by the firmware install endpoint with "Missing file: remote-ui".
 

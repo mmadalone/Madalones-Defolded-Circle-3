@@ -11,6 +11,62 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.42 — 2026-05-06 — Dock chime picker: 6 → 12 variants (user-curated wavs) + variant-aware grace duration
+
+Pure additive release: 6 user-curated dock-chime variants (`Pwr Down`, `Pwr Hold`, `Pwr Up 1`, `Pwr Up 2`, `TOS`, `TOS Long`) join the 6 synth variants from v1.4.40. The picker grid grows from 2 rows of 3 to 4 rows of 3 in `Settings → Sound → Dock chime`. Plus a small but important refinement to the dock-chime grace timer that fixes audible chopping on long chimes.
+
+### Why this matters
+
+v1.4.41's 350 ms dock-chime grace timer was calibrated for the longest synth chime (Bell at 500 ms — covered ~70 % of the duration, the tail was already exponentially decayed by then). The new user wavs are 0.94-2.93 s long, which means the grace timer's 350 ms was fully consumed during the first sixth of the longest wav. After 350 ms, `chargingScreenLoader.active = true` triggered the heavyweight `ChargingScreen.qml` async load — Matrix rain shader compile, glyph atlas build, GPU buffer upload — which on UCR3's quad-core ARM saturates the main thread for ~200 ms and starves the ALSA audio thread mid-playback. Result: long chimes chopped exactly when the screensaver appeared.
+
+Fix is a 1-line addition: per-variant grace duration. Synth chimes keep the 350 ms floor (no behavior change); user wavs get `max(350, chimeMs + 100)`. The user picks the trade-off when they pick the variant: short = snappy screensaver, long = clean chime + delayed screensaver.
+
+### Added
+
+- **6 dock-chime variants** in `Settings → Sound → Dock chime`. Grid grows from 2×3 to 4×3 — `Sound.qml::contentY` cap raised from 1450 → 1600 to accommodate the new row.
+
+  | Variant | Filename | Duration | Source |
+  |---|---|---|---|
+  | 7 — Pwr Down | `power_down.wav` | 1.75 s | user-curated |
+  | 8 — Pwr Hold | `power_hold_and_off.wav` | 0.94 s | user-curated |
+  | 9 — Pwr Up 1 | `power_up1_clean.wav` | 2.93 s | user-curated |
+  | 10 — Pwr Up 2 | `power_up2_clean.wav` | 1.80 s | user-curated |
+  | 11 — TOS | `tos_bridge_loss_power_shorter.wav` | 1.86 s | user-curated |
+  | 12 — TOS Long | `tos_bridge_loss_power.wav` | 2.49 s | user-curated |
+
+- **`tools/gen_sounds.py::process_user_wav()`** — reads source wavs from `chimes/`, runs them through a more aggressive loudness pipeline than the synth chimes (`pre_gain=1.5, drive=3.5`, vs synth's `1.2, 2.2`), writes to `deploy/config/`. Source files in `chimes/` stay pristine. Net RMS gain on the user wavs: **+2-3.6 dB** for 5 of 6 (the 6th, `power_down.wav`, has a single brief peak buried in long quiet — the saturator can't lift its RMS without total brick-walling).
+
+- **Per-variant chime-grace duration** in `main.qml`. New `_chimeDurationsMs[]` table + `_chimeGraceForVariant(v)` helper. Wired in the normal-dock branch of the `powerSupplyChanged` handler:
+  ```qml
+  dockChimeGraceTimer.interval = root._chimeGraceForVariant(Config.dockChimeVariant);
+  ```
+  Boot-while-docked branch unchanged (still hardcoded 2 s, no chime fires there anyway).
+
+### Changed
+
+- **`Config::dockChimeVariant` bounds** widened from `1..6` to `1..12`. Out-of-range values still clamp to 1 (Warp / `zap_future.wav` for stock-firmware filename compatibility).
+- **`SoundEffects::chimeFileName(int)`** gains 6 new switch cases (7-12). `setDockChimeVariant` bounds widened to match.
+- **Bundle layout caveat documented** — `./config/` cannot contain sub-directories. Tried `./config/sounds/` early in development, firmware install endpoint rejected with `400 "Could not extract archive"` despite the OpenAPI spec only documenting `./bin`, `./config`, `./data` as allowed (silent on sub-directory rules). All 16 wavs now live flat in `deploy/config/` alongside the font and screensaver json.
+
+### Architecture / files modified
+
+- **Modified**: `src/qml/main.qml` (~22 LOC: `_chimeDurationsMs`, `_chimeGraceForVariant`, wiring in handler), `src/qml/settings/settings/Sound.qml` (6 new model entries + `contentY` cap), `src/ui/soundEffects.{h,cpp}` (cases 7-12 + bounds), `src/config/config.cpp` (bounds), `tools/gen_sounds.py` (`process_user_wav` + drive=3.5 user-wav path)
+- **New custom files**: `chimes/{power_down,power_hold_and_off,power_up1_clean,power_up2_clean,tos_bridge_loss_power,tos_bridge_loss_power_shorter}.wav` (source files, ~2.2 MB total — gitignored from build artifacts but checked into the source tree as the canonical chime sources); `deploy/config/{same 6 names}.wav` (post-pipeline copies, also ~2.2 MB)
+- **Bumped**: `remote-ui.pro VERSION` 1.4.41 → 1.4.42; `deploy/release.json version` 1.4.41 → 1.4.42
+
+### Verification
+
+End-to-end on UCR3 firmware 2.9.2:
+- **Boot-while-docked dismissibility**: trigger UI restart while docked. Screensaver appears ~2 s after boot. Tap and DPAD dismiss cleanly. **No regression vs v1.4.41.**
+- **Long-chime cleanliness with Pwr Up 1 (2.93 s)** picked as variant: chime plays cleanly through to its tail before screensaver appears (~3 s after dock).
+- **Short-chime snappiness with Bell (0.50 s)** picked: chime plays cleanly, screensaver appears 600 ms after dock.
+- **Picker preview**: tapping any variant tile in Settings → Sound → Dock chime plays that variant immediately. Confirmed for all 12.
+
+### Out of scope (follow-up)
+
+- **`power_down.wav` is still relatively quiet** (RMS 0.117 vs ~0.30 on the others) — its source has a brief peak then long decay; even peak-normalize-to-1.0 with aggressive saturation can't lift the RMS without changing the source's character. If desired: trim the quiet trailing portion in the source wav, or apply a different dynamic-range-compression pipeline specifically to that file.
+- **Pre-warming `ChargingScreen.qml`** as a permanent fix to dock-chime contention was attempted mid-session and reverted — it broke boot-while-docked dismissibility (popup parent attachment binds at construction time, and constructing too early during boot meant a stale parent chain). The variant-aware grace duration is the cleaner fix anyway since it lets the user pick the chime/screensaver-latency trade-off.
+
 ## v1.4.41 — 2026-05-06 — Dock chime polish: no chopping, no boot-while-docked unclear-able
 
 Three polish fixes on top of v1.4.40, all centered on the dock-chime UX. No new functional surface area; bundle layout, Config Q_PROPERTYs, and the wav file set are unchanged.

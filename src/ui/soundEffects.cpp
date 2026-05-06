@@ -26,7 +26,7 @@ SoundEffects::SoundEffects(int volume, bool enabled, const QString &effectsDir, 
       m_model(model),
       m_volume(volume),
       m_enabled(enabled) {
-    if (initialChimeVariant >= 1 && initialChimeVariant <= 6) {
+    if (initialChimeVariant >= 1 && initialChimeVariant <= 12) {
         m_dockChimeVariant = initialChimeVariant;
     }
     Q_ASSERT(s_instance == nullptr);
@@ -135,8 +135,10 @@ void SoundEffects::createEffects(const QAudioDeviceInfo &deviceInfo) {
     m_effectBatteryCharge = makeEffect(chimeFileName(m_dockChimeVariant));
 }
 
-// madalone: filename lookup for dock-chime variant 1..6. Out-of-range values fall back to
+// madalone: filename lookup for dock-chime variant 1..12. Out-of-range values fall back to
 // variant 1 (warp / stock zap_future.wav for firmware-set-path compatibility).
+// Variants 1-6 are CC0 generated synth chimes (tools/gen_sounds.py).
+// Variants 7-12 are user-curated 16-bit stereo 48 kHz chimes from chimes/.
 QString SoundEffects::chimeFileName(int variant) {
     switch (variant) {
         case 2:  return QStringLiteral("zap_arpeggio.wav");
@@ -144,13 +146,19 @@ QString SoundEffects::chimeFileName(int variant) {
         case 4:  return QStringLiteral("zap_dyad.wav");
         case 5:  return QStringLiteral("zap_synthwave.wav");
         case 6:  return QStringLiteral("zap_strike.wav");
+        case 7:  return QStringLiteral("power_down.wav");
+        case 8:  return QStringLiteral("power_hold_and_off.wav");
+        case 9:  return QStringLiteral("power_up1_clean.wav");
+        case 10: return QStringLiteral("power_up2_clean.wav");
+        case 11: return QStringLiteral("tos_bridge_loss_power_shorter.wav");
+        case 12: return QStringLiteral("tos_bridge_loss_power.wav");
         case 1:
         default: return QStringLiteral("zap_future.wav");
     }
 }
 
 void SoundEffects::setDockChimeVariant(int variant) {
-    if (variant < 1 || variant > 6) variant = 1;
+    if (variant < 1 || variant > 12) variant = 1;
     if (variant == m_dockChimeVariant && m_effectBatteryCharge != nullptr) {
         return;  // no change
     }

@@ -27,11 +27,12 @@ class SoundEffects : public QObject {
 
     void initialize();
 
-    // madalone: pick which dock-chime wav file is loaded. 1..5; bounds-clamped silently.
+    // madalone: pick which dock-chime wav file is loaded. 1..12; bounds-clamped silently.
     void setDockChimeVariant(int variant);
 
-    // madalone: filename for a given chime variant (1..5). Variant 1 returns "zap_future.wav"
-    // for stock-firmware filename compatibility; 2..5 return descriptive names.
+    // madalone: filename for a given chime variant (1..12). Variant 1 returns "zap_future.wav"
+    // for stock-firmware filename compatibility; 2..6 are generated synth chimes; 7..12 are
+    // user-curated wavs.
     static QString chimeFileName(int variant);
 
     enum SoundEffect {

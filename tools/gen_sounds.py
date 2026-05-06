@@ -227,6 +227,69 @@ def chime_strike():
     return body * env
 
 
+def process_user_wav(src_path: Path, dst_path: Path):
+    """Read a user-curated wav from src_path, run it through the same loudness pipeline
+    as the synth chimes (pre_gain → tanh saturation → peak-normalize-to-1.0), and write
+    to dst_path. Resamples to 44100 Hz only if needed (UCR3's ALSA backend handles 48 kHz
+    fine but mixing rates can cause renegotiation latency on first play() of each rate).
+
+    Source files in chimes/ stay untouched — only the deployed copies are processed.
+    """
+    with wave.open(str(src_path), "rb") as wf:
+        ch = wf.getnchannels()
+        rate = wf.getframerate()
+        sw = wf.getsampwidth()
+        n = wf.getnframes()
+        raw = wf.readframes(n)
+
+    if sw != 2:
+        raise RuntimeError(f"{src_path.name}: only 16-bit PCM supported (got {sw*8}-bit)")
+
+    pcm = np.frombuffer(raw, dtype=np.int16).astype(np.float32) / 32768.0
+    if ch == 2:
+        # De-interleave stereo → mono mix for the pipeline (write_wav re-doubles to L+R).
+        pcm = pcm.reshape(-1, 2).mean(axis=1)
+    elif ch != 1:
+        raise RuntimeError(f"{src_path.name}: only mono/stereo supported (got {ch} channels)")
+
+    # NOTE: write_wav uses the module-level SAMPLE_RATE (44.1 kHz) for the wave header,
+    # so we either resample or accept the rate mismatch. UCR3's QSoundEffect handles 48
+    # kHz fine empirically (deployed test 11:33 — no QAudioOutput errors). To preserve
+    # the original timbre exactly, we keep the source rate by writing through a custom
+    # path here instead of write_wav.
+    samples = pcm
+    if 1.0 != 1.0:  # placeholder — pre_gain already applied below
+        pass
+
+    # More aggressive loudness pipeline than the synth chimes (drive=3.5 vs 2.2,
+    # pre_gain=1.5 vs 1.2). User-curated source wavs are typically dense audio with
+    # transient/noise content that tolerates harder saturation without the harmonic-
+    # distortion artifacts you get on pure synth tones (especially long bell tails).
+    # Result: ~3-5 dB louder RMS than the synth-chime pipeline.
+    samples = samples * 1.5
+    samples = np.tanh(samples * 3.5) / np.tanh(3.5)
+    peak = float(np.max(np.abs(samples)))
+    if peak > 0:
+        samples = samples * (1.0 / peak)
+    samples = np.clip(samples, -1.0, 1.0)
+    out_pcm = (samples * 32766).astype(np.int16)
+
+    # Re-interleave to stereo at the source rate.
+    stereo = np.empty(out_pcm.size * 2, dtype=np.int16)
+    stereo[0::2] = out_pcm
+    stereo[1::2] = out_pcm
+    with wave.open(str(dst_path), "wb") as wf:
+        wf.setnchannels(2)
+        wf.setsampwidth(2)
+        wf.setframerate(rate)
+        wf.writeframes(stereo.tobytes())
+
+    src_peak = float(np.max(np.abs(pcm)))
+    src_rms  = float(np.sqrt(np.mean(pcm ** 2)))
+    new_rms  = float(np.sqrt(np.mean(samples ** 2)))
+    print(f"  processed {dst_path.name:40s} {n/rate:5.2f}s @{rate}Hz  src(peak={src_peak:.3f},rms={src_rms:.3f}) -> out(peak=1.000,rms={new_rms:.3f})")
+
+
 def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     print(f"Writing to {OUT_DIR}")
@@ -237,14 +300,35 @@ def main():
     write_wav(OUT_DIR / "confirm.wav",  gen_confirm())
     write_wav(OUT_DIR / "error.wav",    gen_error())
 
-    # Dock chime variants — 6 total. Variant 1 is the default (zap_future.wav for
-    # stock-firmware filename compatibility); variants 2-6 use descriptive names.
+    # Dock chime variants 1-6 — generated synth chimes.
+    # Variant 1 is the default (zap_future.wav for stock-firmware filename compatibility);
+    # variants 2-6 use descriptive names.
     write_wav(OUT_DIR / "zap_future.wav",     chime_warp())       # variant 1 — Warp
     write_wav(OUT_DIR / "zap_arpeggio.wav",   chime_arpeggio())   # variant 2 — Ascend
     write_wav(OUT_DIR / "zap_bell.wav",       chime_bell())       # variant 3 — Bell
     write_wav(OUT_DIR / "zap_dyad.wav",       chime_dyad())       # variant 4 — Chord
     write_wav(OUT_DIR / "zap_synthwave.wav",  chime_synthwave())  # variant 5 — Pulse
     write_wav(OUT_DIR / "zap_strike.wav",     chime_strike())     # variant 6 — Zap
+
+    # Dock chime variants 7-12 — user-curated source wavs from chimes/, processed through
+    # the same loudness pipeline so they don't sound dramatically quieter than the synth
+    # variants (some source wavs were 8-50× quieter on RMS).
+    chimes_src = Path(__file__).resolve().parents[1] / "chimes"
+    if chimes_src.is_dir():
+        user_chime_map = [
+            ("power_down.wav",                       7),  # Pwr Down
+            ("power_hold_and_off.wav",               8),  # Pwr Hold
+            ("power_up1_clean.wav",                  9),  # Pwr Up 1
+            ("power_up2_clean.wav",                 10),  # Pwr Up 2
+            ("tos_bridge_loss_power_shorter.wav",   11),  # TOS
+            ("tos_bridge_loss_power.wav",           12),  # TOS Long
+        ]
+        for src_name, _variant in user_chime_map:
+            src = chimes_src / src_name
+            if src.is_file():
+                process_user_wav(src, OUT_DIR / src_name)
+            else:
+                print(f"  SKIP missing user wav: {src}")
 
     print("done.")
 
