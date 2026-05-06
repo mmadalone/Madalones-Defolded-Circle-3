@@ -11,6 +11,7 @@ import Config 1.0
 import Power 1.0
 import Power.Modes 1.0
 import ScreensaverConfig 1.0
+import SoundEffects 1.0
 import TouchSlider 1.0
 
 import "qrc:/components" as Components
@@ -55,6 +56,12 @@ Popup {
     // window ahead. Signalled from main.qml via chargingScreenLoader
     // .onStatusChanged before item.open() fires.
     property bool _openedViaIdleTimer: false
+
+    // madalone (v1.4.43): pattern B — true when this open() was triggered by an actual user
+    // dock event AND Config.dockChimeAfterScreensaver is on. Consumed in onOpened to fire
+    // the dock chime AFTER the popup transitions in (clean audio thread, no contention).
+    // Reset to false in onOpened after the chime fires.
+    property bool _openedViaDock: false
 
     // Measured dim-phase duration — how long the core spends in the Idle
     // power mode (display dimmed) before transitioning to Low_power (display
@@ -297,6 +304,14 @@ Popup {
             if (themeLoader.item.hasOwnProperty("isClosing")) themeLoader.item.isClosing = false;
             if (themeLoader.item.hasOwnProperty("displayOff")) themeLoader.item.displayOff = chargingScreenRoot.displayOff;
         }
+        // madalone (v1.4.43): pattern B — fire the dock chime AFTER the popup is fully shown.
+        // By here all heavy QML/GPU init is done; the audio thread has clean CPU and the chime
+        // plays without ALSA buffer underruns. Gated by main.qml's _nextOpenViaDock flag (set
+        // only on actual user dock events, never on idle-open / wake / boot-while-docked).
+        if (chargingScreenRoot._openedViaDock) {
+            chargingScreenRoot._openedViaDock = false;
+            SoundEffects.play(SoundEffects.BatteryCharge);
+        }
     }
 
     onClosed: {
@@ -524,12 +539,23 @@ Popup {
                     }
                 }
             } else {
-                // --- Normal mode: double-tap to close ---
-                if (doubleTapTimer.running) {
-                    doubleTapTimer.stop();
-                    if (ScreensaverConfig.tapToClose) chargingScreenRoot.close();
+                // --- Normal mode: tap-based dismissal ---
+                // madalone (v1.4.43): semantics clarified.
+                //   tapToClose ON  = require double-tap to close (anti-accidental dismissal).
+                //                    Side-effect on Matrix-interactive themes: doubleTapTimer
+                //                    fires fireTapEffects() 300 ms after a single tap (line 602).
+                //   tapToClose OFF = single-tap closes immediately (responsive dismissal).
+                //                    The doubleTapTimer is never started, so the Matrix
+                //                    fireTapEffects() side-effect doesn't fire either.
+                if (ScreensaverConfig.tapToClose) {
+                    if (doubleTapTimer.running) {
+                        doubleTapTimer.stop();
+                        chargingScreenRoot.close();
+                    } else {
+                        doubleTapTimer.restart();
+                    }
                 } else {
-                    doubleTapTimer.restart();
+                    chargingScreenRoot.close();
                 }
             }
         }

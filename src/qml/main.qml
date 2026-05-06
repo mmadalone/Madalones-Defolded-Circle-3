@@ -522,6 +522,13 @@ ApplicationWindow {
         // to drive the screen-off countdown's subtraction rule.
         property bool _nextOpenViaIdleTimer: false
 
+        // madalone (v1.4.43): one-shot — set true when the next open is triggered by an
+        // actual user dock event (not boot-while-docked, not idle-open, not wake). When
+        // Config.dockChimeAfterScreensaver is on, ChargingScreen.qml's onOpened uses this
+        // flag to fire the dock chime AFTER the popup is fully visible (pattern B).
+        // Cleared by the popup's onOpened or by a competing trigger before it fires.
+        property bool _nextOpenViaDock: false
+
         // madalone (v1.4.40): startup-grace flag for boot-while-docked detection.
         // When the device boots while already on the dock, Battery.powerSupply pumps
         // its initial state (true) before InputController / ButtonNavigation /
@@ -605,7 +612,7 @@ ApplicationWindow {
         // produces for synth chimes (1-6) and the source duration of user wavs (7-12).
         readonly property var _chimeDurationsMs: [
              340,  360,  500,  280,  400,  250,    // 1-6: synth (Warp/Ascend/Bell/Chord/Pulse/Zap)
-            1750,  940, 2930, 1800, 1860, 2490     // 7-12: user (PwrDown/PwrHold/Up1/Up2/TOS/TOSLong)
+            1750,  940, 2930, 1800, 1240, 2490     // 7-12: user (PwrDown/PwrHold/Up1/Up2/TOS/TOSLong)
         ]
         function _chimeGraceForVariant(v) {
             if (v < 1 || v > 12) v = 1;
@@ -656,6 +663,11 @@ ApplicationWindow {
                     // docks while the async loader is still loading.
                     item._openedViaIdleTimer = root._nextOpenViaIdleTimer && !Battery.powerSupply;
                     root._nextOpenViaIdleTimer = false;
+                    // madalone (v1.4.43): propagate dock-event flag for pattern B (chime fires
+                    // in popup.onOpened). Gated on Battery.powerSupply so a stale flag from
+                    // a quick dock-then-undock during the load doesn't fire the chime.
+                    item._openedViaDock = root._nextOpenViaDock && Battery.powerSupply;
+                    root._nextOpenViaDock = false;
                     item.open();
                 }
             }
@@ -675,8 +687,17 @@ ApplicationWindow {
                             // settle), and skip the chime since this isn't a user-initiated dock.
                             dockChimeGraceTimer.interval = 2000;
                             dockChimeGraceTimer.restart();
+                        } else if (Config.dockChimeAfterScreensaver) {
+                            // madalone (v1.4.43, default): pattern B — open the screensaver
+                            // immediately (no grace timer), and fire the chime AFTER the popup
+                            // transitions in. ChargingScreen.qml's onOpened consumes the
+                            // _openedViaDock flag and calls SoundEffects.play() then. Net: visual
+                            // and audio both arrive at ~450 ms after dock, no contention chopping
+                            // because the audio thread fires after all heavy QML/GPU init is done.
+                            root._nextOpenViaDock = true;
+                            chargingScreenLoader.active = true;
                         } else {
-                            // Normal dock event: play chime FIRST (audio thread gets head-start),
+                            // Legacy / opt-out: play chime FIRST (audio thread gets head-start),
                             // then defer screensaver load by chime-variant-aware grace duration
                             // so ChargingScreen.qml's heavyweight QML/GPU init doesn't starve the
                             // ALSA audio thread mid-playback. Synth chimes (1-6) are short enough

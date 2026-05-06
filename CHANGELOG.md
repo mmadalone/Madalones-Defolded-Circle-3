@@ -11,6 +11,67 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.4.43 — 2026-05-06 — Tap-to-close semantics fix + "Chime after screensaver" toggle (pattern B)
+
+Two screensaver-UX fixes layered on top of v1.4.42. Both are user-facing behavior changes; both are toggle-controlled (no forced behavior change for users who liked v1.4.42).
+
+### Why this matters
+
+**Tap-to-close was broken in a subtle way.** When the "Double-tap to close" toggle was OFF, a tap on the screensaver in normal mode (tapDirection OFF) did nothing AND triggered a 300 ms delayed Matrix tap-effect glitch via the doubleTapTimer's `onTriggered` handler. Users reasonably expected OFF to mean "single tap dismisses" — which is what they get now.
+
+**The variant-aware grace from v1.4.42 had an unavoidable trade-off**: long chimes (1-3 s) delayed the screensaver appearance by the chime's full duration. For a 2.93 s chime like Pwr Up 1, the screensaver took 3 s to appear. Pattern B inverts the ordering: screensaver opens immediately, chime fires once the popup is fully shown. Audio/visual land at roughly the same time (~450 ms after dock), and there's no contention chopping ever. Trade-off: dock-to-first-audio latency goes from 0 ms to ~450 ms. We made it a toggle so users can pick.
+
+### Added
+
+- **`Settings → Sound → "Chime after screensaver"` toggle** — `Config.dockChimeAfterScreensaver` Q_PROPERTY, default ON. Persisted at `sound/dockChimeAfterScreensaver` in QSettings. Description text clarifies both states under the toggle.
+  - **ON (pattern B, default)**: `chargingScreenLoader.active = true` fires immediately on dock; the chime plays from `ChargingScreen.qml::onOpened` once the popup is fully visible. By onOpened all heavy QML/GPU init is done, so the audio thread has clean CPU and chimes play without ALSA buffer underruns. New `_nextOpenViaDock` one-shot flag in `main.qml` is set before activating the loader, propagated through `Loader.onStatusChanged → item._openedViaDock` (gated on `Battery.powerSupply` to ignore stale flags from a quick dock-then-undock during loading).
+  - **OFF (legacy, v1.4.42)**: chime fires first, screensaver waits with variant-aware grace (`max(350, chimeMs + 100)`) until chime ends. Existing path preserved verbatim.
+  - **Boot-while-docked**: unchanged regardless of toggle state — still 2 s grace, no chime, dismissibility preserved.
+
+- **Description text under "Double-tap to close" toggle** — `"On: tap twice to dismiss the screensaver (anti-accidental). Off: a single tap dismisses."` Sets correct user expectation for both states.
+
+### Fixed
+
+- **Single-tap dismissal when "Double-tap to close" is OFF** (`src/qml/components/ChargingScreen.qml:526-548`). The `else` branch in the MouseArea's `onReleased` (normal mode, used when the theme isn't Matrix-interactive OR when `tapDirection` is OFF) now branches:
+  ```qml
+  if (ScreensaverConfig.tapToClose) {
+      // ON: require double-tap (anti-accidental)
+      if (doubleTapTimer.running) { doubleTapTimer.stop(); chargingScreenRoot.close(); }
+      else doubleTapTimer.restart();
+  } else {
+      // OFF: single tap closes immediately
+      chargingScreenRoot.close();
+  }
+  ```
+  Side effect of OFF: the `doubleTapTimer` never starts, so the line-602 Matrix-interactive `fireTapEffects()` side-effect (300 ms after a tap, regardless of the timer's purpose) doesn't fire either. Bug-for-free.
+
+  Matrix-with-`tapDirection`-ON branch (line 492-525) is unchanged — that's the explicit "matrix interactive" path with its own 4-center-tap-to-close gesture.
+
+### Changed
+
+- **`tools/gen_sounds.py` regenerated** to pick up a refreshed `tos_bridge_loss_power_shorter.wav` source (1.86 s → 1.24 s; user iterated on the source). Source peak 0.758 / RMS 0.122 → output peak 1.000 / RMS 0.432 through the user-wav loudness pipeline. `_chimeDurationsMs[10]` in `main.qml` updated from 1860 to 1240 ms to match.
+
+- **`Sound.qml` `contentY` cap** raised from 1600 → 1750 to accommodate the new "Chime after screensaver" section (toggle + description).
+
+### Architecture / files modified
+
+- **Modified**: `src/qml/main.qml` (~12 LOC: new `_nextOpenViaDock` property, dock-event handler branch on `Config.dockChimeAfterScreensaver`, propagation in `Loader.onStatusChanged`, `_chimeDurationsMs[10]` updated), `src/qml/components/ChargingScreen.qml` (added `import SoundEffects 1.0`, `_openedViaDock` property, chime-fire in `onOpened`, single-tap branch in `onReleased`), `src/qml/settings/settings/chargingscreen/GeneralBehavior.qml` (description text under tapToClose toggle), `src/qml/settings/settings/Sound.qml` (new toggle row + description, contentY cap raised), `src/config/config.{h,cpp}` (new Q_PROPERTY + getter/setter/signal)
+- **Refreshed asset**: `chimes/tos_bridge_loss_power_shorter.wav` (1.24 s, user-iterated source); `deploy/config/tos_bridge_loss_power_shorter.wav` (re-processed copy)
+- **Bumped**: `remote-ui.pro VERSION` 1.4.42 → 1.4.43; `deploy/release.json version` 1.4.42 → 1.4.43
+
+### Verification
+
+End-to-end on UCR3 firmware 2.9.2:
+- **Tap dismissal (Matrix theme, tapDirection OFF, tapToClose OFF)**: single tap closes immediately. No 300 ms delayed Matrix glitch effect.
+- **Tap dismissal (tapToClose ON)**: single tap waits for second; second tap closes. Existing v1.4.41 anti-accidental behavior preserved.
+- **Pattern B with Pwr Up 1 (2.93 s chime)**: screensaver fade-in starts ~200 ms after dock, chime fires at ~450 ms (popup onOpened), both finish synchronized. No chopping.
+- **Pattern B OFF + Pwr Up 1**: chime instant, screensaver appears ~3 s later (legacy v1.4.42 behavior). Confirms toggle works.
+- **Boot-while-docked dismissibility (toggle ON or OFF)**: unchanged from v1.4.42 — 2 s grace, screensaver dismissible on tap or DPAD.
+
+### Out of scope (follow-up)
+
+- The Matrix-interactive 4-center-tap-to-close path (`tapDirection` ON) is unchanged. With `tapToClose` OFF AND `tapDirection` ON, the user still needs 4 center taps to close. If you want single-tap-closes to also override Matrix interactivity when tapToClose is off, that's a future small change — but it's not what the user is asking for; they want Matrix interactivity preserved when explicitly enabled.
+
 ## v1.4.42 — 2026-05-06 — Dock chime picker: 6 → 12 variants (user-curated wavs) + variant-aware grace duration
 
 Pure additive release: 6 user-curated dock-chime variants (`Pwr Down`, `Pwr Hold`, `Pwr Up 1`, `Pwr Up 2`, `TOS`, `TOS Long`) join the 6 synth variants from v1.4.40. The picker grid grows from 2 rows of 3 to 4 rows of 3 in `Settings → Sound → Dock chime`. Plus a small but important refinement to the dock-chime grace timer that fixes audible chopping on long chimes.

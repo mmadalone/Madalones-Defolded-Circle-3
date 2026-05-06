@@ -326,6 +326,19 @@ void Config::setDockChimeVariant(int variant) {
     }
 }
 
+// madalone (v1.4.43): dock-chime timing. Default ON (pattern B = chime after screensaver appears).
+// Off = chime fires first, screensaver waits for chime to finish (variant-aware grace).
+bool Config::getDockChimeAfterScreensaver() {
+    return m_settings->value("sound/dockChimeAfterScreensaver", true).toBool();
+}
+
+void Config::setDockChimeAfterScreensaver(bool value) {
+    if (value != getDockChimeAfterScreensaver()) {
+        m_settings->setValue("sound/dockChimeAfterScreensaver", value);
+        emit dockChimeAfterScreensaverChanged(value);
+    }
+}
+
 void Config::setDisplayAutoBrightness(bool enabled) {
     if (m_displayAutoBrightness != enabled) {
         int id = m_core->setDisplayCfg(getDisplayBrightness(), enabled);

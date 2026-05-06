@@ -49,6 +49,13 @@ ColumnLayout {
                 KeyNavigation.down: motionToCloseSwitch
             }
         }
+        // madalone (v1.4.43): clarify single-tap vs double-tap semantics.
+        Text {
+            Layout.fillWidth: true; wrapMode: Text.WordWrap
+            color: colors.light
+            text: qsTr("On: tap twice to dismiss the screensaver (anti-accidental). Off: a single tap dismisses.")
+            font: fonts.primaryFont(22)
+        }
     }
 
     Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }

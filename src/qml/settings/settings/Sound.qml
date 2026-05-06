@@ -31,10 +31,10 @@ Settings.Page {
             if (contentY < 0) {
                 contentY = 0;
             }
-            // madalone: cap raised to 1600 to accommodate the 12-variant dock-chime grid
-            // (4 rows × 3 columns; was 1450 with 6 variants in 2 rows).
-            if (contentY > 1600) {
-                contentY = 1600;
+            // madalone: cap raised to 1750 to accommodate the new "Chime after screensaver"
+            // toggle + description (was 1600 with just the 12-variant grid).
+            if (contentY > 1750) {
+                contentY = 1750;
             }
         }
 
@@ -197,6 +197,47 @@ Settings.Page {
                             }
                         }
                     }
+                }
+            }
+
+            Rectangle {
+                Layout.alignment: Qt.AlignCenter
+                width: parent.width - 20; height: 2
+                color: colors.medium
+            }
+
+            /** DOCK CHIME TIMING (madalone v1.4.43) **/
+            ColumnLayout {
+                Layout.alignment: Qt.AlignCenter
+                Layout.leftMargin: 10
+                Layout.rightMargin: 10
+                Layout.fillWidth: true
+                spacing: 10
+
+                RowLayout {
+                    Layout.fillWidth: true
+                    spacing: 10
+                    Text {
+                        Layout.fillWidth: true
+                        wrapMode: Text.WordWrap
+                        color: colors.offwhite
+                        text: qsTr("Chime after screensaver")
+                        font: fonts.primaryFont(30)
+                    }
+                    Components.Switch {
+                        id: dockChimeAfterSwitch
+                        icon: "uc:check"
+                        checked: Config.dockChimeAfterScreensaver
+                        trigger: function() { Config.dockChimeAfterScreensaver = !Config.dockChimeAfterScreensaver; }
+                        highlight: activeFocus && ui.keyNavigationEnabled
+                    }
+                }
+                Text {
+                    Layout.fillWidth: true
+                    wrapMode: Text.WordWrap
+                    color: colors.light
+                    text: qsTr("On: screensaver appears immediately, chime plays once it's visible (best for long chimes). Off: chime plays first, screensaver appears after the chime ends.")
+                    font: fonts.primaryFont(22)
                 }
             }
 
