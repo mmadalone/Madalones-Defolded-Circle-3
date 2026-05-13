@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.8: Config.show{Shuffle,Repeat,MediaBrowser,MediaSource}Button toggles on the 4 controls-row icons.
+// Copyright (c) 2026 madalone. v1.4.9: controlsContainerHeight collapses to 0 when all 4 toggles are off.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +11,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
+import Config 1.0
 import Entity.Controller 1.0
 import Entity.MediaPlayer 1.0
 import Haptic 1.0
@@ -46,7 +49,10 @@ Rectangle {
     property string entityId
     property QtObject entityObj
 
-    readonly property int controlsContainerHeight: mediaComponent.height >= 320 ? 80 : 0
+    readonly property int controlsContainerHeight:
+        (Config.showShuffleButton || Config.showRepeatButton
+         || Config.showMediaBrowserButton || Config.showMediaSourceButton)
+        && mediaComponent.height >= 320 ? 80 : 0
     property double mediaInfoHeight: mediaTitle.implicitHeight + mediaArtist.implicitHeight + progressContainer.implicitHeight + controlsContainerHeight + 60
 
     property bool isComponentHorizontal: mediaComponent.height < 260
@@ -380,6 +386,7 @@ Rectangle {
             size: 60
             color: entityObj.shuffleIsOn ? colors.offwhite : colors.light
             icon: "uc:shuffle"
+            visible: Config.showShuffleButton
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -393,6 +400,7 @@ Rectangle {
             size: 60
             color: entityObj.repeatMode === MediaPlayerRepeatMode.OFF ? colors.light : colors.offwhite
             icon: "uc:repeat"
+            visible: Config.showRepeatButton
 
             Rectangle {
                 width: repeatText.implicitWidth + 20
@@ -434,7 +442,7 @@ Rectangle {
             size: 60
             color: colors.offwhite
             icon: "uc:album-collection"
-            visible: entityObj.hasFeature(MediaPlayerFeatures.Browse_media) || entityObj.hasFeature(MediaPlayerFeatures.Search_media)
+            visible: Config.showMediaBrowserButton && (entityObj.hasFeature(MediaPlayerFeatures.Browse_media) || entityObj.hasFeature(MediaPlayerFeatures.Search_media))
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -448,7 +456,7 @@ Rectangle {
             size: 60
             color: colors.offwhite
             icon: "uc:grid-2"
-            visible: entityObj.hasFeature(MediaPlayerFeatures.Select_source) && entityObj.sourceList.length !== 0
+            visible: Config.showMediaSourceButton && entityObj.hasFeature(MediaPlayerFeatures.Select_source) && entityObj.sourceList.length !== 0
 
             Components.HapticMouseArea {
                 anchors.fill: parent
