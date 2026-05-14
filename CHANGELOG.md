@@ -11,6 +11,70 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.0 — 2026-05-14 — Upstream v0.73.4 merge (Option-B): #781/#778/#747 bug fixes + retry-path hardening
+
+Second upstream merge in the fork's history. Adopts three user-reported bug fixes from `unfoldedcircle/feature-and-bug-tracker` plus a strict-upgrade to the pending-command retry plumbing our Wake-replay HUD already reused. Net code reduction: v1.4.11's `clearEntitiesDeferred` helper is obsoleted by upstream's no-clear posture and dropped.
+
+### Why this matters
+
+Three user-facing bugs that affected the UCR3 fleet — including ours — are fixed by the upstream changes this merge brings in. The headline is **#781 "Empty media widget despite existing media attributes"**: the reporter's symptom was the media widget going blank on wake-from-sleep with an active media player. That's a scenario our Wake-replay HUD (v1.4.19) and Mods 5/6 specifically target. Upstream's fix (no `m_entities.clear()` across core reconnects) closes that hole from a different angle than our v1.4.10 `entityAdded` wire-up, which remains load-bearing for the post-discovery / post-reinstall path.
+
+### Added (upstream-sourced)
+
+- **#781 fix** (open at upstream awaiting validation) — `EntityController::m_entities` now persists across `onCoreConnected` / `onCoreDisconnected`. `addEntityObject()` refreshes already-loaded entities via `onEntityChanged()` instead of silently returning. `MediaComponent.qml` + `Page.qml` gain `ensureEntityLoaded()` / `setMediaComponentEntity()` helpers — same async-load pattern our v1.4.10 shipped, now adopted upstream more broadly.
+- **#778 fix** (closed 2026-04-29) — Light `Color.qml` color-wheel picker uses `constrainToCircle()` clip-after-move instead of algebraic drag bounds. Selector no longer locks up at (0, 0).
+- **#747 fix** (closed 2026-04-30) — `climate.cpp` Us-vs-Metric mapping flipped (`unitSystem == Us ? FAHRENHEIT : CELSIUS`). `Climate.qml` uses `entityObj.temperatureLabel` instead of hardcoded `°`. HA climate entities now show the right scale label.
+- **Pending-command retry rewrite** — foundation for the still-open #783 "Command Queuing Toggle" feature request. New `requestId` + `attemptCount` fields on `pendingCommand` + per-callback stale-id guards. The resume-window retry path now has two layers of stale-callback protection (one before scheduling the 500 ms retry, one when firing it). Strict upgrade to the plumbing our **Wake-replay HUD** (v1.4.19) reuses.
+- **Minor fixes:** `light.h` member init defaults (`m_hue/m_saturation/m_brightness/m_colorTemp = 0`) — defensive UB cleanup. `setColor()` guards against `QColor::hsvHue() == -1` for achromatic colors.
+
+### Changed (custom side)
+
+- **MediaComponent.qml** simplified — v1.4.10's `ensureEntityLoaded` delta collapses to upstream-identical (upstream now ships the same pattern with two micro-improvements: explicit `entityId !== ""` check and re-set guard). v1.4.8 + v1.4.9 toggles preserved.
+- **entityController.cpp** combines upstream's refactor with our preserved custom edits in a single coherent file. Top-of-file gains 3 new `#include` (QJsonDocument, QJsonObject, QUuid) + 3 new static helpers (`isRepeatingCommand`, `buildCommandKey`, `buildCommandId`).
+- **Translations** regenerated via Docker `lupdate` — 13 locales touched. Upstream's `qsTr("Current %1°")` → `qsTr("Current %1") + entityObj.temperatureLabel` source-string change marks the old form `type="vanished"` and adds the new form as `type="unfinished"` (carries over the existing translation as a starting point).
+
+### Removed
+
+- **v1.4.11's `clearEntitiesDeferred()` helper** — obsoleted by upstream's removal of `m_entities.clear()` in `onCoreConnected/Disconnected`. The leak the helper plugged (stale QObjects after the map was cleared on reconnect) cannot occur if the map is never cleared. Header declaration + cpp implementation both dropped. ~25 lines removed.
+
+### Custom edits preserved verbatim
+
+- v1.4.10 `onEntityAdded` slot + `core::Api::entityAdded` wire-up at `entityController.cpp:159` (still load-bearing — upstream still ships the signal as orphan; only our connect consumes it).
+- v1.4.10 `onEntityChanged` late-fetch backstop for unloaded entities (catches CHANGE-without-prior-NEW spec violations + reconnect races).
+- v1.4.14 Mod 5 wires: `mediaPlayer::stateChanged → mediaPlayerStateChanged` emit in `addEntityObject` + already-Playing bootstrap; `entityCommandIssued` emit at top of `onEntityCommand`.
+- v1.4.19 wake-trigger expansion to `LOW_POWER || SUSPEND` in `onPowerModeChanged`.
+- v1.4.8 `Config.show{Shuffle,Repeat,MediaBrowser,MediaSource}Button` toggles on the four media-controls icons (re-applied after Phase 2a regression dropped them — `git checkout --theirs MediaComponent.qml` nuked v1.4.8 + v1.4.9 along with the upstream-redundant v1.4.10 delta).
+- v1.4.9 `controlsContainerHeight` collapse expression — `RowLayout` returns to 0 px when all four toggles are off.
+- Mod 4 WiFi UX bundle, Mod 5/6 session keeper + phantom-wake suppressor, Mods 1/3, v1.4.43 dock-chime + tap-to-close fixes — all untouched.
+
+### Verified
+
+- **285 test cases pass** on the merge branch: Keeper 48/48 + Suppressor 33/33 + QML/HUD 204/204 (including `ReconnectingHUD` 6/6 and `BatteryStatusChip` 8/8 directly relevant to the merge area).
+- **ARM64 cross-compile clean** — 0 errors, 7 pre-existing warnings (all upstream code; `-Wshadow` / `-Wfloat-equal`), 54 MB binary.
+- **End-to-end deploy verified on UCR3 firmware 2.9.2** — install HTTP 201, API responsive post-restart, 4 Settings → UI toggles confirmed working on the deployed binary.
+- **Auto-revert net armed** — if the new UI crashes badly, firmware reverts to stock per the standard safety mechanism.
+
+### Files (touched by merge)
+
+| Type | File |
+|------|------|
+| upstream + ours | `src/ui/entity/entityController.{h,cpp}` (Option-B stitched) |
+| upstream + ours | `src/qml/components/entities/activity/MediaComponent.qml` (upstream base + v1.4.8/9 re-applied) |
+| upstream-clean | `src/qml/components/Page.qml`, `src/qml/components/entities/light/Color.qml`, `src/qml/components/entities/climate/deviceclass/Climate.qml`, `src/ui/entity/climate.cpp`, `src/ui/entity/light.{cpp,h}` |
+| version bump | `remote-ui.pro` (1.4.43 → 1.5.0), `deploy/release.json` |
+| regenerated | `resources/translations/*.ts` (13 locales) |
+| docs | `CHANGELOG.md`, `docs/CUSTOM_FILES.md` |
+
+### Sources
+
+- Upstream commit `3582f92` — `v0.73.4 changes`
+- [Issue #781](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/781) — Empty media widget
+- [Issue #778](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/778) — Color selector jumps
+- [Issue #747](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/747) — Climate temperature label
+- [Issue #783](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/783) — Command Queuing Toggle (foundation, not fix)
+
+---
+
 ## v1.4.43 — 2026-05-06 — Tap-to-close semantics fix + "Chime after screensaver" toggle (pattern B)
 
 Two screensaver-UX fixes layered on top of v1.4.42. Both are user-facing behavior changes; both are toggle-controlled (no forced behavior change for users who liked v1.4.42).

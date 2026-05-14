@@ -871,9 +871,14 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="297"/>
+        <source>Current %1</source>
+        <extracomment>Current temperature</extracomment>
+        <translation type="unfinished">Actuel %1° {1?}</translation>
+    </message>
+    <message>
         <source>Current %1°</source>
         <extracomment>Current temperature</extracomment>
-        <translation>Actuel %1°</translation>
+        <translation type="vanished">Actuel %1°</translation>
     </message>
     <message>
         <location filename="../../src/qml/components/entities/climate/deviceclass/Climate.qml" line="337"/>
@@ -2609,17 +2614,17 @@ Climate fan</extracomment>
 <context>
     <name>MediaComponent</name>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="420"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="421"/>
         <source>All</source>
         <translation type="unfinished">Tout</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="422"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="423"/>
         <source>One</source>
         <translation type="unfinished">Un</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="463"/>
+        <location filename="../../src/qml/components/entities/activity/MediaComponent.qml" line="464"/>
         <source>Sources</source>
         <translation type="unfinished">Sources</translation>
     </message>
@@ -2829,46 +2834,46 @@ Climate fan</extracomment>
 <context>
     <name>Page</name>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="444"/>
+        <location filename="../../src/qml/components/Page.qml" line="467"/>
         <source>Turn off</source>
         <translation>Éteindre</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="462"/>
+        <location filename="../../src/qml/components/Page.qml" line="485"/>
         <source>Some devices are not ready</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="462"/>
-        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <location filename="../../src/qml/components/Page.qml" line="485"/>
+        <location filename="../../src/qml/components/Page.qml" line="523"/>
         <source>%1 is not connected yet. Tap Proceed to continue anyway.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="462"/>
-        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <location filename="../../src/qml/components/Page.qml" line="485"/>
+        <location filename="../../src/qml/components/Page.qml" line="523"/>
         <source>%1 are not connected yet. Tap Proceed to continue anyway.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="462"/>
-        <location filename="../../src/qml/components/Page.qml" line="500"/>
+        <location filename="../../src/qml/components/Page.qml" line="485"/>
+        <location filename="../../src/qml/components/Page.qml" line="523"/>
         <source>Proceed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="489"/>
+        <location filename="../../src/qml/components/Page.qml" line="512"/>
         <source>Turn off all</source>
         <translation>Tout éteindre</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="542"/>
+        <location filename="../../src/qml/components/Page.qml" line="565"/>
         <source>%1 is %2</source>
         <extracomment>Used to show the entity state: %1 is the entity name, %2 is the state</extracomment>
         <translation>%1 est %2</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/Page.qml" line="625"/>
+        <location filename="../../src/qml/components/Page.qml" line="648"/>
         <source>Press and hold the Home button or use the Web Configurator to configure the page</source>
         <extracomment>Web configurator is the name of the application, does not need translation</extracomment>
         <translation>Maintenez appuyé le bouton d&apos;accueil ou utilisez le configurateur Web pour configurer la page</translation>
@@ -5465,22 +5470,22 @@ Appuyez sur le code QR pour l&apos;afficher à l&apos;écran.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="671"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="707"/>
         <source>%1 is not responding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="672"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="708"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="705"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="740"/>
         <source>Error sending the command</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="706"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="741"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation type="unfinished"></translation>
     </message>

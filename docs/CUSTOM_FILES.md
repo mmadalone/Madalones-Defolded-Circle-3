@@ -2,10 +2,10 @@
 
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
-**Upstream base:** `v0.71.1`  
-**Last updated:** 2026-05-02 (v1.4.38 — test-only CI fix for v1.4.37 SignalSpy regression; binary identical to v1.4.37)
+**Upstream base:** `v0.73.4` (merged 2026-05-14, commit `3582f92`; previously `v0.71.1` → `v0.72.0` at v1.4.0).  
+**Last updated:** 2026-05-14 (v1.5.0 — upstream v0.73.4 merge, Option-B)
 
-> **Note on currency:** the per-Mod sections below reflect state through v1.4.11. Full per-file detail for v1.4.12 → v1.4.36 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
+> **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
 > **Note on size figures (v1.4.28):** The `~Lines` columns in the per-file tables below were mechanically synced against `wc -l` on 2026-05-01 per `audit-v1.4.26-thorough.md` Findings 7 + 11. Pre-v1.4.28 figures were stale — some by factors of 2-7x — because the manifest tracked file sizes by hand, not by re-counting. Going forward, run `wc -l <file>` whenever a file gets a substantive edit, and update the matching row here. The QML files (which still use `(~N)` parenthetical figures elsewhere) are not part of this sync.
 
@@ -188,6 +188,27 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.5.0: upstream v0.73.4 merge — reshapes v1.4.8 / v1.4.10 / v1.4.11 deltas
+
+Upstream v0.73.4 (commit `3582f92`) shipped fixes for three user-reported bugs ([#781](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/781), [#778](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/778), [#747](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/747)) plus a rewrite of the pending-command retry path (foundation for [#783](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/783)). Merged Option-B-style: take upstream's public API, keep our supplemental edits. Net effect on this manifest:
+
+| File | v1.5.0 change |
+|------|---------------|
+| `src/ui/entity/entityController.h` | **v1.4.11's `clearEntitiesDeferred();` slot declaration removed** — obsoleted by upstream's no-clear posture (see cpp row). v1.4.10's `onEntityAdded` slot decl + our Mod 5 signals (`mediaPlayerStateChanged` / `entityCommandIssued`) preserved. Inherits upstream's `pendingCommand` struct rename: `repeatCount → attemptCount` + new `requestId = -1` field. Copyright line: v1.4.11's attribution replaced with a v1.5.0 obsolescence note. |
+| `src/ui/entity/entityController.cpp` | **v1.4.11's `clearEntitiesDeferred()` helper (~10 lines) + its 2 call sites in `onCoreConnected` / `onCoreDisconnected` removed.** Upstream stopped clearing `m_entities` across core reconnects (the fix for #781's wake-from-sleep symptom) — the leak our helper plugged cannot occur if the map is never cleared. v1.4.10's `onEntityAdded` slot + `entityAdded` wire-up + late-fetch backstop preserved verbatim (verified upstream still ships `core::Api::entityAdded` as orphan signal — our connect at `entityController.cpp:159` is still the only consumer). v1.4.14 Mod 5 wires + v1.4.19 wake-trigger expansion preserved verbatim. New surface: top-of-file gains 3 `#include` (QJsonDocument, QJsonObject, QUuid) + 3 static helpers (`isRepeatingCommand`, `buildCommandKey`, `buildCommandId`) + retry rewrite with per-callback stale-id guards. Our `emit entityCommandIssued(entityId, command)` at top of `onEntityCommand` stitched in cleanly above upstream's reworked body. |
+| `src/qml/components/entities/activity/MediaComponent.qml` | **v1.4.10's `ensureEntityLoaded()` helper + `onEntityLoaded` Connections block collapsed to upstream-identical** — upstream now ships the same pattern with two micro-improvements (explicit `entityId !== ""` check + re-set guard on `onEntityLoaded`). v1.4.10 copyright line dropped from this file. **v1.4.8 + v1.4.9 deltas preserved** — `import Config 1.0`, the 4 `visible: Config.show*Button` bindings on shuffle/repeat/browser/source icons, and the `controlsContainerHeight` collapse expression all remain. *(Phase 2a of the merge initially dropped v1.4.8 + v1.4.9 along with v1.4.10 via `git checkout --theirs`; re-applied in commit `a51aaa2` after user-reported regression.)* |
+| `src/qml/components/Page.qml` | Auto-merged cleanly. Our v1.4.4 volume-guard `hasFeature(Volume_up_down)` block at lines 361-363 / 381-383 preserved verbatim (upstream's `setMediaComponentEntity` helper additions landed in different lines). |
+| `src/qml/components/entities/light/Color.qml` | Upstream-clean — replaces algebraic drag bounds with `constrainToCircle()` clip-after-move. **Fixes #778.** |
+| `src/qml/components/entities/climate/deviceclass/Climate.qml` | Upstream-clean — uses `entityObj.temperatureLabel` instead of hardcoded `°`. **Fixes #747.** |
+| `src/ui/entity/climate.cpp` | Upstream-clean — Us-vs-Metric mapping flipped (`unitSystem == Us ? FAHRENHEIT : CELSIUS`). **Fixes #747.** |
+| `src/ui/entity/light.{cpp,h}` | Upstream-clean — member init defaults + `setColor()` achromatic-hue guard. Defensive UB cleanup. |
+
+**Tests:** 285 cases pass on the merge branch (Keeper 48/48 + Suppressor 33/33 + QML/HUD 204/204 — including `ReconnectingHUD` 6/6 and `BatteryStatusChip` 8/8 directly adjacent to the merge area). Verified via the rebuilt `matrixrain_preview-preview` Docker image which now bakes in test deps (separate `chore/test-deps-in-preview-image` branch, commit `aa979b2`).
+
+**Note on the lupdate side-effects:** upstream's `qsTr("Current %1°")` → `qsTr("Current %1") + entityObj.temperatureLabel` source-string change marks the old form `type="vanished"` and adds the new form as `type="unfinished"` (lupdate's standard carry-over) across all 13 `resources/translations/*.ts` locales. Existing translations preserved; new strings inherit them as starting points pending human review.
 
 ---
 
