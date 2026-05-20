@@ -164,10 +164,6 @@ int main(int argc, char *argv[]) {
     QObject::connect(&config, &uc::Config::sessionKeeperRequireAcChanged, keeper, [keeper, &config] {
         keeper->setRequireAcPower(config.getSessionKeeperRequireAc());
     });
-    // M1 (2026-05-03): toggle effector — WS ping vs REST inhibitor.
-    QObject::connect(&config, &uc::Config::sessionKeeperUseInhibitorApiChanged, keeper, [keeper, &config] {
-        keeper->setUseInhibitorApi(config.getSessionKeeperUseInhibitorApi());
-    });
     // EntityController activity → keeper.
     QObject::connect(entityController, &uc::ui::EntityController::mediaPlayerStateChanged, keeper,
                      &uc::hw::ActivitySessionKeeper::onMediaPlayerStateChanged);
@@ -181,7 +177,6 @@ int main(int argc, char *argv[]) {
     // emit on startup, so the keeper would otherwise never know its starting state.
     keeper->setIdleTimeoutSec(config.getSessionKeeperIdleSec());
     keeper->setRequireAcPower(config.getSessionKeeperRequireAc());
-    keeper->setUseInhibitorApi(config.getSessionKeeperUseInhibitorApi());  // before setEnabled — flip toggle is no-op while inactive
     keeper->onPowerSupplyChanged(hwController.getBattery()->getPowerSupply());
     keeper->setEnabled(config.getSessionKeeperEnabled());  // last — triggers evaluateSession after others are set
 

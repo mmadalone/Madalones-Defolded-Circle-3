@@ -13,6 +13,91 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v151"></a>v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
+
+### Context
+
+v1.4.39 shipped Mod 5 v2 — the Active Session Keeper's effector switched from a 270 s `setPowerMode(NORMAL)` WS ping loop to the firmware's native `POST /system/power/standby_inhibitors` REST endpoint, behind a `Config.sessionKeeperUseInhibitorApi` toggle. Default was ON (REST), but the WS ping path was kept behind the toggle as a "fallback if a future firmware breaks REST."
+
+The release notes for v1.4.39 explicitly framed the fallback as experimental: "If something surfaces post-2.9.2 that wasn't seen pre-upgrade, treat it as a 2.9.2-specific regression... If clean, drop the 'experimental fallback' framing from Settings → Power toggle description."
+
+17 days of natural use ended 2026-05-17 (the planned soak target). I waited another 3 days to do the pickup. The soak verification ran clean across **three firmware versions** — 2.9.1 → 2.9.2 (mid-soak OTA) → 2.9.3 (mid-soak OTA again). v1.5.1 is the post-soak cleanup that takes the next step beyond the planned re-wording: the fallback itself is removed.
+
+### Root cause for removal (not a bug — a design walk-back)
+
+The "safety net" framing was comforting but didn't survive scrutiny when re-examined:
+
+1. **The fallback was never tested on real firmware after v1.4.39.** Toggle was default ON; no one flipped it OFF. Means the WS ping path's actual behavior on 2.9.2 or 2.9.3 was unknown for 17 days. A safety net you don't test is theatre. Empirically: unit tests covered the WS path in CI (x86_64 mocks), but production validation was zero.
+2. **The fallback re-introduces the bug v2 was built to fix.** The 270 s vs 300 s race window (session activity stops just before a ping cycle → firmware standby_timeout_sec expires before keeper re-evaluates → session nuked at the worst possible moment). Falling back to the legacy path is "graceful degradation into a known bug."
+3. **Silent-failure mode bit us once already.** Per `project_setpowermode_field_bug.md` and ENGINEERING_LOG entries v1.4.22 (the field-name fix release), Mod 5 v1 was silently broken for 8 releases (v1.4.14 → v1.4.21) due to a `power_mode` vs `mode` body-field copy-paste. Symptom: indistinguishable from the keeper being off. The bug was caught by Logdy capture, not by users. The REST path has clearer failure modes — 4xx logged, auth fail logged. Keeping the WS path means keeping the failure class with no surface visibility.
+4. **Auto-revert is the real safety net.** Per `project_auto_revert_validated_on_uc3.md`: empirically verified firmware-side auto-revert returns the device to stock if the custom UI crashes badly. Hotfix releases ship in hours; we've demonstrated this rhythm (v1.4.22, v1.4.38, etc.). Loss of in-UI fallback is not loss of safety.
+
+### Soak verification (2026-05-20)
+
+The pre-removal verification, captured before touching code:
+
+**Live inhibitor list:** `curl -s -m 8 -u 'web-configurator:5373' "http://192.168.2.204/api/system/power/standby_inhibitors"` returned exactly 1 entry:
+```json
+[{"id":"51a4ff6d-bb7d-4b94-8079-24cee0fbc3e1","who":"madalone.session-keeper","why":"media-playing or recent-input","mode":"BLOCK","elapsed":2117}]
+```
+35 minutes into a media session. No stale orphans.
+
+**Firmware version:** `os: 2.9.3`. Custom UI: v1.5.0 active. Three firmware OTAs survived the soak window — 2.9.1 → 2.9.2 → 2.9.3 — all without re-flash, all with the keeper functioning correctly.
+
+**Battery polling CSV** captured the elusive activate→deactivate cycle that the 1-minute log retention couldn't:
+```
+2026-05-15T17:08:32,49,DISCHARGING,False,LOW_POWER,86400,True
+2026-05-15T17:13:32,48,DISCHARGING,False,LOW_POWER,23,False
+```
+`standby_timeout 86400` is the BLOCK signature documented in `project_block_inhibitor_only_blocks_suspend.md`. Transition to `23` with `inhibitor_active=False` is the keeper's DELETE on session end. Clean lifecycle event preserved in user's polling data.
+
+**Firmware log spot-checks** (4000 lines, ~3 minute retention — the firmware writes a NOTICE line `Standby mode is inhibited by: [...]` at 1 Hz while any inhibitor is held, which fills the buffer fast):
+- 0 `AuthError` entries
+- 0 `set_power_mode` body-shape errors on 2.9.3 (the `mode`-vs-`power_mode` bug class remains the highest historical risk; Mod 6 force-back path still uses `setPowerMode` so this matters)
+- 0 unexpected DELETEs
+
+### What changed
+
+**Files (~120 LOC net delete):**
+
+| File | Change |
+|------|--------|
+| `src/hardware/activitySessionKeeper.h` | Removed `Q_PROPERTY(useInhibitorApi)`, `getUseInhibitorApi`, `setUseInhibitorApi`, `useInhibitorApiChanged` signal, `m_useInhibitorApi` member, `m_pingTimer` member, `void ping()` private decl. File-header comment updated to reflect REST-only contract. |
+| `src/hardware/activitySessionKeeper.cpp` | Removed `m_pingTimer` ctor setup + `aboutToQuit` stop, `ping()` method body, `setUseInhibitorApi(bool)` setter (the mid-session WS↔REST flip handler), `if (!m_useInhibitorApi) return;` early-out in `onCoreConnected()`, `m_pingTimer.stop()` in `onCoreDisconnected()`, the 4-branch dispatch in `evaluateSession()` (collapsed to 2-branch). |
+| `src/config/config.{h,cpp}` | Removed Q_PROPERTY decl + getter/setter/signal in .h; getter/setter impl + leading 11-line comment block in .cpp. QSettings key `power/sessionKeeperUseInhibitorApi` left as orphan (Qt tolerates). |
+| `src/main.cpp` | Removed the `connect(&config, &Config::sessionKeeperUseInhibitorApiChanged, ...)` lambda + `keeper->setUseInhibitorApi(...)` startup-sync call. |
+| `src/qml/settings/settings/Power.qml` | Deleted the M1 RowLayout block (Switch + label + comment, lines 254-275) + description Text element (lines 276-285). 32-line net delete. |
+| `test/hardware/keeper_test/test_activitySessionKeeper.cpp` | Removed 5 WS-only test cases: `test_ping_body_shape` (the v1.4.14-v1.4.21 body-shape regression-prevention test — purpose no longer relevant since keeper doesn't call setPowerMode), `test_pingCadence_firstPingImmediate`, `test_pingCadence_noDoubleFireDuringActive`, both `test_inhibitorApi_midSessionToggleFlip_*` tests (toggle gone). Modified M1.x tests to drop `setUseInhibitorApi(true)` setup (compile error otherwise; default behavior now). Stripped `setPowerModeCallCount()` and `lastPowerModeValue()` assertions from state-machine tests (tautological with WS path gone). Renamed `test_idleTimeout_changeDuringActive_doesntDoubleFire` → `test_idleTimeout_changeDuringActive_doesntDoubleCreate` and converted to assert on `createInhibitorCallCount` instead. |
+| `resources/translations/*.ts` (13 locales) | Auto-regen via Docker `lupdate` triggered by qmake's TRANSLATIONS += processing during the ARM64 cross-compile. Vanished entries: "Use REST inhibitor API" + "Uses the firmware's native standby-inhibitor REST API. Event-based, no polling race window. Disable to fall back to periodic wake-up pings if the inhibitor API misbehaves." |
+| `.gitignore` | Added test build artifact patterns (folded cleanup): `test/hardware/*/.qmake.stash`, `test/hardware/*/target_wrapper.sh`, `test/hardware/*/moc_predefs.h`, the two test binaries, `test/qml/test_qml`. The pre-existing `test/*/.qmake.stash` pattern doesn't reach two levels deep into `test/hardware/keeper_test/`. |
+| `docs/CUSTOM_FILES.md` | Extended deltas table with consolidated v1.4.39 → v1.5.1 rows (folded cleanup). Latest row before this was v1.4.38; stale per `project_path_to_a_post_v1_4_35.md`. |
+| `README.md`, `CHANGELOG.md`, `ENGINEERING_LOG.md`, `deploy/release.json`, `remote-ui.pro` (1.5.0 → 1.5.1) | Documentation + version bump per `feedback_pro_version_sync.md`. |
+
+### Architectural note
+
+- **Drift increase: -120 LOC, -1 Q_PROPERTY, -1 QSettings key, -5 tests.** This is the first net-negative drift release since v1.5.0 (which dropped ~25 LOC via upstream's adoption of our `clearEntitiesDeferred` pattern).
+- **API surface narrowed.** One less Q_PROPERTY in `Config`. One less Settings → Power toggle in the user-facing surface. Keeper's public method count dropped from 5 to 4 (removed `setUseInhibitorApi`).
+- **`core::Api::setPowerMode` retained.** Still load-bearing for Mod 6's force-back path (`phantomWakeSuppressor.cpp:167` — `m_core->setPowerMode(LOW_POWER)`). The drift check `tools/check_setPowerMode_drift.py` still validates the `mode`-vs-`power_mode` field-name invariant in both `src/core/core.cpp` and `test/hardware/mock_core_api.cpp`.
+- **Auto-revert remains the only safety net.** No fallback path remains in the keeper itself. If a future firmware OTA breaks the REST inhibitor endpoint:
+  1. Keeper's `activateInhibitor()` logs `qCWarning(lcHw())` "REST POST failed: <code> <msg>"
+  2. `m_active` stays true (state machine doesn't depend on effector success per the hard-fail invariant); session remains in keeper's view
+  3. Firmware proceeds to suspend at its normal standby cadence (300 s default)
+  4. User notices sessions getting nuked → reports it → hotfix release
+
+  Triage path is clear; the hours-to-hotfix cadence is established (v1.4.22 case study).
+
+### Lessons logged
+
+- **"Safety net" framing for unverified code paths is a code smell.** This is the principle most worth keeping from this session. When you build a fallback "in case X breaks," the fallback's value depends entirely on whether you verify it across the X's possible failure modes. If verification is "we'll see if anyone flips the toggle" — that's not verification, that's hope. Better default: ship one path that's the canonical one and ensure auto-revert + hotfix process is healthy enough to absorb the worst case.
+- **Soak verification is high-leverage when the time-cost is zero to you.** This soak ran for 17 days while I was doing other work. The verification step itself took ~30 minutes. The change it enabled (removal of ~120 LOC of unverified code) would have been hard to justify on day 1 of v1.4.39 — but trivially justified after seeing 3 firmware OTAs survive without incident.
+- **Memory hierarchy worked well.** `project_m1_soak_pending.md` was authoritative for the verification protocol (criteria, log patterns to grep, fallback toggle description for the case where this would have been a copy-tweak rather than a removal). `project_block_inhibitor_only_blocks_suspend.md` gave the 86400 BLOCK signature for interpreting battery CSV evidence. `project_setpowermode_field_bug.md` gave the failure-class context that made the "no fallback path means simpler failure mode" argument concrete. Three project memos, each load-bearing for one specific decision.
+
+### Auto-revert net armed
+
+Same install-bundle deploy mechanism as every release in this fork. If the new keeper crashes the UI, firmware reverts to stock per `project_auto_revert_validated_on_uc3.md`.
+
+---
+
 ## <a id="v1438"></a>v1.4.38 — 2026-05-02 — Test-only CI fix for v1.4.37 regression
 
 ### Context

@@ -114,6 +114,14 @@ CLAUDE.md
 test/matrixrain_preview/matrixrain_preview
 test/integration/test_integration
 test/matrixrain/test_matrixrain
+test/qml/test_qml
+
+# Hardware test build artifacts (Mod 5 keeper_test + Mod 6 suppressor_test — two levels deep, not caught by test/*/.qmake.stash)
+test/hardware/*/.qmake.stash
+test/hardware/*/target_wrapper.sh
+test/hardware/*/moc_predefs.h
+test/hardware/keeper_test/test_activitySessionKeeper
+test/hardware/suppressor_test/test_phantomWakeSuppressor
 
 # Personal Windows-local Claude Code directives
 .claude-memory/

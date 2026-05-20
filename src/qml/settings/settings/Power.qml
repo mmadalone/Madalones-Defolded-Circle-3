@@ -251,38 +251,6 @@ Settings.Page {
                     }
                 }
 
-                // M1 (2026-05-03): REST inhibitor API toggle. Default ON — REST is the
-                // canonical firmware path; WS ping is the fallback if disabled.
-                RowLayout {
-                    spacing: 10
-                    visible: Config.sessionKeeperEnabled
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Use REST inhibitor API")
-                        font: fonts.primaryFont(30)
-                    }
-
-                    Components.Switch {
-                        id: sessionKeeperUseInhibitorApiSwitch
-                        icon: "uc:check"
-                        checked: Config.sessionKeeperUseInhibitorApi
-                        trigger: function() { Config.sessionKeeperUseInhibitorApi = !Config.sessionKeeperUseInhibitorApi; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                    }
-                }
-                Text {
-                    Layout.fillWidth: true
-                    Layout.leftMargin: 10
-                    Layout.rightMargin: 10
-                    visible: Config.sessionKeeperEnabled
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Uses the firmware's native standby-inhibitor REST API. Event-based, no polling race window. Disable to fall back to periodic wake-up pings if the inhibitor API misbehaves.")
-                    font: fonts.primaryFont(22)
-                }
             }
 
             Rectangle {

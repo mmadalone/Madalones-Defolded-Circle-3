@@ -11,6 +11,89 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
+
+Post-soak cleanup release. The Active Session Keeper's REST inhibitor path shipped in v1.4.39 (Mod 5 v2) as the default effector, behind a `Config.sessionKeeperUseInhibitorApi` toggle kept as a "safety net" if a future firmware broke REST. After 17 days of natural use across UCR3 firmware **2.9.1 → 2.9.2 → 2.9.3** (the entire fleet's currently-available firmware window), the REST path is solid in production. The fallback is removed.
+
+### Why this matters
+
+The "safety net" framing didn't survive scrutiny — keeping it was theatre:
+
+1. **The fallback wasn't actually tested.** No one flips the toggle OFF in normal use; nothing exercised the WS ping code path on 2.9.2 or 2.9.3 in 17 days. A safety net that's only been validated on 2.9.1 isn't a safety net — it's an untested alternative code path.
+2. **The fallback re-introduces the bug v2 was built to fix.** The 270 s `setPowerMode(NORMAL)` ping window has a race where sessions get killed if activity stops just before a ping cycle. Falling back to it is "graceful degradation into a known bug."
+3. **Silent-failure mode already bit us once.** Per `project_setpowermode_field_bug.md`, the WS ping path was silently broken from v1.4.14 → v1.4.21 (8 releases) by a `power_mode` vs `mode` body-field copy-paste error. Symptom was indistinguishable from the keeper being off entirely. REST has clearer failure modes (4xx logged, auth fail logged).
+4. **Auto-revert is the real safety net.** If a future firmware breaks REST badly enough to crash the keeper, firmware-side auto-revert returns the device to stock per `project_auto_revert_validated_on_uc3`. Hotfix releases ship in hours, not days.
+
+### Soak verification
+
+| Criterion | Evidence | Status |
+|---|---|---|
+| Inhibitor lifecycle integrity | Probe @ 2026-05-20 12:37 returned 1 entry, `madalone.session-keeper`, BLOCK, elapsed 2117s. No stale orphans. | ✅ |
+| Clean activate/deactivate cycle | Battery CSV 2026-05-15 17:08-17:13: `standby_timeout 86400` (BLOCK signature) → `23` (released). Captured in user's polling data. | ✅ |
+| No silent AuthError storms | 0 occurrences in firmware log dump | ✅ |
+| No `set_power_mode` body-shape regression on 2.9.3 | 0 occurrences | ✅ |
+| Sessions stay awake | Active 35 min into a media session at probe time; BLOCK held continuously | ✅ |
+| Bearer auth survives OTAs | `Authorization: Bearer <UC_TOKEN>` still accepted on 2.9.3 | ✅ |
+
+### Removed
+
+- `Config.sessionKeeperUseInhibitorApi` Q_PROPERTY + getter/setter/signal in `src/config/config.{h,cpp}`. QSettings key `power/sessionKeeperUseInhibitorApi` becomes orphan — Qt tolerates; no migration code.
+- `ActivitySessionKeeper::setUseInhibitorApi(bool)`, `m_useInhibitorApi` member, `useInhibitorApiChanged()` signal, mid-session toggle-flip path in `src/hardware/activitySessionKeeper.{h,cpp}`.
+- `ActivitySessionKeeper::ping()` (the WS effector) + `m_pingTimer` (270 s repeating QTimer). Dead code with the dispatch removed.
+- Settings → Power "Use REST inhibitor API" toggle row + description in `src/qml/settings/settings/Power.qml`.
+- 5 WS-only test cases in `test/hardware/keeper_test/test_activitySessionKeeper.cpp` (`test_ping_body_shape`, `test_pingCadence_firstPingImmediate`, `test_pingCadence_noDoubleFireDuringActive`, `test_inhibitorApi_midSessionToggleFlip_WStoREST`, `test_inhibitorApi_midSessionToggleFlip_RESTtoWS`).
+- `keeper->setUseInhibitorApi(...)` connect lambda + startup-sync call from `src/main.cpp`.
+
+### Changed
+
+- `ActivitySessionKeeper::evaluateSession()` simplified — 4-branch dispatch (active/inactive × WS/REST) collapses to 2-branch (active/inactive). Single effector contract.
+- `ActivitySessionKeeper::onCoreConnected()` — drops the `if (!m_useInhibitorApi) return;` early-out. Orphan cleanup always runs on (re)connect.
+- `ActivitySessionKeeper::onCoreDisconnected()` — drops `m_pingTimer.stop()`.
+- File-header comment block updated: "via periodic set_power_mode pings. Wires the orphan RequestTypes::set_power_mode (enums.h:96)" → "via the firmware's POST /system/power/standby_inhibitors REST API (BLOCK mode)".
+- Keeper test file header COVERAGE GOALS rewritten — drops the v1.4.14 → v1.4.21 body-shape regression-prevention goal (test removed; body-field drift still covered by `tools/check_setPowerMode_drift.py` CI job for the Mod 6 force-back path which still calls `setPowerMode`).
+- Test `test_idleTimeout_changeDuringActive_doesntDoubleFire` renamed to `test_idleTimeout_changeDuringActive_doesntDoubleCreate` and converted to assert on `createInhibitorCallCount()` (the REST invariant) instead of `setPowerModeCallCount()` (gone).
+
+### Folded-in cleanup
+
+- **`.gitignore`** — added test build artifact patterns (`test/hardware/*/.qmake.stash`, `test/hardware/*/target_wrapper.sh`, `test/hardware/*/moc_predefs.h`, plus the two test binaries). The `test/*/.qmake.stash` pattern doesn't reach two levels deep; the hardware tests sit at `test/hardware/keeper_test/` and `test/hardware/suppressor_test/`. Adds `test/qml/test_qml` for the QML chip test binary.
+- **`docs/CUSTOM_FILES.md`** — extended the deltas table to cover v1.4.39 → v1.5.1. Latest row before this release was v1.4.38.
+
+### Breaking change
+
+- **API removal:** `Config.sessionKeeperUseInhibitorApi` Q_PROPERTY is gone. Verified zero references outside the deleted block via tree-wide grep before removal. QML code referring to it would fail at runtime — none exists outside Power.qml's removed block.
+- **User-visible:** Settings → Power loses one toggle row + description. No functional regression — anyone with the toggle previously ON gets identical behavior (the only path now); anyone with it OFF now gets the better path (REST inhibitor).
+- **QSettings:** the orphan key `power/sessionKeeperUseInhibitorApi` lingers on existing installs. Qt tolerates. No migration needed.
+
+### Mod 5 v3 not Mod 5 v4
+
+The naming carries the architectural lineage:
+- **Mod 5 v1** (v1.4.14 → v1.4.21) — WS `setPowerMode(NORMAL)` ping loop. Silently broken throughout (HTTP 400 from body-field bug).
+- **Mod 5 v1 fix** (v1.4.22) — same architecture, fixed body field name.
+- **Mod 5 v2** (v1.4.39) — REST inhibitor primary, WS ping fallback behind toggle.
+- **Mod 5 v3** (v1.5.1) — REST inhibitor only, no fallback. Single effector contract.
+
+### Verified
+
+- Drift check `tools/check_setPowerMode_drift.py` passes (Mod 6 force-back still uses `setPowerMode`; field-name `mode` invariant preserved in `core.cpp` + `mock_core_api.cpp`).
+- ARM64 cross-compile clean.
+- Soak verification (above table) end-to-end on UCR3 firmware 2.9.3 + v1.5.0 install (the install that immediately preceded this cleanup).
+
+### Files (touched)
+
+| Type | File |
+|------|------|
+| Source — keeper | `src/hardware/activitySessionKeeper.{h,cpp}` (~80 LOC delete) |
+| Source — config | `src/config/config.{h,cpp}` (Q_PROPERTY + impl removed) |
+| Source — wiring | `src/main.cpp` (connect lambda + startup-sync removed) |
+| Source — settings | `src/qml/settings/settings/Power.qml` (toggle row + description removed) |
+| Tests | `test/hardware/keeper_test/test_activitySessionKeeper.cpp` (5 WS-only tests removed; M1.x tests retained with `setUseInhibitorApi(true)` calls dropped) |
+| Translations | `resources/translations/*.ts` (13 locales — auto-regen via Docker lupdate) |
+| Build config | `remote-ui.pro` (1.5.0 → 1.5.1), `deploy/release.json` |
+| Hygiene | `.gitignore` (test build artifacts), `docs/CUSTOM_FILES.md` (deltas table v1.4.39 → v1.5.1) |
+| Docs | `README.md`, `CHANGELOG.md`, `ENGINEERING_LOG.md` |
+
+---
+
 ## v1.5.0 — 2026-05-14 — Upstream v0.73.4 merge (Option-B): #781/#778/#747 bug fixes + retry-path hardening
 
 Second upstream merge in the fork's history. Adopts three user-reported bug fixes from `unfoldedcircle/feature-and-bug-tracker` plus a strict-upgrade to the pending-command retry plumbing our Wake-replay HUD already reused. Net code reduction: v1.4.11's `clearEntitiesDeferred` helper is obsoleted by upstream's no-clear posture and dropped.

@@ -1,4 +1,4 @@
-// Copyright (c) 2026 madalone. ActivitySessionKeeper — suppresses firmware standby during active media sessions via periodic set_power_mode pings. Wires the orphan RequestTypes::set_power_mode (enums.h:96).
+// Copyright (c) 2026 madalone. ActivitySessionKeeper — suppresses firmware standby during active media sessions via the firmware's POST /system/power/standby_inhibitors REST API (BLOCK mode).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "activitySessionKeeper.h"
@@ -22,20 +22,13 @@ ActivitySessionKeeper::ActivitySessionKeeper(core::Api* core, QObject* parent)
     m_idleTimer.setSingleShot(true);
     QObject::connect(&m_idleTimer, &QTimer::timeout, this, [this] { evaluateSession(); });
 
-    // Repeating ping — 270 s gives 30 s margin under the firmware's 300 s standby_timeout_sec.
-    // The PUT only resets the timer to 300 on a LOW_POWER/IDLE → NORMAL transition; while we're
-    // already in NORMAL the firmware countdown drains naturally, so cadence ≤ 300 s is required.
-    m_pingTimer.setInterval(270000);
-    QObject::connect(&m_pingTimer, &QTimer::timeout, this, [this] { ping(); });
-
     // Defensive: clear all session state on core disconnect — connection's down anyway,
     // and if it comes back the natural triggers (media playing / button activity) re-arm us.
     QObject::connect(m_core, &core::Api::disconnected, this, &ActivitySessionKeeper::onCoreDisconnected);
 
-    // Clean shutdown — stop timers so we don't fire pings during process teardown.
+    // Clean shutdown — stop timer so we don't fire during process teardown.
     QObject::connect(qApp, &QCoreApplication::aboutToQuit, this, [this] {
         m_idleTimer.stop();
-        m_pingTimer.stop();
     });
 }
 
@@ -106,8 +99,7 @@ void ActivitySessionKeeper::onPowerSupplyChanged(bool onAc) {
 void ActivitySessionKeeper::onCoreDisconnected() {
     m_activeMediaPlayers.clear();
     m_idleTimer.stop();
-    m_pingTimer.stop();
-    // M1: WS is down — DELETE would fail. Just clear local state. Orphan cleanup
+    // WS is down — DELETE would fail. Just clear local state. Orphan cleanup
     // on reconnect (onCoreConnected) handles the firmware-side inhibitor.
     m_inhibitorId.clear();
     m_inhibitorCreatePending = false;
@@ -117,12 +109,10 @@ void ActivitySessionKeeper::onCoreDisconnected() {
     }
 }
 
-// madalone (M1, 2026-05-03): orphan cleanup on (re)connect.
+// madalone (2026-05-03): orphan cleanup on (re)connect.
 // Lists existing inhibitors, deletes any with who=="madalone.session-keeper" left
 // behind by a prior process instance, then if currently m_active recreates fresh.
 void ActivitySessionKeeper::onCoreConnected() {
-    if (!m_useInhibitorApi) return;
-
     const int reqId = m_core->listStandbyInhibitors();
     auto* conn = new QMetaObject::Connection;
     *conn = QObject::connect(m_core, &core::Api::respListInhibitors, this,
@@ -170,51 +160,14 @@ void ActivitySessionKeeper::evaluateSession() {
         emit activeChanged();
     }
 
-    // M1: dispatch effector by toggle. WS ping path = legacy default; REST inhibitor = opt-in.
     if (m_active && !wasActive) {
-        // inactive → active edge
-        if (m_useInhibitorApi) {
-            activateInhibitor();
-        } else if (!m_pingTimer.isActive()) {
-            ping();              // immediate first ping resets firmware timer to 300 s now
-            m_pingTimer.start();
-        }
-    } else if (!m_active && wasActive) {
-        // active → inactive edge
-        if (m_useInhibitorApi) {
-            deactivateInhibitor();
-        } else if (m_pingTimer.isActive()) {
-            m_pingTimer.stop();
-        }
-    }
-}
-
-// madalone (M1, 2026-05-03): mid-session toggle flip support.
-// User flipping the experimental REST toggle while an active session is in flight:
-// - WS → REST: stop ping timer, send POST.
-// - REST → WS: send DELETE, restart ping timer + immediate ping.
-// Toggle generally OFF in practice; this is the rare-but-correct path.
-void ActivitySessionKeeper::setUseInhibitorApi(bool use) {
-    if (m_useInhibitorApi == use) return;
-    m_useInhibitorApi = use;
-    emit useInhibitorApiChanged();
-    qCDebug(lcHw()) << "ActivitySessionKeeper useInhibitorApi:" << use;
-
-    if (!m_active) return;  // no session in flight — nothing to swap
-
-    if (use) {
-        // WS → REST
-        m_pingTimer.stop();
         activateInhibitor();
-    } else {
-        // REST → WS
+    } else if (!m_active && wasActive) {
         deactivateInhibitor();
-        ping();
-        m_pingTimer.start();
     }
 }
 
-// madalone (M1): activate effector — POST a BLOCK inhibitor. Hard-fail on auth flake.
+// madalone: activate effector — POST a BLOCK inhibitor. Hard-fail on auth flake.
 void ActivitySessionKeeper::activateInhibitor() {
     if (m_inhibitorCreatePending) return;  // POST already in flight
     if (!m_inhibitorId.isEmpty()) return;  // already have one
@@ -240,13 +193,13 @@ void ActivitySessionKeeper::activateInhibitor() {
                     deactivateInhibitor();
                 }
             } else {
-                // Hard-fail per audit: log loudly, do NOT silently fall back to ping path.
+                // Hard-fail: log loudly. Auto-revert handles the worst-case scenario.
                 qCWarning(lcHw()) << "ActivitySessionKeeper REST POST failed:" << httpCode << errorMessage;
             }
         });
 }
 
-// madalone (M1): deactivate effector — DELETE the stored inhibitor. Optimistic clear.
+// madalone: deactivate effector — DELETE the stored inhibitor. Optimistic clear.
 void ActivitySessionKeeper::deactivateInhibitor() {
     if (m_inhibitorId.isEmpty()) return;
     const QString id = m_inhibitorId;
@@ -265,18 +218,6 @@ void ActivitySessionKeeper::deactivateInhibitor() {
                 qCWarning(lcHw()) << "ActivitySessionKeeper REST DELETE failed:" << httpCode
                                   << "id =" << id << "msg =" << errorMessage;
             }
-        });
-}
-
-void ActivitySessionKeeper::ping() {
-    qCDebug(lcHw()) << "ActivitySessionKeeper ping → set_power_mode(NORMAL)";
-    int id = m_core->setPowerMode(core::PowerEnums::PowerMode::NORMAL);
-    m_core->onResult(
-        id,
-        []() {  // success — silent
-        },
-        [](int code, QString message) {
-            qCWarning(lcHw()) << "ActivitySessionKeeper ping failed:" << code << message;
         });
 }
 
