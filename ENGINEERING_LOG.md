@@ -31,6 +31,16 @@ Adopt upstream's structure — the boolean flag, the early-return-on-sleep, and 
 
 Merge scope gated (1 commit, 3 files). A 5-agent adversarial workflow rated the design SOUND across behavioral / dependent-mod / merge-hygiene lenses (`m_previousPowerMode` safe to drop — 3 refs all in `onPowerModeChanged`; HUD `resumeWindow` Q_PROPERTY + Mod 5/6 untouched; no moc change; no lupdate). ARM64 cross-compile clean (0 errors, 7 pre-existing warnings); `setPowerMode` drift check green; full Qt CI suite green on the tagged commit `889c46e`. Deployed to UCR3 on firmware 2.9.5 (the OTA preserved the custom-UI install slot — did **not** revert to stock despite 2.9.5 bundling UI 0.73.5); **Wake-replay HUD confirmed appearing on a real `LOW_POWER → NORMAL` wake** — live proof the LOW_POWER branch survived.
 
+### Follow-up — `onPowerModeChanged` unit test (2026-06-07)
+
+The merge above noted `onPowerModeChanged` had no direct test (the HUD QML test writes `resumeWindow` on a hand-written mock, bypassing the real logic). Closed with `test/hardware/entityController_test/` — 6 cases driving a **real** `EntityController` through the resume-window state machine: `SUSPEND`/`LOW_POWER → NORMAL` arm, `IDLE → NORMAL` doesn't, `NORMAL`-alone doesn't, a 2nd wake while armed doesn't re-arm (debounce), `resumeTimeoutWindowSec == 0` no-op.
+
+**No production change** — `onPowerModeChanged` stays byte-identical to upstream (rule #10); the test drives the real method via the existing `mock_core_api` stub.
+
+**Link-surface discovery (the real work).** `EntityController`'s ctor registers the entire entity enum surface with QML (`qmlRegisterUncreatableType<entity::…>`), so every entity metaobject is reachable from the ctor — `--gc-sections` can't drop it, and the test binary must compile + link the whole `src/ui/entity/*` package. Those entity classes are QtQuick `QQuickPaintedItem`s, so the `.pro` also needs `QT += quick widgets multimedia`. The link then resolved with `notification.cpp` + **9 no-op `core::Api` stubs** added to the shared `mock_core_api.cpp` (entity/media methods reachable via EntityController's metaobject slots but never called by the test — keeper/suppressor unaffected). `--gc-sections` trims the unreachable entity-load/creation paths, so `config.cpp` and the rest stay out of the link.
+
+**Validation.** No host Qt on the dev box → built + ran in a throwaway `ubuntu:22.04` + apt-Qt-5.15 Docker image (`uc-qt5test`), mirroring CI's exact ASan flags. `-m 6g` was needed — the ASan + QtQuick build OOMs at Docker's default memory cap (exit 137). All three hardware suites green (keeper 43, suppressor 33, entityController 8), no regression, no ASan/runtime errors. Gated through **PR #1** (the change touches CI + adds a memory-heavy build, so validate before `main`); merged to `main` at `6bd7996` with every CI job green incl. the ASan hardware-tests on the official Qt 5.15.2 toolchain. Non-release (no version bump/tag).
+
 ## <a id="v151"></a>v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
 
 ### Context
