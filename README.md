@@ -77,7 +77,7 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 
 > ### ⚠ Read this before installing on a UC3 that isn't yours
 >
-> **Tested only on the maintainer's UC Remote 3 running firmware 2.9.1.** (`release.json` declares `firmware_version >= 1.9.0` for the minimum core version compat, but real-world testing has been on 2.9.1.) Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
+> **Tested only on the maintainer's UC Remote 3, currently on firmware 2.9.5** (soak-tested across 2.9.1 → 2.9.2 → 2.9.3 → 2.9.4 → 2.9.5). (`release.json` declares `firmware_version >= 1.9.0` for the minimum core version compat.) Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
 >
 > ```bash
 > curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" \
@@ -259,6 +259,8 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.5.2** (2026-06-07) — **Upstream `v0.73.5` merge (Option-B), bundled in UC firmware 2.9.5.** Upstream refactored standby-detection-for-command-retry in `EntityController::onPowerModeChanged` (`m_previousPowerMode` enum → `m_wasSuspended` bool + a new `!m_resumeWindow` debounce). Resolved by adopting upstream's cleaner structure while broadening the flag-set to `SUSPEND || LOW_POWER`, so the v1.4.19 wake-replay window keeps engaging on UCR3 (which sleeps via LOW_POWER and never enters SUSPEND — upstream's `SUSPEND`-only form would silently disable it). Sole intentional divergence, kept on upstream's variable name per rule #10. Wake-replay HUD confirmed on-device on firmware 2.9.5; all CI green.
 
 **v1.4.36** (2026-05-02) — **B1 matrixrain decomposition.** Largest single-file refactor in the project's history: `matrixrain.cpp` shrunk 1445 → 746 LOC (-48 %) across three architectural phases, each independently CI-green and visually verified on UCR3. New helpers in `src/ui/matrixrain/`: `SingleLayerRenderer` (Phase A — stateless render path, mirrors LayerPipeline), `InputHandler` (Phase B — QObject-with-timers, owns enter-button state machine + 2 internal timers, mirrors ActivitySessionKeeper / PhantomWakeSuppressor), `BindingHelper` (Phase C — all-static, 8 ScreensaverConfig binding helpers, mirrors AtlasBuilder). QML contract preserved verbatim. Also: C1 `ScreensaverConfig` Battery-deferred-connect cleanup (drops `QTimer::singleShot(500, ...)` retry hack via `main.cpp` construction reorder), STYLE_GUIDE §1.4 AP-UC-13 extension covering Repeater `model:` gating, settings description text consistency sweep (3× `colors.medium` → `colors.light`).
 

@@ -30,6 +30,7 @@ These files are touched by our custom code and will likely conflict on any upstr
 | `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle | Low |
 | `src/qml/components/TouchSliderVolume.qml` / `Seek.qml` / `Brightness.qml` / `Position.qml` | Added `applicationWindow.screensaverActive` guard (suppress touchbar during screensaver) | Low |
 | `src/qml/components/overlays/BatteryOverlay.qml` | Color-coded battery levels, fully translatable text via `qsTr`/`%1` placeholders | Medium (if upstream renames) |
+| `src/ui/entity/entityController.{cpp,h}` | Mod 5 signals (`mediaPlayerStateChanged` / `entityCommandIssued`) + v1.4.10 `onEntityAdded` slot; v1.4.19 wake-trigger in `onPowerModeChanged` broadened to `SUSPEND \|\| LOW_POWER` (the `m_wasSuspended` flag-set after the 0.73.5 refactor) | **High — has conflicted on both upstream merges so far (v1.5.0/0.73.4 and v1.5.2/0.73.5). Upstream actively reworks this file's wake/standby logic; resolve by keeping our `\|\| LOW_POWER` and Mod 5 signals.** |
 | `.github/workflows/build.yml` | Added `version-sync-check` job with VERSION + CHANGELOG gating; added `needs: version-sync-check` to `build-embedded` and `build-desktop` | Medium |
 | `.gitignore` | Added custom entries (build artifacts, `.env.local`, `CLAUDE.md`) | Low |
 | `deploy/release.json` | Custom `name`, `description`, `developer`, `version` | Low |

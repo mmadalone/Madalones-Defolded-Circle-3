@@ -13,6 +13,24 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v152"></a>v1.5.2 — 2026-06-07 — upstream v0.73.5 merge (Option-B)
+
+### Context
+
+UC firmware 2.9.5 (beta, 2026-06-06) bumped the UI component to `remote-ui 0.73.5` — the first upstream UI change since the v1.5.0 merge of 0.73.4. The entire 0.73.5 delta is one commit (`3b46959`) touching `src/ui/entity/entityController.{cpp,h}` (+ upstream CHANGELOG): a refactor of standby-detection-for-command-retry in `onPowerModeChanged`. Upstream replaced the `m_previousPowerMode` enum tracker with a `m_wasSuspended` bool and added a `!m_resumeWindow` debounce (don't re-arm the resume window if one is already open).
+
+### The collision
+
+That code is exactly where v1.4.19's Wake-replay HUD fix lives. v1.4.19 had broadened the wake-trigger from upstream's `SUSPEND`-only to `SUSPEND || LOW_POWER`, because UCR3's daily standby goes to LOW_POWER and never enters SUSPEND (REST-probed across 6 releases). Taking upstream 0.73.5 verbatim would set the new flag only on SUSPEND → the resume window + HUD would silently stop engaging on every real UCR3 wake, reintroducing the precise bug v1.4.19 fixed.
+
+### Resolution (Option-B)
+
+Adopt upstream's structure — the boolean flag, the early-return-on-sleep, and the `m_wasSuspended && !m_resumeWindow` debounce — but broaden the flag-set condition to `SUSPEND || LOW_POWER`. The `|| LOW_POWER` is the sole intentional divergence, kept on upstream's `m_wasSuspended` variable name per rule #10 (a header comment carries the LOW_POWER intent). The `.h` member swap auto-merged (our side never touched that line). Two intended behavior deltas inherited from upstream: (1) a 2nd wake inside the 2 s window no longer re-arms the timer; (2) the flag survives an intermediate IDLE, so `LOW_POWER → IDLE → NORMAL` now arms (the old enum tracker did not).
+
+### Verification
+
+Merge scope gated (1 commit, 3 files). A 5-agent adversarial workflow rated the design SOUND across behavioral / dependent-mod / merge-hygiene lenses (`m_previousPowerMode` safe to drop — 3 refs all in `onPowerModeChanged`; HUD `resumeWindow` Q_PROPERTY + Mod 5/6 untouched; no moc change; no lupdate). ARM64 cross-compile clean (0 errors, 7 pre-existing warnings); `setPowerMode` drift check green; full Qt CI suite green on the tagged commit `889c46e`. Deployed to UCR3 on firmware 2.9.5 (the OTA preserved the custom-UI install slot — did **not** revert to stock despite 2.9.5 bundling UI 0.73.5); **Wake-replay HUD confirmed appearing on a real `LOW_POWER → NORMAL` wake** — live proof the LOW_POWER branch survived.
+
 ## <a id="v151"></a>v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
 
 ### Context
