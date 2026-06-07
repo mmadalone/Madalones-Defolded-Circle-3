@@ -146,7 +146,7 @@ jobs:
         run: python3 tools/check_setPowerMode_drift.py
 
   hardware-tests:
-    name: "Hardware tests (Mod 5 + Mod 6)"
+    name: "Hardware tests (Mod 5 + Mod 6 + EntityController)"
     runs-on: ubuntu-latest
     # Mod 5 (ActivitySessionKeeper) + Mod 6 (PhantomWakeSuppressor) unit tests.
     # 49 test methods covering body-shape regression-prevention, evaluateSession truth tables,
@@ -188,6 +188,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           ASAN_OPTIONS: detect_leaks=0
 
+      - name: Run entityController tests (resume-window state machine)
+        working-directory: test/hardware/entityController_test
+        run: ./test_entityController -v2 -o entityController_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -196,3 +203,4 @@ jobs:
           path: |
             test/hardware/keeper_test/keeper_results.xml
             test/hardware/suppressor_test/suppressor_results.xml
+            test/hardware/entityController_test/entityController_results.xml
