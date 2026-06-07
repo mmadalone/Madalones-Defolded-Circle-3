@@ -226,6 +226,19 @@ int Api::setPowerMode(PowerEnums::PowerMode mode) {
 // new test paths surface link errors.
 // ──────────────────────────────────────────────────────────────────────────────
 
+// EntityController test (resume-window state machine): EntityController's metaobject references
+// these entity/media Api methods via its slots, so they must resolve at link even though the
+// onPowerModeChanged path under test never calls them. No-op stubs (return -1 = invalid request id).
+int Api::getEntity(const QString&) { return -1; }
+int Api::getEntities(int, int, EntityFilter) { return -1; }
+int Api::getAvailableEntities(int, int, bool, AvailableEntitiesFilter) { return -1; }
+int Api::configureEntities(const QString&, const QStringList&) { return -1; }
+int Api::updateEntity(const QString&, QVariantMap, const QString&) { return -1; }
+int Api::deleteEntities(const QStringList&, const QString&) { return -1; }
+int Api::entityCommand(const QString&, const QString&, QVariantMap) { return -1; }
+int Api::browseMedia(const QString&, QVariantMap) { return -1; }
+int Api::searchMedia(const QString&, QVariantMap) { return -1; }
+
 void Api::setupTimerForRequest(int requestId) {
     Q_UNUSED(requestId)
     // Real impl creates QTimer for response timeout tracking. Test path doesn't
