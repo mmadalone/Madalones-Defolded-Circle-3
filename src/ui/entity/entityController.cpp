@@ -789,21 +789,30 @@ void EntityController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode)
         return;
     }
 
-    // madalone (v1.4.19, W2 Wake-replay HUD): expand wake-trigger to also cover LOW_POWER → NORMAL.
-    // UCR3's typical 5-min standby goes to LOW_POWER; SUSPEND is rarely (if ever) entered, so the
-    // upstream SUSPEND-only check meant the resume-retry window never engaged in the daily-use case.
-    // REST probe of /api/system/power across 6 v1.4.x releases never observed mode:SUSPEND.
-    const bool wasAsleep = m_previousPowerMode == core::PowerEnums::PowerMode::SUSPEND ||
-                           m_previousPowerMode == core::PowerEnums::PowerMode::LOW_POWER;
-    if (powerMode == core::PowerEnums::PowerMode::NORMAL && wasAsleep) {
-        m_resumeWindow = true;
-        emit resumewindowChanged();
-        QTimer::singleShot(m_resumeTimerTimeout, this, &EntityController::onResumeTimerTimeout);
-
-        qCDebug(lcEntityController())  << "Resume timer enabled" << m_resumeTimerTimeout << "ms";
+    // madalone (v1.4.19, Wake-replay HUD): broaden the upstream SUSPEND-only wake-trigger to also
+    // cover LOW_POWER -> NORMAL. UCR3's 5-min standby goes to LOW_POWER; SUSPEND is rarely/never
+    // entered (REST probe of /api/system/power across 6 v1.4.x releases never observed mode:SUSPEND),
+    // so the upstream SUSPEND-only check meant the resume-retry window never engaged in daily use.
+    // Adopts upstream 0.73.5's flag + !m_resumeWindow debounce + early-return; the OR-on-LOW_POWER
+    // is the only intentional divergence (kept on upstream's var name per project rule #10).
+    if (powerMode == core::PowerEnums::PowerMode::SUSPEND ||
+        powerMode == core::PowerEnums::PowerMode::LOW_POWER) {
+        m_wasSuspended = true;   // also set on LOW_POWER (UCR3 standby) - v1.4.19
+        return;
     }
 
-    m_previousPowerMode = powerMode;
+    if (powerMode == core::PowerEnums::PowerMode::NORMAL) {
+        const bool shouldActivate = m_wasSuspended && !m_resumeWindow;
+        m_wasSuspended = false;
+
+        if (shouldActivate) {
+            m_resumeWindow = true;
+            emit resumewindowChanged();
+            QTimer::singleShot(m_resumeTimerTimeout, this, &EntityController::onResumeTimerTimeout);
+
+            qCDebug(lcEntityController())  << "Resume timer enabled" << m_resumeTimerTimeout << "ms";
+        }
+    }
 }
 
 void EntityController::onResumeTimeoutWindowSecChanged(int value)

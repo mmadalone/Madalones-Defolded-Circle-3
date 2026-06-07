@@ -11,7 +11,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.2 — 2026-06-07 — upstream v0.73.5 merge (Option-B)
+
+Single-commit upstream merge (`remote-ui v0.73.5`, bundled in UC firmware **2.9.5**). Upstream's only code change refactors standby-detection-for-command-retry in `EntityController::onPowerModeChanged`.
+
+### Changed
+
+- **Adopted upstream 0.73.5's flag-based standby detection** — replaces the `m_previousPowerMode` enum tracker with a `m_wasSuspended` bool (`entityController.{cpp,h}`); early-return-on-sleep plus a new `m_wasSuspended && !m_resumeWindow` debounce so a wake arriving while a resume window is already open no longer re-arms the timer.
+- **Preserved our v1.4.19 wake-trigger broadening** — the flag is set on `SUSPEND || LOW_POWER`, not upstream's `SUSPEND`-only. UCR3 sleeps via `LOW_POWER` and (REST-probed across 6 releases) never enters `SUSPEND`; taking upstream verbatim would silently disable the resume window + Wake-replay HUD on every real wake. This `|| LOW_POWER` is the **sole** intentional divergence from upstream, kept on upstream's variable name per fork rule #10.
+- **Behavior deltas (both intended):** (1) the new debounce means a second wake inside the 2 s window no longer restarts the timer (vs our prior unconditional re-arm); (2) the boolean flag now survives an intermediate `IDLE` excursion, so a `LOW_POWER -> IDLE -> NORMAL` path now correctly arms — the old enum tracker did not (a latent-edge fix inherited from upstream's refactor).
+
+### Verified
+
+- **Scope gated before merge:** exactly 1 upstream commit (`3b46959`), touching only `entityController.{cpp,h}` + `CHANGELOG.md`.
+- **5-agent adversarial merge verification:** SOUND / high-confidence across behavioral, dependent-mod, and merge-hygiene lenses. Dependent mods — Wake-replay HUD, Mod 5 (Active Session Keeper), Mod 6 (Phantom-Wake Suppressor) — unaffected: the `resumeWindow` Q_PROPERTY + `resumewindowChanged` signal are preserved; Mods 5/6 ride separate code regions / the independent `Power::powerModeChanged`.
+- **Header auto-merged**; `m_previousPowerMode` confirmed safe to drop (3 refs, all inside `onPowerModeChanged`); no `moc` change (private member), no `lupdate` (zero `qsTr` delta).
+- **Build + checks:** ARM64 cross-compile clean (56 MB binary, 0 errors, 7 pre-existing warnings; `entityController` recompiled). `setPowerMode` field-drift check passes. The full Qt unit/QML/hardware suite is gated by CI on push — no host Qt on the dev box, and this merge touches no test-covered code path (the suites cover untouched regions).
+
 ## v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
+
+> **Verified on firmware 2.9.4 / Core 0.74.0 (2026-05-31)** — post-release compatibility check: 2.9.4 ships no UI update (same UI 0.73.4), the OTA preserved the custom UI (`active`), API `0.17.6` is unchanged, and the Mod 3/4/5/6 power·WiFi·battery endpoints all respond healthy. No fork changes needed.
 
 Post-soak cleanup release. The Active Session Keeper's REST inhibitor path shipped in v1.4.39 (Mod 5 v2) as the default effector, behind a `Config.sessionKeeperUseInhibitorApi` toggle kept as a "safety net" if a future firmware broke REST. After 17 days of natural use across UCR3 firmware **2.9.1 → 2.9.2 → 2.9.3** (the entire fleet's currently-available firmware window), the REST path is solid in production. The fallback is removed.
 
@@ -1308,6 +1327,43 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 # Upstream Unfolded Circle releases
 
+## v0.73.5 - 2026-06-05
+### Changed
+- Standby state change detection for command retry logic
+
+
+---
+## v0.73.4 - 2026-05-08
+### Fixed
+- Entities not available for media widget and therefore not showing image
+
+---
+## v0.73.2 - 2026-05-07
+### Fixed
+- Prevent stale entity command retries from stopping early
+
+---
+## v0.73.1 - 2026-04-28
+### Fixed
+- Color wheel sending invalid hue values and the selector escaping the circle on fast drags
+- Climate detail view showing the temperature without the unit while the main view showed it with the unit
+- Entity widgets (notably the media widget) showing stale data after the remote wakes from sleep
+
+### Changed
+- Updated translations from Crowdin
+
+---
+## v0.72.0 - 2026-04-13
+### Added
+- Media browser and playback controls in the media widget
+- Option to show the battery indicator everywhere
+
+### Fixed
+- Sensor and select widget clipping
+- Media browsing pagination stopping early
+- Retry handling when media browsing fails
+
+---
 ## v0.71.1 - 2026-03-19
 ### Fixed
 - Adjust color contrast

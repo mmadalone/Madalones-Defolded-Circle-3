@@ -191,6 +191,19 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 
 ---
 
+## v1.5.2: upstream v0.73.5 merge — reshapes the v1.4.19 wake-trigger delta
+
+Upstream v0.73.5 (commit `3b46959`, one commit) refactors standby-detection-for-command-retry in `EntityController::onPowerModeChanged`: the `m_previousPowerMode` enum tracker becomes a `m_wasSuspended` bool, with early-return-on-sleep + a new `m_wasSuspended && !m_resumeWindow` debounce. Merged Option-B-style.
+
+| File | v1.5.2 change |
+|------|---------------|
+| `src/ui/entity/entityController.h` | Header **auto-merged** — `core::PowerEnums::PowerMode m_previousPowerMode` → `bool m_wasSuspended` (our side never touched this member, so git took upstream's swap). Added a one-line comment noting it is also set on `LOW_POWER` (our v1.4.19 broadening). Mod 5 signals + v1.4.10 `onEntityAdded` slot untouched. |
+| `src/ui/entity/entityController.cpp` | `onPowerModeChanged` conflict resolved Option-B: adopt upstream's flag + `!m_resumeWindow` debounce + early-return shape, but **broaden the flag-set condition to `SUSPEND \|\| LOW_POWER`** — preserving the v1.4.19 wake-trigger fix (UCR3 sleeps via `LOW_POWER`, never `SUSPEND`; upstream's `SUSPEND`-only form would silently disable the resume window + Wake-replay HUD). The `\|\| LOW_POWER` is the sole intentional divergence, kept on upstream's variable name per rule #10. The old `m_previousPowerMode` member (3 refs, all in this function) is gone. |
+
+**Behavior delta:** the new debounce stops a 2nd wake inside the 2 s window from re-arming the timer (vs our prior unconditional re-arm); the bool flag now survives an intermediate `IDLE` (a `LOW_POWER → IDLE → NORMAL` path now arms — the old enum tracker didn't). Dependent mods (Wake-replay HUD, Mod 5, Mod 6) unaffected — `resumeWindow` Q_PROPERTY + signal preserved.
+
+---
+
 ## v1.5.0: upstream v0.73.4 merge — reshapes v1.4.8 / v1.4.10 / v1.4.11 deltas
 
 Upstream v0.73.4 (commit `3582f92`) shipped fixes for three user-reported bugs ([#781](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/781), [#778](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/778), [#747](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/747)) plus a rewrite of the pending-command retry path (foundation for [#783](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/783)). Merged Option-B-style: take upstream's public API, keep our supplemental edits. Net effect on this manifest:
