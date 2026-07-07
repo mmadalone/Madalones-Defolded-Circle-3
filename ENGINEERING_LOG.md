@@ -41,6 +41,10 @@ The merge above noted `onPowerModeChanged` had no direct test (the HUD QML test 
 
 **Validation.** No host Qt on the dev box → built + ran in a throwaway `ubuntu:22.04` + apt-Qt-5.15 Docker image (`uc-qt5test`), mirroring CI's exact ASan flags. `-m 6g` was needed — the ASan + QtQuick build OOMs at Docker's default memory cap (exit 137). All three hardware suites green (keeper 43, suppressor 33, entityController 8), no regression, no ASan/runtime errors. Gated through **PR #1** (the change touches CI + adds a memory-heavy build, so validate before `main`); merged to `main` at `6bd7996` with every CI job green incl. the ASan hardware-tests on the official Qt 5.15.2 toolchain. Non-release (no version bump/tag).
 
+### Follow-up — firmware 2.9.6 compatibility verified (2026-07-07)
+
+UC firmware **2.9.6** (beta — "improved Remote 3 display driver #561", Hue "Off" scene, integration version bumps) ships **no `remote-ui` change**: the mirror `main` HEAD is still `3b46959` / v0.73.5 = v1.5.2's merge base (verified live via `git ls-remote` + `gh api`), so **nothing to merge**. v1.5.2 rode the OTA intact and was re-verified on 2.9.6 — `api 0.17.6` / `core 0.74.0-bt` unchanged from 2.9.5; `install/ui` still `active` (no re-flash, no auto-revert); all 5 physical checks pass (screensaver render, clean wake, **no ghost touches**, dock chime, battery chip); **Mod 5 full CREATE→RELEASE lifecycle proven live** (BLOCK inhibitor `standby_timeout_sec:86400` during playback → absent from the inhibitor list on media stop). The residual `standby_inhibitors:true` after stop is the Web-configurator's own `DELAY` inhibitor (a REST-connection artifact), **not** a Mod 5 leak. Captures in `logs/baseline_pre_2.9.6_*`, `logs/post_2.9.6_*`, `logs/mod5_*_2.9.6_*`. No production change.
+
 ## <a id="v151"></a>v1.5.1 — 2026-05-20 — Mod 5 v3: removed legacy WS ping fallback (post-soak cleanup)
 
 ### Context
