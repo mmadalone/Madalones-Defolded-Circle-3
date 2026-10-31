@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.73.4` (merged 2026-05-14, commit `3582f92`; previously `v0.71.1` → `v0.72.0` at v1.4.0).  
-**Last updated:** 2026-05-14 (v1.5.0 — upstream v0.73.4 merge, Option-B)
+**Last updated:** 2026-10-31 (v1.5.3 — five backports from upstream v0.83.0 / v0.84.0; base is still v0.73.5 from v1.5.2)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -188,6 +188,24 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.5.3: five backports from upstream v0.83.0 / v0.84.0 (firmware 2.12.0)
+
+Single upstream commits, not a merge. The base stays v0.73.5. A full merge of v0.84.0 dry-runs at 54 conflicting files; see ENGINEERING_LOG v1.5.3.
+
+| File | v1.5.3 change |
+|------|---------------|
+| `src/qml/components/StatusBar.qml` | `70f214a`: the connecting-indicator animation runs on `integrationLoadingIndicator.show` instead of the unqualified `show`, which resolved to `ApplicationWindow.show()`, so the animation ran forever. |
+| `src/hardware/power.{h,cpp}` | Port of `42f9888`: `windowShown` Q_PROPERTY + `windowShownChanged`, `displayOnIn()`, ctor flag `hideWindowWhenDisplayOff`, private `setPowerMode()`, `m_powerMode` initialised to `Normal`. **Divergence:** no early return on an unchanged mode, so `powerModeChanged` keeps its pre-v1.5.3 emit-always contract. |
+| `src/hardware/hardwareController.cpp` | `42f9888`: `Power` is constructed with `platformName() == "eglfs"`. |
+| `src/qml/main.qml` | `42f9888`: `visible: Power.windowShown`. The two visibility branches of `onPowerModeChanged` are removed; our idle-screensaver timer restart is kept. `d476300`: both containers handle `Loader.Error`. |
+| `src/ui/entity/entityController.cpp` | `d476300`: null guards in `setEntityName` / `setEntityIcon`. |
+| `src/main.cpp` | `1fd6bcc`: the SIGTERM handler writes to a socket pair read by a `QSocketNotifier` on the main thread, instead of calling `quit()` from the handler. |
+| `resources/qrc/keyboard.qrc`, `src/qml/keyboard/layouts/{es_ES,fi_FI,fr_FR,hu_HU,it_IT,no_NO,pl_PL,pt_PT,sv_SE}/` | `b11a67d`: nine keyboard layouts registered and rewritten; `no_NO` is new. |
+| `test/hardware/power_test/` (custom, new) | Unit tests for `windowShown`: 13 cases, adapted from upstream's CMake test to our stub `core::Api`. |
+| `test/hardware/entityController_test/test_entityController.cpp`, `test/hardware/mock_core_api.cpp`, `test/hardware/hardware_test.pro`, `.github/workflows/test.yml` | +2 null-entity cases, `getPowerMode` / `systemCommand` stubs, the `power_test` subdir, and its CI step. |
 
 ---
 

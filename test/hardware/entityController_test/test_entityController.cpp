@@ -134,6 +134,20 @@ class EntityControllerTest : public QObject {
         QVERIFY(!m_controller->getResumeWindow());
         QCOMPARE(spy.count(), 0);
     }
+
+    // 7. v1.5.3 (upstream d476300): renaming an entity the controller never loaded, or one deleted while its
+    //    screen was open, used to dereference the null pointer QHash::value() returns and crash the app.
+    //    Without the guard this test dies with SIGSEGV instead of failing.
+    void test_setNameOfUnloadedEntity_doesNotCrash() {
+        m_controller->setEntityName(QStringLiteral("hass.main.number.not_loaded"), QStringLiteral("New name"));
+        QVERIFY(m_controller->get(QStringLiteral("hass.main.number.not_loaded")) == nullptr);
+    }
+
+    // 8. v1.5.3 (upstream d476300): the same for the icon; it returns before sending a request the core refuses.
+    void test_setIconOfUnloadedEntity_doesNotCrash() {
+        m_controller->setEntityIcon(QStringLiteral("hass.main.number.not_loaded"), QStringLiteral("uc:lightbulb"));
+        QVERIFY(m_controller->get(QStringLiteral("hass.main.number.not_loaded")) == nullptr);
+    }
 };
 
 QTEST_MAIN(EntityControllerTest)

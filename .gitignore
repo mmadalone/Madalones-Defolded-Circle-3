@@ -122,6 +122,8 @@ test/hardware/*/target_wrapper.sh
 test/hardware/*/moc_predefs.h
 test/hardware/keeper_test/test_activitySessionKeeper
 test/hardware/suppressor_test/test_phantomWakeSuppressor
+test/hardware/entityController_test/test_entityController
+test/hardware/power_test/test_power
 
 # Personal Windows-local Claude Code directives
 .claude-memory/

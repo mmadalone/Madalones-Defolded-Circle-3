@@ -4,6 +4,8 @@
 
 #include "hardwareController.h"
 
+#include <QGuiApplication>
+
 #include "../logging.h"
 #include "../util.h"
 
@@ -34,7 +36,10 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
 
     m_info = new Info(this);
     m_wifi = new Wifi(m_core, this);
-    m_power = new Power(m_core, this);
+    // Only where the app owns the display (eglfs on a remote) is the window hidden while the display is off. A
+    // desktop run keeps it shown in every power mode, also with UC_MODEL=UCR2/UCR3: nothing there wakes the
+    // simulated core, which idles in Low_power.
+    m_power = new Power(m_core, QGuiApplication::platformName() == QLatin1String("eglfs"), this);
     m_battery = new Battery(m_core, this);
     m_activitySessionKeeper = new ActivitySessionKeeper(m_core, this);
     m_phantomWakeSuppressor = new PhantomWakeSuppressor(m_core, this);

@@ -239,6 +239,11 @@ int Api::entityCommand(const QString&, const QString&, QVariantMap) { return -1;
 int Api::browseMedia(const QString&, QVariantMap) { return -1; }
 int Api::searchMedia(const QString&, QVariantMap) { return -1; }
 
+// Power test (v1.5.3 windowShown): Power's metaobject references these through getPowerModeFromCore(),
+// powerOff() and reboot(); the tests drive Power through the powerModeChanged signal only.
+int Api::getPowerMode() { return -1; }
+int Api::systemCommand(SystemEnums::Commands) { return -1; }
+
 void Api::setupTimerForRequest(int requestId) {
     Q_UNUSED(requestId)
     // Real impl creates QTimer for response timeout tracking. Test path doesn't

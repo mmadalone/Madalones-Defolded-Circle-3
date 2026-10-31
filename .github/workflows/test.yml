@@ -195,6 +195,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           ASAN_OPTIONS: detect_leaks=0
 
+      - name: Run power tests (window hidden while the display is off)
+        working-directory: test/hardware/power_test
+        run: ./test_power -v2 -o power_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -204,3 +211,4 @@ jobs:
             test/hardware/keeper_test/keeper_results.xml
             test/hardware/suppressor_test/suppressor_results.xml
             test/hardware/entityController_test/entityController_results.xml
+            test/hardware/power_test/power_results.xml

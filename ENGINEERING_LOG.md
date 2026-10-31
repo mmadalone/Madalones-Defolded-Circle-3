@@ -13,6 +13,70 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v153"></a>v1.5.3 — 2026-10-31 — five backports from upstream 0.83 / 0.84 (firmware 2.12.0)
+
+### Context
+
+**UC firmware 2.12.0** (beta, UI 0.84.0 / Core 0.83.1 / API 0.21.0) was installed over v1.5.2 by OTA on 2026-10-31. The custom UI survived the OTA, as it has every one since 2026-06-07.
+
+Since 2026-10-07 the public `unfoldedcircle/remote-ui` carries the release code, according to UC's developer in feature-and-bug-tracker#824. Two consequences:
+- 2.11.0 = UI 0.82.1 and 2.12.0 = UI 0.84.0 can be diffed directly.
+- Single fixes can be taken from upstream.
+
+The UI-to-core vocabulary (`core.cpp` string literals, `enums.h`) is identical between 0.82.1 and 0.84.0, apart from four typo keys. The device's own specs for 2.12.0 agree: REST spec 0.54.0, and the WS spec, newly served at `/doc/core-ws/asyncapi.yaml`.
+
+**Why not a full merge.** Upstream rewrote history when it went public: our base `3b46959` is not in it. A dry run with an explicit base (`git merge-tree --merge-base=3b46959 main v0.84.0`) gave 54 conflicting files.
+- 13 are translations; a few more are docs and CI.
+- The hard ones are where upstream rewrote what our mods live in: Power / Sound / Ui / WiFi settings pages, `main.qml`, `entityController.cpp` (+745/-255 upstream), `core.cpp/h`, `config.cpp/h`, and `src/hardware/wifi.cpp`, which upstream moved to `src/system/`.
+- d-pad navigation, the hold-HOME page menu and the readability redesign are spread over dozens of commits (`2cda3ca` alone touched 108 files), so they cannot be backported one by one. They wait for that merge.
+
+### What was taken
+
+| Upstream | What | How |
+|---|---|---|
+| `70f214a` | Hidden "connecting" animation ran forever (`running: show` resolved to `ApplicationWindow.show()`) → constant redraw | applied unchanged |
+| `42f9888` | Window hidden whenever the display is off (`Power.windowShown`) | **ported by hand** (see below) |
+| `1fd6bcc` | SIGTERM during start-up was lost → systemd SIGKILL → reboot into the factory UI | applied unchanged |
+| `d476300` | `Loader.Error` in the second / third container left it active and blocked every later screen; null deref in `setEntityName` / `setEntityIcon` for unloaded ids | applied unchanged (`src/` only; upstream's CMake test replaced by 2 cases in our qmake test) |
+| `b11a67d` | Keyboard layouts for es / fi / fr / hu / it / no / pl / pt / sv | applied unchanged |
+
+All four "applied unchanged" patches went in with `git apply`; only `CHANGELOG.md` conflicted in the dry runs.
+
+**The `42f9888` port.**
+- Our `Power` predates upstream's `setPowerMode` helper and its early return on an unchanged mode. The port adds the helper but **keeps emitting `powerModeChanged` for every report of the core**, as before. The screensaver handlers in `main.qml` and the Phantom-Wake Suppressor were written against that, and changing it would be a silent behaviour change outside this release's scope.
+- `m_powerMode` is now initialised to `Normal`; it was read uninitialised before the first answer of the core.
+- In `main.qml`, the `onPowerModeChanged` handler loses its two visibility branches and keeps our idle-screensaver timer restart.
+- `hideWindowWhenDisplayOff` is true only on eglfs, so the Docker / desktop previews keep their window.
+
+**Interaction with Mod 6.**
+- A forced Normal → Low_power now hides the window, so the UI stops rendering until the next wake; before, it went on drawing with the display off.
+- During the after-wake ping-pong seen on 2.11.0 (core back to Normal ~15 ms after each forced Low_power), the window is hidden and shown once per round. `wakePingPong_endsShown` checks that it always ends shown. The owner has never seen the backlight blink in those rounds.
+
+### Not taken
+
+- `86065ef`: a response name the UI doesn't know now settles its request. It needs hand-porting in `core.cpp/h`. On 2.12.0 the stock UI uses the same response names as ours, so it waits for the full merge.
+- Everything that depends on the design system or the d-pad rework.
+
+### Build
+
+- `UC_BUILD_VERSION=v1.5.3` is passed as a qmake argument to the toolchain's `/entrypoint.sh`: `docker run … remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=v1.5.3"`.
+- `-e UC_BUILD_VERSION` does NOT work: qmake reads `$$UC_BUILD_VERSION`, a qmake variable, not the environment. That explains v1.5.2's empty `APP_VERSION` and the core's boot-time `Invalid localization_languages … version` error since 2.10.1.
+- `build/` was wiped first: `Power` gained a Q_PROPERTY and a signal.
+
+### Verification
+
+- Hardware unit tests in the `uc-qt5test` container (Qt 5.15.3, CI's ASan flags): keeper 43/43, suppressor 33/33, entityController 10/10 (+2), power 13/13 (new).
+- ARM64 cross-compile: clean in 3 min after a `build/` wipe; 56,525,928 bytes. `APP_VERSION=\"1.5.3\"` reaches every unit, and nothing new warns: the one `main.cpp` warning is the pre-existing `UC_DISPLAY_SCALE` float compare, moved 13 lines. lupdate rewrote line references in 13 `.ts` files and nothing else.
+- On device (firmware 2.12.0, `scripts/deploy-canary.sh`, 2026-10-31 18:43Z):
+  - healthy at once, `release.version 1.5.3`;
+  - the core no longer logs `Invalid localization_languages … version` at UI start;
+  - `[M1 REST] GET 200`;
+  - the owner's hand checks all pass: home page, screensaver + dock chime on the Qi pad, first button press after wake, battery and WiFi icons.
+- New log line, only in the start that happened with the display off (the remote asleep on its pad): `Page.qml:117 Binding loop detected for property "height"` ×2.
+  - That is the 0.73.5 header binding, which depends on `activityList.currentItem` inside the header itself, with `onHeightChanged: positionViewAtBeginning()`.
+  - Most likely cause: with the window now hidden at start, the ListView polish is deferred, and `positionViewAtBeginning()` forces a nested layout.
+  - The home page looked normal afterwards. Upstream replaced that binding with an imperative `reCalculateHeaderHeight()` in 0.74.x, which the full merge brings.
+
 ## <a id="v152"></a>v1.5.2 — 2026-06-07 — upstream v0.73.5 merge (Option-B)
 
 ### Context

@@ -5161,7 +5161,7 @@ Naciśnij i przytrzymaj przycisk głosowy i powiedz polecenie.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="979"/>
+        <location filename="../../src/qml/main.qml" line="992"/>
         <source>Done</source>
         <translation>Gotowe</translation>
     </message>
@@ -5512,22 +5512,22 @@ Naciśnij i przytrzymaj przycisk głosowy i powiedz polecenie.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="707"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="721"/>
         <source>%1 is not responding</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="708"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="722"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="740"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="754"/>
         <source>Error sending the command</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="741"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="755"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation type="unfinished"></translation>
     </message>

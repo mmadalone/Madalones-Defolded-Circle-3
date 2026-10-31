@@ -11,6 +11,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.3 — 2026-10-31 — five fixes backported from upstream 0.83 / 0.84 (firmware 2.12.0)
+
+UC firmware **2.12.0** (beta) ships remote-ui **0.84.0**, and since October 2026 UC publishes its UI source as it ships it, so single fixes can be taken from it. Bringing the whole fork up to 0.84.0 is a separate project: a dry run on 2026-10-31 gave **54 conflicting files**, against 17 at 0.74.5. This release backports the five small fixes that matter for our build. Four apply unchanged; one is ported by hand.
+
+### Fixed
+
+- **The screen is no longer redrawn while nothing on it changes** (upstream `70f214a`, `StatusBar.qml`).
+  - The animation of the hidden "connecting" indicator was bound to an unqualified `show`. That resolves to `ApplicationWindow.show()`, a function and therefore true, so the animation ran forever and the render loop prepared a frame at the display refresh rate.
+  - UC measured the UI on a Remote 3 at about 5 % → 3 % of one core with the display on, and 1.1–1.8 % → 0.4–1.0 % in Low_power.
+- **The UI window is hidden whenever the display is off** (port of upstream `42f9888`).
+  - It used to be hidden only on Idle → Low_power. Two other ways into Low_power left it visible and rendering with the display off: Normal → Low_power, which is how the Phantom-Wake Suppressor (Mod 6) sends an unattended wake back to sleep, and a UI start with the display off.
+  - `Power` gains `windowShown`: shown in Normal and Idle, hidden in Low_power and Suspend, and only on eglfs; a desktop run never hides its window. `main.qml` binds the window's visibility to it.
+  - Port difference from upstream: `powerModeChanged` is still emitted for an unchanged mode, as before (upstream returns early). The screensaver handlers and Mod 6 were written against that.
+- **A stop request in the first seconds of start-up is no longer lost** (upstream `1fd6bcc`).
+  - The signal handler called `QCoreApplication::quit()`, which does nothing before the event loop runs. A SIGTERM right after the start was lost, systemd killed the app after its timeout, and the device's failure handler rebooted into the factory UI.
+  - The handler now writes to a socket pair that the main thread reads.
+- **A screen the UI does not have no longer blocks every other screen** (upstream `d476300`).
+  - Opening an entity whose type or device class has no screen left the container's Loader in `Loader.Error`, with no item to emit `closed()`. No entity, activity or settings page could be opened again until a restart.
+  - Firmware 2.12.0 adds `number` entities and slider / number page items. Neither this UI nor UC's 0.84.0 has screens for them.
+  - Renaming, or changing the icon of, an entity that is not loaded no longer dereferences a null pointer.
+
+### Added
+
+- **On-screen keyboard layouts for Spanish, Finnish, French, Hungarian, Italian, Norwegian, Polish, Portuguese and Swedish** (upstream `b11a67d`).
+  - Each layout uses the national letter arrangement, with accented characters on long-press of their base letter. å ä ö æ ø ñ ç get their own key where the national keyboard has one.
+  - The layout follows the remote's language. English keeps the US layout, which already has accents on long-press.
+
+### Changed
+
+- **The release build passes `UC_BUILD_VERSION=v1.5.3` to qmake.**
+  - Previously `APP_VERSION` was empty, because `git describe` returns nothing inside the Windows Docker toolchain. The core then rejected the UI's `localization_languages` message ("version: Invalid length") on every start.
+- **Tests:**
+  - new `test/hardware/power_test` (13 cases, including the Mod 6 wake ping-pong);
+  - 2 new `entityController` cases for the null-entity guards;
+  - both wired into the `hardware-tests` CI job.
+
+### Verified
+
+- **Firmware 2.12.0** (core 0.83.1, API 0.21.0, REST spec 0.54.0) was installed over v1.5.2 by OTA on 2026-10-31:
+  - the custom UI was preserved;
+  - the Mod 5 REST + Bearer auth still answers 200;
+  - the REST power, standby-inhibitor and install endpoints, the WS `set_power_mode` / `power_mode_change` messages and the PowerMode values are unchanged.
+- **Hardware unit tests** with ASan on Qt 5.15.3: keeper 43/43, suppressor 33/33, entityController 10/10, power 13/13.
+- **ARM64 cross-compile:** clean; 56.5 MB binary with `APP_VERSION` "1.5.3"; no new warnings. The translations changed in line references only.
+- **On device** (firmware 2.12.0, canary deploy 2026-10-31):
+  - healthy at once;
+  - the core's boot-time `localization_languages` error is gone;
+  - Mod 5 REST answers 200;
+  - the owner checked the home page, screensaver + dock chime, first button press after wake, and the battery and WiFi icons. All pass.
+- **Known noise:** two `Page.qml:117` "Binding loop detected for property height" warnings in the start that happened with the display off. They come from the 0.73.5 header-height binding, which upstream rewrote in 0.74.x. The home page looked normal afterwards.
+
 ## v1.5.2 — 2026-06-07 — upstream v0.73.5 merge (Option-B)
 
 > **Verified on firmware 2.9.8 / UI 0.74.1 (2026-07-23)** — post-release compatibility check: 2.9.8 (beta) bumps the bundled UI **ahead of our 0.73.5 merge base** (to 0.74.1, source not yet public) and reworks Bluetooth, the Web-Configurator (2.2.0), networking (new DHCP client), and low-power/sleep behavior. The OTA preserved the custom UI (`active`, no re-flash), the standby / power / install-UI contracts Mods 5 & 6 ride are unchanged (public `core-api` spec `0.46.0`), and all mods work as expected on device. Nothing to merge until UC publishes 0.74.x. Note: 2.9.8's own "only wake for Wi-Fi security updates" sleep fix overlaps **Mod 6** (Phantom-Wake Suppressor), now increasingly redundant.

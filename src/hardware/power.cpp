@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.5.3: windowShown (port of upstream 42f9888).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "power.h"
@@ -11,7 +12,8 @@ namespace hw {
 
 Power *Power::s_instance = nullptr;
 
-Power::Power(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
+Power::Power(core::Api *core, bool hideWindowWhenDisplayOff, QObject *parent)
+    : QObject(parent), m_core(core), m_hideWindowWhenDisplayOff(hideWindowWhenDisplayOff) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
@@ -37,9 +39,7 @@ void Power::getPowerModeFromCore() {
             Q_UNUSED(powerSupply)
             Q_UNUSED(powerStatus)
 
-            auto oldPowerMode = m_powerMode;
-            m_powerMode = static_cast<PowerMode>(powerMode);
-            emit powerModeChanged(oldPowerMode, m_powerMode);
+            setPowerMode(static_cast<PowerMode>(powerMode));
         },
         [=](int code, QString message) {
             // fail
@@ -90,9 +90,21 @@ QObject *Power::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
 }
 
 void Power::onPowerModeChanged(core::PowerEnums::PowerMode powerMode) {
-    auto oldPowerMode = m_powerMode;
-    m_powerMode = static_cast<PowerMode>(powerMode);
+    setPowerMode(static_cast<PowerMode>(powerMode));
+}
+
+void Power::setPowerMode(PowerMode powerMode) {
+    // Emitted for every report of the core, an unchanged mode included, as before v1.5.3: the screensaver handlers in
+    // main.qml and the PhantomWakeSuppressor were written against that. Upstream returns early on an unchanged mode.
+    const bool windowWasShown = isWindowShown();
+    auto       oldPowerMode = m_powerMode;
+    m_powerMode = powerMode;
     emit powerModeChanged(oldPowerMode, m_powerMode);
+
+    if (isWindowShown() != windowWasShown) {
+        qCDebug(lcHw()) << "UI window" << (isWindowShown() ? "shown" : "hidden") << "in power mode" << m_powerMode;
+        emit windowShownChanged();
+    }
 }
 
 }  // namespace hw
