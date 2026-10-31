@@ -805,6 +805,8 @@ ApplicationWindow {
                     // a quick dock-then-undock during the load doesn't fire the chime.
                     item._openedViaDock = root._nextOpenViaDock && Battery.powerSupply;
                     root._nextOpenViaDock = false;
+                    // madalone (v1.6.0): the container that may take the input from under the screensaver
+                    item.hostContainer = Qt.binding(function() { return containerMain.item; });
                     item.open();
                 }
             }

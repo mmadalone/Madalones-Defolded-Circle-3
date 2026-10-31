@@ -63,6 +63,30 @@ Popup {
     // Reset to false in onOpened after the chime fires.
     property bool _openedViaDock: false
 
+    // madalone (v1.6.0): the main screen (MainContainer / NoPage) is loaded asynchronously once the core
+    // has sent the configuration (main.qml containerMain), so the screensaver can open first: DEV opens it
+    // at start-up, and a remote that starts on the dock can open it before the configuration arrives. The
+    // container's own takeControl() in Component.onCompleted then lands on top of ours, and the buttons go
+    // to the page behind the screensaver. Take the input back whenever the container ends up in front
+    // while the screensaver is open: the guard help-overlay/Base.qml uses for the tips. Set by main.qml.
+    property Item hostContainer: null
+
+    function reclaimInput() {
+        if (chargingScreenRoot.opened && hostContainer && ui.inputController.activeItem === hostContainer) {
+            buttonNavigation.takeControl();
+        }
+    }
+
+    Connections {
+        target: ui.inputController
+
+        // deferred: taking the input from inside the change notification would re-enter the
+        // input controller
+        function onActiveItemChanged() {
+            Qt.callLater(chargingScreenRoot.reclaimInput);
+        }
+    }
+
     // Measured dim-phase duration — how long the core spends in the Idle
     // power mode (display dimmed) before transitioning to Low_power (display
     // physically off). Measured empirically on each cycle so we can delay
