@@ -680,6 +680,72 @@ void MediaPlayer::clearMediaImageState() {
         m_mediaImageColor = defaultColor;
         emit mediaImageColorChanged();
     }
+
+    m_mediaImageIsPreview = false;
+}
+
+// madalone (v1.4.9): Kodi's skin fallback images, reported by Player.GetItem when an item has no artwork. A substring
+// match catches the plain ("DefaultVideo.png") and the URL-encoded form ("image%3A%2F%2FDefaultVideo.png%2F").
+bool MediaPlayer::isKodiDefaultPlaceholder(const QString &url) {
+    static constexpr const char *defaults[] = {
+        "DefaultVideo.png",       "DefaultAudio.png",    "DefaultVideoCover.png", "DefaultMovies.png",
+        "DefaultMovieTitle.png",  "DefaultTVShows.png",  "DefaultTVShowTitle.png", "DefaultPlaylist.png",
+        "DefaultFolder.png",      "DefaultFile.png",     "DefaultPicture.png",    "DefaultProgram.png",
+    };
+    for (auto d : defaults) {
+        if (url.contains(QLatin1String(d), Qt::CaseInsensitive)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+// madalone (v1.4.9 / v1.6.0): a browse thumbnail is shown, or it is still being loaded and nothing newer was asked for
+bool MediaPlayer::previewKeepsArtwork() const {
+    return (m_mediaImageIsPreview && !m_mediaImage.isEmpty()) ||
+           (m_previewRequestId != 0 && m_previewRequestId == m_mediaImageProcessingRequestId->load());
+}
+
+void MediaPlayer::setPreviewImage(const QString &thumbnailUrl) {
+    if (thumbnailUrl.isEmpty()) {
+        return;
+    }
+
+    // Only what can be loaded: http(s), or an image as a base64 data URL. The browser's "icon://" thumbnails and
+    // Kodi's internal "image://" URLs would only use up the three download tries.
+    const bool isHttp = thumbnailUrl.startsWith("http://", Qt::CaseInsensitive) ||
+                        thumbnailUrl.startsWith("https://", Qt::CaseInsensitive);
+    const bool isBase64 =
+        thumbnailUrl.startsWith("data:image/", Qt::CaseInsensitive) && thumbnailUrl.contains(";base64,");
+    if (!isHttp && !isBase64) {
+        qCDebug(lcMediaPlayer()) << "Browse preview skipped: the thumbnail is not an http(s) or data URL";
+        return;
+    }
+
+    // a placeholder is no better than what the integration reports anyway
+    if (isKodiDefaultPlaceholder(thumbnailUrl)) {
+        return;
+    }
+
+    // already shown: only mark it, so that a placeholder reported next does not replace it
+    if (m_mediaImageUrl == thumbnailUrl && !m_mediaImage.isEmpty()) {
+        m_mediaImageIsPreview = true;
+        return;
+    }
+
+    // the steps of a new media_image_url, with the request remembered as the preview's
+    m_mediaImageUrl = thumbnailUrl;
+    emit mediaImageUrlChanged();
+
+    m_mediaImageDownloadTries = 0;
+    const quint64 requestId = ++*m_mediaImageProcessingRequestId;
+    m_previewRequestId = requestId;
+
+    if (isBase64) {
+        processMediaImageAsync(m_mediaImageUrl, QByteArray(), requestId, m_mediaImageUrl);
+    } else {
+        getMediaImageColor(m_mediaImageUrl, requestId);
+    }
 }
 
 void MediaPlayer::processMediaImageAsync(const QString &imageUrl, const QByteArray &imageData, quint64 requestId,
@@ -739,6 +805,11 @@ void MediaPlayer::applyProcessedMediaImage(const QString &imageUrl, quint64 requ
     }
 
     if (!success || mediaImage.isNull()) {
+        // madalone (v1.4.9): artwork that cannot be decoded keeps the browse preview it was to replace
+        if (m_mediaImageIsPreview && !m_mediaImage.isEmpty() && requestId != m_previewRequestId) {
+            qCDebug(lcMediaPlayer()) << "Artwork could not be decoded, keeping the browse preview";
+            return;
+        }
         clearMediaImageState();
         return;
     }
@@ -760,6 +831,7 @@ void MediaPlayer::applyProcessedMediaImage(const QString &imageUrl, quint64 requ
     }
 
     m_mediaImageCacheKey = nextCacheKey;
+    m_mediaImageIsPreview = requestId == m_previewRequestId;  // madalone (v1.4.9)
 
     if (!previousCacheKey.isEmpty() && previousCacheKey != nextCacheKey) {
         provider->removeImage(previousCacheKey);
@@ -858,6 +930,7 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
 
                 m_mediaImage = QString();
                 emit mediaImageChanged();
+                m_mediaImageIsPreview = false;  // madalone (v1.4.9)
                 m_mediaImageColor = QColor(255,255,255);
                 emit mediaImageColorChanged();
 
@@ -930,6 +1003,13 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
         }
         case MediaPlayerAttributes::Media_image_url: {
             QString newImageUrl = data.toString();
+
+            // madalone (v1.4.9): integrations often report an empty URL or Kodi's default placeholder first. Keep the
+            // browse thumbnail of the item the user just started instead.
+            if (previewKeepsArtwork() && (newImageUrl.isEmpty() || isKodiDefaultPlaceholder(newImageUrl))) {
+                qCDebug(lcMediaPlayer()) << "Keeping the browse preview over an empty or placeholder artwork URL";
+                break;
+            }
 
             if (m_mediaImageUrl != newImageUrl) {
                 m_mediaImageUrl = newImageUrl;
@@ -1134,7 +1214,12 @@ void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
                                              << m_mediaImageUrl;
 
         if (m_mediaImageDownloadTries >= 3) {
-            clearMediaImageState();
+            // madalone (v1.4.9): real artwork that cannot be downloaded keeps the browse preview
+            if (m_mediaImageIsPreview && !m_mediaImage.isEmpty() && replyRequestId != m_previewRequestId) {
+                qCDebug(lcMediaPlayer()) << "Artwork download failed, keeping the browse preview";
+            } else {
+                clearMediaImageState();
+            }
             reply->deleteLater();
             return;
         } else {

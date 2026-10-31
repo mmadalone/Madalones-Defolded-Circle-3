@@ -379,6 +379,10 @@ class MediaPlayer : public Base {
 
     Q_INVOKABLE void playMedia(const QString &mediaId, const QString &mediaType,
                                const QString &action = QString());
+    // madalone (v1.4.9, on the 0.74 artwork pipeline since v1.6.0): shows the thumbnail of the item just started in
+    // the media browser as the artwork until the integration reports the real one; a placeholder or empty artwork
+    // URL reported in between does not replace it.
+    Q_INVOKABLE void setPreviewImage(const QString &thumbnailUrl);
     Q_INVOKABLE void clearPlaylist();
     /**
      * Asks for the content of a media folder. Returns the id of the request, which the result and the error
@@ -497,6 +501,11 @@ class MediaPlayer : public Base {
                                                    const QImage &mediaImage, const QColor &mediaImageColor,
                                                    bool success);
     int                   m_mediaImageDownloadTries = 0;
+    // madalone (v1.4.9 / v1.6.0): browse-thumbnail preview, see setPreviewImage()
+    static bool           isKodiDefaultPlaceholder(const QString &url);
+    bool                  previewKeepsArtwork() const;
+    quint64               m_previewRequestId = 0;  // artwork request of the last preview, 0 = none
+    bool                  m_mediaImageIsPreview = false;  // the artwork shown is a browse thumbnail
     // Counts the artwork requests, only the newest one is applied. Shared with the workers of the thread pool,
     // which read it to stop early: it outlives this object, so a worker never touches the object itself.
     QSharedPointer<std::atomic<quint64>> m_mediaImageProcessingRequestId =

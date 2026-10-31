@@ -73,6 +73,12 @@ class testEntityController : public QObject {
     void mediaPlayer_embeddedArtwork_isDecodedOnAWorkerThread();
     void mediaPlayer_deletedWhileArtworkIsDecoded_doesNotCrash();
 
+    // madalone (v1.4.9, re-ported in v1.6.0): browse-thumbnail preview
+    void mediaPlayer_browsePreview_survivesAPlaceholderUntilTheRealArtwork();
+    void mediaPlayer_browsePreview_beingLoadedSurvivesAPlaceholder();
+    void mediaPlayer_browsePreview_survivesArtworkThatCannotBeDecoded();
+    void mediaPlayer_browsePreview_ignoresThumbnailsThatCannotBeLoaded();
+
  private:
     static uc::core::Entity makeEntity(const QString& entityId);
     static QVariantMap      voiceStartParams(int sessionId);
@@ -495,6 +501,131 @@ void testEntityController::mediaPlayer_deletedWhileArtworkIsDecoded_doesNotCrash
     QThreadPool::globalInstance()->waitForDone(5000);
     // the queued results of the deleted players are delivered and dropped
     QTest::qWait(200);
+}
+
+/**
+ * madalone (v1.4.9, re-ported onto the 0.74 artwork pipeline in v1.6.0): the thumbnail of the item started in the
+ * media browser is shown at once. Kodi reports an empty URL or its default placeholder first; neither replaces the
+ * preview. The real artwork does, and from then on a placeholder is applied like any other URL.
+ */
+void testEntityController::mediaPlayer_browsePreview_survivesAPlaceholderUntilTheRealArtwork() {
+    uc::core::Api              api(kTestUrl);
+    uc::ui::EntityController   controller(&api, QStringLiteral("en"), uc::Config::UnitSystems::Metric, 0);
+    uc::ui::MediaImageProvider provider;
+
+    const QString    entityId = QStringLiteral("media_player.preview");
+    uc::core::Entity entity = makeEntity(entityId);
+    entity.type = QStringLiteral("Media_player");
+    controller.onEntityAdded(entity);
+
+    auto mediaPlayer = qobject_cast<uc::ui::entity::MediaPlayer*>(controller.get(entityId));
+    QVERIFY(mediaPlayer);
+
+    QSignalSpy imageChanged(mediaPlayer, &uc::ui::entity::MediaPlayer::mediaImageChanged);
+    const QString preview = embeddedArtwork(QColor(200, 30, 30));
+    mediaPlayer->setPreviewImage(preview);
+    QVERIFY(imageChanged.wait(5000));
+    const QString previewImage = mediaPlayer->getMediaImage();
+    QVERIFY(previewImage.startsWith(QStringLiteral("image://media-art/")));
+
+    const QString placeholder = QStringLiteral("http://127.0.0.1:1/image/image%3A%2F%2FDefaultVideo.png%2F");
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"), placeholder);
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"), QString());
+    QCOMPARE(mediaPlayer->getMediaImageUrl(), preview);
+    QCOMPARE(mediaPlayer->getMediaImage(), previewImage);
+
+    // the real artwork replaces the preview
+    imageChanged.clear();
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"), embeddedArtwork(QColor(30, 30, 200)));
+    QVERIFY(imageChanged.wait(5000));
+    QVERIFY(mediaPlayer->getMediaImageColor().blue() > mediaPlayer->getMediaImageColor().red());
+
+    // no preview any more: a placeholder is an artwork URL like any other
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"), placeholder);
+    QCOMPARE(mediaPlayer->getMediaImageUrl(), placeholder);
+}
+
+/**
+ * The placeholder can arrive while the preview is still being decoded; it must not cancel the preview.
+ */
+void testEntityController::mediaPlayer_browsePreview_beingLoadedSurvivesAPlaceholder() {
+    uc::core::Api              api(kTestUrl);
+    uc::ui::EntityController   controller(&api, QStringLiteral("en"), uc::Config::UnitSystems::Metric, 0);
+    uc::ui::MediaImageProvider provider;
+
+    const QString    entityId = QStringLiteral("media_player.preview_loading");
+    uc::core::Entity entity = makeEntity(entityId);
+    entity.type = QStringLiteral("Media_player");
+    controller.onEntityAdded(entity);
+
+    auto mediaPlayer = qobject_cast<uc::ui::entity::MediaPlayer*>(controller.get(entityId));
+    QVERIFY(mediaPlayer);
+
+    QSignalSpy    imageChanged(mediaPlayer, &uc::ui::entity::MediaPlayer::mediaImageChanged);
+    const QString preview = embeddedArtwork(QColor(200, 30, 30));
+    mediaPlayer->setPreviewImage(preview);
+    // the decoding runs on a worker thread and is applied through the event loop: it has not been applied yet
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"),
+                                 QStringLiteral("http://127.0.0.1:1/image/DefaultAudio.png"));
+    QCOMPARE(mediaPlayer->getMediaImageUrl(), preview);
+
+    QVERIFY(imageChanged.wait(5000));
+    QVERIFY(mediaPlayer->getMediaImage().startsWith(QStringLiteral("image://media-art/")));
+    QVERIFY(mediaPlayer->getMediaImageColor().red() > mediaPlayer->getMediaImageColor().blue());
+}
+
+/**
+ * Real artwork that cannot be decoded keeps the preview instead of clearing the artwork.
+ */
+void testEntityController::mediaPlayer_browsePreview_survivesArtworkThatCannotBeDecoded() {
+    uc::core::Api              api(kTestUrl);
+    uc::ui::EntityController   controller(&api, QStringLiteral("en"), uc::Config::UnitSystems::Metric, 0);
+    uc::ui::MediaImageProvider provider;
+
+    const QString    entityId = QStringLiteral("media_player.preview_broken");
+    uc::core::Entity entity = makeEntity(entityId);
+    entity.type = QStringLiteral("Media_player");
+    controller.onEntityAdded(entity);
+
+    auto mediaPlayer = qobject_cast<uc::ui::entity::MediaPlayer*>(controller.get(entityId));
+    QVERIFY(mediaPlayer);
+
+    QSignalSpy imageChanged(mediaPlayer, &uc::ui::entity::MediaPlayer::mediaImageChanged);
+    mediaPlayer->setPreviewImage(embeddedArtwork(QColor(200, 30, 30)));
+    QVERIFY(imageChanged.wait(5000));
+    const QString previewImage = mediaPlayer->getMediaImage();
+
+    mediaPlayer->updateAttribute(QStringLiteral("Media_image_url"), QStringLiteral("data:image/png;base64,AAAA"));
+    QThreadPool::globalInstance()->waitForDone(5000);
+    QTest::qWait(200);  // the queued result is delivered
+    QCOMPARE(mediaPlayer->getMediaImage(), previewImage);
+    QVERIFY(mediaPlayer->getMediaImageColor().red() > mediaPlayer->getMediaImageColor().blue());
+}
+
+/**
+ * Only http(s) and image data URLs are loaded: the browser's icon:// thumbnails, Kodi's internal image:// URLs and
+ * Kodi's placeholders leave the artwork alone.
+ */
+void testEntityController::mediaPlayer_browsePreview_ignoresThumbnailsThatCannotBeLoaded() {
+    uc::core::Api              api(kTestUrl);
+    uc::ui::EntityController   controller(&api, QStringLiteral("en"), uc::Config::UnitSystems::Metric, 0);
+    uc::ui::MediaImageProvider provider;
+
+    const QString    entityId = QStringLiteral("media_player.preview_ignored");
+    uc::core::Entity entity = makeEntity(entityId);
+    entity.type = QStringLiteral("Media_player");
+    controller.onEntityAdded(entity);
+
+    auto mediaPlayer = qobject_cast<uc::ui::entity::MediaPlayer*>(controller.get(entityId));
+    QVERIFY(mediaPlayer);
+
+    QSignalSpy urlChanged(mediaPlayer, &uc::ui::entity::MediaPlayer::mediaImageUrlChanged);
+    mediaPlayer->setPreviewImage(QString());
+    mediaPlayer->setPreviewImage(QStringLiteral("icon://uc:music"));
+    mediaPlayer->setPreviewImage(QStringLiteral("image://http%3a%2f%2fexample.com%2fcover.jpg/"));
+    mediaPlayer->setPreviewImage(QStringLiteral("http://127.0.0.1:1/image/image%3A%2F%2FDefaultFolder.png%2F"));
+    QCOMPARE(urlChanged.count(), 0);
+    QVERIFY(mediaPlayer->getMediaImageUrl().isEmpty());
 }
 
 /**
