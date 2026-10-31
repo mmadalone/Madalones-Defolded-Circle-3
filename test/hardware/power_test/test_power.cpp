@@ -9,9 +9,9 @@
 // - the UI starting while the display is off: Power starts as Normal and the first answer of the core is Low_power.
 // A desktop run never hides its window.
 //
-// Adapted from upstream test/hardware/test_power.cpp (42f9888) to the stub core::Api of this test tree, with one
-// deliberate difference: an unchanged mode is still announced through powerModeChanged here, as it was before
-// v1.5.3, while upstream returns early (see Power::setPowerMode).
+// Adapted from upstream test/hardware/test_power.cpp (42f9888) to the stub core::Api of this test tree. Since
+// v1.6.0 Power follows upstream's contract (2c49934): an unchanged mode is not announced again. The repeat used
+// to re-open or close the screensaver whenever the core reconnected.
 
 #include <QSignalSpy>
 #include <QtTest>
@@ -112,8 +112,8 @@ class PowerTest : public QObject {
         QCOMPARE(windowShownChanged.count(), 1);
     }
 
-    // Our difference from upstream: an unchanged mode is still announced, but the window does not change.
-    void sameMode_isStillAnnounced_windowUnchanged() {
+    // Upstream's contract (v1.6.0): an unchanged mode is not announced, and the window does not change.
+    void sameMode_isNotAnnounced_windowUnchanged() {
         uc::hw::Power power(m_api, true);
         emit m_api->powerModeChanged(CoreMode::LOW_POWER);
 
@@ -121,13 +121,13 @@ class PowerTest : public QObject {
         QSignalSpy windowShownChanged(&power, &uc::hw::Power::windowShownChanged);
         emit m_api->powerModeChanged(CoreMode::LOW_POWER);
 
-        QCOMPARE(powerModeChanged.count(), 1);
+        QCOMPARE(powerModeChanged.count(), 0);
         QCOMPARE(windowShownChanged.count(), 0);
 
         // both display-off modes hide the window: Low_power to Suspend changes the mode, not the window
         emit m_api->powerModeChanged(CoreMode::SUSPEND);
 
-        QCOMPARE(powerModeChanged.count(), 2);
+        QCOMPARE(powerModeChanged.count(), 1);
         QCOMPARE(windowShownChanged.count(), 0);
         QVERIFY(!power.isWindowShown());
     }

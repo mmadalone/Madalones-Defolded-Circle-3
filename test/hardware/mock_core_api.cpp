@@ -236,6 +236,10 @@ int Api::configureEntities(const QString&, const QStringList&) { return -1; }
 int Api::updateEntity(const QString&, QVariantMap, const QString&) { return -1; }
 int Api::deleteEntities(const QStringList&, const QString&) { return -1; }
 int Api::entityCommand(const QString&, const QString&, QVariantMap) { return -1; }
+// v0.84.0: Fix states and the activity readiness check (EntityController::setEntityState /
+// checkSequenceReadiness); never exercised by these tests.
+int Api::setEntityState(const QString&, const QString&) { return -1; }
+int Api::getSequenceReadiness(const QString&, const QString&, const QString&, const QString&) { return -1; }
 int Api::browseMedia(const QString&, QVariantMap) { return -1; }
 int Api::searchMedia(const QString&, QVariantMap) { return -1; }
 

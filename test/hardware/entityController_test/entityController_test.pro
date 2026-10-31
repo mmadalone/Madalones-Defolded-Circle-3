@@ -25,6 +25,7 @@ SOURCES += \
     test_entityController.cpp \
     ../mock_core_api.cpp \
     ../../../src/ui/notification.cpp \
+    ../../../src/ui/mediaImageProvider.cpp \
     ../../../src/util.cpp \
     ../../../src/logging.cpp \
     ../../../3rd-party/QR-Code-generator/cpp/qrcodegen.cpp
@@ -37,6 +38,7 @@ HEADERS += \
     ../../../src/core/enums.h \
     ../../../src/core/structs.h \
     ../../../src/ui/notification.h \
+    ../../../src/ui/mediaImageProvider.h \
     ../../../src/util.h \
     ../../../src/logging.h \
     ../../../3rd-party/QR-Code-generator/cpp/qrcodegen.hpp
