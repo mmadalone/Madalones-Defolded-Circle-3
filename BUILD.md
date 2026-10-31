@@ -28,6 +28,16 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
 
 `--user=$(id -u):$(id -g)` is harmless-but-ignored on Docker Desktop; kept on the Linux/macOS form for proper file ownership when running on a real Linux host.
 
+**Release builds: pass the version.** The binary's version comes from `git describe`. On Windows / Docker Desktop, git rejects the bind-mounted repo (`detected dubious ownership`), so the version comes out empty, and the core then rejects the UI's `localization_languages` message at every start. Pass it as a qmake argument; `-e UC_BUILD_VERSION=…` does not reach qmake:
+
+```bash
+MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
+    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6 \
+    remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=v1.5.4"
+```
+
+CI builds don't need this: the container runs as the checkout's owner, and `git describe` finds the tag.
+
 Output: `binaries/linux-arm64/release/remote-ui`
 
 > **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. To rotate the pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:

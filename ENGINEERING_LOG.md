@@ -13,6 +13,44 @@ this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## <a id="v154"></a>v1.5.4 — 2026-10-31 — GitHub release bundle ships the sounds; release verification fixed
+
+### How it was found
+
+Checking the published v1.5.3 files turned up two problems:
+- The UCR3 bundle held 2 files in `config/`, against 18 in our local deploy bundle.
+- `scripts/verify-release.sh` printed "✓ GPG signature valid" right after gpg said "Can't check signature: No public key".
+
+### The missing sounds (v1.4.41 – v1.5.3)
+
+- The "Stage install bundle" step was added in v1.4.21 (`1c2f897`) to give CI bundles the firmware's layout. It copied `charging_screen.json` and `NotoSansMonoCJKjp.otf` by name.
+- v1.4.41 (`000428c`) added the sounds to `deploy/config/` when firmware 2.9.2 stopped giving custom UIs a `UC_SOUND_EFFECTS_PATH`. Nobody updated the step, so every GitHub bundle from v1.4.41 to v1.5.3 shipped without them.
+- The owner's remote never showed it: it is deployed from the local bundle, which tars the whole `deploy/`.
+- **This is very likely the forum report of 2026-05-09** ("no wavs in `/app/config/` after a clean v1.4.43 install"). That was attributed to the firmware's install endpoint not extracting `config/`, and the proposed fix was to embed the sounds in qrc (v1.4.44). The files were simply never in the bundle; qrc-embedding is not needed for this.
+
+**The fix** copies every file of `deploy/config/`. It fails the build if `deploy/config/` holds a sub-directory (the firmware answers 400 "Could not extract archive"), or if the staged count differs from the source.
+
+Dry-run locally on a copy of `deploy/config/`:
+- 18 files staged;
+- an added sub-directory fails with the `::error::` line.
+
+### The verification script
+
+`if ! gpg --verify … | tee log; then` tests the pipeline's status, which is tee's, so every gpg failure passed. The script now reads `${PIPESTATUS[0]}`.
+
+Tested with throwaway `GNUPGHOME`s on the published v1.5.3 files:
+- no key → exit 2;
+- `docs/release-pubkey.asc` imported → "Good signature", exit 0;
+- one byte appended → SHA256 mismatch, exit 1.
+
+The v1.5.3 signature itself is good.
+
+### Version string, explained
+
+qmake's `$$system(git describe …)` runs in the `.pro`'s directory: tested in the toolchain with a temporary repo outside the build directory, it gets the tag. Local Windows builds still come out empty, because git refuses the bind-mounted `/sources` ("detected dubious ownership").
+
+CI runs the container as the checkout's owner (`--user=$(id -u):$(id -g)`), and its v1.5.3 binary does contain "1.5.3". `BUILD.md` now shows the local release invocation with `UC_BUILD_VERSION=vX.Y.Z` as a qmake argument; `-e` does not reach qmake.
+
 ## <a id="v153"></a>v1.5.3 — 2026-10-31 — five backports from upstream 0.83 / 0.84 (firmware 2.12.0)
 
 ### Context

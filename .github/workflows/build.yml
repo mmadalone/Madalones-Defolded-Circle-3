@@ -161,8 +161,22 @@ jobs:
           STAGING="${GITHUB_WORKSPACE}/install-bundle"
           mkdir -p "${STAGING}/bin" "${STAGING}/config"
           cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/release.json" "${STAGING}/"
-          cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config/charging_screen.json" "${STAGING}/config/"
-          cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config/NotoSansMonoCJKjp.otf" "${STAGING}/config/"
+          # Every file of deploy/config/ goes into config/: the charging-screen JSON, the CJK font and,
+          # since v1.4.41, the 16 sound files (UI clicks + dock chimes). This step used to copy only the
+          # first two by name, so no GitHub release from v1.4.41 to v1.5.3 shipped any sound (v1.5.4).
+          # The firmware rejects sub-directories under config/ ("Could not extract archive").
+          CONFIG_SRC="${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config"
+          if [ -n "$(find "${CONFIG_SRC}" -mindepth 1 -type d)" ]; then
+            echo "::error::deploy/config must not contain sub-directories: the firmware rejects them"
+            exit 1
+          fi
+          cp "${CONFIG_SRC}"/* "${STAGING}/config/"
+          SRC_COUNT=$(find "${CONFIG_SRC}" -maxdepth 1 -type f | wc -l)
+          STAGED_COUNT=$(find "${STAGING}/config" -maxdepth 1 -type f | wc -l)
+          if [ "${SRC_COUNT}" -ne "${STAGED_COUNT}" ]; then
+            echo "::error::staged ${STAGED_COUNT} of ${SRC_COUNT} files of deploy/config"
+            exit 1
+          fi
           cp "${{ env.UC_BIN }}/remote-ui" "${STAGING}/bin/"
           # Include version.txt at root for downstream diagnostics; firmware install ignores it.
           cp "${{ env.UC_BIN }}/version.txt" "${STAGING}/" || true

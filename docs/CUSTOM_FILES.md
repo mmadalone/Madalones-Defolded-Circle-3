@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.73.4` (merged 2026-05-14, commit `3582f92`; previously `v0.71.1` → `v0.72.0` at v1.4.0).  
-**Last updated:** 2026-10-31 (v1.5.3 — five backports from upstream v0.83.0 / v0.84.0; base is still v0.73.5 from v1.5.2)
+**Last updated:** 2026-10-31 (v1.5.4 — release bundle + verify script; v1.5.3 — five backports from upstream v0.83.0 / v0.84.0; base is still v0.73.5 from v1.5.2)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -188,6 +188,18 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.5.4: GitHub release bundle ships every config file; release verification fixed
+
+Release infrastructure only. The app code is the same as v1.5.3.
+
+| File | v1.5.4 change |
+|------|---------------|
+| `.github/workflows/build.yml` | "Stage install bundle" copies every file of `deploy/config/` instead of `charging_screen.json` + the font by name. The 16 .wav files had been missing from every GitHub bundle since v1.4.41. The step now fails on a sub-directory there (the firmware rejects those) or on a count mismatch. |
+| `scripts/verify-release.sh` | The GPG check uses gpg's exit status (`PIPESTATUS[0]`), not tee's, so a failed or impossible verification ("No public key") is no longer reported as valid. |
+| `BUILD.md` | Local release cross-compile passes `UC_BUILD_VERSION` as a qmake argument. On Windows, git rejects the bind-mounted repo, so the version would otherwise be empty. |
 
 ---
 

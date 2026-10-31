@@ -11,6 +11,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.4 — 2026-10-31 — GitHub release bundle ships the sounds; release verification fixed
+
+Same code as v1.5.3: only the release packaging and the verification script change.
+
+### Fixed
+
+- **The GitHub release bundle contains every file of `deploy/config/`.**
+  - Since v1.4.41 the 16 sound files were missing from every GitHub download: the UI clicks / confirm / error sounds and the 12 dock chimes.
+  - The "Stage install bundle" step of `build.yml` (written in v1.4.21, before the sounds existed) copied only `charging_screen.json` and the CJK font by name.
+  - Custom UIs get no `UC_SOUND_EFFECTS_PATH` from the firmware and fall back to `config/`, so a remote installed from GitHub had no UI sounds and no dock chime. Installs from a local bundle were not affected.
+  - The step now copies the whole folder. It fails the build if a sub-directory appears there, because the firmware rejects those, or if the staged count differs from the source.
+- **`scripts/verify-release.sh` no longer reports a valid signature when gpg could not check it.**
+  - `gpg --verify … | tee` returned tee's status, so "No public key", or any other gpg failure, passed as "✓ GPG signature valid".
+  - It now checks gpg's own status (`PIPESTATUS`).
+  - Tested on the v1.5.3 files: no key fails (exit 2), the project key passes, a tampered file fails on SHA256.
+
+### Changed
+
+- `BUILD.md`: local cross-compiles pass `UC_BUILD_VERSION` as a qmake argument. On Windows, git rejects the bind-mounted repo ("dubious ownership"), so `git describe` returns nothing and the binary has no version. CI builds take it from the tag.
+
+---
+
 ## v1.5.3 — 2026-10-31 — five fixes backported from upstream 0.83 / 0.84 (firmware 2.12.0)
 
 UC firmware **2.12.0** (beta) ships remote-ui **0.84.0**, and since October 2026 UC publishes its UI source as it ships it, so single fixes can be taken from it. Bringing the whole fork up to 0.84.0 is a separate project: a dry run on 2026-10-31 gave **54 conflicting files**, against 17 at 0.74.5. This release backports the five small fixes that matter for our build. Four apply unchanged; one is ported by hand.

@@ -102,8 +102,12 @@ if ! command -v gpg >/dev/null 2>&1; then
 fi
 
 log "GPG signature check against $SIG"
-if ! gpg --verify "$SIG" "$TARBALL" 2>&1 | tee /tmp/verify-release-gpg.log; then
-    err "GPG signature verification FAILED"
+# Check gpg's exit status, not tee's: a pipeline returns the status of its last command, so before
+# v1.5.4 this reported a valid signature even when gpg could not check it ("No public key").
+gpg --verify "$SIG" "$TARBALL" 2>&1 | tee /tmp/verify-release-gpg.log
+GPG_STATUS=${PIPESTATUS[0]}
+if [ "$GPG_STATUS" -ne 0 ]; then
+    err "GPG signature verification FAILED (gpg exit status $GPG_STATUS)"
     err "  if this is 'No public key' — import the release key:"
     err "    gpg --import docs/release-pubkey.asc"
     err "  otherwise the artifact is tampered or the key is wrong"
