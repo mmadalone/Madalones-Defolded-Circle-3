@@ -98,7 +98,7 @@ Settings.Page {
                     lowValueText: from + " ms"
                     highValueText: to + " ms"
 
-                    onValueChanged: { Config.phantomWakeSuppressGraceMs = value; }
+                    onMoved: { Config.phantomWakeSuppressGraceMs = value; }
                     onUserInteractionEnded: { Config.phantomWakeSuppressGraceMs = value; }
 
                     /** KEYBOARD NAVIGATION **/
@@ -129,7 +129,7 @@ Settings.Page {
                     lowValueText: qsTr("Disabled")
                     highValueText: to + " ms"
 
-                    onValueChanged: { Config.phantomWakeSuppressInputLookbackMs = value; }
+                    onMoved: { Config.phantomWakeSuppressInputLookbackMs = value; }
                     onUserInteractionEnded: { Config.phantomWakeSuppressInputLookbackMs = value; }
 
                     /** KEYBOARD NAVIGATION **/
@@ -181,7 +181,7 @@ Settings.Page {
                     lowValueText: qsTr("%1 seconds").arg(from)
                     highValueText: qsTr("%1 minutes").arg(5)
 
-                    onValueChanged: { Config.sessionKeeperIdleSec = value; }
+                    onMoved: { Config.sessionKeeperIdleSec = value; }
                     onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
 
                     /** KEYBOARD NAVIGATION **/
