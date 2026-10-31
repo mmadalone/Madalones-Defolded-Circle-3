@@ -10,6 +10,8 @@
 #include <QQmlContext>
 #include <QColor>
 #include <QFont>
+#include <QJSValue>
+#include <QPointer>
 
 #include "MockScreensaverConfig.h"
 #include "MockHaptic.h"
@@ -92,6 +94,20 @@ class MockFonts : public QObject {
         f.setCapitalization(QFont::Capitalize);
         return f;
     }
+
+    // type roles (docs/design-system.md section 4), sizes as in src/ui/fonts.h
+    Q_PROPERTY(qreal proseLineHeight READ proseLineHeight CONSTANT)
+    qreal proseLineHeight() const { return 1.3; }
+    Q_INVOKABLE QFont title() { return primaryFont(28, "Medium"); }
+    Q_INVOKABLE QFont heading() { return primaryFont(26, "Medium"); }
+    Q_INVOKABLE QFont label() { return primaryFont(30); }
+    Q_INVOKABLE QFont menuRow() { return primaryFont(28); }
+    Q_INVOKABLE QFont prose() { return primaryFont(26); }
+    Q_INVOKABLE QFont help() { return primaryFont(26); }
+    Q_INVOKABLE QFont caption() { return primaryFont(22); }
+    Q_INVOKABLE QFont value() { return secondaryFont(26); }
+    Q_INVOKABLE QFont button() { return primaryFont(26, "Medium"); }
+    Q_INVOKABLE QFont display(int size = 90) { return primaryFont(qMax(size, 56), "Light"); }
 };
 
 // ── Mock C++ object for colors context property ───────────────────
@@ -113,6 +129,19 @@ class MockColors : public QObject {
     Q_PROPERTY(QColor blue MEMBER blue CONSTANT)
     Q_PROPERTY(QColor primaryButton MEMBER primaryButton CONSTANT)
     Q_PROPERTY(QColor secondaryButton MEMBER secondaryButton CONSTANT)
+    // tokens (docs/design-system.md section 3)
+    Q_PROPERTY(QColor bg MEMBER bg CONSTANT)
+    Q_PROPERTY(QColor textPrimary MEMBER textPrimary CONSTANT)
+    Q_PROPERTY(QColor textSecondary MEMBER textSecondary CONSTANT)
+    Q_PROPERTY(QColor textDisabled MEMBER textDisabled CONSTANT)
+    Q_PROPERTY(QColor textOnButton MEMBER textOnButton CONSTANT)
+    Q_PROPERTY(QColor surface MEMBER surface CONSTANT)
+    Q_PROPERTY(QColor surfaceRaised MEMBER surfaceRaised CONSTANT)
+    Q_PROPERTY(QColor surfaceSelected MEMBER surfaceSelected CONSTANT)
+    Q_PROPERTY(QColor divider MEMBER divider CONSTANT)
+    Q_PROPERTY(QColor focusRing MEMBER focusRing CONSTANT)
+    Q_PROPERTY(QColor buttonPrimary MEMBER buttonPrimary CONSTANT)
+    Q_PROPERTY(QColor redPressed MEMBER redPressed CONSTANT)
 
  public:
     explicit MockColors(QObject *parent = nullptr) : QObject(parent) {}
@@ -132,6 +161,60 @@ class MockColors : public QObject {
     QColor blue{QColor("#335266")};
     QColor primaryButton{QColor("#555555")};
     QColor secondaryButton{QColor("#333333")};
+    QColor bg{QColor("#000000")};
+    QColor textPrimary{QColor("#D0D0D0")};
+    QColor textSecondary{QColor("#A0A0A0")};
+    QColor textDisabled{QColor("#7A7A7A")};
+    QColor textOnButton{QColor("#FFFFFF")};
+    QColor surface{QColor("#1E1E1E")};
+    QColor surfaceRaised{QColor("#2C2C2C")};
+    QColor surfaceSelected{QColor("#595959")};
+    QColor divider{QColor("#3A3A3A")};
+    QColor focusRing{QColor("#D0D0D0")};
+    QColor buttonPrimary{QColor("#5A5A5A")};
+    QColor redPressed{QColor("#FF0D2A")};
+};
+
+// ── Mock input controller (uc::ui::InputController) ───────────────
+// The stack of input owners that ButtonNavigation's takeControl() / releaseControl() push and pop; the base owner
+// holds the input when the stack is empty. No visibility clean-up: a test opens and closes what it checks.
+class MockInputController : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(QObject* activeItem READ activeItem NOTIFY activeItemChanged)
+
+ public:
+    explicit MockInputController(QObject *parent = nullptr) : QObject(parent) {}
+
+    QObject *activeItem() const { return m_stack.isEmpty() ? m_baseOwner.data() : m_stack.last().data(); }
+
+    Q_INVOKABLE void takeControl(QObject *obj) {
+        if (!obj) return;
+        m_stack.removeAll(obj);
+        m_stack.append(obj);
+        emit activeItemChanged();
+    }
+    Q_INVOKABLE void releaseControl(QObject *obj = nullptr) {
+        if (obj) {
+            m_stack.removeAll(obj);
+        } else if (!m_stack.isEmpty()) {
+            m_stack.removeLast();
+        }
+        emit activeItemChanged();
+    }
+    Q_INVOKABLE void setBaseOwner(QObject *obj) {
+        m_baseOwner = obj;
+        emit activeItemChanged();
+    }
+
+ signals:
+    void activeItemChanged();
+    // ButtonNavigation listens to these (src/ui/inputController.h); the mock never emits them
+    void keyPressedFor(QObject *owner, QString key);
+    void keyReleasedFor(QObject *owner, QString key);
+
+ private:
+    QList<QPointer<QObject>> m_stack;
+    QPointer<QObject>        m_baseOwner;
 };
 
 // ── Mock C++ object for ui context property ───────────────────────
@@ -145,10 +228,14 @@ class MockUi : public QObject {
     Q_PROPERTY(int cornerRadiusLarge READ cornerRadiusLarge CONSTANT)
     Q_PROPERTY(double ratio READ ratio CONSTANT)
     Q_PROPERTY(QObject* inputController READ inputController CONSTANT)
+    // UC v0.84: the selection is shown while the keypad is in use. True here, like keyNavigationEnabled before.
+    Q_PROPERTY(bool keyNavigationActive READ keyNavigationActive WRITE setKeyNavigationActive
+                   NOTIFY keyNavigationActiveChanged)
+    Q_PROPERTY(int warningNotifications READ warningNotifications NOTIFY warningNotificationsChanged)
 
  public:
     explicit MockUi(QObject *parent = nullptr)
-        : QObject(parent), m_inputController(new QObject(this)) {}
+        : QObject(parent), m_inputController(new MockInputController(this)) {}
 
     int width() const { return 480; }
     int height() const { return 850; }
@@ -157,9 +244,28 @@ class MockUi : public QObject {
     int cornerRadiusLarge() const { return 8; }
     double ratio() const { return 1.0; }
     QObject* inputController() const { return m_inputController; }
+    bool keyNavigationActive() const { return m_keyNavigationActive; }
+    void setKeyNavigationActive(bool v) {
+        if (m_keyNavigationActive == v) return;
+        m_keyNavigationActive = v;
+        emit keyNavigationActiveChanged();
+    }
+    int warningNotifications() const { return m_warningNotifications; }
+    // records the call; the action is not run (nothing confirms it in a test)
+    Q_INVOKABLE void createActionableWarningNotification(const QString &, const QString &, const QString &,
+                                                         const QJSValue &, const QString & = QString()) {
+        m_warningNotifications++;
+        emit warningNotificationsChanged();
+    }
+
+ signals:
+    void keyNavigationActiveChanged();
+    void warningNotificationsChanged();
 
  private:
     QObject *m_inputController;
+    bool     m_keyNavigationActive = true;
+    int      m_warningNotifications = 0;
 };
 
 // ── Mock C++ object for resource context property ─────────────────
