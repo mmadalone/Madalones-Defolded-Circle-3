@@ -78,14 +78,22 @@ void ActivitySessionKeeper::onEntityCommandIssued(QString entityId, QString comm
     Q_UNUSED(entityId)
     // Curated allowlist — only the human-facing media-control commands count as "active session".
     // Avoids inhibit-on-poll-noise from state queries / capability fetches.
+    // v1.5.5: commands arrive as "<entity type>.<command>" ("media_player.play_pause", see
+    // Base::sendCommand and the activity button mappings), so only the part after the last dot is
+    // compared; the bare-name comparison never matched. IR buttons arrive as "remote.send" with the
+    // IR code in the params, so every IR button press counts.
     static const QSet<QString> kKeepers = {
         "PLAY_PAUSE", "PLAY", "STOP", "PAUSE", "SEEK",
         "VOLUME", "VOLUME_UP", "VOLUME_DOWN", "MUTE_TOGGLE", "MUTE", "UNMUTE",
         "CURSOR_UP", "CURSOR_DOWN", "CURSOR_LEFT", "CURSOR_RIGHT", "CURSOR_ENTER",
         "CHANNEL_UP", "CHANNEL_DOWN",
         "NEXT", "PREVIOUS", "FAST_FORWARD", "REWIND",
+        "BACK", "HOME", "MENU", "CONTEXT_MENU", "GUIDE", "INFO",
+        "DIGIT_0", "DIGIT_1", "DIGIT_2", "DIGIT_3", "DIGIT_4",
+        "DIGIT_5", "DIGIT_6", "DIGIT_7", "DIGIT_8", "DIGIT_9",
+        "SEND", "SEND_CMD", "SEND_CMD_SEQUENCE",
     };
-    if (!kKeepers.contains(command.toUpper())) return;
+    if (!kKeepers.contains(command.section(QLatin1Char('.'), -1).toUpper())) return;
     m_idleTimer.start(m_idleTimeoutSec * 1000);
     evaluateSession();
 }

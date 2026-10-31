@@ -93,7 +93,7 @@ class ActivitySessionKeeperTest : public QObject {
         m_keeper->setRequireAcPower(true);
         m_keeper->setEnabled(true);
         m_keeper->onPowerSupplyChanged(true);
-        m_keeper->onEntityCommandIssued("media_player.tv", "PLAY_PAUSE");
+        m_keeper->onEntityCommandIssued("media_player.tv", "media_player.play_pause");
         QVERIFY(m_keeper->getActive());
     }
 
@@ -103,7 +103,7 @@ class ActivitySessionKeeperTest : public QObject {
         m_keeper->setEnabled(true);
         m_keeper->onPowerSupplyChanged(true);
         m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
-        m_keeper->onEntityCommandIssued("media_player.tv", "PLAY_PAUSE");
+        m_keeper->onEntityCommandIssued("media_player.tv", "media_player.play_pause");
 
         QVERIFY(m_keeper->getActive());
 
@@ -155,31 +155,36 @@ class ActivitySessionKeeperTest : public QObject {
         QTest::addColumn<QString>("command");
         QTest::addColumn<bool>("shouldArm");
 
-        QTest::newRow("PLAY_PAUSE")     << QString("PLAY_PAUSE")    << true;
-        QTest::newRow("play_pause")     << QString("play_pause")    << true;  // case-insensitive
-        QTest::newRow("VOLUME_UP")      << QString("VOLUME_UP")     << true;
-        QTest::newRow("VOLUME_DOWN")    << QString("VOLUME_DOWN")   << true;
-        QTest::newRow("MUTE_TOGGLE")    << QString("MUTE_TOGGLE")   << true;
-        QTest::newRow("CURSOR_UP")      << QString("CURSOR_UP")     << true;
-        QTest::newRow("CURSOR_LEFT")    << QString("CURSOR_LEFT")   << true;
-        QTest::newRow("CURSOR_ENTER")   << QString("CURSOR_ENTER")  << true;
-        QTest::newRow("CHANNEL_UP")     << QString("CHANNEL_UP")    << true;
-        QTest::newRow("NEXT")           << QString("NEXT")          << true;
-        QTest::newRow("PREVIOUS")       << QString("PREVIOUS")      << true;
-        QTest::newRow("FAST_FORWARD")   << QString("FAST_FORWARD")  << true;
-        QTest::newRow("REWIND")         << QString("REWIND")        << true;
-        QTest::newRow("STOP")           << QString("STOP")          << true;
-        QTest::newRow("PAUSE")          << QString("PAUSE")         << true;
-        QTest::newRow("PLAY")           << QString("PLAY")          << true;
-        QTest::newRow("SEEK")           << QString("SEEK")          << true;
+        // Commands arrive as "<entity type>.<command>" (Base::sendCommand lower-cases them).
+        QTest::newRow("play_pause")     << QString("media_player.play_pause")    << true;
+        QTest::newRow("upper case")     << QString("MEDIA_PLAYER.PLAY_PAUSE")    << true;  // case-insensitive
+        QTest::newRow("volume_up")      << QString("media_player.volume_up")     << true;
+        QTest::newRow("volume_down")    << QString("media_player.volume_down")   << true;
+        QTest::newRow("mute_toggle")    << QString("media_player.mute_toggle")   << true;
+        QTest::newRow("cursor_up")      << QString("media_player.cursor_up")     << true;
+        QTest::newRow("cursor_left")    << QString("media_player.cursor_left")   << true;
+        QTest::newRow("cursor_enter")   << QString("media_player.cursor_enter")  << true;
+        QTest::newRow("channel_up")     << QString("media_player.channel_up")    << true;
+        QTest::newRow("next")           << QString("media_player.next")          << true;
+        QTest::newRow("previous")       << QString("media_player.previous")      << true;
+        QTest::newRow("fast_forward")   << QString("media_player.fast_forward")  << true;
+        QTest::newRow("rewind")         << QString("media_player.rewind")        << true;
+        QTest::newRow("stop")           << QString("media_player.stop")          << true;
+        QTest::newRow("seek")           << QString("media_player.seek")          << true;
+        QTest::newRow("back")           << QString("media_player.back")          << true;
+        QTest::newRow("home")           << QString("media_player.home")          << true;
+        QTest::newRow("guide")          << QString("media_player.guide")         << true;
+        QTest::newRow("digit_7")        << QString("media_player.digit_7")       << true;
+        QTest::newRow("IR button")      << QString("remote.send")                << true;  // IR code in params
+        QTest::newRow("IR send_cmd")    << QString("remote.send_cmd")            << true;
+        QTest::newRow("bare name")      << QString("PLAY_PAUSE")                 << true;  // no prefix: whole string
 
-        QTest::newRow("BROWSE")           << QString("BROWSE")           << false;
-        QTest::newRow("STATE_QUERY")      << QString("STATE_QUERY")      << false;
-        QTest::newRow("GET_CAPABILITIES") << QString("GET_CAPABILITIES") << false;
-        QTest::newRow("REFRESH")          << QString("REFRESH")          << false;
-        QTest::newRow("empty")            << QString("")                 << false;
-        QTest::newRow("ON")               << QString("ON")               << false;  // power-on is not a session keeper
-        QTest::newRow("OFF")              << QString("OFF")              << false;
+        QTest::newRow("browse_media")   << QString("media_player.browse_media")  << false;
+        QTest::newRow("on")             << QString("media_player.on")            << false;  // power-on is not a session keeper
+        QTest::newRow("off")            << QString("media_player.off")           << false;
+        QTest::newRow("light toggle")   << QString("light.toggle")               << false;
+        QTest::newRow("activity start") << QString("activity.start")             << false;
+        QTest::newRow("empty")          << QString("")                           << false;
     }
 
     void test_entityCommand_allowlist() {
@@ -227,7 +232,7 @@ class ActivitySessionKeeperTest : public QObject {
         m_keeper->setRequireAcPower(true);
         m_keeper->onPowerSupplyChanged(true);
         m_keeper->onMediaPlayerStateChanged("media_player.tv", kPlaying);
-        m_keeper->onEntityCommandIssued("media_player.tv", "PLAY_PAUSE");
+        m_keeper->onEntityCommandIssued("media_player.tv", "media_player.play_pause");
         QVERIFY(m_keeper->getActive());
 
         m_keeper->onCoreDisconnected();

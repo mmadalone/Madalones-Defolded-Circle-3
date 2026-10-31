@@ -122,18 +122,13 @@ void PhantomWakeSuppressor::onUserInput() {
 
 void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString command) {
     Q_UNUSED(entityId)
-    // Curated allowlist mirrors ActivitySessionKeeper::onEntityCommandIssued — only
-    // human-facing commands count as wake-press evidence. Avoids false-cancel on
-    // poll-noise (state queries / capability fetches that some integrations fire
-    // during the post-wake reconnect window).
-    static const QSet<QString> kUserCommands = {
-        "PLAY_PAUSE", "PLAY", "STOP", "PAUSE", "SEEK",
-        "VOLUME", "VOLUME_UP", "VOLUME_DOWN", "MUTE_TOGGLE", "MUTE", "UNMUTE",
-        "CURSOR_UP", "CURSOR_DOWN", "CURSOR_LEFT", "CURSOR_RIGHT", "CURSOR_ENTER",
-        "CHANNEL_UP", "CHANNEL_DOWN",
-        "NEXT", "PREVIOUS", "FAST_FORWARD", "REWIND",
-    };
-    if (!kUserCommands.contains(command.toUpper())) return;
+    Q_UNUSED(command)
+    // v1.5.5: every entity command is wake-press evidence. EntityController::onEntityCommand
+    // is only reached from user actions (device screens, activity button mappings, IR remote
+    // pages); the post-wake retry re-sends through core directly and doesn't re-emit. The
+    // former allowlist compared bare names ("PLAY_PAUSE") with the dotted form that arrives
+    // ("media_player.play_pause") and never matched, so a real wake press was treated as a
+    // phantom wake; with the names fixed it would still have missed lights and switches.
     // v1.4.23: update last-input timestamp here too, so an entity command arriving
     // before the powerModeChanged signal still counts toward the skip-grace lookback.
     m_lastInputTimer.restart();

@@ -11,6 +11,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.5.5 — 2026-10-31 — keep-awake and the phantom-wake blocker recognise button presses
+
+### Fixed
+
+- **"Keep awake while watching/listening" starts its idle timer on button presses again.**
+  - Since v1.4.14 the list of media buttons was compared with bare names (`PLAY_PAUSE`), but commands reach it as `<entity type>.<command>` (`media_player.play_pause`, see `Base::sendCommand`). Nothing ever matched, so the "Idle timeout after last button" never started and keep-awake only reacted to a player reporting "Playing".
+  - Only the part after the last dot is compared now. Buttons of infrared remotes (`remote.send`) count as well, as do the navigation keys of a player (back, home, menu, context menu, guide, info) and the digits.
+- **"Suppress phantom wake-ups" no longer puts the remote back to sleep right after a real wake-up press.**
+  - Same mismatch since v1.4.20: the entity command of the press that woke the remote was never recognised, so once the grace window ran out the remote was sent back to LOW_POWER while it was being used. This caused the backlight blinking every 2 s for about 20 s after a wake-up seen on firmware 2.11.0; with v1.5.5 installed (firmware 2.12.0) the blinking is gone, and the log shows a real wake-up recognised at once ("skipping grace") while phantom wakes are still sent back to sleep.
+  - Every entity command now counts as user input. They only come from user actions (device screens, activity button mappings, IR remote pages); the retry after a wake-up sends to the core directly and does not count again. With only the names fixed, waking the remote by switching a light would still have been treated as a phantom wake.
+- The unit tests sent bare names as well, which is why they passed. They now send the real form, and 27 of their cases fail against v1.5.4.
+
+---
+
 ## v1.5.4 — 2026-10-31 — GitHub release bundle ships the sounds; release verification fixed
 
 Same code as v1.5.3: only the release packaging and the verification script change.
