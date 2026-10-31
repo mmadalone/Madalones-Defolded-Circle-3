@@ -77,7 +77,7 @@ REMOTE_VERSION = $$replace(GIT_VERSION, v, "")
 DEFINES += APP_VERSION=\\\"$$REMOTE_VERSION\\\"
 
 # Custom firmware version — keep in sync with deploy/release.json
-VERSION = 1.5.4
+VERSION = 1.5.5
 
 # build timestamp
 BUILDDATE=$$system(date +"%Y-%m-%dT%H:%M:%S")

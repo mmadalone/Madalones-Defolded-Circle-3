@@ -151,31 +151,30 @@ class PhantomWakeSuppressorTest : public QObject {
         QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
     }
 
-    void test_onEntityCommandIssued_allowlisted_duringGrace_cancels() {
+    void test_onEntityCommandIssued_mediaCommand_duringGrace_cancels() {
         m_suppressor->setInputLookbackMs(0);
         m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
         QVERIFY(m_suppressor->getArmed());
 
-        m_suppressor->onEntityCommandIssued("media_player.tv", "PLAY_PAUSE");
+        // Real command form ("<entity type>.<command>"); the v1.5.4 allowlist never matched it.
+        m_suppressor->onEntityCommandIssued("media_player.tv", "media_player.play_pause");
         QVERIFY(!m_suppressor->getArmed());
 
         QTest::qWait(kFastGraceMs + 50);
         QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
     }
 
-    void test_onEntityCommandIssued_nonAllowlisted_duringGrace_doesNotCancel() {
+    void test_onEntityCommandIssued_anyCommand_duringGrace_cancels() {
         m_suppressor->setInputLookbackMs(0);
         m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
         QVERIFY(m_suppressor->getArmed());
 
-        // STATE_QUERY is NOT in the curated allowlist — should not cancel.
-        m_suppressor->onEntityCommandIssued("media_player.tv", "STATE_QUERY");
-        QVERIFY(m_suppressor->getArmed());
+        // Waking the remote by switching a light on is a real wake, not a phantom one.
+        m_suppressor->onEntityCommandIssued("light.desk", "light.toggle");
+        QVERIFY(!m_suppressor->getArmed());
 
-        // Grace expires => forceLowPower fires.
         QTest::qWait(kFastGraceMs + 50);
-        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 1);
-        QCOMPARE(uc::test::MockCoreRecorder::lastPowerModeValue(), QString("LOW_POWER"));
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
     }
 
     void test_onPowerSupplyChanged_duringGrace_cancels_dockEvent() {
@@ -249,21 +248,20 @@ class PhantomWakeSuppressorTest : public QObject {
     }
 
     void test_inputLookback_entityCommandUpdatesLastInput() {
-        // Entity command on the allowlist also restarts m_lastInputTimer.
+        // An entity command also restarts m_lastInputTimer (firmware delivers the wake
+        // press before powerModeChanged, so it has to count as recent input).
         m_suppressor->setInputLookbackMs(500);
-        m_suppressor->onEntityCommandIssued("media_player.tv", "PLAY_PAUSE");
+        m_suppressor->onEntityCommandIssued("media_player.tv", "media_player.play_pause");
         m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
         QVERIFY(!m_suppressor->getArmed());
     }
 
-    void test_inputLookback_nonAllowlistedCommand_doesNotUpdate() {
-        // STATE_QUERY shouldn't be considered "recent input".
-        // (Note: per phantomWakeSuppressor.cpp:139, m_lastInputTimer.restart() is
-        // called only when the command IS in the allowlist.)
+    void test_inputLookback_irButtonUpdatesLastInput() {
+        // IR buttons arrive as "remote.send" with the IR code in the params.
         m_suppressor->setInputLookbackMs(500);
-        m_suppressor->onEntityCommandIssued("media_player.tv", "STATE_QUERY");
+        m_suppressor->onEntityCommandIssued("remote.tv_ir", "remote.send");
         m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
-        QVERIFY(m_suppressor->getArmed());  // arms because no recent valid input
+        QVERIFY(!m_suppressor->getArmed());
     }
 
     void test_onUserInput_outsideGrace_updatesLastInput() {
