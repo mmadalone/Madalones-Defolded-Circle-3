@@ -11,38 +11,82 @@ import Haptic 1.0
 
 import "qrc:/components" as Components
 import "qrc:/components/integrations" as Integrations
+import "qrc:/onboarding" as OnboardingComponents
 
-Item {
+OnboardingComponents.Page {
     id: integrationSetup
 
     property bool integrationHasBeenSetup: false
 
-    Item {
-        id: integrationSetupTitle
-        width: parent.width
-        height: 60
+    // The keypad selection walks the found integrations and ends on the Skip/Next button below
+    // the list. It is driven through the button navigation only - no keyboard focus is involved,
+    // so one key press can not act on two controls.
+    property bool skipSelected: false
 
-        Text {
-            text: qsTr("Integration setup")
-            width: parent.width - 20
-            elide: Text.ElideRight
-            color: colors.offwhite
-            verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(24)
-        }
+    onStepEntered: {
+        integrationSetup.skipSelected = false;
+        IntegrationController.startDriverDiscovery();
+    }
+
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 "DPAD_DOWN": {
+                                                     "pressed": function() {
+                                                         if (!integrationSetup.skipSelected && !integrationDiscovery.moveSelection(1)) {
+                                                             integrationSetup.skipSelected = true;
+                                                         }
+                                                     }
+                                                 },
+                                                 "DPAD_UP": {
+                                                     "pressed": function() {
+                                                         if (integrationSetup.skipSelected) {
+                                                             integrationSetup.skipSelected = false;
+                                                             integrationDiscovery.selectLast();
+                                                         } else {
+                                                             integrationDiscovery.moveSelection(-1);
+                                                         }
+                                                     }
+                                                 },
+                                                 "DPAD_MIDDLE": {
+                                                     "pressed": function() {
+                                                         if (integrationSetup.skipSelected) {
+                                                             skipButton.activate();
+                                                         } else {
+                                                             integrationDiscovery.activateSelection();
+                                                         }
+                                                     }
+                                                 },
+                                                 "BACK": {
+                                                     "pressed": function() {
+                                                         IntegrationController.stopDriverDiscovery();
+                                                         OnboardingController.previousStep();
+                                                     }
+                                                 }
+                                             });
+    }
+
+    Components.TitleBar {
+        id: integrationSetupTitle
+        // onboarding steps have no back target: BACK goes to the previous step
+        action: ""
+        text: qsTr("Integration setup")
     }
 
     Integrations.Discovery {
+        id: integrationDiscovery
         anchors { top: integrationSetupTitle.bottom; bottom: skipButton.top; bottomMargin: 20; left: parent.left; right: parent.right }
         anchors.fill: undefined
+        keypadSelected: !integrationSetup.skipSelected
     }
 
     Components.Button {
         id: skipButton
         width: parent.width - 40
         text: integrationSetup.integrationHasBeenSetup ? qsTr("Next") : qsTr("Skip")
-        anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
+        // Skip is the alternative to setting up an integration, Next the way on
+        variant: integrationSetup.integrationHasBeenSetup ? "primary" : "secondary"
+        anchors { bottom: parent.bottom; bottomMargin: 20; horizontalCenter: parent.horizontalCenter }
+        highlight: integrationSetup.skipSelected && ui.keyNavigationActive
         trigger: function() {
             OnboardingController.nextStep();
         }
@@ -56,8 +100,13 @@ Item {
         padding: 0
         parent: Overlay.overlay
 
+        // the popup's own navigation is the fallback owner (before the setup is loaded); the
+        // current setup step takes the input on top of it once the popup is visible
         onOpened: {
             integrationSetupPopupButtonNavigation.takeControl();
+            if (integrationSetupLoader.item) {
+                integrationSetupLoader.item.activateCurrentStep();
+            }
         }
 
         onClosed: {
@@ -91,9 +140,19 @@ Item {
                 NumberAnimation { easing.type: Easing.OutExpo; duration: 300 }
             }
 
+            onStatusChanged: {
+                if (status == Loader.Ready && integrationSetupPopup.opened) {
+                    integrationSetupLoader.item.activateCurrentStep();
+                }
+            }
+
             Connections {
                 target: integrationSetupLoader.item
                 ignoreUnknownSignals: true
+
+                function onHome() {
+                    integrationSetupPopup.close();
+                }
 
                 function onDone() {
                     integrationSetupPopup.close();
@@ -120,33 +179,30 @@ Item {
             }
         }
 
+        // leaving the popup cancels the setup that is running in it; the popup closes on the
+        // setup's done signal
+        function cancelSetup() {
+            if (integrationSetupLoader.item) {
+                integrationSetupLoader.item.cancel();
+            } else {
+                integrationSetupPopup.close();
+            }
+        }
+
         Components.ButtonNavigation {
             id: integrationSetupPopupButtonNavigation
             defaultConfig: {
                 "HOME": {
                     "pressed": function() {
-                        integrationSetupPopup.close();
-                        goHome();
+                        integrationSetupPopup.cancelSetup();
                     }
                 },
                 "BACK": {
                     "pressed": function() {
-                        integrationSetupPopup.close();
+                        integrationSetupPopup.cancelSetup();
                     }
                 }
             }
-        }
-    }
-
-    Connections {
-        target: OnboardingController
-        ignoreUnknownSignals: true
-
-        function onCurrentStepChanged() {
-            if (OnboardingController.currentStep == OnboardingController.Integration) {
-                IntegrationController.startDriverDiscovery();
-            }
-            IntegrationController.startDriverDiscovery();  // remove
         }
     }
 }

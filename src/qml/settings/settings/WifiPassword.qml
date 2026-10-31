@@ -36,7 +36,13 @@ Popup {
     signal wifiNetworkSelected(string ssid, string password)
 
     function start(wifiNetwork) {
-        wifiPassword.wifiNetwork = wifiNetwork;
+        // copy the values instead of holding the WifiNetwork object: a background scan
+        // deletes and recreates the scan-result objects, which would otherwise leave this
+        // reference dangling before the user finishes entering the password
+        wifiPassword.wifiNetwork.ssid = wifiNetwork.ssid;
+        wifiPassword.wifiNetwork.ssidHex = wifiNetwork.ssidHex;
+        wifiPassword.wifiNetwork.signalStrength = wifiNetwork.signalStrength;
+        wifiPassword.wifiNetwork.security = wifiNetwork.security;
         wifiPassword.open();
     }
 
@@ -48,7 +54,10 @@ Popup {
                 if (!Wifi.isConnected) {
                     loading.start();
                 }
-                Wifi.connect(wifiPassword.wifiNetwork.ssid, passwordInputFieldContainer.inputField.text, wifiPassword.wifiNetwork.security);
+                // no security type: the classification of a scan result is a guess,
+                // let the remote choose the security type of the network
+                Wifi.connect(wifiPassword.wifiNetwork.ssid, wifiPassword.wifiNetwork.ssidHex,
+                             passwordInputFieldContainer.inputField.text);
             }
 
             passwordInputFieldContainer.inputField.clear();
@@ -62,14 +71,17 @@ Popup {
     property bool dockNetworkSelection: false
     property QtObject wifiNetwork: QtObject {
         property string ssid
+        property string ssidHex
         property int signalStrength
         property int security
     }
 
     onOpened: {
+        // a reopened dialog starts on the password field again
+        buttonNavigation.lastFocusItem = null;
+        buttonNavigation.lastFocusAnchor = null;
         buttonNavigation.takeControl();
         keyboard.show();
-        passwordInputFieldContainer.focus();
     }
 
     onClosed: {
@@ -77,8 +89,12 @@ Popup {
         keyboard.hide();
     }
 
+    /** KEYBOARD NAVIGATION **/
+    // the password field -> Cancel / Join; Return on the field joins (no DPAD_MIDDLE handler here)
     Components.ButtonNavigation {
         id: buttonNavigation
+        manageFocus: true
+        initialFocusItem: passwordInputFieldContainer.inputField
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -95,55 +111,61 @@ Popup {
 
     background: Rectangle {
         anchors.fill: parent
-        color: colors.black
+        color: colors.bg
     }
 
-    Text {
-        id: wifiPasswordContainerTitleText
-        color: colors.offwhite
-        text: qsTr("Enter WiFi password for\n%1").arg(wifiPassword.wifiNetwork.ssid)
-        horizontalAlignment: Text.AlignHCenter
-        width: parent.width
-        wrapMode: Text.WordWrap
-        anchors { top: parent.top; topMargin: 10; horizontalCenter: parent.horizontalCenter }
-        font: fonts.primaryFont(26)
-    }
-
-    Components.InputField {
-        id: passwordInputFieldContainer
-        width: parent.width; height: 80
-        anchors { top: wifiPasswordContainerTitleText.bottom; topMargin: 10; horizontalCenter: parent.horizontalCenter }
-
-        //: Placeholder text for password
-        inputField.placeholderText: qsTr("Super secret")
-        inputField.onAccepted: {
-            join();
+    Components.FormDialog {
+        id: dialog
+        // the name of the network can be long: the text goes under the title bar, not into it
+        description: qsTr("Enter WiFi password for\n%1").arg(wifiPassword.wifiNetwork.ssid)
+        goBack: function() {
+            cancelButton.activate();
         }
-        inputField.inputMethodHints: Qt.ImhNoAutoUppercase
-        inputField.echoMode: TextInput.Password
-        inputField.passwordMaskDelay: 1000
-        moveInput: false
-    }
 
-    Components.Button {
-        //: Join wifi network
-        text: qsTr("Join")
-        width: parent.width / 2 - 10
-        anchors { right: passwordInputFieldContainer.right; top: passwordInputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            join();
-        }
-    }
+        Components.InputField {
+            id: passwordInputFieldContainer
+            width: parent.width; height: 80
 
-    Components.Button {
-        text: qsTr("Cancel")
-        width: parent.width / 2 - 10
-        color: colors.secondaryButton
-        anchors { left: passwordInputFieldContainer.left; top: passwordInputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            passwordInputFieldContainer.inputField.clear();
-            wifiPassword.close();
-            keyboard.hide();
+            //: Placeholder text for password
+            inputField.placeholderText: qsTr("Super secret")
+            inputField.onAccepted: {
+                join();
+            }
+            inputField.inputMethodHints: Qt.ImhNoAutoUppercase
+            inputField.echoMode: TextInput.Password
+            inputField.passwordMaskDelay: 1000
+            moveInput: false
+            keyboardFollowsFocus: true
+            navDown: cancelButton
         }
+
+        buttons: [
+            Components.Button {
+                id: cancelButton
+                text: qsTr("Cancel")
+                width: dialog.buttonWidth
+                variant: "secondary"
+                trigger: function() {
+                    passwordInputFieldContainer.inputField.clear();
+                    wifiPassword.close();
+                    keyboard.hide();
+                }
+
+                KeyNavigation.up: passwordInputFieldContainer.inputField
+                KeyNavigation.right: joinButton
+            },
+            Components.Button {
+                id: joinButton
+                //: Join wifi network
+                text: qsTr("Join")
+                width: dialog.buttonWidth
+                trigger: function() {
+                    join();
+                }
+
+                KeyNavigation.up: passwordInputFieldContainer.inputField
+                KeyNavigation.left: cancelButton
+            }
+        ]
     }
 }

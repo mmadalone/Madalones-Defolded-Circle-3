@@ -12,44 +12,29 @@ import "qrc:/settings" as Settings
 Settings.Page {
     id: releaseNotes
 
-    buttonNavigation.defaultConfig: {
-        "DPAD_DOWN": {
-            "pressed": function() {
-                flickable.contentY += 100;
-            }
-        },
-        "DPAD_UP": {
-            "pressed": function() {
-                flickable.contentY -= 100;
-            }
-        }
+    // extend, never assign: assigning buttonNavigation.defaultConfig replaces the whole object and
+    // drops the BACK / HOME handlers declared in Settings.Page, leaving the page impossible to exit
+    // with the keypad.
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 "DPAD_DOWN": {
+                                                     "pressed": function() {
+                                                         flickable.scrollStep(1);
+                                                     }
+                                                 },
+                                                 "DPAD_UP": {
+                                                     "pressed": function() {
+                                                         flickable.scrollStep(-1);
+                                                     }
+                                                 }
+                                             });
     }
 
-    Flickable {
+    Components.Prose {
         id: flickable
         width: parent.width
-        anchors { top: topNavigation.bottom; bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-        contentWidth: parent.width - 20; contentHeight: content.implicitHeight
-        clip: true
-        flickableDirection: Flickable.VerticalFlick
-
-        Behavior on contentY {
-            NumberAnimation { duration: 300 }
-        }
-
-        Text {
-            id: content
-            width: parent.width
-            wrapMode: Text.WordWrap
-            color: colors.light
-            textFormat: Text.MarkdownText
-            text: SoftwareUpdate.releaseNotes
-            font: fonts.secondaryFont(24)
-            x: 10
-        }
-
-        ScrollBar.vertical: ScrollBar {
-            opacity: 0.5
-        }
+        anchors { top: topNavigation.bottom; bottom: parent.bottom }
+        textFormat: Text.MarkdownText
+        text: SoftwareUpdate.releaseNotes
     }
 }

@@ -16,47 +16,15 @@ import "qrc:/settings/softwareupdate" as Softwareupdate
 
 Settings.Page {
     id: softwareUpdatePage
+    scrollTarget: flickable
+    // the release notes row and the install button only exist while an update is offered
+    initialFocusItem: SoftwareUpdate.updateAvailable ? releaseNotesRow : checkForUpdateButton
 
-    property int scrollCounter: 1
-
-    function scrollDown() {
-        flickable.contentY += 100 * scrollCounter;
-        if (flickable.contentY > flickable.contentHeight - flickable.height) {
-            flickable.contentY = flickable.contentHeight - flickable.height;
-        }
-    }
-
-    function scrollUp() {
-        if (flickable.contentY == 0) {
-            return;
-        }
-        flickable.contentY -= 100 * scrollCounter;
-        if (flickable.contentY < 0) {
-            flickable.contentY = 0;
-        }
-    }
-
+    // Navigation on this page runs through the QML focus chain below (release notes -> buttons ->
+    // switches). It must not also scroll the Flickable from a DPAD_UP/DOWN handler: the input
+    // controller does not consume key events, so both would act on the same key press.
     Component.onCompleted: {
         SoftwareUpdate.checkForUpdate(false);
-
-        buttonNavigation.extendDefaultConfig({
-                                                 "DPAD_DOWN": {
-                                                     "pressed": function() {
-                                                         softwareUpdatePage.scrollDown();
-                                                     },
-                                                     "released": function() {
-                                                         scrollCounter = 1;
-                                                     }
-                                                 },
-                                                 "DPAD_UP": {
-                                                     "pressed": function() {
-                                                         softwareUpdatePage.scrollUp();
-                                                     },
-                                                     "released": function() {
-                                                         scrollCounter = 1;
-                                                     }
-                                                 }
-                                             });
     }
 
     Timer {
@@ -77,259 +45,187 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
-            NumberAnimation { easing.type: scrollCounter === 1 ? Easing.OutExpo : Easing.Linear; duration: 500 }
+            NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
         }
 
         ColumnLayout {
             id: content
-            Layout.alignment: Qt.AlignCenter
-            spacing: 10
+            spacing: 0
             width: parent.width
-            anchors.horizontalCenter: parent.horizontalCenter
 
-            Item {
-                height: 20
-            }
-
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height + 20
-
-                Text {
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: SoftwareUpdate.updateAvailable ? qsTr("New software version is available") : qsTr("Your software is up to date")
-                    horizontalAlignment: Text.AlignHCenter
-                    font: fonts.primaryFont(30)
-                }
-            }
-
-            Item {
-                height: 20
-            }
-
-            RowLayout {
-                id: currentVersion
-                Layout.alignment: Qt.AlignCenter
+            Text {
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.topMargin: 20
+                Layout.bottomMargin: 20
+                wrapMode: Text.WordWrap
+                color: colors.textPrimary
+                text: SoftwareUpdate.updateAvailable ? qsTr("New software version is available") : qsTr("Your software is up to date")
+                horizontalAlignment: Text.AlignHCenter
+                font: fonts.label()
+            }
 
-                Text {
-                    Layout.alignment: Qt.AlignLeft
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-                    color: colors.light
-                    //: Current software version
-                    text: qsTr("Current version")
-                    font: fonts.primaryFont(20)
+            Components.KeyValueRow {
+                id: currentVersion
+                //: Current software version
+                key: qsTr("Current version")
+                value: SoftwareUpdate.currentVersion
+                showDivider: SoftwareUpdate.updateAvailable
+            }
+
+            Components.KeyValueRow {
+                id: newVersion
+                visible: SoftwareUpdate.updateAvailable
+                //: New software version
+                key: qsTr("New version")
+                value: SoftwareUpdate.newVersion
+                showDivider: false
+            }
+
+            Text {
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                visible: SoftwareUpdate.updateAvailable
+                wrapMode: Text.WordWrap
+                color: colors.textSecondary
+                //: Software update download state
+                text: {
+                    switch (SoftwareUpdate.updateDownloadState) {
+                    case SoftwareUpdate.Pending:
+                        return qsTr("Pending");
+                    case SoftwareUpdate.Downloading:
+                        return qsTr("Downloading");
+                    case SoftwareUpdate.Downloaded:
+                        return qsTr("Downloaded");
+                    case SoftwareUpdate.Error:
+                        return qsTr("Error");
+                    }
                 }
 
-                Text {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignRight
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideRight
-                    horizontalAlignment: Text.AlignRight
-                    color: colors.light
-                    text: SoftwareUpdate.currentVersion
-                    font: fonts.secondaryFont(20)
-                }
+                font: fonts.help()
             }
 
             Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-                visible: SoftwareUpdate.updateAvailable
-            }
-
-            RowLayout {
-                id: newVersion
-                Layout.alignment: Qt.AlignCenter
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-                visible: SoftwareUpdate.updateAvailable
-
-                Text {
-                    Layout.alignment: Qt.AlignLeft
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-                    color: colors.offwhite
-                    //: New software version
-                    text: qsTr("New version")
-                    font: fonts.primaryFont(20)
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignRight
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideRight
-                    horizontalAlignment: Text.AlignRight
-                    color: colors.offwhite
-                    text: SoftwareUpdate.newVersion
-                    font: fonts.secondaryFont(20)
-                }
-            }
-
-            RowLayout {
-                Layout.alignment: Qt.AlignLeft
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-                visible: SoftwareUpdate.updateAvailable
-
-                Text {
-                    Layout.alignment: Qt.AlignLeft
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-                    color: colors.light
-                    //: Software update download state
-                    text: {
-                        switch (SoftwareUpdate.updateDownloadState) {
-                        case SoftwareUpdate.Pending:
-                            return qsTr("Pending");
-                        case SoftwareUpdate.Downloading:
-                            return qsTr("Downloading");
-                        case SoftwareUpdate.Downloaded:
-                            return qsTr("Downloaded");
-                        case SoftwareUpdate.Error:
-                            return qsTr("Error");
-                        }
-                    }
-
-                    font: fonts.primaryFont(20)
-                }
-            }
-
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                width: parent.width - 20
-                height: 10
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.topMargin: 10
+                Layout.preferredHeight: 10
                 visible: SoftwareUpdate.updateDownloadState === SoftwareUpdate.Downloading
+                color: colors.surfaceRaised
+                radius: height / 2
 
                 Rectangle {
-                    width: parent.width
+                    width: parent.width * SoftwareUpdate.downloadProgress / 100
                     height: parent.height
-                    color: colors.dark
-                    radius: 5
+                    color: colors.textPrimary
+                    radius: parent.radius
+                    anchors.left: parent.left
 
-                    Rectangle {
-                        width: parent.width * SoftwareUpdate.downloadProgress / 100
-                        height: parent.height
-                        color: colors.offwhite
-                        radius: parent.radius
-                        anchors.left: parent.left
-
-                        Behavior on width {
-                            NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
-                        }
+                    Behavior on width {
+                        NumberAnimation { duration: 300; easing.type: Easing.OutQuad }
                     }
                 }
             }
 
             Text {
-                Layout.alignment: Qt.AlignHCenter
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.topMargin: 10
                 horizontalAlignment: Text.AlignHCenter
-                color: colors.light
-                font: fonts.secondaryFont(20)
+                color: colors.textPrimary
+                font: fonts.value()
                 text: SoftwareUpdate.downloadProgress + "%"
                 visible: SoftwareUpdate.updateDownloadState === SoftwareUpdate.Downloading
             }
 
-            Item {
-                height: 20
-            }
-
-            Components.HapticMouseArea {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: releaseNoteText.height
+            Components.MenuRow {
+                id: releaseNotesRow
+                Layout.topMargin: 10
                 visible: SoftwareUpdate.updateAvailable
+                text: qsTr("Release notes")
+                chevron: true
+                selected: activeFocus
 
-                onClicked: {
+                function openReleaseNotes() {
                     parentSwipeView.thirdPage.setSource("qrc:/settings/softwareupdate/ReleaseNotes.qml", { parentSwipeView: profileRoot, topNavigationText: qsTr("Release Notes") });
 
                     parentSwipeView.thirdPage.active = true;
                     settingsSwipeView.incrementCurrentIndex();
                 }
 
-                Text {
-                    id: releaseNoteText
-                    width: parent.width / 2
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Release notes")
-                    anchors { left: parent.left }
-                    font: fonts.primaryFont(20)
+                onClicked: {
+                    releaseNotesRow.openReleaseNotes();
                 }
 
-                Components.Icon {
-                    icon: "uc:arrow-right"
-                    size: 40
-                    color: colors.offwhite
-                    anchors { right: parent.right; verticalCenter: releaseNoteText.verticalCenter }
+                /** KEYBOARD NAVIGATION **/
+                KeyNavigation.down: installButton
+                Keys.onReturnPressed: {
+                    releaseNotesRow.openReleaseNotes();
+                    event.accepted = true;
                 }
-            }
-
-            Item {
-                height: 30
             }
 
             Components.Button {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
+                id: installButton
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.topMargin: 20
                 text: SoftwareUpdate.updateDownloadState === SoftwareUpdate.Downloaded ? qsTr("Install") : qsTr("Download")
                 visible: SoftwareUpdate.updateAvailable
                 enabled: SoftwareUpdate.updateDownloadState !== SoftwareUpdate.Downloading
-                opacity: enabled ? 1 : 0.3
+
+                /** KEYBOARD NAVIGATION **/
+                KeyNavigation.up: releaseNotesRow
+                KeyNavigation.down: checkForUpdateButton
+
                 trigger: function() {
-                    if (Battery.level > 50) {
+                    if (Battery.level >= SoftwareUpdate.minimumBatteryLevel) {
                         SoftwareUpdate.startUpdate();
                         SoftwareUpdate.checkForUpdate(false);
                     } else {
-                        ui.createActionableWarningNotification(qsTr("Low battery"), qsTr("Minimum 50% battery charge is required to install software updates"), "uc:battery-low");
+                        ui.createActionableWarningNotification(
+                                    qsTr("Low battery"),
+                                    //: Warning when the battery is too low to install a software update. %1 is the minimum charge in percent, a number without the % sign
+                                    qsTr("Minimum %1% battery charge is required to install software updates").arg(SoftwareUpdate.minimumBatteryLevel),
+                                    "uc:battery-low");
                     }
                 }
             }
 
-            Item {
-                height: 20
-            }
-
             Components.Button {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
+                id: checkForUpdateButton
+                Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.topMargin: 20
+                Layout.bottomMargin: 20
+                // next to the install button this is the alternative action
+                variant: SoftwareUpdate.updateAvailable ? "secondary" : "primary"
                 text: qsTr("Check for update")
                 visible: SoftwareUpdate.updateDownloadState !== SoftwareUpdate.Downloading
+
+                /** KEYBOARD NAVIGATION **/
+                KeyNavigation.up: installButton
+                KeyNavigation.down: checkForUpdatesSwitch
+
                 trigger: function() {
                     SoftwareUpdate.checkForUpdate(true);
                 }
             }
 
-            Item {
-                height: 10
-            }
-
             RowLayout {
-                Layout.alignment: Qt.AlignCenter
                 Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
+                Layout.bottomMargin: 20
                 spacing: 10
                 visible: Config.updateChannel == "TESTING";
 
@@ -337,9 +233,9 @@ Settings.Page {
                     Layout.alignment: Qt.AlignLeft
                     wrapMode: Text.NoWrap
                     elide: Text.ElideNone
-                    color: colors.light
+                    color: colors.textSecondary
                     text: qsTr("Beta updates")
-                    font: fonts.primaryFont(20)
+                    font: fonts.help()
                 }
 
                 Text {
@@ -348,126 +244,54 @@ Settings.Page {
                     wrapMode: Text.NoWrap
                     elide: Text.ElideRight
                     horizontalAlignment: Text.AlignRight
-                    color: colors.light
+                    color: colors.textSecondary
                     text: qsTr("Enabled")
-                    font: fonts.secondaryFont(20)
+                    font: fonts.help()
                 }
             }
 
-            Item {
-                height: 30
-            }
+            Components.Divider {}
 
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                //: Title for indication of checking for software updates are enabled
+                title: qsTr("Check for updates")
+                help: qsTr("Automatically check for updates.")
+                showDivider: Config.checkForUpdates
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: checkForUpdatesText
-
-                        Layout.fillWidth: true
-
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        //: Title for indication of checking for software updates are enabled
-                        text: qsTr("Check for updates")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: checkForUpdatesSwitch
+                    icon: "uc:check"
+                    checked: Config.checkForUpdates
+                    trigger: function() {
+                        Config.checkForUpdates = !Config.checkForUpdates;
                     }
 
-                    Components.Switch {
-                        id: checkForUpdatesSwitch
-                        icon: "uc:check"
-                        checked: Config.checkForUpdates
-                        trigger: function() {
-                            Config.checkForUpdates = !Config.checkForUpdates;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        KeyNavigation.down: autoUpdateSwitch
-                        highlight: activeFocus && ui.keyNavigationEnabled
-
-                        Component.onCompleted: {
-                            checkForUpdatesSwitch.forceActiveFocus();
-                        }
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Automatically check for updates.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: checkForUpdateButton
+                    KeyNavigation.down: autoUpdateSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Rectangle {
-                Layout.topMargin: 20
-                Layout.bottomMargin: 20
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
+            Components.SettingRow {
                 visible: Config.checkForUpdates
-            }
+                //: Title for indication of automatic software update is enabled
+                title: qsTr("Auto update")
+                help: qsTr("Automatically update the remote when new software is available. Updates are installed between %1 and %2").arg(Config.otaWindowStart).arg(Config.otaWindowEnd)
+                showDivider: false
 
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                visible: Config.checkForUpdates
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: autoUpdateText
-
-                        Layout.fillWidth: true
-
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        //: Title for indication of automatic software update is enabled
-                        text: qsTr("Auto update")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: autoUpdateSwitch
+                    icon: "uc:check"
+                    checked: Config.autoUpdate
+                    trigger: function() {
+                        Config.autoUpdate = !Config.autoUpdate;
                     }
 
-                    Components.Switch {
-                        id: autoUpdateSwitch
-                        icon: "uc:check"
-                        checked: Config.autoUpdate
-                        trigger: function() {
-                            Config.autoUpdate = !Config.autoUpdate;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        KeyNavigation.up: checkForUpdatesSwitch
-                        highlight: activeFocus && ui.keyNavigationEnabled
-
-                        Component.onCompleted: {
-                            autoUpdateSwitch.forceActiveFocus();
-                        }
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: checkForUpdatesSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-
-                Text {
-                    Layout.fillWidth: true
-
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Automatically update the remote when new software is available. Updates are installed between %1 and %2").arg(Config.otaWindowStart).arg(Config.otaWindowEnd)
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Item {
-                height: 20
             }
         }
     }

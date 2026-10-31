@@ -28,6 +28,13 @@ QStringList Util::FirstToUpperList(const QStringList &list) {
     return returnList;
 }
 
+int Util::pageCount(int itemCount, int pageSize) {
+    if (itemCount <= 0 || pageSize <= 0) {
+        return 1;
+    }
+    return (itemCount + pageSize - 1) / pageSize;
+}
+
 bool Util::FloatCompare(float f1, float f2) {
     static constexpr auto epsilon = 1.0e-05f;
 
@@ -64,6 +71,11 @@ QPixmap Util::generateQrCode(const QString &message, int size) {
 QString Util::getDefaultCountryLocale(const QString &locale) {
     QString baseLang = locale.section('_', 0, 0);
     return baseLang + "_" + baseLang.toUpper();
+}
+
+QString Util::webConfiguratorUrl(const QString &ipAddress, const QString &hostName, bool preferIp) {
+    const QString address = (preferIp && !ipAddress.isEmpty()) || hostName.isEmpty() ? ipAddress : hostName;
+    return address.isEmpty() ? QString() : QStringLiteral("http://%1/configurator").arg(address);
 }
 
 QString Util::getLanguageString(QVariantMap map, const QString &language, QString fallback) {
@@ -120,7 +132,9 @@ QString Util::getLanguageString(QVariantMap map, const QString &language, QStrin
 
     // try first non-empty country variant with same base language code (sorted by language key)
     // Note: "With QMap, the items are always sorted by key. ... The items are traversed in ascending key order."
-    for (QVariantMap::const_iterator i = map.constBegin(); i != map.constEnd(); i++) {
+    // An empty language, which is what the UI has until the first configuration arrived, would match every key
+    // here and return the alphabetically first translation instead of the English one below.
+    for (QVariantMap::const_iterator i = map.constBegin(); !baseLang.isEmpty() && i != map.constEnd(); i++) {
         if (i.key().startsWith(baseLang)) {
             // special handling for the Swiss: one-way fallback to German, but NOT the other way around
             if (i.key() == "de_CH") {

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 madalone. Mock Battery singleton for QML tests.
-// Mirrors src/hardware/battery.h Q_PROPERTY signatures + signal arities, but adds
+// Mirrors src/system/battery.h Q_PROPERTY signatures + signal arities, but adds
 // WRITE setters so QML tests can drive state. Production Battery's Q_PROPERTYs are
 // READ-only; production code mutates via internal slots responding to core::Api
 // signals. Tests need WRITE access — divergence is intentional.

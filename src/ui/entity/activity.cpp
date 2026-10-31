@@ -87,13 +87,30 @@ QStringList Activity::getIncludedEntities() {
     return list;
 }
 
+QStringList Activity::getFixableEntities() {
+    QStringList list;
+
+    for (QVariantList::iterator i = m_includedEntities.begin(); i != m_includedEntities.end(); ++i) {
+        QVariantMap entity = i->toMap();
+
+        Base::Type type = entity::Base::typeFromString(Util::FirstToUpper(entity.value("entity_type").toString()));
+
+        if (Base::supportsPowerStateFix(type)) {
+            list.append(entity.value("entity_id").toString());
+        }
+    }
+
+    return list;
+}
+
 void Activity::turnOn() {
     if (m_state == ActivityStates::On) {
         return;
     }
 
+    m_sequencePending = true;
     sendCommand(ActivityCommands::On);
-    emit startedRunning(m_id);
+    emit startedRunning(m_id, QStringLiteral("activity.on"));
 }
 
 void Activity::turnOff() {
@@ -101,8 +118,9 @@ void Activity::turnOff() {
         return;
     }
 
+    m_sequencePending = true;
     sendCommand(ActivityCommands::Off);
-    emit startedRunning(m_id);
+    emit startedRunning(m_id, QStringLiteral("activity.off"));
 }
 
 void Activity::playPause() { sendButtonMappingCommand("PLAY"); }
@@ -138,6 +156,34 @@ bool Activity::updateAttribute(const QString &attribute, QVariant data) {
         case ActivityAttributes::State: {
             int newState = Util::convertStringToEnum<ActivityStates::Enum>(uc::Util::FirstToUpper(data.toString()));
             if (newState != -1) {
+                // Running is a step towards the outcome of a sequence, every other state is one
+                const bool sequenceResult = newState != ActivityStates::Running;
+
+                // A sequence can end in the state it started from: an activity that is already in Error and
+                // fails again never leaves Error, and a single-command sequence reports no Running state in
+                // between. Dropping such an update as churn leaves the loading screen waiting for a state
+                // change that never comes, so the outcome of a sequence we started is always reported.
+                // On and Off are left out: an activity is only turned on when it is not On yet and only
+                // turned off when it is not Off yet, so those outcomes change the state in any case.
+                const bool concludesOurSequence = m_sequencePending && sequenceResult &&
+                                                  newState != ActivityStates::On && newState != ActivityStates::Off;
+
+                if (m_state == newState && !concludesOurSequence) {
+                    ok = true;
+                    break;
+                }
+
+                if (sequenceResult) {
+                    m_sequencePending = false;
+                }
+
+                // The state is forced to Unavailable while the core is disconnected and reported again after the
+                // reconnect. An activity that was On before and is On again was not started by anyone.
+                const bool wasOn = m_lastReportedState == ActivityStates::On;
+                if (newState != ActivityStates::Unavailable && newState != ActivityStates::Unknown) {
+                    m_lastReportedState = newState;
+                }
+
                 m_state = newState;
                 ok      = true;
 
@@ -151,10 +197,17 @@ bool Activity::updateAttribute(const QString &attribute, QVariant data) {
                 switch (m_state) {
                     case ActivityStates::On:
                         emit addToActivities(m_id);
+
+                        if (m_startedFromRemote) {
+                            m_startedFromRemote = false;
+                        } else if (!wasOn) {
+                            emit startedExternally(m_id);
+                        }
                         break;
                     case ActivityStates::Off:
                     case ActivityStates::Error:
                     case ActivityStates::Timeout:
+                        m_startedFromRemote = false;
                         emit removeFromActivities(m_id);
                         break;
                 }
@@ -183,6 +236,8 @@ bool Activity::updateAttribute(const QString &attribute, QVariant data) {
             m_currentStep.setEntityId(newStep.value("command").toMap().value("entity_id").toString());
             m_currentStep.setCommandId(newStep.value("command").toMap().value("cmd_id").toString());
             m_currentStep.setError(newStep.value("error").toString());
+            m_currentStep.setErrorCode(newStep.value("error_code").toInt());
+            m_currentStep.setErrorMessage(newStep.value("error_message").toString());
             emit currentStepChanged();
             ok = true;
             break;
@@ -239,13 +294,18 @@ bool Activity::updateOptions(QVariant data) {
 
 void Activity::onLanguageChangedTypeSpecific()
 {
-    QTimer::singleShot(500, [=]() {
-        m_stateAsString = ActivityStates::getTranslatedString(static_cast<ActivityStates::Enum>(m_state));
-        m_stateInfo = getStateAsString();
+    QTimer::singleShot(500, this, [=]() {
+        const QString newStateAsString = ActivityStates::getTranslatedString(static_cast<ActivityStates::Enum>(m_state));
+        if (m_stateAsString != newStateAsString) {
+            m_stateAsString = newStateAsString;
+            emit stateAsStringChanged();
+        }
 
-        emit stateAsStringChanged();
-        emit stateInfoChanged();
-        emit stateChanged(m_id, m_state);
+        const QString newStateInfo = getStateAsString();
+        if (m_stateInfo != newStateInfo) {
+            m_stateInfo = newStateInfo;
+            emit stateInfoChanged();
+        }
     });
 }
 
@@ -268,6 +328,9 @@ void Activity::updateSliderConfig(QVariantMap data)
 
     } else {
         m_sliderConfig.setEntityId("default");
+        // reset the feature as well, otherwise a previously configured feature
+        // sticks around and is applied to the default target entity
+        m_sliderConfig.setEntityFeature("default");
     }
 
     bool enabled = data.value("enabled").toBool();
@@ -307,31 +370,39 @@ void Activity::updateSequences(QVariantMap data)
     if (data.contains("on")) {
         QVariantList onSequence = data.value("on").toList();
 
+        m_onSequenceEntities.clear();
+
         for (const QVariant &item : onSequence) {
             const QVariantMap step = item.toMap();
 
             const QVariantMap cmd = step.value("command").toMap();
             const QString entityId = cmd.value("entity_id").toString();
 
-            if (!entityId.isEmpty()) {
+            if (!entityId.isEmpty() && !m_onSequenceEntities.contains(entityId)) {
                 m_onSequenceEntities.append(entityId);
             }
         }
+
+        emit onSequenceEntitiesChanged();
     }
 
     if (data.contains("off")) {
-        QVariantList onSequence = data.value("off").toList();
+        QVariantList offSequence = data.value("off").toList();
 
-        for (const QVariant &item : onSequence) {
+        m_offSequenceEntities.clear();
+
+        for (const QVariant &item : offSequence) {
             const QVariantMap step = item.toMap();
 
             const QVariantMap cmd = step.value("command").toMap();
             const QString entityId = cmd.value("entity_id").toString();
 
-            if (!entityId.isEmpty()) {
+            if (!entityId.isEmpty() && !m_offSequenceEntities.contains(entityId)) {
                 m_offSequenceEntities.append(entityId);
             }
         }
+
+        emit offSequenceEntitiesChanged();
     }
 }
 

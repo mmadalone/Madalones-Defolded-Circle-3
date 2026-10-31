@@ -13,7 +13,8 @@ namespace entity {
 class MacroFeatures : public QObject {
     Q_GADGET
  public:
-    enum Enum { Run };
+    // the core sends run and stop (the Core-API document names the feature start)
+    enum Enum { Run, Stop, Start };
     Q_ENUM(Enum)
 };
 
@@ -37,6 +38,7 @@ class MacroStates : public QObject {
             case Enum::Unknown:
                 return QCoreApplication::translate("Macro state", "Unknown");
             case Enum::Running:
+                //: Macro state: the macro is executing.
                 return QCoreApplication::translate("Macro state", "Running");
             case Enum::Error:
                 return QCoreApplication::translate("Macro state", "Error");

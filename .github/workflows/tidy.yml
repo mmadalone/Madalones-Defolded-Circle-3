@@ -138,6 +138,7 @@ jobs:
             src/ui/matrixrain/inputhandler.cpp
             src/hardware/activitySessionKeeper.cpp
             src/hardware/phantomWakeSuppressor.cpp
+            src/ui/devDockToggle.cpp
           )
 
           # Filter to files that actually exist so the workflow stays

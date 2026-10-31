@@ -11,7 +11,9 @@ Rectangle {
     id: renameDockContainer
     color: colors.black
     anchors.fill: parent
-    enabled: opacity == 1
+    // enabled by state, not by the finished fade-in: the dialog takes the input and focuses its
+    // field as soon as it is shown, and the input controller drops a disabled owner right away
+    enabled: state === "visible"
 
     property string dockId;
 
@@ -56,9 +58,14 @@ Rectangle {
 
     onStateChanged: {
         if (state == "visible") {
-            buttonNavigation.takeControl();
-            inputFieldContainer.inputField.focus = true;
-            inputFieldContainer.inputField.forceActiveFocus();
+            // Deferred: the dialog is shown by a key press (or a tap) that is still being delivered,
+            // and its root only becomes enabled with the state change that triggered this handler.
+            // The field is focused after the input was taken, so the page below records the
+            // control it was on - not our field - as the one to come back to.
+            Qt.callLater(function() {
+                buttonNavigation.takeControl();
+                inputFieldContainer.inputField.forceActiveFocus();
+            });
             keyboard.show();
         } else {
             buttonNavigation.releaseControl();
@@ -105,11 +112,6 @@ Rectangle {
                 "pressed": function() {
                     renameDockContainer.close();
                 }
-            },
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    renameDockContainer.rename();
-                }
             }
         }
     }
@@ -118,50 +120,54 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Item {
-        id: renameDockContainerTitle
-        width: parent.width; height: 60
-        anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-
-        Text {
-            id: renameDockContainerTitleText
-            color: colors.offwhite
-            text: qsTr("Rename dock")
-            anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-            font: fonts.primaryFont(26)
+    Components.FormDialog {
+        id: dialog
+        title: qsTr("Rename dock")
+        goBack: function() {
+            cancelButton.activate();
         }
-    }
 
-    Components.InputField {
-        id: inputFieldContainer
-        width: parent.width; height: 80
-        anchors { top: renameDockContainerTitle.bottom; horizontalCenter: parent.horizontalCenter }
+        Components.InputField {
+            id: inputFieldContainer
+            width: parent.width; height: 80
 
-        inputField.onAccepted: {
-            rename();
+            inputField.onAccepted: {
+                rename();
+            }
+            moveInput: false
+
+            /** KEYBOARD NAVIGATION **/
+            // DPAD_MIDDLE on the field is its Return key and submits through onAccepted; the buttons
+            // below are reached with DPAD_DOWN
+            navDown: cancelButton
         }
-        moveInput: false
-    }
 
-    Components.Button {
-        id: cancelButton
-        text: qsTr("Cancel")
-        width: parent.width / 2 - 10
-        color: colors.secondaryButton
-        anchors { left: inputFieldContainer.left; top: inputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            inputFieldContainer.inputField.clear();
-            renameDockContainer.state = "hidden";
-            keyboard.hide();
-        }
-    }
+        buttons: [
+            Components.Button {
+                id: cancelButton
+                text: qsTr("Cancel")
+                width: dialog.buttonWidth
+                variant: "secondary"
+                trigger: function() {
+                    inputFieldContainer.inputField.clear();
+                    renameDockContainer.state = "hidden";
+                    keyboard.hide();
+                }
 
-    Components.Button {
-        text: qsTr("Rename")
-        width: parent.width / 2 - 10
-        anchors { right: inputFieldContainer.right; top: inputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            rename();
-        }
+                KeyNavigation.up: inputFieldContainer.inputField
+                KeyNavigation.right: actionButton
+            },
+            Components.Button {
+                id: actionButton
+                text: qsTr("Rename")
+                width: dialog.buttonWidth
+                trigger: function() {
+                    rename();
+                }
+
+                KeyNavigation.up: inputFieldContainer.inputField
+                KeyNavigation.left: cancelButton
+            }
+        ]
     }
 }

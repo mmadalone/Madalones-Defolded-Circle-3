@@ -32,6 +32,10 @@ Item {
     property alias openItem: openItemLoader.item
     property alias buttonNavigation: buttonNavigation
 
+    // set by the hosting page while the sheet is the keypad selection, so it can be opened with
+    // DPAD_MIDDLE instead of a tap
+    property bool highlight: false
+
     signal opened
     signal closed
 
@@ -40,6 +44,19 @@ Item {
             buttonNavigation.takeControl();
         } else {
             buttonNavigation.releaseControl();
+        }
+    }
+
+    // The sheet owns the input while it is open. An open item that exposes the selection API of the
+    // discovery components (moveSelection / selectLast / activateSelection / keypadSelected) is
+    // driven by the d-pad through it - the same wiring the onboarding steps do for those components.
+    function forwardsKeys() {
+        return openItemLoader.item && typeof openItemLoader.item.moveSelection === "function";
+    }
+
+    onOpened: {
+        if (openItemLoader.item && openItemLoader.item.hasOwnProperty("keypadSelected")) {
+            openItemLoader.item.keypadSelected = true;
         }
     }
 
@@ -52,7 +69,7 @@ Item {
         State {
             name: "opened"
             PropertyChanges { target: bottomSheetContainerContent; y: -bottomSheetContainerContent.height + bottomSheetContainer.height + ui.cornerRadiusLarge; height: ui.height - topNavigation.height + ui.cornerRadiusLarge }
-            PropertyChanges { target: blockOutOverlay; opacity: 0.8 }
+            PropertyChanges { target: blockOutOverlay; opacity: 0.85 }
         }
     ]
 
@@ -93,6 +110,27 @@ Item {
                 "pressed": function() {
                     bottomSheetContainer.state = "closed";
                 }
+            },
+            "DPAD_DOWN": {
+                "pressed": function() {
+                    if (bottomSheetContainer.forwardsKeys()) {
+                        openItemLoader.item.moveSelection(1);
+                    }
+                }
+            },
+            "DPAD_UP": {
+                "pressed": function() {
+                    if (bottomSheetContainer.forwardsKeys()) {
+                        openItemLoader.item.moveSelection(-1);
+                    }
+                }
+            },
+            "DPAD_MIDDLE": {
+                "pressed": function() {
+                    if (bottomSheetContainer.forwardsKeys()) {
+                        openItemLoader.item.activateSelection();
+                    }
+                }
             }
         }
     }
@@ -102,7 +140,7 @@ Item {
 
         width: parent.width
         height: ui.height - bottomSheetContainerContent.height + ui.cornerRadiusLarge
-        color: colors.black
+        color: colors.bg
         anchors.bottom: bottomSheetContainerContent.top
         enabled: opacity != 0
 
@@ -112,11 +150,19 @@ Item {
         }
     }
 
+    // a bottom sheet is black with a divider edge (docs/design-system.md section 5); while it is the closed,
+    // selected entry of the page the edge becomes the selection ring
     Rectangle {
         id: bottomSheetContainerContent
         width: parent.width
-        color: Qt.darker(colors.dark, 1.5)
+        color: colors.bg
         radius: ui.cornerRadiusLarge
+        readonly property bool selected: bottomSheetContainer.highlight && bottomSheetContainer.state == "closed"
+                                         && ui.keyNavigationActive
+        border {
+            width: selected ? 3 : 2
+            color: selected ? colors.focusRing : colors.divider
+        }
 
         Item {
             id: titleBar
@@ -130,16 +176,16 @@ Item {
                 wrapMode: Text.WordWrap
                 elide: Text.ElideRight
                 maximumLineCount: 2
-                color: bottomSheetContainer.state == "closed" ? colors.light : colors.offwhite
+                color: bottomSheetContainer.state == "closed" ? colors.textSecondary : colors.textPrimary
                 anchors { left: parent.left; leftMargin: 20; right: footerIcon.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
-                font: fonts.secondaryFont(28)
+                font: fonts.heading()
             }
 
             Components.Icon {
                 id: footerIcon
                 icon: "uc:plus"
                 size: 100
-                color: colors.light
+                color: colors.textSecondary
                 anchors { verticalCenter: parent.verticalCenter; right: parent.right }
 
                 transformOrigin: Item.Center

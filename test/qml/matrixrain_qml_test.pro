@@ -19,8 +19,8 @@ HEADERS += MockScreensaverConfig.h MockHaptic.h \
            MockEntityController.h MockConfig.h
 
 # Pull in the project QRC so Components.Switch, Components.Slider etc. resolve.
-# images.qrc bundles loader_small.png + others — without it, ReconnectingHUD's
-# Image source warns "Cannot open: qrc:/images/loader_small.png" during tests.
+# images.qrc bundles loader_small.png + others — without it, a component's
+# Image source warns "Cannot open: qrc:/images/loader_small.png" during tests (e.g. TitleStatus's spinner).
 RESOURCES += ../../resources/qrc/main.qrc \
              ../../resources/qrc/images.qrc
 

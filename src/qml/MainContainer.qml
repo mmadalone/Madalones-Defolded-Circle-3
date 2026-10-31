@@ -23,7 +23,6 @@ Item {
     id: mainContainerRoot
     width: parent.width; height: parent.height
     clip: true
-    layer.enabled: true
     enabled: state === "visible" ? true : false
     
     Component.onCompleted: {
@@ -45,35 +44,91 @@ Item {
     property int menuShift: 150
     property double menuFade: 0
 
+    // The page menu (HOME long press). It is also the keypad's way to the page selector and the profile
+    // page, which are otherwise opened by touch. A restricted profile gets the entries that change
+    // nothing: the page selector, the profile page and the tips.
     function openPageEditMenu() {
         popupMenu.title = pages.currentItem.title;
         let menuItems = [];
+        const restricted = ui.profile.restricted;
 
-        menuItems.push({
-                           title: qsTr("Add entity"),
-                           icon: "uc:plus",
-                           callback: function() {
-                               loadSecondContainer("qrc:/components/entities/EntityAdd.qml", { "pageId": currentPage._id });
-                           }
-                       });
-
-        menuItems.push({
-                           title: qsTr("Add group"),
-                           icon: "uc:plus",
-                           callback: function() {
-                               loadSecondContainer("qrc:/components/group/GroupAdd.qml", { "pageId": currentPage._id });
-                           }
-                       });
-
-        menuItems.push({
-                           title: qsTr("Reorder"),
-                           icon: "uc:bars",
-                           callback: function() {
-                               if (currentPage.count > 0) {
-                                   ui.editMode = true;
-                               } else {
-                                   ui.createActionableNotification(qsTr("Page is empty"), qsTr("There is nothing to reorder. Try adding entities or groups first."))
+        if (!restricted) {
+            menuItems.push({
+                               title: qsTr("Add entity"),
+                               icon: "uc:plus",
+                               callback: function() {
+                                   loadSecondContainer("qrc:/components/entities/EntityAdd.qml", { "pageId": currentPage._id });
                                }
+                           });
+
+            menuItems.push({
+                               title: qsTr("Add group"),
+                               icon: "uc:plus",
+                               callback: function() {
+                                   loadSecondContainer("qrc:/components/group/GroupAdd.qml", { "pageId": currentPage._id });
+                               }
+                           });
+        }
+
+        // the page selector (tapping the page title) has no key of its own
+        menuItems.push({
+                           //: Menu entry that opens the page selector
+                           title: qsTr("Pages"),
+                           icon: "uc:list",
+                           callback: function() {
+                               loadSecondContainer("qrc:/components/PageSelector.qml", { currentPage: pages.currentItem.title });
+                           }
+                       });
+
+        if (!restricted) {
+            menuItems.push({
+                               title: qsTr("Reorder"),
+                               icon: "uc:bars",
+                               callback: function() {
+                                   if (currentPage.count > 0) {
+                                       ui.editMode = true;
+                                   } else {
+                                       ui.createActionableNotification(qsTr("Page is empty"), qsTr("There is nothing to reorder. Try adding entities or groups first."))
+                                   }
+                               }
+                           });
+
+            // the selected tile's own menu (rename, icon, remove; edit entities, delete for a group)
+            // is reached from here with the keypad: the tile's long press is taken by open / toggle
+            const tile = currentEntity ? currentEntity.delegateItem : null;
+            if (tile && tile.groupObj) {
+                const groupObj = tile.groupObj;
+                menuItems.push({
+                                   //: Menu entry that opens the edit menu of the selected group or entity, %1 is its name
+                                   title: qsTr("Edit %1").arg(groupObj.groupName()),
+                                   icon: "uc:pen-to-square",
+                                   callback: function() {
+                                       openGroupEditMenu(groupObj);
+                                   }
+                               });
+            } else if (tile && tile.entityObj) {
+                const entityObj = tile.entityObj;
+                menuItems.push({
+                                   title: qsTr("Edit %1").arg(entityObj.name),
+                                   icon: "uc:pen-to-square",
+                                   callback: function() {
+                                       openEntityEditMenu(entityObj, "");
+                                   }
+                               });
+            }
+        }
+
+        // the profile page (the profile icon in the status bar, or the pull-down menu) has no key of its
+        // own either: it leads to the profile list, the web configurator and the settings
+        menuItems.push({
+                           title: restricted
+                                  //: Page menu entry of a restricted profile: opens the profile page (profile list and About)
+                                  ? qsTr("Profile")
+                                  //: Page menu entry: opens the profile page with the profile list, the web configurator and the settings
+                                  : qsTr("Profile & settings"),
+                           icon: "uc:user",
+                           callback: function() {
+                               loadSecondContainer("qrc:/components/Profile.qml");
                            }
                        });
 
@@ -215,6 +270,11 @@ Item {
 //        }
 //    }
     
+    // Edit mode (reorder, entered from the page menu): DPAD_MIDDLE picks the selected tile up
+    // and drops it, UP / DOWN move a picked-up tile, LEFT / RIGHT are ignored (a page change ends
+    // the edit mode), BACK leaves the edit mode and saves the order.
+    readonly property bool reordering: ui.editMode && pages.currentItem && pages.currentItem.heldIndex >= 0
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
@@ -225,8 +285,11 @@ Item {
                         return;
                     }
 
+                    if (ui.editMode) {
+                        return;
+                    }
+
                     pages.incrementCurrentIndex();
-                    console.debug("Pages increment current index");
                 }
             },
             "DPAD_LEFT": {
@@ -236,8 +299,18 @@ Item {
                         return;
                     }
 
+                    if (ui.editMode) {
+                        return;
+                    }
+
                     pages.decrementCurrentIndex();
-                    console.debug("Pages decrement current index");
+                }
+            },
+            "BACK": {
+                "pressed": function() {
+                    if (ui.editMode) {
+                        ui.editMode = false;
+                    }
                 }
             },
             // page navigation
@@ -248,12 +321,15 @@ Item {
                         return;
                     }
 
+                    if (mainContainerRoot.reordering) {
+                        pages.currentItem.moveHeld(1);
+                        return;
+                    }
+
                     if (!currentEntity.delegateItem.groupObj) {
                         pages.currentItem.incrementCurrentIndex();
-                        console.debug("Entitylist increment current index");
                     } else if (currentEntity.delegateItem.groups.currentIndex === currentEntity.delegateItem.groups.count - 1 || currentEntity.delegateItem.state === "closed") {
                         pages.currentItem.incrementCurrentIndex();
-                        console.debug("Entitylist increment current index");
                     } else {
                         currentEntity.delegateItem.groups.incrementCurrentIndex();
                     }
@@ -266,12 +342,15 @@ Item {
                         return;
                     }
 
+                    if (mainContainerRoot.reordering) {
+                        pages.currentItem.moveHeld(-1);
+                        return;
+                    }
+
                     if (!currentEntity.delegateItem.groupObj) {
                         pages.currentItem.decrementCurrentIndex();
-                        console.debug("Entitylist decrement current index");
                     }  else if (currentEntity.delegateItem.groups.currentIndex === 0 || currentEntity.delegateItem.state === "closed") {
                         pages.currentItem.decrementCurrentIndex();
-                        console.debug("Entitylist decrement current index");
                     } else {
                         currentEntity.delegateItem.groups.decrementCurrentIndex();
                     }
@@ -284,11 +363,16 @@ Item {
                         return;
                     }
 
+                    if (ui.editMode) {
+                        pages.currentItem.toggleHeld();
+                        return;
+                    }
+
                     if (!currentEntity.delegateItem.groupObj) {
                         if (Config.entityButtonFuncInverted) {
                             currentEntity.delegateItem.open();
                         } else {
-                            currentEntity.delegateItem.controlTrigger();
+                            currentEntity.delegateItem.control();
                         }
                     } else {
                         if (currentEntity.delegateItem.state === "closed") {
@@ -298,14 +382,12 @@ Item {
                                 currentEntity.delegateItem.toggle();
                             }
                         } else {
-                            if (currentEntity.delegateItem.groups.currentItem.item.entityObj.state == 0) {
-                                return;
-                            }
-
+                            // open() and control() refuse an unavailable entity themselves, on a
+                            // page and inside a group alike
                             if (Config.entityButtonFuncInverted) {
                                 currentEntity.delegateItem.groups.currentItem.item.open();
                             } else {
-                                currentEntity.delegateItem.groups.currentItem.item.controlTrigger();
+                                currentEntity.delegateItem.groups.currentItem.item.control();
                             }
                         }
                     }
@@ -316,9 +398,13 @@ Item {
                         return;
                     }
 
+                    if (ui.editMode) {
+                        return;
+                    }
+
                     if (!currentEntity.delegateItem.groupObj) {
                         if (Config.entityButtonFuncInverted) {
-                            currentEntity.delegateItem.controlTrigger();
+                            currentEntity.delegateItem.control();
                         } else {
                             currentEntity.delegateItem.open();
                         }
@@ -330,12 +416,8 @@ Item {
                                 currentEntity.delegateItem.open();
                             }
                         } else {
-                            if (currentEntity.delegateItem.groups.currentItem.item.entityObj.state == 0) {
-                                return;
-                            }
-
                             if (Config.entityButtonFuncInverted) {
-                                currentEntity.delegateItem.groups.currentItem.item.controlTrigger();
+                                currentEntity.delegateItem.groups.currentItem.item.control();
                             } else {
                                 currentEntity.delegateItem.groups.currentItem.item.open();
                             }
@@ -345,6 +427,10 @@ Item {
             },
             "CHANNEL_UP": {
                 "pressed": function() {
+                    if (ui.editMode) {
+                        return;
+                    }
+
                     if (mainContainerBlockingMouseArea.enabled) {
                         mainContainerRoot.closeMenu();
                         return;
@@ -359,6 +445,10 @@ Item {
             },
             "CHANNEL_DOWN": {
                 "pressed": function() {
+                    if (ui.editMode) {
+                        return;
+                    }
+
                     if (mainContainerBlockingMouseArea.enabled) {
                         mainContainerRoot.closeMenu();
                         return;
@@ -390,11 +480,7 @@ Item {
                         return;
                     }
 
-                    if (ui.profile.restricted) {
-                        ui.createNotification(qsTr("Profile is restricted"), true);
-                    } else {
-                        openPageEditMenu();
-                    }
+                    openPageEditMenu();
                 }
             }
         }
@@ -560,8 +646,6 @@ Item {
         preferredHighlightEnd: 0.5
         preferredHighlightBegin: 0.5
 
-        onCurrentIndexChanged: console.debug("Pages current index: " + currentIndex)
-
         Behavior on anchors.topMargin {
             NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
         }
@@ -608,7 +692,7 @@ Item {
             start: Qt.point(0, 0)
             end: Qt.point(0, 50)
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 0.0; color: colors.transparent }
                 GradientStop { position: 1.0; color: colors.black }
             }
         }
@@ -626,6 +710,8 @@ Item {
     Loader {
         anchors.fill: parent
         active: ui.showHelp
+        // above the status bar
+        z: 10
         asynchronous: true
         source: "qrc:/components/help-overlay/Main.qml"
     }

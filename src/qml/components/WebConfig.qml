@@ -40,9 +40,66 @@ Rectangle {
         closed();
     }
 
+    /** KEYPAD SELECTION **/
+    // The rows are walked like the header rows of the profile page: DPAD_UP / DOWN move over the
+    // switch, the address and the PIN regenerate button, DPAD_MIDDLE activates the selected one.
+    // Driven through the button navigation, no control has the focus.
+    property int selection: 0
+
+    function rows() {
+        let list = [configuratorSwitch];
+
+        if (Config.webConfiguratorEnabled && Config.webConfiguratorAddress != "") {
+            list.push(addressRow);
+        }
+        if (Config.webConfiguratorEnabled) {
+            list.push(pinRegenerateRow);
+        }
+
+        return list;
+    }
+
+    readonly property Item selectedRow: {
+        const list = rows();
+        return ui.profile.restricted ? null : list[Math.min(selection, list.length - 1)];
+    }
+
+    function activateRow() {
+        const row = profileRoot.selectedRow;
+        if (!row) {
+            return;
+        }
+
+        Haptic.play(Haptic.Click);
+        if (row === configuratorSwitch) {
+            configuratorSwitch.activate();
+        } else if (row === addressRow) {
+            if (Wifi.ipAddress) {
+                webConfiguratorAddress.showIp = !webConfiguratorAddress.showIp;
+            }
+        } else if (row === pinRegenerateRow) {
+            Config.generateNewWebConfigPin();
+        }
+    }
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
+            "DPAD_DOWN": {
+                "pressed": function() {
+                    profileRoot.selection = Math.min(profileRoot.selection + 1, profileRoot.rows().length - 1);
+                }
+            },
+            "DPAD_UP": {
+                "pressed": function() {
+                    profileRoot.selection = Math.max(0, Math.min(profileRoot.selection, profileRoot.rows().length - 1) - 1);
+                }
+            },
+            "DPAD_MIDDLE": {
+                "pressed": function() {
+                    profileRoot.activateRow();
+                }
+            },
             "BACK": {
                 "pressed": function() {
                     if (profileRoot.state == "showLargeQr") {
@@ -72,43 +129,22 @@ Rectangle {
         anchors.fill: parent
         spacing: 0
 
-        Item {
-            Layout.fillWidth: true
-            Layout.preferredHeight: childrenRect.height
-
-            Text {
-                text: qsTr("Web Configurator")
-                color: colors.offwhite
-                verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-                anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
-                font: fonts.primaryFont(26)
-            }
-
-            Components.Icon {
-                id: closeIcon
-
-                color: colors.offwhite
-                icon: "uc:arrow-left"
-                size: 80
-
-                anchors.left: parent.left
-
-                Components.HapticMouseArea {
-                    width: 120; height: 120
-                    anchors.centerIn: parent
-                    onClicked: {
-                        close();
-                    }
-                }
+        Components.TitleBar {
+            text: qsTr("Web Configurator")
+            goBack: function() {
+                close();
             }
         }
+
         Rectangle {
             Layout.fillWidth: true
             Layout.preferredHeight: childrenRect.height
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
             Layout.bottomMargin: 20
 
             color: colors.transparent
-            border { color: colors.medium; width: 2 }
+            border { color: colors.divider; width: 2 }
             radius: ui.cornerRadiusSmall
 
             ColumnLayout {
@@ -138,12 +174,13 @@ Rectangle {
 
                                 wrapMode: Text.WordWrap
                                 verticalAlignment: Text.AlignVCenter
-                                color: colors.light
+                                color: colors.textSecondary
                                 text: Config.webConfiguratorEnabled ? qsTr("Web configurator enabled") : qsTr("Web configurator disabled")
-                                font: fonts.secondaryFont(22)
+                                font: fonts.help()
                             }
 
                             Components.Switch {
+                                id: configuratorSwitch
                                 Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
 
                                 icon: "uc:check"
@@ -151,10 +188,12 @@ Rectangle {
                                 trigger: function() {
                                     Config.webConfiguratorEnabled = !Config.webConfiguratorEnabled
                                 }
+                                highlight: profileRoot.selectedRow === configuratorSwitch && ui.keyNavigationActive
                             }
                         }
 
                         RowLayout {
+                            id: addressRow
                             visible: Config.webConfiguratorEnabled && Config.webConfiguratorAddress != ""
 
                             Text {
@@ -165,11 +204,11 @@ Rectangle {
                                 Layout.fillWidth: true
                                 Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
 
-                                wrapMode: Text.WordWrap
+                                wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                 verticalAlignment: Text.AlignVCenter
-                                color: colors.light
-                                text: ("http://%1/configurator").arg(webConfiguratorAddress.showIp ? Wifi.ipAddress : Config.webConfiguratorAddress)
-                                font: fonts.secondaryFont(22)
+                                color: colors.textPrimary
+                                text: Config.webConfiguratorUrl(Wifi.ipAddress, webConfiguratorAddress.showIp)
+                                font: fonts.value()
 
                                 Components.HapticMouseArea {
                                     anchors.fill: parent
@@ -177,6 +216,11 @@ Rectangle {
                                         if (Wifi.ipAddress) {
                                             webConfiguratorAddress.showIp = !webConfiguratorAddress.showIp;
                                         }
+                                    }
+
+                                    Components.Selectable {
+                                        selected: profileRoot.selectedRow === addressRow
+                                        anchors { leftMargin: -10; rightMargin: -10 }
                                     }
                                 }
                             }
@@ -214,7 +258,7 @@ Rectangle {
                                 width: pinContainer.containerWidth
                                 height: pinContainer.containerHeight
                                 color: colors.black
-                                border { color: colors.medium; width: 2 }
+                                border { color: colors.divider; width: 2 }
                                 radius: ui.cornerRadiusSmall
 
                                 Text {
@@ -222,7 +266,7 @@ Rectangle {
                                     color: colors.offwhite
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
-                                    font: fonts.primaryFont(36, "Light")
+                                    font: fonts.value()
                                     anchors.centerIn: parent
                                 }
                             }
@@ -231,7 +275,7 @@ Rectangle {
                                 width: pinContainer.containerWidth
                                 height: pinContainer.containerHeight
                                 color: colors.black
-                                border { color: colors.medium; width: 2 }
+                                border { color: colors.divider; width: 2 }
                                 radius: ui.cornerRadiusSmall
 
                                 Text {
@@ -239,7 +283,7 @@ Rectangle {
                                     color: colors.offwhite
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
-                                    font: fonts.primaryFont(36, "Light")
+                                    font: fonts.value()
                                     anchors.centerIn: parent
                                 }
                             }
@@ -248,7 +292,7 @@ Rectangle {
                                 width: pinContainer.containerWidth
                                 height: pinContainer.containerHeight
                                 color: colors.black
-                                border { color: colors.medium; width: 2 }
+                                border { color: colors.divider; width: 2 }
                                 radius: ui.cornerRadiusSmall
 
                                 Text {
@@ -256,7 +300,7 @@ Rectangle {
                                     color: colors.offwhite
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
-                                    font: fonts.primaryFont(36, "Light")
+                                    font: fonts.value()
                                     anchors.centerIn: parent
                                 }
                             }
@@ -265,7 +309,7 @@ Rectangle {
                                 width: pinContainer.containerWidth
                                 height: pinContainer.containerHeight
                                 color: colors.black
-                                border { color: colors.medium; width: 2 }
+                                border { color: colors.divider; width: 2 }
                                 radius: ui.cornerRadiusSmall
 
                                 Text {
@@ -273,13 +317,14 @@ Rectangle {
                                     color: colors.offwhite
                                     verticalAlignment: Text.AlignVCenter
                                     horizontalAlignment: Text.AlignHCenter
-                                    font: fonts.primaryFont(36, "Light")
+                                    font: fonts.value()
                                     anchors.centerIn: parent
                                 }
                             }
                         }
 
                         Components.HapticMouseArea {
+                            id: pinRegenerateRow
                             Layout.preferredWidth: pinContainer.height
                             Layout.preferredHeight: pinContainer.height
                             Layout.alignment: Qt.AlignVCenter
@@ -288,13 +333,17 @@ Rectangle {
                                 Config.generateNewWebConfigPin();
                             }
 
-                            onPressed: generateQrCodeIcon.color = colors.highlight
-                            onReleased: generateQrCodeIcon.color = colors.light
+                            Components.Selectable {
+                                selected: profileRoot.selectedRow === pinRegenerateRow
+                            }
+
+                            onPressed: generateQrCodeIcon.color = colors.textPrimary
+                            onReleased: generateQrCodeIcon.color = colors.textSecondary
 
                             Components.Icon {
                                 id: generateQrCodeIcon
                                 icon: "uc:arrow-rotate-right"
-                                color: colors.light
+                                color: colors.textSecondary
                                 size: 60
                                 anchors.centerIn: parent
 
@@ -316,19 +365,17 @@ Rectangle {
                     Components.Icon {
                         id: lockIcon
                         icon: "uc:lock"
-                        color: colors.offwhite
-                        opacity: 0.6
+                        color: colors.textSecondary
                         anchors { left: parent.left }
                         size: 30
                     }
 
                     Text {
-                        color: colors.offwhite
-                        opacity: 0.6
+                        color: colors.textSecondary
                         //: Text explaining that the profile has restricted access
                         text: qsTr("Restricted")
                         anchors { left: lockIcon.right; leftMargin: 10; verticalCenter: lockIcon.verticalCenter }
-                        font: fonts.secondaryFont(24)
+                        font: fonts.help()
                     }
                 }
             }
@@ -355,7 +402,7 @@ Rectangle {
                     anchors.margins: 10
                     fillMode: Image.PreserveAspectFit
                     antialiasing: false
-                    source: "data:image/png;base64," + ui.createQrCode(("http://%1/configurator").arg(Config.webConfiguratorAddress))
+                    source: "data:image/png;base64," + ui.createQrCode(Config.webConfiguratorUrl("", false))
                 }
             }
         }

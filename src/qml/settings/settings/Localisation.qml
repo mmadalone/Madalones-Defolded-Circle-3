@@ -14,23 +14,55 @@ import "qrc:/components" as Components
 
 Settings.Page {
     id: localisationPageContent
+    scrollTarget: flickable
+    initialFocusItem: languageSelector
 
-    property var callBack
+    // The one handler for a selection in the popup list. Every row sets it in its trigger and it is
+    // cleared when the popup closes. Previously each row had its own Connections object that was
+    // enabled in the trigger and only disabled again by a selection: a popup closed with BACK left
+    // its handler armed, and the next selection in any other popup fired all armed handlers, e.g.
+    // writing a timezone id into the language, country and unit system settings.
+    property var popupSelectionHandler: null
 
-    function loadList(title, list, showSearch = true, selectedItem = 0) {
-        popupListLoader.setSource("qrc:/components/PopupList.qml", { title: title, listModel: list, showSearch: showSearch, initialSelected: selectedItem, countryList: title.includes("country") });
+    function loadList(title, list, showSearch = true, selectedItem = 0, closeOnSelected = true, sectionRole = "", currentValue = undefined) {
+        popupListLoader.setSource("qrc:/components/PopupList.qml", { title: title, listModel: list, showSearch: showSearch, initialSelected: selectedItem, closeOnSelected: closeOnSelected, sectionRole: sectionRole, currentValue: currentValue });
+    }
+
+    // fills listModel with the timezones of the configured country, or all timezones when the
+    // country has none (or the user asked for the full list); returns the row to preselect
+    function buildTimeZoneModel(world) {
+        listModel.clear();
+
+        let zones = world ? [] : Config.getTimeZoneInfos(Config.country);
+        if (zones.length === 0) {
+            world = true;
+            zones = Config.getAllTimeZoneInfos();
+        }
+
+        let current = 0;
+        for (let i = 0; i < zones.length; i++) {
+            // every optional PopupList role on every row: ListModel roles are fixed on first append
+            listModel.append({'name': zones[i].city, 'value': zones[i].id, 'secondary': zones[i].zoneName,
+                              'rightText': zones[i].offsetLabel, 'searchKey': zones[i].id});
+            if (zones[i].id === Config.timezone) {
+                current = i;
+            }
+        }
+
+        if (!world) {
+            listModel.append({'name': qsTr("All timezones…"), 'value': "__all__", 'secondary': "",
+                              'rightText': "", 'searchKey': ""});
+        }
+
+        return current;
     }
 
     ListModel {
         id: listModel
-    }
-
-    Timer {
-        id: delayTimer
-        running: false
-        repeat: false
-        interval: 50
-        onTriggered: callBack()
+        // shared by all popups of this page with differing role sets; without this the roles
+        // would be fixed by whichever popup appends first (clear() does not reset them) and
+        // later popups would silently lose e.g. their section or offset columns
+        dynamicRoles: true
     }
 
     Flickable {
@@ -43,15 +75,7 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
-
-        onContentYChanged: {
-            if (contentY < 0) {
-                contentY = 0;
-            }
-            if (contentY > 1100) {
-                contentY = 1100;
-            }
-        }
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
             NumberAnimation { duration: 300 }
@@ -78,7 +102,9 @@ Settings.Page {
                         loading.start();
                         listModel.clear();
 
-                        languageConnection.enabled = true;
+                        popupSelectionHandler = function(value) {
+                            Config.language = value;
+                        };
 
                         let languageList = Config.getTranslations();
                         let currentLanguageItem;
@@ -90,18 +116,7 @@ Settings.Page {
                             }
                         }
 
-                        loadList(qsTr("Select language"), listModel, false, currentLanguageItem);
-                    }
-                }
-
-                Connections {
-                    id: languageConnection
-                    target: popupListLoader.item
-                    enabled: false
-
-                    function onItemSelected(value) {
-                        Config.language = value;
-                        languageConnection.enabled = false;
+                        loadList(qsTr("Select language"), listModel, false, currentLanguageItem, true, "", Config.language);
                     }
                 }
 
@@ -116,25 +131,14 @@ Settings.Page {
                 }
 
                 /** KEYBOARD NAVIGATION **/
-                Component.onCompleted: {
-                    languageSelector.forceActiveFocus();
-                }
+                KeyNavigation.down: countrySelector
 
-                Components.ButtonNavigation {
-                    overrideActive: languageSelector.activeFocus
-                    defaultConfig: {
-                        "DPAD_DOWN": {
-                            "pressed": function() {
-                                callBack = function () { countrySelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_MIDDLE": {
-                            "pressed": function() {
-                                languageSelector.item.trigger();
-                            }
-                        }
+                Keys.onReturnPressed: {
+                    if (languageSelector.item && languageSelector.item.trigger) {
+                        languageSelector.item.trigger();
                     }
+
+                    event.accepted = true;
                 }
             }
 
@@ -161,62 +165,61 @@ Settings.Page {
                             loading.start();
                             listModel.clear();
 
-                            countryConnection.enabled = true;
+                            popupSelectionHandler = function(value) {
+                                Config.country = value;
+                            };
 
-                            let countryList = list;
-                            let currentCountryIndex;
+                            // same structure as the onboarding country step: countries where the
+                            // configured language is spoken first, then the full list; names
+                            // resolved to the current UI language in C++, ISO code searchable
+                            let countries = Config.getLocalizedCountryList();
+                            let suggested = Config.getSuggestedCountries();
+                            let sectionSuggested = qsTr("Suggested");
+                            let sectionAll = qsTr("All countries");
 
-                            for (let i = 0; i < countryList.length; i ++) {
-                                let country = countryList[i];
-                                let defaultKey = "name_" + Config.getLanguageCodeFromCountry(country.code.toLowerCase());
-                                let name = country[defaultKey];
-
-                                if (!name) {
-                                    for (const key in country) {
-                                        if (key !== "code") {
-                                            name = country[key];
-                                            break;
-                                        }
+                            let matchedRows = [];
+                            for (let i = 0; i < suggested.length; i++) {
+                                for (let j = 0; j < countries.length; j++) {
+                                    if (countries[j].code === suggested[i]) {
+                                        matchedRows.push(countries[j]);
+                                        break;
                                     }
                                 }
+                            }
+                            // most likely country on top, the rest sorted by name. Copied into a
+                            // fresh array on purpose: sorting an array modified with shift()
+                            // corrupts it in the Qt 5.15 JS engine
+                            let rest = [];
+                            for (let i = 1; i < matchedRows.length; i++) {
+                                rest.push(matchedRows[i]);
+                            }
+                            rest.sort(function(a, b) { return a.name.localeCompare(b.name); });
+                            let suggestedRows = matchedRows.length > 0 ? [matchedRows[0]].concat(rest) : [];
 
-                                if (!name) {
-                                    name = country.name_en;
-                                }
+                            for (let i = 0; i < suggestedRows.length; i++) {
+                                listModel.append({'name': suggestedRows[i].name, 'value': suggestedRows[i].code,
+                                                  'secondary': "", 'rightText': "", 'searchKey': suggestedRows[i].code,
+                                                  'section': sectionSuggested});
+                            }
+                            for (let j = 0; j < countries.length; j++) {
+                                listModel.append({'name': countries[j].name, 'value': countries[j].code,
+                                                  'secondary': "", 'rightText': "", 'searchKey': countries[j].code,
+                                                  'section': sectionAll});
+                            }
 
-                                if (!name || name !== "") {
-                                    let isUtf8 = true;
-                                    for (let j = 0; j < name.length; j++) {
-                                        if (name.charCodeAt(j) > 255) {
-                                            isUtf8 = false;
-                                        }
-                                    }
-
-                                    if (!isUtf8) {
-                                        name = country.name_en;
-                                    }
-
-                                    listModel.append({'name': countryList[i].code + String.fromCodePoint(0x0009) + name, 'value': countryList[i].code})
-                                }
-
-                                if (countryList[i].code === Config.country) {
+                            // preselect the configured country, preferring its entry in the
+                            // suggestions (earliest index): changing the country usually means
+                            // switching between common countries, e.g. GB -> US or AU -> NZ
+                            let currentCountryIndex = 0;
+                            for (let i = 0; i < listModel.count; i++) {
+                                if (listModel.get(i).value === Config.country) {
                                     currentCountryIndex = i;
+                                    break;
                                 }
                             }
 
-                            loadList(qsTr("Select country"), listModel, true, currentCountryIndex);
+                            loadList(qsTr("Select country"), listModel, true, currentCountryIndex, true, "section", Config.country);
                         }
-                    }
-                }
-
-                Connections {
-                    id: countryConnection
-                    target: popupListLoader.item
-                    enabled: false
-
-                    function onItemSelected(value) {
-                        Config.country = value;
-                        countryConnection.enabled = false;
                     }
                 }
 
@@ -229,27 +232,15 @@ Settings.Page {
                 }
 
                 /** KEYBOARD NAVIGATION **/
-                Components.ButtonNavigation {
-                    overrideActive: countrySelector.activeFocus
-                    defaultConfig: {
-                        "DPAD_UP": {
-                            "pressed": function() {
-                                callBack = function() { languageSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_DOWN": {
-                            "pressed": function() {
-                                callBack = function() { timeZoneSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_MIDDLE": {
-                            "pressed": function() {
-                                countrySelector.item.trigger();
-                            }
-                        }
+                KeyNavigation.up: languageSelector
+                KeyNavigation.down: timeZoneSelector
+
+                Keys.onReturnPressed: {
+                    if (countrySelector.item && countrySelector.item.trigger) {
+                        countrySelector.item.trigger();
                     }
+
+                    event.accepted = true;
                 }
             }
 
@@ -260,48 +251,27 @@ Settings.Page {
                 sourceComponent: selector
                 onLoaded: {
                     item.title = qsTr("Timezone");
-                    item.value = Qt.binding( function() { return Config.timezone; })
+                    // the raw IANA id names the zone after its most populous city: show that city
+                    item.value = Qt.binding( function() {
+                        return Config.timezone.split("/").pop().replace(/_/g, " ");
+                    })
+                    item.trigger = function() {
+                        loading.start();
 
-                    getTimeZonesFromConfig.enabled = true;
-                    Config.getTimeZones(Config.country);
-                }
-
-                Connections {
-                    id: getTimeZonesFromConfig
-                    target: Config
-                    enabled: false
-
-                    function onTimeZoneListChanged (list) {
-                        timeZoneSelector.item.trigger = function() {
-                            loading.start();
-                            listModel.clear();
-
-                            timeZoneConnection.enabled = true;
-
-                            let timeZoneList = list;
-                            let currentTimeZoneItem;
-                            for (let i = 0; i < timeZoneList.length; i ++) {
-                                listModel.append({'name': timeZoneList[i], 'value': timeZoneList[i]})
-
-                                if (timeZoneList[i] === Config.timezone) {
-                                    currentTimeZoneItem = i;
-                                }
+                        popupSelectionHandler = function(value) {
+                            if (value === "__all__") {
+                                popupListLoader.item.initialSelected = buildTimeZoneModel(true);
+                                popupListLoader.item.popupListmodel.reload();
+                                return;
                             }
 
-                            loadList(qsTr("Select timezone"), listModel, true, currentTimeZoneItem);
-                        }
-                    }
-                }
+                            Config.timezone = value;
+                            popupListLoader.item.state = "hidden";
+                        };
 
-                Connections {
-                    id: timeZoneConnection
-                    target: popupListLoader.item
-                    enabled: false
-
-                    function onItemSelected(value) {
-                        Config.timezone = value;
-                        timeZoneConnection.enabled = false;
-                        getTimeZonesFromConfig.enabled = false;
+                        // the list stays open when "All timezones…" swaps the model, so the popup
+                        // is closed manually on a real selection
+                        loadList(qsTr("Select timezone"), listModel, true, buildTimeZoneModel(false), false, "", Config.timezone);
                     }
                 }
 
@@ -314,27 +284,15 @@ Settings.Page {
                 }
 
                 /** KEYBOARD NAVIGATION **/
-                Components.ButtonNavigation {
-                    overrideActive: timeZoneSelector.activeFocus
-                    defaultConfig: {
-                        "DPAD_UP": {
-                            "pressed": function() {
-                                callBack = function() { countrySelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_DOWN": {
-                            "pressed": function() {
-                                callBack = function() { clock24hSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_MIDDLE": {
-                            "pressed": function() {
-                                timeZoneSelector.item.trigger();
-                            }
-                        }
+                KeyNavigation.up: countrySelector
+                KeyNavigation.down: clock24hSelector
+
+                Keys.onReturnPressed: {
+                    if (timeZoneSelector.item && timeZoneSelector.item.trigger) {
+                        timeZoneSelector.item.trigger();
                     }
+
+                    event.accepted = true;
                 }
             }
 
@@ -349,42 +307,26 @@ Settings.Page {
                 }
 
                 Components.Switch {
+                    id: clock24hSwitch
                     z: item.z + 1
                     icon: "uc:check"
                     checked: Config.clock24h
-                    anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                    anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
                     trigger: function() {
                         Config.clock24h = !Config.clock24h;
                     }
-                    highlight: parent.activeFocus && ui.keyNavigationEnabled
-                    focus: parent.activeFocus
-                }
-
-                onFocusChanged: {
-                    if (focus) {
-                        item.highlight = true;
-                    } else {
-                        item.highlight = false;
-                    }
+                    // the row itself carries the focus, like every other row on this page; the ring marks the
+                    // switch, not the row (ADR 0020)
+                    highlight: clock24hSelector.activeFocus && ui.keyNavigationActive
                 }
 
                 /** KEYBOARD NAVIGATION **/
-                Components.ButtonNavigation {
-                    overrideActive: clock24hSelector.activeFocus
-                    defaultConfig: {
-                        "DPAD_UP": {
-                            "pressed": function() {
-                                callBack = function() { timeZoneSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_DOWN": {
-                            "pressed": function() {
-                                callBack = function() { unitSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        }
-                    }
+                KeyNavigation.up: timeZoneSelector
+                KeyNavigation.down: unitSelector
+
+                Keys.onReturnPressed: {
+                    clock24hSwitch.activate();
+                    event.accepted = true;
                 }
             }
 
@@ -402,24 +344,15 @@ Settings.Page {
                         //                        loading.start();
                         listModel.clear();
 
-                        unitSystemConnection.enabled = true;
+                        popupSelectionHandler = function(value) {
+                            Config.unitSystem = value;
+                        };
 
                         listModel.append({'name': "Metric", 'value': "Metric"})
                         listModel.append({'name': "Uk", 'value': "Uk"})
                         listModel.append({'name': "Us", 'value': "Us"})
 
-                        loadList(qsTr("Select unit system"), listModel, false);
-                    }
-                }
-
-                Connections {
-                    id: unitSystemConnection
-                    target: popupListLoader.item
-                    enabled: false
-
-                    function onItemSelected(value) {
-                        Config.unitSystem = value;
-                        unitSystemConnection.enabled = false;
+                        loadList(qsTr("Select unit system"), listModel, false, 0, true, "", Config.unitSystem);
                     }
                 }
 
@@ -432,21 +365,14 @@ Settings.Page {
                 }
 
                 /** KEYBOARD NAVIGATION **/
-                Components.ButtonNavigation {
-                    overrideActive: unitSelector.activeFocus
-                    defaultConfig: {
-                        "DPAD_UP": {
-                            "pressed": function() {
-                                callBack = function() { clock24hSelector.forceActiveFocus(); }
-                                delayTimer.start();
-                            }
-                        },
-                        "DPAD_MIDDLE": {
-                            "pressed": function() {
-                                unitSelector.item.trigger();
-                            }
-                        }
+                KeyNavigation.up: clock24hSelector
+
+                Keys.onReturnPressed: {
+                    if (unitSelector.item && unitSelector.item.trigger) {
+                        unitSelector.item.trigger();
                     }
+
+                    event.accepted = true;
                 }
             }
         }
@@ -459,62 +385,37 @@ Settings.Page {
         Connections {
             target: popupListLoader.item
 
-            function onDone() {
-                popupListLoader.source = "";
-                languageSelector.forceActiveFocus();
+            function onItemSelected(value) {
+                if (popupSelectionHandler) {
+                    popupSelectionHandler(value);
+                }
             }
 
+            function onDone() {
+                popupSelectionHandler = null;
+                // the page takes the focus back on its own, on the row the user came from
+                popupListLoader.source = "";
+            }
         }
     }
 
     Component {
         id: selector
 
-        Rectangle {
-            id: selectorBg
-            width: parent.width
-            height: 120
-            color: highlight && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: Qt.lighter(selectorBg.color, 1.3)
-                width: 1
-            }
-
+        // a picker row opens a list and shows the current value; the 24-hour row carries a switch instead
+        Components.MenuRow {
             property string title
-            property alias value: valueText.text
-            property alias mouseArea: mouseArea
             property bool highlight: false
             property var trigger
 
-            Text {
-                id: titleText
-                text: qsTr(title)
-                width: parent.width/2
-                wrapMode: Text.WordWrap
-                color: colors.offwhite
-                anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                font: fonts.primaryFont(30)
-            }
+            text: qsTr(title)
+            chevron: value !== ""
+            selected: highlight
 
-            Text {
-                id: valueText
-                width: parent.width/2
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignRight
-                color: colors.offwhite
-                anchors { right: parent.right; rightMargin: 10; baseline: titleText.baseline }
-                font: fonts.primaryFont(20, "Bold")
-            }
-
-            Components.HapticMouseArea {
-                id: mouseArea
-                enabled: valueText.text != ""
-                anchors.fill: parent
-                onClicked: {
+            onClicked: {
+                if (value !== "" && trigger) {
                     trigger();
                 }
-
             }
         }
     }

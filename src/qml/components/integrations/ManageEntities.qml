@@ -21,7 +21,11 @@ Item {
     property string integrationId
     property alias entityListSwipeView: entityListSwipeView
 
+    // the keypad selection is on the tab bar (above the list's filter button)
+    property bool tabsSelected: false
+
     function open() {
+        manageEntities.tabsSelected = false;
         buttonNavigation.takeControl();
         entitySelectionList.open();
         configfuredEntitySelectionList.open();
@@ -30,9 +34,15 @@ Item {
     function close() {
         entitySelectionList.close();
         configfuredEntitySelectionList.close();
-        buttonNavigation.releaseControl();
+        // deferred: closing on DPAD_MIDDLE (Add / Remove) hands the input back to the details
+        // popup, which focuses its "Manage entities" opener - the same key press must not reach it
+        Qt.callLater(buttonNavigation.releaseControl);
         manageEntities.closed();
         ui.setTimeOut(300, ()=>{ tabBar.currentIndex = 0; });
+    }
+
+    function currentList() {
+        return entityListSwipeView.currentItem;
     }
 
     Components.ButtonNavigation {
@@ -40,31 +50,42 @@ Item {
         defaultConfig: {
             "DPAD_DOWN": {
                 "pressed": function() {
-                    entityListSwipeView.currentItem.itemList.incrementCurrentIndex();
-                    entityListSwipeView.currentItem.itemList.positionViewAtIndex(entityListSwipeView.currentItem.itemList.currentIndex, ListView.Contain);
+                    if (manageEntities.tabsSelected) {
+                        manageEntities.tabsSelected = false;
+                        return;
+                    }
+
+                    manageEntities.currentList().moveSelection(1);
                 }
             },
             "DPAD_UP": {
                 "pressed": function() {
-                    entityListSwipeView.currentItem.itemList.decrementCurrentIndex();
-                    entityListSwipeView.currentItem.itemList.positionViewAtIndex(entityListSwipeView.currentItem.itemList.currentIndex, ListView.Contain);
+                    if (!manageEntities.tabsSelected && !manageEntities.currentList().moveSelection(-1)) {
+                        // above the list's filter button
+                        manageEntities.tabsSelected = true;
+                    }
                 }
             },
             "DPAD_MIDDLE": {
                 "pressed": function() {
-                    entityListSwipeView.currentItem.itemSelected(
-                                entityListSwipeView.currentItem.itemList.currentItem.key,
-                                !entityListSwipeView.currentItem.itemList.currentItem.selected);
+                    if (!manageEntities.tabsSelected) {
+                        manageEntities.currentList().activateSelection();
+                    }
                 }
             },
+            // LEFT / RIGHT switch the footer buttons while the selection is on them, the tabs otherwise
             "DPAD_LEFT": {
                 "pressed": function() {
-                    tabBar.decrementCurrentIndex();
+                    if (!manageEntities.currentList().moveFooter(-1)) {
+                        tabBar.decrementCurrentIndex();
+                    }
                 }
             },
             "DPAD_RIGHT": {
                 "pressed": function() {
-                    tabBar.incrementCurrentIndex();
+                    if (!manageEntities.currentList().moveFooter(1)) {
+                        tabBar.incrementCurrentIndex();
+                    }
                 }
             },
             "BACK": {
@@ -80,56 +101,26 @@ Item {
         }
     }
 
-    Item {
+    Components.TitleBar {
         id: titleContainer
-        width: parent.width
-        height: 60
-        anchors { horizontalCenter: parent.horizontalCenter; top: parent.top }
-
-        Text {
-            id: titleText
-            text: qsTr("Manage entities")
-            width: parent.width - 40
-            wrapMode: Text.NoWrap
-            elide: Text.ElideRight
-            maximumLineCount: 1
-            color: colors.offwhite
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(30)
-        }
-
-        Components.Icon {
-            color: colors.offwhite
-            icon: "uc:xmark"
-            anchors { verticalCenter: parent.verticalCenter; right: parent.right }
-            size: 60
-
-            Components.HapticMouseArea {
-                width: parent.width + 20; height: width
-                anchors.centerIn: parent
-                onClicked: {
-                    manageEntities.close();
-                }
-            }
+        anchors.top: parent.top
+        action: "close"
+        text: qsTr("Manage entities")
+        goBack: function() {
+            manageEntities.close();
         }
     }
 
     TabBar {
         id: tabBar
-        width: parent.width - 20
+        width: parent.width - 40
         implicitHeight: 60
 
         anchors { horizontalCenter: parent.horizontalCenter; top: titleContainer.bottom; topMargin: 20 }
 
         background: Rectangle {
-            color: colors.dark
+            color: colors.surfaceRaised
             radius: ui.cornerRadiusLarge
-            border {
-                color: colors.medium
-                width: 1
-            }
         }
 
         TabButton {
@@ -140,7 +131,7 @@ Item {
 
             contentItem: Text {
                 text: availableTabButton.text
-                font: fonts.secondaryFont(22)
+                font: fonts.caption()
                 color: colors.offwhite
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
@@ -148,8 +139,13 @@ Item {
             }
 
             background: Rectangle {
-                color: tabBar.currentIndex == 0 ? colors.primaryButton : colors.transparent
+                color: tabBar.currentIndex == 0 ? colors.buttonPrimary : colors.transparent
                 radius: ui.cornerRadiusLarge
+
+                Components.Selectable {
+                    selected: manageEntities.tabsSelected && tabBar.currentIndex == 0
+                    radius: parent.radius
+                }
             }
         }
 
@@ -161,7 +157,7 @@ Item {
 
             contentItem: Text {
                 text: configuredTabButton.text
-                font: fonts.secondaryFont(22)
+                font: fonts.caption()
                 color: colors.offwhite
                 horizontalAlignment: Text.AlignHCenter
                 verticalAlignment: Text.AlignVCenter
@@ -169,8 +165,13 @@ Item {
             }
 
             background: Rectangle {
-                color: tabBar.currentIndex == 1 ? colors.primaryButton : colors.transparent
+                color: tabBar.currentIndex == 1 ? colors.buttonPrimary : colors.transparent
                 radius: ui.cornerRadiusLarge
+
+                Components.Selectable {
+                    selected: manageEntities.tabsSelected && tabBar.currentIndex == 1
+                    radius: parent.radius
+                }
             }
         }
     }
@@ -190,6 +191,7 @@ Item {
             entityDescriptionIntegration: false
             closeListOnTrigger: false
             integrationId: manageEntities.integrationId
+            keypadSelected: entityListSwipeView.currentIndex === 0 && !manageEntities.tabsSelected
 
             okTrigger: function() {
                 let selectedEntities = EntityController.availableEntities.getSelected();
@@ -200,7 +202,7 @@ Item {
                     EntityController.availableEntities.clearSelected();
                     manageEntities.close();
                 } else {
-                    ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select entities to add by tapping in the list."));
+                    ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select the entities to add in the list."));
                 }
             }
         }
@@ -211,6 +213,7 @@ Item {
             entityDescriptionIntegration: false
             closeListOnTrigger: false
             integrationId: manageEntities.integrationId
+            keypadSelected: entityListSwipeView.currentIndex === 1 && !manageEntities.tabsSelected
 
             okTrigger: function() {
                 let selectedEntities = EntityController.configuredEntities.getSelected();
@@ -221,7 +224,7 @@ Item {
                     EntityController.configuredEntities.clearSelected();
                     manageEntities.close();
                 } else {
-                    ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select entities to remove by tapping in the list."));
+                    ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select the entities to remove in the list."));
                 }
             }
             okText: qsTr("Remove")

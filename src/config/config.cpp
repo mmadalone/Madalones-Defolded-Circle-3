@@ -3,19 +3,21 @@
 
 #include "config.h"
 
+#include <algorithm>
+
 #include "../logging.h"
 
 namespace uc {
 
-Config *Config::s_instance = nullptr;
+Config* Config::s_instance = nullptr;
 
-Config::Config(core::Api *core, QObject *parent) : QObject(parent), m_core(core) {
+Config::Config(core::Api* core, QObject* parent) : QObject(parent), m_core(core) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
     qmlRegisterSingletonType<Config>("Config", 1, 0, "Config", &Config::qmlInstance);
 
-            // after connected to the api, get the config
+    // after connected to the api, get the config
     QObject::connect(m_core, &uc::core::Api::connected, this, &uc::Config::onCoreConnected);
     QObject::connect(m_core, &uc::core::Api::configChanged, this, &uc::Config::onConfigChanged);
     QObject::connect(m_core, &uc::core::Api::cfgButtonChanged, this, &uc::Config::onButtonCfgChanged);
@@ -35,19 +37,26 @@ Config::Config(core::Api *core, QObject *parent) : QObject(parent), m_core(core)
 
 Config::~Config() {
     s_instance = nullptr;
-    m_settings->deleteLater();
+    // The destructor runs after the event loop has ended, deleteLater() would never delete it. Deleting the
+    // settings object writes the values that were changed last.
+    delete m_settings;
 }
 
-void Config::setCurrentProfileId(const QString &profileId) {
-    if (!m_currentProfile.contains(profileId)) {
+void Config::setCurrentProfileId(const QString& profileId) {
+    if (m_currentProfile != profileId) {
         m_currentProfile = profileId;
         // send to core
         emit currentProfileIdChanged();
     }
 }
 
-void Config::setLanguage(const QString &language) {
-    if (!m_language.contains(language)) {
+void Config::setLanguage(const QString& language) {
+    if (language.isEmpty()) {
+        qCWarning(lcConfig()) << "Ignoring empty language code";
+        return;
+    }
+
+    if (m_language != language) {
         int id =
             m_core->setLocalizationCfg(language, getCountry(), getTimezone(), getClock24h(), getUnitSystem().toUpper());
 
@@ -62,15 +71,19 @@ void Config::setLanguage(const QString &language) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting language: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting language:" << code << message;
+                //: Notification: the interface language could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting language: %1").arg(message), true);
             });
     }
 }
 
-void Config::setCountry(const QString &country) {
-    ui::Translation::getTimeZones(country);
+void Config::setCountry(const QString& country) {
+    if (country.isEmpty()) {
+        qCWarning(lcConfig()) << "Ignoring empty country code";
+        emit countryChanged(false);
+        return;
+    }
 
     int id =
         m_core->setLocalizationCfg(getLanguage(), country, getTimezone(), getClock24h(), getUnitSystem().toUpper());
@@ -86,14 +99,20 @@ void Config::setCountry(const QString &country) {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting country: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting country:" << code << message;
+            //: Notification: the country could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting country: %1").arg(message), true);
             emit countryChanged(false);
         });
 }
 
-void Config::setTimezone(const QString &timezone) {
+void Config::setTimezone(const QString& timezone) {
+    if (timezone.isEmpty()) {
+        qCWarning(lcConfig()) << "Ignoring empty timezone";
+        emit timezoneChanged(false);
+        return;
+    }
+
     int id =
         m_core->setLocalizationCfg(getLanguage(), getCountry(), timezone, getClock24h(), getUnitSystem().toUpper());
 
@@ -106,15 +125,22 @@ void Config::setTimezone(const QString &timezone) {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting timezone: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting timezone:" << code << message;
+            //: Notification: the time zone could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting timezone: %1").arg(message), true);
             emit timezoneChanged(false);
         });
 }
 
 void Config::setUnitSystem(QString value) {
-    UnitSystems unitSystem = Util::convertStringToEnum<UnitSystems>(value);
+    bool        ok = false;
+    UnitSystems unitSystem = Util::convertStringToEnum<UnitSystems>(value, &ok);
+
+    // an unknown value would be sent as an empty measurement_unit and rejected by core
+    if (!ok) {
+        qCWarning(lcConfig()) << "Ignoring unknown unit system:" << value;
+        return;
+    }
 
     if (m_unitSystem != unitSystem) {
         int id = m_core->setLocalizationCfg(getLanguage(), getCountry(), getTimezone(), getClock24h(),
@@ -129,9 +155,9 @@ void Config::setUnitSystem(QString value) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting unit system: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting unit system:" << code << message;
+                //: Notification: the unit system could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting unit system: %1").arg(message), true);
             });
     }
 }
@@ -150,14 +176,14 @@ void Config::setClock24h(bool value) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting clock: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting clock:" << code << message;
+                //: Notification: the 12/24-hour clock could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting clock: %1").arg(message), true);
             });
     }
 }
 
-void Config::setDeviceName(const QString &name) {
+void Config::setDeviceName(const QString& name) {
     int id = m_core->setDeviceCfg(name);
 
     m_core->onResult(
@@ -169,9 +195,9 @@ void Config::setDeviceName(const QString &name) {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting device name: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting device name:" << code << message;
+            //: Notification: the name of the remote could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting device name: %1").arg(message), true);
             emit deviceNameChanged(false);
         });
 }
@@ -189,16 +215,17 @@ void Config::setHapticEnabled(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error changing haptic settings: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error changing haptic settings:" << code << message;
+                //: Notification: haptic feedback could not be switched. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error changing haptic settings: %1").arg(message), true);
             });
     }
 }
 
 void Config::setMicEnabled(bool enabled) {
     if (m_micEnabled != enabled) {
-        int id = m_core->setVoiceControlCfg(enabled, m_voiceAssistantId, m_voiceAssistantProfileId, m_voiceAssistantSpeechResponse);
+        int id = m_core->setVoiceControlCfg(enabled, m_voiceAssistantId, m_voiceAssistantProfileId,
+                                            m_voiceAssistantSpeechResponse);
 
         m_core->onResult(
             id,
@@ -209,16 +236,16 @@ void Config::setMicEnabled(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting microphone config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting microphone config:" << code << message;
+                //: Notification: the microphone could not be switched. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting microphone config: %1").arg(message), true);
             });
     }
 }
 
-void Config::setVoiceAssistantId(const QString &entityId)
-{
-    int id = m_core->setVoiceControlCfg(m_micEnabled, entityId, m_voiceAssistantProfileId, m_voiceAssistantSpeechResponse);
+void Config::setVoiceAssistantId(const QString& entityId) {
+    int id =
+        m_core->setVoiceControlCfg(m_micEnabled, entityId, m_voiceAssistantProfileId, m_voiceAssistantSpeechResponse);
 
     m_core->onResult(
         id,
@@ -227,14 +254,13 @@ void Config::setVoiceAssistantId(const QString &entityId)
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting voice assistant config: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting voice assistant config:" << code << message;
+            //: Notification: the voice assistant could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting voice assistant config: %1").arg(message), true);
         });
 }
 
-void Config::setVoiceAssistantProfileId(const QString &profileId)
-{
+void Config::setVoiceAssistantProfileId(const QString& profileId) {
     int id = m_core->setVoiceControlCfg(m_micEnabled, m_voiceAssistantId, profileId, m_voiceAssistantSpeechResponse);
 
     m_core->onResult(
@@ -244,14 +270,14 @@ void Config::setVoiceAssistantProfileId(const QString &profileId)
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting voice assistant profile config: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting voice assistant profile config:" << code << message;
+            //: Notification: a voice assistant option could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting voice assistant profile config: %1").arg(message),
+                                                 true);
         });
 }
 
-void Config::setVoiceAssistantSpeechResponse(bool value)
-{
+void Config::setVoiceAssistantSpeechResponse(bool value) {
     if (m_voiceAssistantSpeechResponse != value) {
         int id = m_core->setVoiceControlCfg(m_micEnabled, m_voiceAssistantId, m_voiceAssistantProfileId, value);
 
@@ -262,9 +288,10 @@ void Config::setVoiceAssistantSpeechResponse(bool value)
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting voice assistant profile config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting voice assistant profile config:" << code << message;
+                //: Notification: a voice assistant option could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(
+                    tr("Error setting voice assistant profile config: %1").arg(message), true);
             });
     }
 }
@@ -282,9 +309,9 @@ void Config::setSoundEnabled(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting sound config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting sound config:" << code << message;
+                //: Notification: sound effects could not be switched. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting sound config: %1").arg(message), true);
             });
     }
 }
@@ -302,9 +329,9 @@ void Config::setSoundVolume(int volume) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting sound volume: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting sound volume:" << code << message;
+                //: Notification: the sound effect volume could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting sound volume: %1").arg(message), true);
             });
     }
 }
@@ -352,9 +379,9 @@ void Config::setDisplayAutoBrightness(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting display config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting display config:" << code << message;
+                //: Notification: the display brightness could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting display config: %1").arg(message), true);
             });
     }
 }
@@ -372,9 +399,9 @@ void Config::setDisplayBrightness(int brightness) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting display config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting display config:" << code << message;
+                //: Notification: the display brightness could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting display config: %1").arg(message), true);
             });
     }
 }
@@ -392,9 +419,9 @@ void Config::setButtonAutoBirghtness(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting button backlight: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting button backlight:" << code << message;
+                //: Notification: the button backlight could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting button backlight: %1").arg(message), true);
             });
     }
 }
@@ -412,9 +439,9 @@ void Config::setButtonBrightness(int brightness) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting button backlight: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting button backlight:" << code << message;
+                //: Notification: the button backlight could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting button backlight: %1").arg(message), true);
             });
     }
 }
@@ -428,24 +455,20 @@ void Config::setEntityButtonFuncInverted(bool value) {
     emit entityButtonFuncInvertedChanged();
 }
 
-bool Config::getShowBatteryPercentage()
-{
+bool Config::getShowBatteryPercentage() {
     return m_settings->value("ui/batteryPercent", false).toBool();
 }
 
-void Config::setShowBatteryPercentage(bool value)
-{
+void Config::setShowBatteryPercentage(bool value) {
     m_settings->setValue("ui/batteryPercent", value);
     emit showBatteryPercentageChanged();
 }
 
-bool Config::getShowBatteryEveryWhere()
-{
+bool Config::getShowBatteryEveryWhere() {
     return m_settings->value("ui/batteryEveryWhere", false).toBool();
 }
 
-void Config::setShowBatteryEveryWhere(bool value)
-{
+void Config::setShowBatteryEveryWhere(bool value) {
     m_settings->setValue("ui/batteryEveryWhere", value);
     emit showBatteryEveryWhereChanged();
 }
@@ -546,19 +569,6 @@ void Config::setPhantomWakeSuppressInputLookbackMs(int ms)
     emit phantomWakeSuppressInputLookbackMsChanged();
 }
 
-// madalone (Phase 0, 2026-05-02): REST auth probe gate (one-shot debug flag).
-// Stored under "debug/probeRestAuth" to keep diagnostic flags out of "power/*".
-bool Config::getProbeRestAuth()
-{
-    return m_settings->value("debug/probeRestAuth", false).toBool();
-}
-
-void Config::setProbeRestAuth(bool value)
-{
-    m_settings->setValue("debug/probeRestAuth", value);
-    emit probeRestAuthChanged();
-}
-
 bool Config::getShowShuffleButton()
 {
     return m_settings->value("ui/showShuffleButton", true).toBool();
@@ -603,48 +613,94 @@ void Config::setShowMediaSourceButton(bool value)
     emit showMediaSourceButtonChanged();
 }
 
-bool Config::getEnableActivityBar()
-{
+bool Config::getEnableActivityBar() {
     return m_settings->value("ui/activityBar", true).toBool();
 }
 
-void Config::setEnableActivityBar(bool value)
-{
+void Config::setEnableActivityBar(bool value) {
     m_settings->setValue("ui/activityBar", value);
     emit enableActivityBarChanged();
 }
 
-bool Config::getFillMediaArtwork()
-{
+bool Config::getOpenActivityOnApiStart() {
+    return m_settings->value("ui/openActivityOnApiStart", false).toBool();
+}
+
+void Config::setOpenActivityOnApiStart(bool value) {
+    m_settings->setValue("ui/openActivityOnApiStart", value);
+    emit openActivityOnApiStartChanged();
+}
+
+bool Config::getFillMediaArtwork() {
     return m_settings->value("ui/fillMediaArtwork", false).toBool();
 }
 
-void Config::setFillMediaArtwork(bool value)
-{
+void Config::setFillMediaArtwork(bool value) {
     m_settings->setValue("ui/fillMediaArtwork", value);
     emit fillMediaArtworkChanged();
 }
 
-bool Config::getMediaCoverflowDefault()
-{
+bool Config::getMediaCoverflowDefault() {
     return m_settings->value("ui/mediaCoverflowDefault", false).toBool();
 }
 
-void Config::setMediaCoverflowDefault(bool value)
-{
+void Config::setMediaCoverflowDefault(bool value) {
     m_settings->setValue("ui/mediaCoverflowDefault", value);
     emit mediaCoverflowDefaultChanged();
 }
 
-int Config::getResumeTimeoutWindowSec()
-{
+int Config::getResumeTimeoutWindowSec() {
     return m_settings->value("ui/resumeTimeoutWindow", 2).toInt();
 }
 
-void Config::setResumeTimeoutWindowSec(int value)
-{
+void Config::setResumeTimeoutWindowSec(int value) {
     m_settings->setValue("ui/resumeTimeoutWindow", value);
     emit resumeTimeoutWindowSecChanged(value);
+}
+
+bool Config::getTouchSliderEnabled() {
+    return m_settings->value("touchslider/enabled", true).toBool();
+}
+
+void Config::setTouchSliderEnabled(bool value) {
+    m_settings->setValue("touchslider/enabled", value);
+    emit touchSliderEnabledChanged();
+}
+
+double Config::getTouchSliderGainVolume() {
+    return m_settings->value("touchslider/gainVolume", 0.4).toDouble();
+}
+
+void Config::setTouchSliderGainVolume(double value) {
+    m_settings->setValue("touchslider/gainVolume", value);
+    emit touchSliderGainVolumeChanged();
+}
+
+double Config::getTouchSliderGainBrightness() {
+    return m_settings->value("touchslider/gainBrightness", 1.2).toDouble();
+}
+
+void Config::setTouchSliderGainBrightness(double value) {
+    m_settings->setValue("touchslider/gainBrightness", value);
+    emit touchSliderGainBrightnessChanged();
+}
+
+double Config::getTouchSliderGainPosition() {
+    return m_settings->value("touchslider/gainPosition", 1.2).toDouble();
+}
+
+void Config::setTouchSliderGainPosition(double value) {
+    m_settings->setValue("touchslider/gainPosition", value);
+    emit touchSliderGainPositionChanged();
+}
+
+double Config::getTouchSliderGainSeek() {
+    return m_settings->value("touchslider/gainSeek", 1.0).toDouble();
+}
+
+void Config::setTouchSliderGainSeek(double value) {
+    m_settings->setValue("touchslider/gainSeek", value);
+    emit touchSliderGainSeekChanged();
 }
 
 void Config::setWakeupSensitivity(Config::WakeupSensitivities sensitivity) {
@@ -660,9 +716,9 @@ void Config::setWakeupSensitivity(Config::WakeupSensitivities sensitivity) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting wakeup sensitivity: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting wakeup sensitivity:" << code << message;
+                //: Notification: the wakeup sensitivity could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting wakeup sensitivity: %1").arg(message), true);
             });
     }
 }
@@ -680,9 +736,9 @@ void Config::setSleepTimeout(int timeout) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting sleep timeout: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting sleep timeout:" << code << message;
+                //: Notification: the sleep timeout could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting sleep timeout: %1").arg(message), true);
             });
     }
 }
@@ -700,9 +756,9 @@ void Config::setDisplayTimeout(int timeout) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting display sleep timeout: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting display sleep timeout:" << code << message;
+                //: Notification: the display timeout could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting display sleep timeout: %1").arg(message), true);
             });
     }
 }
@@ -720,9 +776,9 @@ void Config::setAutoUpdate(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting update config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting update config:" << code << message;
+                //: Notification: a software update setting could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting update config: %1").arg(message), true);
             });
     }
 }
@@ -740,9 +796,9 @@ void Config::setCheckForUpdates(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting update config: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting update config:" << code << message;
+                //: Notification: a software update setting could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting update config: %1").arg(message), true);
             });
     }
 }
@@ -760,9 +816,9 @@ void Config::setBluetoothEnabled(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting Bluetooth: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting Bluetooth:" << code << message;
+                //: Notification: Bluetooth could not be switched on or off. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting Bluetooth: %1").arg(message), true);
             });
     }
 }
@@ -780,15 +836,14 @@ void Config::setWifiEnabled(bool enabled) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting WiFi: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting WiFi:" << code << message;
+                //: Notification: WiFi could not be switched on or off. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting WiFi: %1").arg(message), true);
             });
     }
 }
 
-void Config::setWowlanEnabled(bool enabled)
-{
+void Config::setWowlanEnabled(bool enabled) {
     if (m_wowlanEnabled != enabled) {
         int id = m_core->setNetworkCfg(m_bluetoothEnabled, m_wifiEnabled, enabled, m_band, m_scanIntervalSec);
 
@@ -801,15 +856,14 @@ void Config::setWowlanEnabled(bool enabled)
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting Wowlan: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting Wowlan:" << code << message;
+                //: Notification: "Keep WiFi connected in standby" could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting WiFi in standby: %1").arg(message), true);
             });
     }
 }
 
-void Config::setWifiBand(QString value)
-{
+void Config::setWifiBand(QString value) {
     int id = m_core->setNetworkCfg(m_bluetoothEnabled, m_wifiEnabled, m_wowlanEnabled, value, m_scanIntervalSec);
 
     m_core->onResult(
@@ -821,14 +875,13 @@ void Config::setWifiBand(QString value)
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error setting Wifi band: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error setting Wifi band:" << code << message;
+            //: Notification: the WiFi band could not be changed. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error setting WiFi band: %1").arg(message), true);
         });
 }
 
-void Config::setScanIntervalSec(int value)
-{
+void Config::setScanIntervalSec(int value) {
     if (m_scanIntervalSec != value) {
         int id = m_core->setNetworkCfg(m_bluetoothEnabled, m_wifiEnabled, m_wowlanEnabled, m_band, value);
 
@@ -841,9 +894,9 @@ void Config::setScanIntervalSec(int value)
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error setting Wifi scan interval: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error setting Wifi scan interval:" << code << message;
+                //: Notification: the WiFi scan interval could not be changed. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error setting WiFi scan interval: %1").arg(message), true);
             });
     }
 }
@@ -878,9 +931,9 @@ void Config::getCountryList() {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error getting country list: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error getting country list:" << code << message;
+            //: Notification: the list of countries could not be loaded. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error getting country list: %1").arg(message), true);
         });
 }
 
@@ -895,9 +948,9 @@ void Config::getTimeZones() {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error getting timezones: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error getting timezones:" << code << message;
+            //: Notification: the list of time zones could not be loaded. %1 is the core's error message
+            ui::Notification::createNotification(tr("Error getting timezones: %1").arg(message), true);
         });
 }
 
@@ -926,7 +979,7 @@ void Config::generateNewWebConfigPin() {
         });
 }
 
-void Config::setAdminPin(const QString &pin) {
+void Config::setAdminPin(const QString& pin) {
     int id = m_core->setProfileCfg(pin);
 
     m_core->onResult(
@@ -938,9 +991,9 @@ void Config::setAdminPin(const QString &pin) {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Error white setting admin pin: " + message;
-            qCWarning(lcConfig()) << code << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error while setting admin pin:" << code << message;
+            //: Notification: the administrator PIN could not be set. %1 is the core's error message
+            ui::Notification::createNotification(tr("Could not set the admin PIN: %1").arg(message), true);
             emit adminPinSet(false);
         });
 }
@@ -958,9 +1011,9 @@ void Config::getApiAccess() {
         [=](core::ApiAccess apiAccess) {
             // fail
             Q_UNUSED(apiAccess)
-            QString errorMsg = "Error enabling the web configurator";
-            qCWarning(lcConfig()) << errorMsg;
-            ui::Notification::createNotification(errorMsg, true);
+            qCWarning(lcConfig()) << "Error enabling the web configurator";
+            //: Notification: the state of the web configurator could not be read
+            ui::Notification::createNotification(tr("Error enabling the web configurator"), true);
         });
 }
 
@@ -977,14 +1030,8 @@ void Config::getActiveProfile() {
         },
         [=](int code, QString message) {
             // fail
-            if (m_currentProfileLoadTries == 2) {
-                m_currentProfileLoadTries = 0;
-                emit noCurrentProfileFound();
-            } else {
-                m_currentProfileLoadTries++;
-                QTimer::singleShot(500 * m_currentProfileLoadTries, [=] { getActiveProfile(); });
-                qCWarning(lcUi()) << "Error getting active profile:" << code << message;
-            }
+            qCWarning(lcUi()) << "Error getting active profile:" << code << message;
+            emit noCurrentProfileFound();
         });
 }
 
@@ -1012,9 +1059,9 @@ void Config::setWebConfiguratorEnabled(bool value) {
             },
             [=](int code, QString message) {
                 // fail
-                QString errorMsg = "Error enabling the web configurator: " + message;
-                qCWarning(lcConfig()) << code << errorMsg;
-                ui::Notification::createNotification(errorMsg, true);
+                qCWarning(lcConfig()) << "Error enabling the web configurator:" << code << message;
+                //: Notification: the web configurator could not be switched on or off. %1 is the core's error message
+                ui::Notification::createNotification(tr("Error enabling the web configurator: %1").arg(message), true);
             });
     }
 }
@@ -1023,18 +1070,56 @@ QStringList Config::getTranslations() {
     return ui::Translation::getTranslations();
 }
 
-QString Config::getLanguageCodeFromCountry(const QString &country) {
-    return ui::Translation::getLanguageCode(country);
+QVariantList Config::getLocalizedCountryList() {
+    QVariantList list;
+
+    QString language = m_language.split("_").value(0);
+
+    for (const auto& item : qAsConst(m_countryList)) {
+        QVariantMap country = item.toMap();
+
+        QString name = country.value("name_" + language).toString();
+        if (name.isEmpty()) {
+            name = country.value("name_en").toString();
+        }
+
+        QVariantMap map;
+        map.insert("code", country.value("code").toString());
+        map.insert("name", name);
+        list.append(map);
+    }
+
+    std::sort(list.begin(), list.end(), [](const QVariant& a, const QVariant& b) {
+        return QString::localeAwareCompare(a.toMap().value("name").toString(), b.toMap().value("name").toString()) < 0;
+    });
+
+    return list;
+}
+
+QStringList Config::getSuggestedCountries() {
+    return ui::Translation::getCountriesForLanguage(m_language);
+}
+
+QString Config::getLikelyCountry() {
+    return ui::Translation::getLikelyCountry(m_language);
+}
+
+QVariantList Config::getTimeZoneInfos(const QString& country) {
+    return ui::Translation::getTimeZoneInfos(country);
+}
+
+QVariantList Config::getAllTimeZoneInfos() {
+    return ui::Translation::getAllTimeZoneInfos();
 }
 
 QString Config::getCountry(const QString country) {
     return ui::Translation::getCountryName(country);
 }
 
-QObject *Config::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
+QObject* Config::qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine) {
     Q_UNUSED(scriptEngine);
 
-    QObject *obj = s_instance;
+    QObject* obj = s_instance;
     engine->setObjectOwnership(obj, QQmlEngine::CppOwnership);
 
     return obj;
@@ -1090,6 +1175,11 @@ void Config::onDisplayCfgChanged(core::cfgDisplay cfgDisplay) {
 }
 
 void Config::onDeviceCfgChanged(core::cfgDevice cfgDevice) {
+    // deviceNameChanged(true) also tells the onboarding that the name it sent was accepted: a configuration that
+    // is merely loaded again, e.g. after a reconnect, must not look like that
+    if (m_deviceName == cfgDevice.name) {
+        return;
+    }
     m_deviceName = cfgDevice.name;
     emit deviceNameChanged(true);
 }
@@ -1100,28 +1190,42 @@ void Config::onHapticCfgChanged(core::cfgHaptic cfgHaptic) {
 }
 
 void Config::onLocalizationCfgChanged(core::cfgLocalization cfgLocalization) {
-    if (!m_language.contains(cfgLocalization.languageCode)) {
+    // Every localization setter sends the complete localization configuration, so a field that is
+    // missing here must not clear the cached value: the next setter would send it back as empty
+    // and core would reject the whole request.
+    if (cfgLocalization.languageCode.isEmpty()) {
+        qCWarning(lcConfig()) << "Localization configuration without language code";
+    } else if (m_language != cfgLocalization.languageCode) {
         m_language = cfgLocalization.languageCode;
         emit languageChanged(m_language);
 
         setCountryNameAsSelectedLanguage();
     }
 
-    if (!m_country.contains(cfgLocalization.countryCode)) {
+    if (cfgLocalization.countryCode.isEmpty()) {
+        qCWarning(lcConfig()) << "Localization configuration without country code";
+    } else if (m_country != cfgLocalization.countryCode) {
         m_country = cfgLocalization.countryCode;
         emit countryChanged(true);
 
         setCountryNameAsSelectedLanguage();
     }
 
-    if (!m_timezone.contains(cfgLocalization.timezone)) {
+    if (cfgLocalization.timezone.isEmpty()) {
+        qCWarning(lcConfig()) << "Localization configuration without timezone";
+    } else if (m_timezone != cfgLocalization.timezone) {
         m_timezone = cfgLocalization.timezone;
         emit timezoneChanged(true);
     }
 
-    auto newUnitSystem = Util::convertStringToEnum<UnitSystems>(Util::FirstToUpper(cfgLocalization.measurementUnit));
+    bool ok = false;
+    auto newUnitSystem =
+        Util::convertStringToEnum<UnitSystems>(Util::FirstToUpper(cfgLocalization.measurementUnit), &ok);
 
-    if (m_unitSystem != newUnitSystem) {
+    if (!ok) {
+        qCWarning(lcConfig()) << "Localization configuration with unknown unit system:"
+                              << cfgLocalization.measurementUnit;
+    } else if (m_unitSystem != newUnitSystem) {
         m_unitSystem = newUnitSystem;
         emit unitSystemChanged(m_unitSystem);
     }
@@ -1209,14 +1313,7 @@ void Config::onVoiceControlCfgChanged(core::cfgVoiceControl cfgVoiceControl) {
 }
 
 QString Config::generateRandomPin() {
-    int     pinNumber = QRandomGenerator::global()->bounded(0, 9999);
-    QString pin = QString::number(pinNumber);
-
-    while (3 - pin.length() == 0) {
-        pin.prepend("0");
-    }
-
-    return pin;
+    return QStringLiteral("%1").arg(QRandomGenerator::global()->bounded(10000), 4, 10, QChar('0'));
 }
 
 void Config::setCountryNameAsSelectedLanguage() {
@@ -1232,7 +1329,7 @@ void Config::setCountryNameAsSelectedLanguage() {
         language = tmp[0];
     }
 
-    for (const auto &item : qAsConst(m_countryList)) {
+    for (const auto& item : qAsConst(m_countryList)) {
         QVariantMap country = item.toMap();
 
         if (country.value("code").toString() == m_country) {

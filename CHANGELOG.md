@@ -1404,6 +1404,729 @@ Four independent, low-risk fixes surfaced by v1.4.5 smoke-test logdy analysis (2
 
 # Upstream Unfolded Circle releases
 
+## v0.84.0 - 2026-10-14
+### Added
+- A design system for the interface, `docs/design-system.md`, with a check that keeps the QML sources on it:
+  `./design-check.sh` finds text below 22 pixels and colours written as literals instead of the colour tokens, and
+  the code guidelines workflow runs it on every pull request that touches QML.
+
+### Changed
+- Desktop simulator: holding a button in the button simulator now repeats it like a held button of the remote, after
+  600 ms and then every 150 ms. Scrolling through a list or changing the volume by holding a button can be tried
+  without the computer keyboard.
+- Desktop simulator: the Escape key of the computer keyboard now acts as the BACK button, so a screen can be walked
+  with the keyboard alone, without clicking BACK in the button simulator.
+- Help texts, descriptions, release notes and other secondary text, as well as dividers, panels and slider tracks,
+  are drawn in lighter shades. They now stay readable on the Remote 3 display, also in a lit room, and are easier to
+  read on the Remote Two as well.
+- The d-pad selection is visible on every screen, also on the Remote 3. On the main pages, in popup menus, the page
+  selector, the profile switcher, the activity menu, the menus of the profile page, Settings and About and the lists of
+  choices, such as language, country and time zone, the selected entry gets a lighter background. In the other settings
+  and set-up screens it gets a bright frame, on a setting's switch or slider rather than around the whole setting. The
+  selection is only shown while the d-pad is in use and disappears when the screen is touched, now also on tiles, in
+  groups and in the media browser. The page selector and the lists of choices are the exception: while the d-pad is not
+  in use they show the current page or the current choice with the lighter background, not only with a check mark. The
+  page names in the page selector are slightly larger.
+- Help texts, release notes, legal texts and driver instructions are easier to read: they use the same typeface as
+  the rest of the interface instead of a typewriter font, in a larger size and with more line spacing. The typewriter
+  font is kept for values such as versions, addresses, times and the web configurator PIN and URL. No text is smaller
+  than 22 pixels anymore, including the language list of the on-screen keyboard.
+- Settings, onboarding, docks and integrations share one layout: the same title bar with its back or close button,
+  the same margins, row heights and dividers, and one kind of scroll indicator. Bottom sheets such as the page menu,
+  the activity menu, the Wi-Fi details and the delete confirmations are black with a light edge. Buttons come in
+  three kinds: primary, secondary and destructive; actions that were plain text, such as Cancel, Clear and Done, are
+  buttons now, and a destructive confirmation starts on Cancel. Lists of choices, such as language, country, time
+  zone and Wi-Fi band, mark the current choice with a check mark. While a page tile, group entry or page is held to
+  reorder it, it shows the frame on top of its selected background.
+- Everything except typing can be done with the d-pad. Holding HOME opens the page menu, which now leads to the
+  profile page with the profile list, the web configurator and the settings, also for a restricted profile, which
+  used to get a "Profile is restricted" message. Without any page, OK adds the first page and holding HOME opens the
+  same menu. The web configurator screen, the web configurator address in the onboarding, the Clear and Done buttons
+  of the entity filter, the tabs of "Manage entities" and the connection status list can be reached as well. Empty
+  lists of docks, integrations, Wi-Fi networks and entities select their "Add" or "Join other" button instead of
+  nothing, and the help tips show their Close button selected. Hints no longer ask to tap, links in driver
+  instructions and legal texts are no longer dark blue, and the dock details no longer show a "Change WiFi
+  settings" row that did nothing.
+
+### Fixed
+- The profile page and the settings menu of the pull-down menu, opened by touch, show the d-pad selection on their
+  first entry, Software update, with the first press of UP or DOWN. That press used to move the selection on to the
+  second entry right away.
+- When no profile exists, the "Profile name" dialog can no longer be cancelled into an empty screen.
+- The About settings page scrolls back up to the model, serial number and versions when the d-pad selection
+  returns to its first entry. After moving down the list and back up, they stayed out of view.
+- The last step of the first set-up, "You're all set", shows a scroll indicator. With the web configurator switched on,
+  the Done button is below the screen and nothing showed that the step scrolls to it.
+- The settings use American English: "Localization" and "Inverted button behavior" instead of the British spelling.
+- On entity and activity screens the red icon of a disconnected integration, the Wi-Fi icon and the battery indicator
+  no longer cover each other in the title: they are shown side by side, and a long entity name ends before them.
+- Two different problems no longer hide each other: notifications that share a title but report something else, like a
+  command that failed for two different devices, are now shown one after the other instead of only the first one. A
+  message that really repeats is still shown only once.
+- A short message that replaces one that is still on screen is shown for its full four seconds instead of vanishing
+  with the rest of the previous one.
+- A notification that arrives while another one is shown starts on its default button again, so the keypad acts on the
+  highlighted one.
+- Error messages are shown in the language of the remote instead of always in English: the errors around entity
+  management (configuring, renaming, re-iconing and deleting an entity), profiles and pages, WiFi, the power menu
+  and the device settings. The explanation the remote itself reports is still shown as it comes. Two of these
+  messages were also wrong: configuring an entity said "Couldn't configured entity", and setting the administrator
+  PIN said "Error white setting admin pin".
+- A few more texts that stayed English in every language are translated as well: the PIN confirmation mismatch, the
+  dock data error, the empty search field hint, the WiFi band and security choices, the enabled/disabled state of a
+  known WiFi network, and the message that an activity or entity is unavailable. That last one is now a whole
+  sentence instead of the device name glued in front of a phrase, so it reads correctly in languages that put the
+  name elsewhere.
+- The warning that the profile in use cannot be deleted shows its icon again.
+- A software update can be installed with exactly 50 % battery. The screen has always named 50 % as the minimum,
+  but the update was refused until the battery was above it.
+- A license opened from the Licenses page in the About settings is formatted when it is a Markdown file, with its
+  lists and tables, instead of showing the Markdown markup. Any other file is shown as plain text, and a long word or
+  table cell wraps instead of running off the screen. Headings, also those of the licenses overview, are bold at the
+  size of the text instead of up to twice as large.
+- BACK and the back arrow on a license opened from the Licenses page return to the license overview, at the link
+  that opened it, instead of leaving the licenses for the About page. A link inside a license can be followed as well
+  and leads back the same way.
+- In the licenses, a link to another license or to a section of the same license is underlined and opens it. Web and
+  mail addresses are shown as text, after the text of their link, instead of as links that did nothing: the remote
+  opens no web pages.
+- The license texts themselves, which the license files hold as code, are shown at the size of the text and flow into
+  paragraphs, instead of in a small typewriter font in lines broken for a wider screen. Code inside a sentence reads
+  as text as well, and a table inside a license text keeps one line per row.
+- The licenses can be opened with the d-pad: DOWN and UP select the links of the overview and of a license one after
+  the other, OK opens the selected one, and BACK returns to it. They could only be opened by touch.
+- The web configurator address on the profile page, in the web configurator view and in the onboarding no longer
+  reads "http:///configurator" while the remote has no IP address: it shows the host name until an IP address is
+  known.
+- The tile and the control screen of a switch whose integration does not support toggling now switch it on and off.
+  They sent a toggle command, which such an integration may reject; the remote now sends On or Off depending on the
+  current state of the switch, as it already does for a light.
+
+---
+
+## v0.83.0 - 2026-10-06
+### Added
+- A written specification of the app: non-trivial changes are planned with [OpenSpec](https://openspec.dev), the
+  living specs in `openspec/specs/` describe what the app does, and architecture decision records in `docs/adr/`
+  explain why it is built the way it is. See `docs/workflow.md`.
+- A security policy, `SECURITY.md`, describes how to report a vulnerability privately and what to expect from us.
+- macOS desktop simulator: `make macos-static` builds a self-contained `Remote UI.app` with a static Qt 5.15.19
+  compiled from source, on Intel and Apple Silicon Macs, for macOS 11 and newer; `make macos` builds it with a
+  dynamic Qt for development. The rewritten
+  `docs/static-compile-macos.md` replaces the Qt online installer based instructions, which no longer work with
+  current Xcode versions.
+- The on-screen keyboard now has a layout for Spanish, Finnish, French, Hungarian, Italian, Norwegian, Polish,
+  Portuguese and Swedish. Until now these interface languages showed a US keyboard without a single accented
+  character. The keys follow the national layout of the selected language, and its accented characters are
+  reachable: å, ä, ö, æ, ø, ñ and ç have a key of their own where the national keyboard has one, the remaining
+  accented letters appear when the base letter is pressed and held.
+- Release builds now include a statically linked Linux x64 desktop simulator
+  (`remote-ui-<version>-Linux-x64-static.tar.gz`) that runs on Ubuntu 24.04 / Debian 13 and newer without a Qt
+  installation. `make linux-x64` produces the same build locally in the Docker toolchain image, see
+  `docs/static-compile.md`.
+- Experimental, unsupported Windows x64 build: `make windows-x64` cross-compiles it on Linux in a Docker image,
+  documented in `docs/static-compile-windows.md` with a start script `scripts/env/windows.cmd`. We develop on Linux
+  and macOS only; the Windows build is not verified for releases.
+
+### Changed
+- Updated contributor guidelines and documentation: `CONTRIBUTING.md` with pull request practices and a policy for
+  AI-assisted contributions, code guidelines in `docs/code_guidelines.md`, `AGENTS.md` for coding agents, and a
+  clearer note on what a custom UI build means for support and warranty.
+- The icon set is updated from Font Awesome 6.5.1 to 6.7.2. Fourteen icons are new (`carpool`, `chart-diagram`,
+  `chart-fft`, `chart-sine`, `circles-overlap-3`, `comment-nodes`, `css`, `file-fragment`, `file-half-dashed`,
+  `files-pinwheel`, `hexagon-nodes`, `hexagon-nodes-bolt`, `square-binary`, `square-bluesky`), no icon was removed
+  or renamed, and a few glyphs were redrawn by Font Awesome and look different on a tile that uses them: among
+  the built-in icons `angle-down`, `angles-up/left/right`, `sort`, `lamp-floor` (also the older name `lamp-1`),
+  `phone-plus`, `phone-xmark`, `arrow-down-arrow-up`, `wind-turbine`, `exclamation`, `toolbox` and `fire-smoke`.
+- The licensed icon font of the device is no longer built into the binary. The app loads it from the file
+  named in `UC_ICON_FONT_PATH` when the firmware provides one, and otherwise uses the built-in Font Awesome
+  Free font, so the device build and a build from the public sources are the same binary.
+- The default display scale of the desktop simulator (`UC_DISPLAY_SCALE`) is now 1 on Linux and Windows; it stays
+  0.5 on macOS, where the desktop is a 2x Retina display. Previously 0.5 everywhere, which drew the UI at half size
+  on a regular Linux display.
+- Renamed the icon font, using the correct .ttf file extension, and added icon font documentation.
+
+### Removed
+- The desktop simulator no longer knows the `YIO1` model of the first YIO remote, which is no longer supported.
+  `UC_MODEL=YIO1` is now treated like any other unknown value and starts the `DEV` simulator. The valid values are
+  `DEV`, `UCR2` and `UCR3`.
+
+### Fixed
+- The Remote Two no longer keeps its processor busy with the display off after the display brightness changed while
+  the display was off, for example in the web configurator or when the user interface started with the display off.
+  The fade to the new brightness could only finish once the display was on again.
+- The user interface no longer redraws the screen continuously while nothing on it changes, which used CPU time and
+  battery whenever the display was on. The hidden "connecting" indicator of the status bar was animated all the time,
+  also when no integration was connecting.
+- The user interface stops drawing whenever the display is off. When it was started while the display was off, or the
+  display was turned off through the API, it kept drawing and used battery until the remote was woken up. Dimming
+  the display through the API no longer leaves it black.
+- `. scripts/env/qt-version.sh` finds a Qt that is installed only as static `clang_64-static` or `gcc_64-static`,
+  like the Qt of the macOS guide, and without a version it also works in zsh, the default shell on macOS.
+- `make test` works on Apple Silicon Macs with the Qt compiled from source: the unit tests are built for the Mac's own
+  architecture, like that Qt, instead of always for x86_64.
+- The activity bar of a page follows changes to the page and its groups. A running activity or playing media player
+  that was removed from a page stayed in that page's activity bar, and one that was added to a page, also through a
+  group or with a new page, was missing from it, until the activity was stopped or started again.
+- In builds with the free icon font, macro, select, switch and IR emitter entities, artists, tracks, playlists, apps,
+  channels and web links in the media browser, integrations without an icon, the default activity group, and the
+  home, play/pause and record buttons of remotes show an icon instead of a question mark. The core assigns these
+  icons on its own, and the free icon font lacks them.
+- An icon that the icon font does not have is no longer drawn with an unrelated symbol of another installed font.
+  With the free icon font, any system font that happened to have a character at the same position was used
+  instead of the icon's replacement, for example a digit or a math symbol in place of a media or remote icon.
+- A new voice question stops the spoken answer to the previous one. When the voice screen was closed while an
+  answer was still playing, the answer was recorded with the next question, and its end closed the voice screen of
+  the next question.
+- A spoken answer of the voice assistant that arrives while the previous one is still playing replaces it cleanly:
+  the rest of the previous answer was played into the new one, the voice screen closed before the new answer had
+  finished, and the remote did not react for up to eight seconds while the previous answer was stopped.
+- The climate screen starts on the nearest temperature of its list when the target temperature of the device is
+  not one of its steps, or outside its range. Pressing up or down then sent an invalid temperature, or the
+  highest one of the list.
+- A software update download that fails is shown as failed on the software update page. The page kept showing
+  "Downloading" with the button disabled, and the keys went to the hidden installation screen.
+- The power off menu can be opened again after a software update whose end the remote missed while it was
+  reconnecting to its core.
+- The media browser no longer shows the content of a folder that was left before it finished loading in place of
+  the folder shown.
+- A dropdown in the setup of an integration starts on the option the integration preselects instead of the first
+  option.
+- The artwork of a media player no longer disappears when more than twelve media players show artwork.
+- The "Select all" button of an entity list is shown again when a search, a filter or more loaded entities bring
+  in entities that are not selected. It kept reading "Clear" and did nothing when pressed.
+- The connection status of the integrations no longer lists a driver as failing that recovered while the remote
+  was reconnecting to its core, or that was deleted in the meantime.
+- Stopping the app during the first seconds after its start no longer leaves it running until the system kills
+  it, which made the device fall back to the factory UI and reboot.
+- The WiFi connection details show the key management as reported (`WPA2-PSK`, not `WPA2_PSK`), and a WPA3
+  connection is recognised as such instead of as an unknown security type.
+- The on/off text of a binary sensor (opened/closed, detected/clear, ...) follows a language change right away,
+  and a device class that arrives after the value.
+- A climate device shows a current temperature of 0, and `--` while it has no temperature to report. 0 was never
+  shown, and a missing temperature was shown as 0.
+- Removing a media player entity, or reloading the entities after a reconnect, while its artwork is still being
+  decoded can no longer crash the app.
+- The log of a desktop simulator run as Remote 3 no longer repeats the missing touch slider warning every second.
+- Settings that are changed right before the remote shuts down are written to disk.
+- Names of integrations and entities loaded before the language of the remote is known are shown in English
+  instead of the alphabetically first translation.
+- A language whose translation file cannot be loaded no longer leaves the interface half translated: the language
+  shown so far stays in place.
+- A response of a newer core that this version doesn't know no longer leaves the request waiting forever.
+- An integration driver that goes from reconnecting to connecting shows that state.
+- A light that comes back from unavailable, for example when its integration reconnects, shows its brightness
+  percentage again.
+- The climate tile shows the temperature with the unit of the entity right away. A Fahrenheit entity showed its
+  temperature with °C until the temperature changed.
+- Links in the legal documents of the About settings open the linked document on every platform, not only when
+  the app runs from the root directory, and the images of the linked document are shown. Only documents of the
+  legal directory are opened: no link leads to the network.
+- Dragging a page, or an entity of a page or group, over more than one position no longer shows another item in
+  the dragged tile.
+- The onboarding no longer skips the step for naming the remote when the connection to the core is re-established
+  while that step is shown.
+- A forgotten WiFi network appears in the list of available networks again right away, instead of only after a
+  later scan found a change.
+- A dock setup that cannot be started is reported as failed right away. The setup screen used to stay behind the
+  loading screen for three minutes.
+- An integration that is connected is no longer shown as not connected after it was renamed or otherwise changed
+  in the web configurator. The new name also appears in the integration list right away.
+- Settings no longer show arbitrary values, and haptic feedback no longer fires although it is disabled, in the
+  moment between the start of the app and the first configuration received from the core.
+- The charging screen no longer appears on the charger when the app reconnects to the core, for example after a
+  restart of the core. It is still shown when the remote wakes up on the charger, as intended.
+- An activity that was already running is no longer reported as started from another device after the app
+  reconnects to the core, for example after a restart of the core. With "open activity when started externally"
+  enabled, its screen opened over whatever was shown.
+- Pages and groups are no longer shown twice, or under the wrong profile, when two reloads overlap, for example a
+  reconnect during a profile switch.
+- Loading the integrations always completes. A single integration driver that could not be loaded, or a remote
+  without any driver, left the connection states unknown and kept the search for new integrations from starting;
+  with more than 100 drivers only the first 100 were loaded.
+- Docks are brought up to date after a reconnect: a dock that was removed or changed in the meantime no longer
+  keeps its old entry until the remote is restarted.
+- Setting up an integration driver found on the network works. Its address was not sent where the core reads it,
+  so such a driver could not be configured.
+- A change of an integration driver, for example a new version or name after an update, is shown right away
+  instead of only after the next reconnect.
+- The running activity indicator of a page is also updated on the pages that come after an empty page.
+- Removing the last entity of a group is saved. The group kept its entities, because an empty list was not sent.
+- The app no longer crashes when a group is changed or deleted from another client, for example the web
+  configurator, while the remote is still loading the groups of a profile, which it does after every reconnect.
+- The app no longer crashes when the language is changed after an integration was set up and the list of available
+  integrations was opened again.
+- Removing an entity while its media browser is still loading, or right after a language change, can no longer
+  crash the app.
+- The repeat button of a media player always sends a valid repeat mode. A player reporting a repeat mode the remote
+  doesn't know showed repeat as active and sent a random value when the button was pressed.
+- A setting without a field type in the setup of an integration is skipped instead of being shown as a random
+  input field.
+- Loading all entities at startup no longer runs forever on Apple Silicon builds. The number of pages was derived
+  from the `limit` field of the core's response, which holds the number of items in that page (0 for a page past
+  the end); a division by zero converted to an integer gave an endless page count on arm64. The page size of the
+  request is used now, in all paged requests, and an empty page ends the loading.
+- The voice assistant no longer starts listening after the microphone button was released. Holding the button
+  right after waking the remote could reach the assistant before it was ready; the request was then repeated in
+  the background and could arrive after the button was already let go, so the assistant recorded an empty
+  request. A voice request is now dropped as soon as it is over, and the voice screen then reports the assistant
+  as unavailable right away instead of waiting for its own timeout.
+- A command the device rejects, for example one it doesn't support, is now reported right away instead of being sent
+  again every half second until the wake-up retry window of the Power Saving settings has run out. Commands that fail
+  because the remote is still waking up, when an entity isn't known yet or an integration isn't connected again, are
+  retried as before.
+- Stepping backwards through the options of a select entity now wraps around from the first option to the last one,
+  the way stepping forwards already wrapped around from the last option to the first one.
+- The tile of a select entity keeps showing the selected option after the interface language is changed, instead of
+  falling back to the entity state until the option changes the next time.
+- A switch shows its On/Off state on the entity screen even when the integration does not provide the toggle
+  feature, and no longer shows a state for a switch that is unavailable or whose state is unknown.
+- A restricted profile stays restricted when it is created or changed from another client, for instance the
+  web-configurator. The remote read the restriction from the wrong place in the profile event and treated a newly
+  announced restricted profile as a normal one, so its settings were not locked.
+- When the profile the remote is showing is deleted elsewhere, the remote no longer keeps its pages on screen. It
+  now clears them and asks for a profile, just like switching to another profile does.
+- A factory reset is only offered for confirmation once the remote has the confirmation token from the core. The
+  final confirmation used to be shown even when the token could not be obtained, and confirming then did nothing.
+  A failed request is now reported and the reset is not offered.
+- Creating a profile switches the remote to it only once. The remote used to ask the core to switch up to three
+  times for a single new profile, and one of those switches was only applied locally, which could leave the remote
+  and the core disagreeing about the active profile.
+- The control screen of an unavailable entity can be left with the keypad again: BACK and HOME close it, while every
+  key that would send a command stays blocked behind the "Entity unavailable" overlay. Before, the screen ignored the
+  whole keypad and only the ✕ closed it.
+- An unavailable entity no longer accepts commands, wherever it is: pressing OK on an unavailable tile on a page
+  behaves like the same tile inside a group, an activity's button mapping no longer sends to an unavailable device,
+  and the brightness and colour keys of a light are ignored while it is unavailable. A refused command now says
+  which device is unavailable instead of doing nothing at all. A button pressed while the remote is waking up is
+  still sent and retried as before, as everything is briefly unavailable then.
+- The brightness and colour temperature keys on a light screen only act on the page that is on screen. A single key
+  press could change the brightness twice when the brightness and the colour page both reacted to it.
+- A list with a search field, e.g. the language or country list, reacts to the first tap again after the on-screen
+  keyboard was closed with its hide key. That tap used to be swallowed.
+- Stopping the app no longer floods the log with hundreds of `TypeError: Cannot read property ... of null` lines
+  from QML: the UI is now torn down before the objects it refers to. On the device these lines ended up in the
+  system journal on every shutdown and restart.
+- Without a sound effects directory (the usual case on the desktop simulator), the app logs a single line that sound
+  effects are disabled instead of five decoding errors for files at the root of the file system. A configured
+  directory that doesn't exist is reported as a warning.
+- An icon component without an icon no longer logs a warning, and the first language change no longer logs a
+  spurious "Failed to remove translation".
+- Renaming or changing the icon of an entity that is no longer there - one that was deleted while its screen was
+  still open - no longer crashes the app.
+- An entity the UI has no screen for no longer blocks the remote: opening it closes again with a message in the log
+  instead of leaving an empty screen behind that made every following entity, activity and settings page refuse to
+  open until the app was restarted.
+- Opening a curtain no longer shows 0 % until the blind next moves: the screen starts at the position the cover
+  already reported. A cover that has never reported a position shows `--` instead of a made-up 0 %.
+- The icon of a cover on a page is no longer highlighted while the cover is closed. It now lights up when the cover
+  is open, matching the on/off control on the same tile.
+- The position under a cover's name on a page keeps up with a moving blind. It used to refresh only when the cover
+  changed between opening, open, closing and closed, so it could show a stale percentage.
+- On the screen of a cover that cannot be opened or closed as a whole, a short press of the up or down key no longer
+  sends an open or close command the integration does not support.
+- The entity list used to add entities to a page or to manage the entities of an integration no longer shows the
+  results of a search term that was already changed. Typing quickly sent several searches and a slower answer could
+  arrive last and put its entities back into the list; answers that no longer belong to what is in the search field
+  are now discarded.
+- Reopening that entity list starts over: the search term and the entity type filters of the previous visit are
+  cleared. Before, the list came back showing every entity while the search field and the filter button still
+  claimed that a search and a filter were active.
+- Searching the available entities of an integration no longer makes the integration fetch all its entities again
+  for every typed character. The list is refreshed from the integration when it is opened, and searching, filtering
+  and scrolling use the entities the remote already has, which makes typing noticeably quicker with a slow or large
+  integration.
+
+---
+
+## v0.82.1 - 2026-09-15
+### Added
+- An integration setup no longer has a maximum duration: the setup dialog keeps the session alive, so a driver may
+  wait for the user as long as needed, and the session is renewed right away after a standby or a reconnect.
+  Requires a remote-core version with the integration setup keep-alive API; older versions behave as before.
+- The device language is sent to the integration driver when a setup starts, so a driver can return its setup pages
+  and error messages in the language of the remote.
+- A driver-provided error message is shown on the setup failure page instead of a generic error text, in the language
+  of the remote when available. The new setup error codes are covered: driver not available, invalid input, setup
+  aborted, integration already configured and operation not supported by the driver.
+- Rejected user input no longer ends the setup: the same page is shown again with the reason from the driver, so
+  the input can be corrected.
+- While the remote runs on battery, the setup dialog shows how much time is left before the setup ends, and warns
+  when a low battery shortens it.
+- A setup step the integration driver is working on can be cancelled: after a moment the waiting screen offers a
+  Cancel button, and BACK cancels as well.
+
+### Fixed
+- A cancelled integration setup no longer flashes the failure page while the setup dialog closes.
+- A setup event repeating the current page (e.g. when the charger is removed) no longer adds the page a second time.
+- Setup events of a session started by another client, e.g. the web-configurator, are no longer applied to the
+  setup dialog of the remote.
+
+## v0.82.0 - 2026-09-14
+### Added
+- The state of an activity itself can now be fixed, not only the state of its devices. Tapping an activity whose
+  start or stop sequence failed offers "Fix state without sending commands" next to "Turn activity on" / "Turn
+  activity off": the second level of that menu marks the activity as on or off without running any sequence, or
+  jumps straight to the device list of the activity's "Fix states" page. The "Fix states" page lists the activity
+  as its first row, so its state can be corrected from the activity screen as well, and the header of a failed
+  activity reads "Tap to fix". Requires a remote-core version with the `set_entity_state` API for activities.
+- The "Join other network" dialog and the WiFi password dialog can be filled with the d-pad: the SSID field, the
+  hidden network option, the security options and Cancel / Next / Join are walked in order, Return on a field submits
+  it and the on-screen keyboard follows the fields. This covers the WiFi settings and the WiFi page of the dock setup.
+- Pages can be managed with the d-pad: the page menu (long press on HOME) opens the page selector, a long press on
+  OK there enters the edit mode, where OK renames a page, a long press picks it up to move it with UP / DOWN, RIGHT
+  reveals its delete and DOWN past the last page reaches the "+" for a new page. In the page's own reorder mode OK
+  picks the selected tile up, UP / DOWN move it and BACK saves the order.
+- The profile list reaches the "+" for a new profile with DOWN, and a long press on OK opens a profile's menu
+  (rename, icon, delete). The rows above the settings menu on the profile page (profile, web configurator switch,
+  address, PIN, QR code) are reached with UP from the first menu entry. The icon selection walks its grid with the
+  d-pad, reaches the tabs with UP and Close with DOWN. The Back button of a failed software update is reachable.
+- The integration and dock setup forms can be filled with the d-pad: text fields, checkboxes and dropdowns are walked
+  in order, Return on a field moves to the next one, the on-screen keyboard follows the field and gets out of the way
+  of the buttons, a dropdown opens the same selection list as the other settings, and the finish screen, the
+  add-entities step, Cancel and Next are all reachable. BACK cancels the setup that is running instead of only
+  closing its popup.
+- Entity lists (adding entities to a page or a group, managing the entities of an integration) are walked with the
+  d-pad throughout: the rows, the filter button, Select all / Clear and Add / Remove. Groups can be created and
+  edited with the d-pad, including reordering their entities (OK picks a row up, UP / DOWN move it, OK drops it) and
+  removing one (long press on OK). The page menu (long press on HOME) offers the edit menu of the selected tile, so
+  rename, change icon, remove and the group editor are reachable without the touch screen.
+- The docks and integrations settings can be worked with the d-pad throughout: the "Add a new dock" and
+  "Add an integration" sheets, the discovery inside them, the dock and integration details with every action
+  in them (rename, identify, connect, LED brightness, password, factory reset, delete), the entity filter of
+  the entity lists, and the add-entities step of an integration setup. The delete drawer of a dock or
+  integration starts on Cancel so that deleting takes a deliberate second step.
+
+### Changed
+- The readiness check of an activity now has its own screens instead of a generic notification. The first screen
+  names the activity, says how many devices need attention and at which step the activity would stop; "What is
+  wrong" opens the predicted run step by step, with every device that will not react, the steps that are skipped
+  or not needed, and a mark where the run stops. Cancel and Proceed work from both screens, and the whole flow
+  can be operated with the keypad.
+- A failed activity or macro run now says what happened at a readable size: the name of the activity, the step it
+  stopped at, the device that did not react and the reason reported by the remote, followed by Close and Try again.
+  Try again repeats the same command in the same direction right away, without another readiness check. Tapping
+  anywhere still closes the screen, and both buttons work with the d-pad.
+- A device that does not react during an activity whose run carries on regardless is shown as it happens: the step
+  line turns orange with "No response · carrying on" under the device name, and the progress ring keeps an orange
+  notch at that step for the rest of the run. Before, such a step left no trace at all.
+
+### Fixed
+- The WiFi settings could not be walked with the d-pad past the WiFi band row: the known and other network
+  lists were stepped over, and the "Join other" button had no way to be selected. The lists now move their
+  own selection, and a scan result no longer rebuilds them every few seconds — a rebuild threw the selection
+  and the focus back to the top of the page. Saved and scanned networks are updated in place and listed
+  strongest signal first.
+- Selecting a settings row with the d-pad now brings the whole row on screen, title and description included,
+  instead of only the switch. At the end of a page DOWN scrolls on to the remaining content, and UP at the
+  top scrolls back. The value labels below the last slider of the power settings were cut off even by touch.
+- OK on the dock rename and password dialogs, the profile name, entity rename and group rename dialogs sent
+  the request twice: once for the d-pad handler and once for the input field's Return.
+- BACK in the profile rename, page add and page rename dialogs closed the list behind the dialog instead of
+  the dialog; the dialogs now own the input, and their Cancel / OK buttons are reachable with the d-pad.
+- The entity filter sheet and the add-entities step of an integration setup could not be left with the
+  keypad. HOME closes the profile PIN prompt.
+- BACK on a running dock or integration setup now cancels the setup instead of only closing the popup.
+- Closing a selection list in the localisation settings with BACK left its selection handler active, so the
+  next selection in any other list of that page was written into every setting whose list had been cancelled
+  before, e.g. a timezone id into the language, country and unit system. Core rejected these with "Invalid
+  language code format" and "unknown variant ``" errors, which also showed up as seemingly random errors while
+  navigating the language, country, timezone and unit system lists. The settings now refuse empty or unknown
+  values instead of sending them to core, and a localization update from core that lacks a field no longer
+  clears the cached value that the next change would send back empty.
+- An activity that failed or timed out while its screen was open never showed it. The screen header was meant to turn
+  red in that case, but the condition behind it asked for the activity to be in two states at once and could never be
+  true, so the colour had never appeared since it was written.
+- The "Tap for more" hint under the activity name was nearly invisible on that red header: its dim grey is made for
+  the black background. It is shown in the regular light text colour while the header is red.
+
+## v0.81.1 - 2026-09-01
+### Changed
+- The check that runs before an activity is switched on or off now asks the remote for its full readiness report
+  instead of guessing from the list of devices in the sequence. The message names what is actually wrong — a
+  disconnected integration, an unavailable dock or IR emitter, Bluetooth being off, a device deleted after the
+  activity was set up — with the device names in the display language, and lists one line per problem instead of one
+  per affected device. Activities that only look unready are no longer reported: a device that is already in the
+  wanted state, and infrared or macro steps that have no integration to check, are now understood by the check.
+
+## v0.81.0 - 2026-09-01
+### Added
+- The initial setup suggests countries where the chosen language is spoken: after picking e.g. "Deutsch", Germany,
+  Austria, Switzerland and the other German-speaking countries appear at the top of the country list, with the most
+  likely one preselected. All other countries follow alphabetically, and searching by name or two-letter country code
+  still finds any of them.
+- Countries with a single timezone — about two thirds of all countries — no longer show a timezone list at all during
+  setup. A confirmation card shows the derived timezone ("Switzerland — Zurich · GMT+01:00") and one press continues.
+  Countries with several timezones show only their own zones, labelled with the city and GMT offset instead of raw
+  identifiers like "America/New_York", sorted east to west. An "All timezones…" entry keeps every zone reachable for
+  special cases, during setup and in the localisation settings.
+- The language list opens with the current language preselected, in the setup and when returning to it.
+
+### Fixed
+- The timezone list offered during setup and in the localisation settings contained more than a hundred unrelated
+  entries: every timezone in the world that happened to share the UTC offset of the selected country was listed, and
+  the list even changed with daylight saving time. Only the timezones of the selected country are listed now.
+- Country names in the country list were often shown in the wrong language. They now follow the selected UI language,
+  with English as the fallback.
+
+## v0.80.0 - 2026-08-30
+### Fixed
+- Remote entities did not pick up the `send_cmd` and `toggle` features reported by an integration, and remote and
+  activity entities did not pick up `on_off`. The features were discarded as unsupported.
+- Voice assistant entities did not pick up the `transcription` feature, so the spoken command was never shown as text.
+- Binary sensors with the `garage_door` device class fell back to a generic on/off sensor instead of showing
+  "Opened" / "Closed".
+- Activities containing infrared remotes, IR emitters or macros in their start or stop sequence always stopped with
+  "Some devices are not ready" since v0.76.0. Those entities belong to the remote itself and have no integration
+  that could be connected; they are left out of the readiness check again, as before v0.76.0.
+
+
+## v0.79.0 - 2026-08-27
+### Added
+- "Fix states" in the activity menu is now working: tapping an entity lets you record that the device is on or off,
+  without sending any command to it. Use it when the remote's idea of a device's state drifted from reality, e.g. an
+  IR-controlled device that was switched with its original remote, so that the next activity powers it on or off
+  correctly. Only entities with an on/off state are listed (switches, lights, climates, media players, remotes and
+  activities); sensors, buttons, macros and the like are left out. Requires a remote-core version with the
+  `set_entity_state` API
+- The activity menu ("Tap for more") can be used with the d-pad: up / down move over "Fix states" and the included
+  entities, the middle button opens the selected entry, BACK returns from the "Fix states" list to the menu and
+  closes the menu from there
+
+### Fixed
+- The initial setup screens could not be operated with the d-pad: the terms & conditions, WiFi network, dock discovery
+  and results, integration and final screens only reacted to touch. Every setup step now navigates with the d-pad and
+  selects with the OK button, the same way the settings pages do, and BACK returns to the previous step.
+- The final "You're all set" setup screen could not be scrolled, so in languages with a longer description than English
+  the "Done" button was pushed off the display and could not be reached. The screen now scrolls.
+- The keypad selection outline is only shown once the d-pad is used and disappears again as soon as the screen is
+  touched, so a screen opened by touch no longer starts with a highlighted control or PIN digit.
+- The buttons of the "Profile already exists" prompt during the initial setup overlapped each other in languages
+  with longer labels.
+- The "Useful tips" shown after the initial setup were English-only images; they are now regular, translatable
+  screens that cover the whole display instead of leaving a strip of the main screen visible below them.
+- The d-pad LEFT/RIGHT keys switched the pages behind the tips when the tips were shown right after the initial
+  setup; they now only move between the tips.
+- Joining a WiFi network during the initial setup always ended with "Failed to connect", even with the correct
+  password, while the very same network could be joined from Settings afterwards. The setup screen gave up after three
+  seconds and deleted the network it was in the middle of connecting to. It now waits for the remote to report the
+  result and only treats the join as failed on a wrong password, a network that cannot be found, or after a realistic
+  timeout
+- The administrator PIN keypad in the onboarding drew a permanent outline around the "1" key that could not be moved
+  or dismissed, and did not react to the d-pad at all. The outline is now only shown once the d-pad is used, moves
+  with up / down / left / right, and the middle button enters the outlined digit. Entering the PIN by touch shows no
+  outline. This applies to every PIN keypad: the onboarding, the "Administrator PIN" settings screen, and the
+  administrator PIN prompt when switching to a profile from a restricted one, which did not react to the d-pad
+  before and can now also be cancelled with the BACK button
+- The BACK button returns to the previous step from the administrator PIN step of the onboarding, like on the other
+  steps
+
+## v0.78.0 - 2026-08-25
+### Added
+- Full translation texts for every language, and Finnish as a new language.
+### Fixed
+- The on-screen keyboard closed after every single letter typed into the search field of a media player's browse
+  screen, so a search term had to be entered one letter at a time, tapping the search field again in between. The
+  keyboard now stays open until the search is submitted with its "Search" key, the back button is pressed, or the
+  result list is tapped
+- Searching a media player no longer brings up the full-screen loading indicator, which blocked the whole screen —
+  including the keyboard — whenever a search took longer than half a second. Searching now shows a small indicator
+  above the results instead
+- A media search that failed, timed out, or was sent while the remote was not connected to the core left the
+  loading indicator spinning and the remote unresponsive for minutes. Such a search now reports the failure right
+  away, and its "Retry" option repeats the search instead of reloading the browse screen
+- A media search error other than "not found" or a timeout closed the whole browse screen, discarding the search
+  term. The screen now stays open so the term can be corrected
+- Results of a slower earlier search could replace the results of the term that was actually typed
+- Clearing the search field with its ✕ button closed the keyboard as well
+- The up, down and middle keypad buttons moved and opened entries in the result list hidden behind the keyboard.
+  While the keyboard is up the middle button now runs the search, and up and down do nothing
+- The d-pad acted on the screen behind a popup as well as on the popup itself: moving up and down in a selection list,
+  for example the WiFi band or any of the Localisation settings, also moved the selection on the page underneath, and
+  the middle button could reopen the list that was already open
+- Leaving the release notes of a software update left the screen without a selection, so the d-pad did nothing until
+  the settings were closed and opened again. Coming back from any settings screen now returns to the entry the screen
+  was left from
+- Holding the d-pad down on the Localisation settings did not move the selection until the button was released, and a
+  single press only took effect a moment later
+- The Regulatory, Terms, Warranty and Licenses screens scrolled their text off the top when it was shorter than the
+  screen
+- The Microphone and Speech response switches in the voice control settings were missing the check mark that every
+  other switch shows when it is turned on
+
+## v0.77.0 - 2026-08-17
+### Added
+- New user interface setting "Open activities started with the API": when an activity is turned on from outside the
+  remote, its screen is opened right away, replacing whatever is currently on screen. Activities started on the remote
+  keep opening their screen as before
+### Fixed
+- A button pressed while the remote is asleep reported "device is not responding" the moment the remote woke up.
+  Such a command is now sent again for the whole interval configured under Power, and only reported as failed if it
+  has not gone through by the end of it. This also covers the press that wakes the remote in the first place, which
+  happens before the remote knows it is awake again and was therefore never retried
+- A command sent while the remote is not connected to the core disappeared without any reaction at all: no retry, no
+  error and no loading indicator
+- The loading indicator could keep spinning forever after an entity was deleted or the connection to the core was
+  lost, and sending the same command again was refused while it did
+- Holding down a button on an unreachable device queued up one "device is not responding" prompt per repeat, and
+  offered to send button presses again long after they were released
+- Retrying a command with the middle d-pad button left the notification behind, which then silently suppressed every
+  later message about the same device
+- Starting an activity whose start sequence fails could spin forever without ever showing an error. This happened
+  with a sequence of a single command, for example one infrared command sent to a dock that is not connected:
+  starting such an activity again after it had already failed never reported the second failure
+- The activity start screen now names the reason a step failed, for example "Connection to dock not established",
+  instead of only stating that something went wrong
+- The activity start screen kept spinning when the entity became unavailable mid-sequence, for instance after the
+  connection to the core was lost
+- Starting or stopping an activity with the button press that wakes the remote asked "Some devices are not ready"
+  straight away. The readiness check now waits for the devices of the activity to come back for the whole interval
+  configured under Power, the same budget a single command gets, and only asks once that interval has passed
+- The readiness check reported an activity as ready when neither its devices nor their integrations were known to the
+  remote yet, which is exactly the case right after a wakeup, and started the activity into devices that were all
+  still disconnected
+- Pressing an activity, or the power button, several times while its devices were still coming back after a wakeup
+  ran the sequence once per press
+- Turning an activity off from its own screen while its devices were not ready left the activity screen open after
+  choosing Proceed
+- A power button press made on a sleeping remote was dropped when the wakeup took longer than two seconds, even with
+  a longer interval configured under Power
+
+---
+
+## v0.76.0 - 2026-08-12
+### Added
+- Hidden network option when joining a WiFi network by entering its name
+- WiFi security can be chosen when joining a network by entering its name: None, Auto, WPA/WPA2 Personal,
+  WPA2/WPA3 Personal and, on the Remote 3, WPA3 Personal. Auto leaves the choice to the remote and is preselected
+- Switches, checkboxes and buttons in the settings can now be operated with the middle d-pad button
+- WiFi networks can be selected and joined with the d-pad, including the "Join other" and "Delete all networks" buttons
+- The administrator PIN can be entered with the d-pad
+- The "Add a new dock" and "Add an integration" panels can be opened with the d-pad
+- The dock and integration detail screens can be scrolled with the d-pad
+
+### Fixed
+- The release notes of a software update could not be closed with the back button
+- Settings screens now scroll along when the d-pad moves the selection below the visible area
+- The Voice Control settings did not react to the d-pad at all
+- On the WiFi settings screen the d-pad stopped at "Active WiFi scanning" and could not reach the rest of the screen
+- The 24-hour time setting could not be changed with the d-pad
+- On the Software update screen a single d-pad press both scrolled the screen and moved the selection
+- The About screen could not be scrolled, hiding entries on smaller screens
+- Pressing the middle d-pad button on an empty dock or integration list did nothing instead of failing silently
+- Settings screens occasionally opened with nothing selected, leaving the d-pad without effect
+- Known WiFi networks always showed a full signal strength instead of the measured one
+- A WiFi network reachable through several access points showed the signal strength of an arbitrary one instead of
+  the strongest, and every additional access point kept memory allocated until the remote was restarted
+- Joining a WiFi network from the list could configure the wrong network, or fail, if its name contains characters
+  the remote cannot display. Two networks in range sharing such a displayed name were also shown as one entry
+
+## v0.75.0 - 2026-08-07
+### Added
+- Portuguese translation
+
+### Fixed
+- The Spanish, Norwegian, Polish and Swedish translations could not be selected
+
+---
+## v0.74.5 - 2026-07-28
+### Breaking Changes
+- The Git history of this repository was rewritten to remove a file that may not be redistributed.
+  Commits from v0.62.1 to v0.74.5 have new commit IDs.
+  Older commits, all tags and all releases are unchanged, and the application itself is not affected by the rewrite.
+  An existing clone cannot be updated with `git pull` and has to be reset.
+
+  <details>
+
+  <summary>Git CLI instructions</summary>
+
+  ```shell
+  # 1. Check that "origin" is this repository. If you cloned your own fork, "origin" is that fork,
+  #    which is not rewritten: use the remote that points here (usually "upstream") in the commands
+  #    below, and reset your fork afterwards in the same way.
+  git remote -v
+
+  # 2. For each branch of your own, note where it branched off main, while main is still the old one.
+  git merge-base main <your-branch>
+
+  # 3. Replace main with the rewritten history. Do not use git pull or git merge here: the old and
+  #    the new history are unrelated, and merging them brings the removed file back.
+  git fetch origin
+  git switch main
+  git reset --hard origin/main
+
+  # 4. Move your own commits onto the new main, using the commit noted in step 2.
+  git rebase --onto main <commit-from-step-2> <your-branch>
+
+  # 5. Remove the old commits, and the removed file with them, from your clone.
+  git reflog expire --expire=now --all
+  git gc --prune=now
+  ```
+
+  </details>
+
+### Added
+- Spanish, Norwegian, Polish and Swedish translations
+
+---
+## v0.74.4 - 2026-07-27
+### Fixed
+- The touch slider did nothing when an activity mapped it to a light or a cover without picking a feature explicitly
+
+---
+## v0.74.3 - 2026-07-27
+### Fixed
+- The home screen jumped into the activity header area when the header resized, for example when starting or stopping an activity
+
+---
+## v0.74.2 - 2026-07-25
+### Fixed
+- Touch slider not working for lights in acitivites
+- Page incorreclty jumps to top over boundaries
+
+---
+## v0.74.1 - 2026-07-22
+### Added
+- A loading indicator on the home screen and on the entity while a command is running or being retried in the background after waking from suspend
+
+### Fixed
+- The settings menu could not be scrolled when it had more entries than fit on screen
+- Could not join a WiFi network during onboarding because a background scan removed the selected network before the join completed
+
+---
+## v0.74.0 - 2026-07-21
+### Added
+- A Touch Slider settings screen to adjust the slider sensitivity per use case (volume, brightness, cover position, seek) with a live test area
+- Smoother and more precise touch slider tracking that follows your finger movement
+
+### Fixed
+- The touch slider did not control brightness for dimmable lights
+- The touch slider could silently stop working until the volume was changed with the buttons
+- The touch slider could stop responding after the remote woke from suspend
+- Volume kept adjusting after releasing the button when controlling a device via IR
+- The dock detail view showed the wrong dock image
+- Starting an activity could show an error that repeats the same device name over and over
+- The media widget in the activity header sometimes stayed empty
+- Some media player features were missing or not recognized
+- Shuffle and repeat did not work on speakers
+- Some media types were not recognized and media browsing could fail to open items with special characters in their names
+- Profile pages could fail to load
+- Button presses were sometimes handled incorrectly, including power off on long press
+- The web configurator PIN could show up with fewer than 4 digits
+- The remote could slow down over long use (memory is now released properly after Wi-Fi scanning and voice playback)
+- Voice control could stop responding after audio playback
+- Devices could show outdated information after the remote reconnected or an integration was reconfigured
+- General stability improvements
+
+### Changed
+- All devices are now loaded when the remote starts, so pages and widgets are ready right away
+- Smoother scrolling and a more responsive interface, especially while media is playing
+- Album art loads faster
+- Faster and more responsive touch slider
+- Passwords, PINs and tokens are no longer written to the device logs
+- New translation platform (SimpleLocalize) for community translations
+
+---
 ## v0.73.5 - 2026-06-05
 ### Changed
 - Standby state change detection for command retry logic

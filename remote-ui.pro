@@ -5,6 +5,11 @@ static {
     QT += svg
 }
 
+win32 {
+    # Console subsystem: Qt's log output goes to the console the app was started from, or to a new console window
+    # when double-clicked. A Windows GUI application has no stderr and Qt would only log to the debugger.
+    # CONFIG += console
+}
 macx {
     CONFIG+=sdk_no_version_check
     # There seems no other way to change the taskbar & app switcher name
@@ -95,17 +100,14 @@ HEADERS += \
     src/dock/discoveredDocks.h \
     src/dock/dockController.h \
     src/hardware/activitySessionKeeper.h \
-    src/hardware/battery.h \
     src/hardware/haptic.h \
     src/hardware/hardwareController.h \
-    src/hardware/info.h \
     src/hardware/phantomWakeSuppressor.h \
-    src/hardware/power.h \
     src/hardware/touchSlider.h \
     src/hardware/ucr2/hapticUCR2.h \
     src/hardware/ucr2/hapticUCR3.h \
+    src/hardware/ucr3/touchSliderEventFilter.h \
     src/hardware/ucr3/touchSliderUCR3.h \
-    src/hardware/wifi.h \
     src/integration/confirmationPage.h \
     src/integration/integrationController.h \
     src/integration/integrationDrivers.h \
@@ -114,32 +116,44 @@ HEADERS += \
     src/logging.h \
     src/hardware/hardwareModel.h \
     src/softwareupdate/softwareUpdate.h \
+    src/system/battery.h \
+    src/system/info.h \
+    src/system/power.h \
+    src/system/wifi.h \
     src/translation/translation.h \
     src/ui/colors.h \
+    src/ui/devDockToggle.h \
     src/ui/entity/availableEntities.h \
     src/ui/entity/configuredEntities.h \
     src/ui/entity/entities.h \
     src/ui/entity/activity.h \
     src/ui/entity/button.h \
     src/ui/entity/climate.h \
+    src/ui/entity/commandRetryPolicy.h \
     src/ui/entity/cover.h \
     src/ui/entity/entitiesProxy.h \
     src/ui/entity/entity.h \
+    src/ui/entity/entityCommandPolicy.h \
+    src/ui/entity/entityScreens.h \
     src/ui/entity/light.h \
     src/ui/entity/macro.h \
     src/ui/entity/mediaPlayer.h \
     src/ui/entity/remote.h \
     src/ui/entity/select.h \
     src/ui/entity/sensor.h \
+    src/ui/entity/sequenceReadinessReport.h \
     src/ui/entity/sequenceStep.h \
     src/ui/entity/switch.h \
     src/ui/entity/entityController.h \
     src/ui/entity/voiceAssistant.h \
+    src/ui/entity/voiceSession.h \
     src/ui/fonts.h \
+    src/ui/iconFont.h \
     src/ui/group/group.h \
     src/ui/group/groupController.h \
     src/ui/group/groupItem.h \
     src/ui/inputController.h \
+    src/ui/mediaImageProvider.h \
     src/ui/notification.h \
     src/ui/onboardingController.h \
     src/ui/page/page.h \
@@ -175,46 +189,55 @@ SOURCES += \
         src/dock/discoveredDocks.cpp \
         src/dock/dockController.cpp \
         src/hardware/activitySessionKeeper.cpp \
-        src/hardware/battery.cpp \
         src/hardware/haptic.cpp \
         src/hardware/hardwareController.cpp \
-        src/hardware/info.cpp \
         src/hardware/phantomWakeSuppressor.cpp \
-        src/hardware/power.cpp \
         src/hardware/touchSlider.cpp \
         src/hardware/ucr2/hapticUCR2.cpp \
         src/hardware/ucr2/hapticUCR3.cpp \
+        src/hardware/ucr3/touchSliderEventFilter.cpp \
         src/hardware/ucr3/touchSliderUCR3.cpp \
-        src/hardware/wifi.cpp \
         src/integration/confirmationPage.cpp \
         src/integration/setupSchema.cpp \
         src/logging.cpp \
         src/main.cpp \
         src/softwareupdate/softwareUpdate.cpp \
+        src/system/battery.cpp \
+        src/system/info.cpp \
+        src/system/power.cpp \
+        src/system/wifi.cpp \
         src/translation/translation.cpp \
         src/ui/colors.cpp \
+        src/ui/devDockToggle.cpp \
         src/ui/entity/availableEntities.cpp \
         src/ui/entity/configuredEntities.cpp \
         src/ui/entity/entities.cpp \
         src/ui/entity/activity.cpp \
         src/ui/entity/button.cpp \
         src/ui/entity/climate.cpp \
+        src/ui/entity/commandRetryPolicy.cpp \
         src/ui/entity/cover.cpp \
         src/ui/entity/entitiesProxy.cpp \
         src/ui/entity/entity.cpp \
+        src/ui/entity/entityCommandPolicy.cpp \
+        src/ui/entity/entityScreens.cpp \
         src/ui/entity/light.cpp \
         src/ui/entity/macro.cpp \
         src/ui/entity/mediaPlayer.cpp \
         src/ui/entity/remote.cpp \
         src/ui/entity/select.cpp \
         src/ui/entity/sensor.cpp \
+        src/ui/entity/sequenceReadinessReport.cpp \
         src/ui/entity/switch.cpp \
         src/ui/entity/entityController.cpp \
         src/ui/entity/voiceAssistant.cpp \
+        src/ui/entity/voiceSession.cpp \
         src/ui/group/group.cpp \
         src/ui/group/groupController.cpp \
         src/ui/group/groupItem.cpp \
+        src/ui/iconFont.cpp \
         src/ui/inputController.cpp \
+        src/ui/mediaImageProvider.cpp \
         src/integration/integrationController.cpp \
         src/integration/integrationDrivers.cpp \
         src/integration/integrations.cpp \
@@ -266,26 +289,20 @@ macx {
 }
 
 # === start TRANSLATION section =======================================
-# madalone (v1.4.28, audit-driven): added 5 previously-orphaned locales —
-# es_ES (~99.5% complete), no_NO, pl_PL, pt_PT, sv_SE (all 86-90% complete).
-# These .ts files existed in resources/translations/ but were not declared
-# here, so lupdate never refreshed them and lrelease never compiled them
-# to .qm. Qt falls back to en_US for missing strings; partial coverage is
-# acceptable while these stale-string gaps get filled in over time.
-# See audit-v1.4.26-thorough.md Finding 2.
 TRANSLATIONS += resources/translations/da_DK.ts \
                resources/translations/de_DE.ts \
                resources/translations/de_CH.ts \
                resources/translations/en_US.ts \
-               resources/translations/es_ES.ts \
-               resources/translations/fr_FR.ts \
                resources/translations/hu_HU.ts \
-               resources/translations/it_IT.ts \
                resources/translations/nl_NL.ts \
+               resources/translations/fi_FI.ts \
+               resources/translations/fr_FR.ts \
+               resources/translations/it_IT.ts \
+               resources/translations/es_ES.ts \
                resources/translations/no_NO.ts \
                resources/translations/pl_PL.ts \
-               resources/translations/pt_PT.ts \
-               resources/translations/sv_SE.ts
+               resources/translations/sv_SE.ts \
+               resources/translations/pt_PT.ts
 
 # -----------------------------------------------------------------------------
 # Qt Linguist tools
@@ -359,15 +376,26 @@ macx {
 linux {
     platform_path = linux
 }
+win32 {
+    platform_path = windows
+}
 
 BUILD_DEBUG {
     build_path = debug
 } else {
     build_path = release
 }
-
 DESTINATION_PATH = $${platform_path}-$${processor_path}/$$build_path
 message(Dest path: $${DESTINATION_PATH})
+
+# Intermediate files (objects, moc, rcc, ui) of static and dynamic builds must not be shared: switching between a
+# static and a dynamic Qt would otherwise reuse stale objects. Only the intermediate path gets the suffix, the
+# binary output path (DESTDIR) must stay as is: the Remote Two cross-compile toolchain and the GitHub workflow
+# rely on the default `binaries/linux-arm64/release` for the static device build.
+INTERMEDIATE_PATH = $$DESTINATION_PATH
+static {
+    INTERMEDIATE_PATH = $${DESTINATION_PATH}-static
+}
 
 # Configure destination path
 DESTDIR = $$(UC_BIN)
@@ -387,8 +415,7 @@ isEmpty(DESTDIR) {
     message(UC_BIN defined '$$DESTDIR' as binary output directory.)
 }
 
-OBJECTS_DIR = $$PWD/build/$$DESTINATION_PATH/obj
-MOC_DIR = $$PWD/build/$$DESTINATION_PATH/moc
-RCC_DIR = $$PWD/build/$$DESTINATION_PATH/qrc
-UI_DIR = $$PWD/build/$$DESTINATION_PATH/ui
-
+OBJECTS_DIR = $$PWD/build/$$INTERMEDIATE_PATH/obj
+MOC_DIR = $$PWD/build/$$INTERMEDIATE_PATH/moc
+RCC_DIR = $$PWD/build/$$INTERMEDIATE_PATH/qrc
+UI_DIR = $$PWD/build/$$INTERMEDIATE_PATH/ui

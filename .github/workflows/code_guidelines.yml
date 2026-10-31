@@ -1,27 +1,74 @@
-# GitHub Action that verifies C++ source compliance with cpplint
+# GitHub Action that verifies C++ source compliance with cpplint, the icon font, and the QML sources
+# against the design system rules (tools/design-check.py)
 
 name: Code Guidelines
 on:
+  # Only main is checked on push: a feature branch is checked by its pull request
   push:
+    branches:
+      - main
     paths:
       - .github/workflows/code_guidelines.yml
       - src/**.cpp
       - src/**.h
+      - src/qml/**
+      - resources/icons/**
+      - tools/icon-font.py
+      - tools/design-check.py
+      - tools/design-check-allow.txt
   pull_request:
     paths:
       - .github/workflows/code_guidelines.yml
       - src/**.cpp
       - src/**.h
+      - src/qml/**
+      - resources/icons/**
+      - tools/icon-font.py
+      - tools/design-check.py
+      - tools/design-check-allow.txt
+  # Allow a manual run from the Actions tab. Path filters don't apply to a manual run.
+  workflow_dispatch:
+
+# Avoid duplicate and superseded runs: a feature branch is only checked through its pull
+# request, and a new push to it cancels the previous run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+# Least privilege default for the job token.
+permissions:
+  contents: read
 
 jobs:
   cpplint:
-    runs-on: ubuntu-22.04
+    runs-on: ubuntu-24.04
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: '3.11'
-      - run: python -m pip install cpplint
+      - run: python -m pip install cpplint fonttools
+
+      # The repository is GPLv3: only the Free edition of the icon font may be committed. The
+      # licensed Pro font is a file the firmware installs on the device (docs/icon-font.md).
+      - name: Verify the embedded icon font
+        run: python tools/icon-font.py check --require-free
+
+      # The icon name mapping is generated from the Font Awesome package plus the overrides file;
+      # every uc: name the sources use must be in it, and every fallback must be drawable.
+      - name: Verify the icon mapping
+        run: python tools/icon-font.py check-mapping
+
+      # The QML sources keep the rules of the design system (docs/design-system.md section 8): no text
+      # below 22 px, only colour tokens, no Qt.lighter / Qt.darker. The self-test first proves that
+      # every rule still catches a seeded violation.
+      - name: Design system check
+        run: |
+          python tools/design-check.py --self-test
+          python tools/design-check.py
+
       - name: cpplint
         shell: python
         run: |

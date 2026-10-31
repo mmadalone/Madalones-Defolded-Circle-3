@@ -25,6 +25,7 @@ Popup {
 
     onOpened: {
         mouseArea.enabled = false;
+        activityLoading.retrySelected = false;
         buttonNavigation.takeControl();
     }
 
@@ -32,13 +33,20 @@ Popup {
         buttonNavigation.releaseControl();
 
         if (!activityLoading.isMacro && entityObj.state === ActivityStates.On) {
-            loadSecondContainer("qrc:/components/entities/" + entityObj.getTypeAsString() + "/deviceclass/" + entityObj.getDeviceClass() + ".qml", { "entityId": entityId, "entityObj": entityObj });
+            loadSecondContainer(EntityController.screenUrl(entityObj), { "entityId": entityId, "entityObj": entityObj });
         }
 
         activityLoading.entityId = "";
         activityLoading.isMacro = false;
+        // without this the next run starts with the state the previous one ended in
+        activityLoading.prevState = ActivityStates.Unknown;
         activityLoading.stepIcon = "";
         activityLoading.stepName = "";
+        activityLoading.cmdId = "";
+        activityLoading.failed = false;
+        activityLoading.retrySelected = false;
+        activityLoading.stepFailed = false;
+        activityLoading.failedSteps = [];
 
         dotOK.width = 0;
         dotOK.height = 0;
@@ -56,6 +64,29 @@ Popup {
         errorText.opacity = 0;
 
         activityLoading.entityObj.clearCurrentStep();
+
+        // "Try again" parks the run here: the command is only sent once the screen is reset, so that the
+        // startedRunning path finds the popup closed and reopens it with a fresh ring
+        if (activityLoading.pendingRetry) {
+            const retry = activityLoading.pendingRetry;
+            activityLoading.pendingRetry = null;
+
+            // the activity may have been deleted while the error screen was up
+            const target = EntityController.get(retry.entityId);
+
+            if (!target) {
+                return;
+            }
+
+            if (retry.isMacro) {
+                activityLoading.start(retry.entityId, EntityTypes.Macro, "macro.run");
+                target.run();
+            } else if (retry.cmdId === "activity.off") {
+                target.turnOff();
+            } else {
+                target.turnOn();
+            }
+        }
     }
 
     Connections {
@@ -82,19 +113,12 @@ Popup {
 
             if ((entityObj.state === (activityLoading.isMacro ? MacroStates.Completed : ActivityStates.Completed)) || (!activityLoading.isMacro && (entityObj.state === ActivityStates.On || entityObj.state === ActivityStates.Off)) ) {
                 activityLoading.end(false);
-            } else if (entityObj.state === (activityLoading.isMacro ? MacroStates.Error : ActivityStates.Error)) {
+            } else if (entityObj.state === (activityLoading.isMacro ? MacroStates.Error : ActivityStates.Error)
+                       || entityObj.state === ActivityStates.Unavailable) {
+                // Unavailable ends the run as well: the entity dropped out from under the sequence, for
+                // example because the connection to the core was lost, and no further state is coming
                 activityLoading.end(true);
-
-                switch (entityObj.state) {
-                default:
-                case MacroStates.Error:
-                case ActivityStates.Error:
-                    errorText.text = qsTr("There was an error during the sequence.");
-                    break;
-                case ActivityStates.Timeout:
-                    errorText.text = qsTr("The sequence timed out.");
-                    break;
-                }
+                errorText.text = activityLoading.sequenceErrorText();
             }
 
             activityLoading.prevState = entityObj.state;
@@ -103,21 +127,23 @@ Popup {
         function onCurrentStepChanged() {
             console.info("Current step changed: " + entityObj.currentStep.commandId);
 
-            let stepEntityObj = EntityController.get(entityObj.currentStep.entityId);
-            if (!stepEntityObj) {
-                EntityController.load(entityObj.currentStep.entityId);
-                connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                    if (success && entityId == entityObj.currentStep.entityId) {
-                        stepEntityObj = EntityController.get(entityObj.currentStep.entityId);
-                        activityLoading.stepIcon = stepEntityObj ? stepEntityObj.icon : "uc:triangle-exclamation";
-                        activityLoading.stepName = stepEntityObj ? stepEntityObj.name : "N/A";
-                    }
-                });
-                return;
-            }
-
+            const step = entityObj.currentStep;
+            const stepEntityObj = EntityController.get(step.entityId);
             activityLoading.stepIcon = stepEntityObj ? stepEntityObj.icon : "uc:triangle-exclamation";
-            activityLoading.stepName = stepEntityObj ? stepEntityObj.name : "N/A";
+            //: Shown for a step whose device cannot be resolved, e.g. because it was deleted.
+            activityLoading.stepName = stepEntityObj ? stepEntityObj.name : qsTr("Unknown device");
+
+            // A step that fails while the run carries on (error policy "continue") would otherwise leave no
+            // trace: the screen only reacts to the state turning Error. Mark the step as it happens and keep
+            // a notch on the ring for the rest of the run.
+            const running = entityObj.state === (activityLoading.isMacro ? MacroStates.Running : ActivityStates.Running);
+            const hasError = step.errorCode > 0 || step.errorMessage !== "" || step.error !== "";
+            activityLoading.stepFailed = running && hasError;
+
+            if (activityLoading.stepFailed && activityLoading.failedSteps.indexOf(step.index) < 0) {
+                activityLoading.failedSteps = activityLoading.failedSteps.concat([step.index]);
+                canvas.requestPaint();
+            }
         }
     }
 
@@ -125,9 +151,9 @@ Popup {
         target: EntityController
         ignoreUnknownSignals: true
 
-        function onActivityStartedRunning(entityId) {
+        function onActivityStartedRunning(entityId, cmdId) {
             if (activityLoading.closed) {
-                activityLoading.start(entityId, EntityTypes.Activity);
+                activityLoading.start(entityId, EntityTypes.Activity, cmdId);
             }
         }
     }
@@ -146,15 +172,50 @@ Popup {
                 }
             }
         }
+
+        // nothing reacts to the d-pad while the run is still going: the buttons only exist once it failed
+        Component.onCompleted: {
+            buttonNavigation.extendDefaultConfig({
+                "DPAD_LEFT": {
+                    "pressed": function() {
+                        if (activityLoading.failed) {
+                            activityLoading.retrySelected = false;
+                        }
+                    }
+                },
+                "DPAD_RIGHT": {
+                    "pressed": function() {
+                        if (activityLoading.failed) {
+                            activityLoading.retrySelected = true;
+                        }
+                    }
+                },
+                "DPAD_MIDDLE": {
+                    "pressed": function() {
+                        if (!activityLoading.failed) {
+                            return;
+                        }
+
+                        if (activityLoading.retrySelected) {
+                            activityLoading.retry();
+                        } else {
+                            activityLoading.close();
+                        }
+                    }
+                }
+            });
+        }
     }
 
-    function start(entityId, type) {
+    // cmdId is the command the run was started with: "activity.on", "activity.off" or "macro.run"
+    function start(entityId, type, cmdId = "macro.run") {
         if (type !== EntityTypes.Activity) {
             isMacro = true;
             console.debug("Entity type is macro");
         }
 
         activityLoading.entityId = entityId;
+        activityLoading.cmdId = cmdId;
         activityLoading.entityObj = EntityController.get(entityId);
         entityConnection.enabled = true;
 
@@ -167,13 +228,51 @@ Popup {
         activityLoading.open();
     }
 
+    // The core reports why a command step failed, for example "Connection to dock not established". The
+    // generic text is only used when it does not, otherwise the screen would tell the user nothing about
+    // what went wrong.
+    function sequenceErrorText() {
+        const step = activityLoading.entityObj ? activityLoading.entityObj.currentStep : null;
+
+        if (!step) {
+            return qsTr("There was an error during the sequence.");
+        }
+
+        if (step.errorMessage !== "") {
+            if (step.errorCode > 0) {
+                //: %1 is an error message reported by the device, %2 the error code
+                return qsTr("%1 (error %2)").arg(step.errorMessage).arg(step.errorCode);
+            }
+
+            return step.errorMessage;
+        }
+
+        if (step.errorCode > 0) {
+            //: %1 is an error code reported by the device
+            return qsTr("There was an error during the sequence. Error code: %1").arg(step.errorCode);
+        }
+
+        return qsTr("There was an error during the sequence.");
+    }
+
+    // Repeats the run that just failed. The user has already been through the readiness decision, so the
+    // command goes out directly - no check in between. The popup's exit transition still runs and onClosed
+    // resets every property afterwards: sending the command now would have onClosed wipe the new run, and
+    // the screen would not reopen either as the popup is not closed yet. The run is parked for onClosed.
+    function retry() {
+        activityLoading.pendingRetry = {
+            entityId: activityLoading.entityId,
+            cmdId: activityLoading.cmdId,
+            isMacro: activityLoading.isMacro
+        };
+        activityLoading.close();
+    }
+
     function end(error) {
         console.debug("Activity loading end");
         if (error) {
+            activityLoading.failed = true;
             errorAnimation.start();
-            ui.setTimeOut(1000, function () {
-                errorText.text += "\n" + qsTr("Tap to close");
-            });
         } else {
             successAnimation.start();
         }
@@ -183,10 +282,20 @@ Popup {
 
     property bool isMacro: false
     property string entityId
+    property string cmdId: ""
     property int prevState: ActivityStates.Unknown
     property QtObject entityObj
     property string stepIcon: ""
     property string stepName: ""
+    // the run ended in an error: the screen shows what failed and offers Close and Try again
+    property bool failed: false
+    // keypad selection of the two buttons; Close is preselected
+    property bool retrySelected: false
+    property var pendingRetry: null
+    // the current step reported an error but the run carries on
+    property bool stepFailed: false
+    // indices of the steps that failed while the run carried on, for the notches on the ring
+    property var failedSteps: []
 
     enter: Transition {
         NumberAnimation { property: "opacity"; from: 0.0; to: 1.0; easing.type: Easing.InExpo; duration: 200 }
@@ -257,6 +366,8 @@ Popup {
         height: ui.height
         anchors.bottom: parent.bottom
         spacing: 10
+        // above the tap-anywhere area below, so the buttons get their taps and everything else falls through
+        z: 1
 
         Item {
             Layout.fillWidth: true
@@ -311,8 +422,24 @@ Popup {
 
                     ctx.beginPath();
                     ctx.arc(x, y, radius, startAngle, progressAngle);
-                    ctx.strokeStyle = colors.primaryButton;
+                    ctx.strokeStyle = colors.buttonPrimary;
                     ctx.stroke();
+
+                    // the slices of the steps that stayed silent, so the ring keeps the record of the run
+                    if (entityObj && entityObj.totalSteps > 0) {
+                        const slice = 2 * Math.PI / entityObj.totalSteps;
+
+                        ctx.lineCap = 'butt';
+                        ctx.strokeStyle = colors.orange;
+
+                        for (let i = 0; i < activityLoading.failedSteps.length; i++) {
+                            const index = activityLoading.failedSteps[i];
+
+                            ctx.beginPath();
+                            ctx.arc(x, y, radius, startAngle + slice * (index - 1), startAngle + slice * index);
+                            ctx.stroke();
+                        }
+                    }
                 }
 
                 Behavior on angle {
@@ -407,27 +534,32 @@ Popup {
 
         Text {
             id: title
-            text: entityObj ? entityObj.name : ""
+            text: activityLoading.failed
+                  //: %1 is the name of the activity or macro whose run failed.
+                  ? qsTr("%1 stopped").arg(entityObj ? entityObj.name : "")
+                  : (entityObj ? entityObj.name : "")
             width: parent.width - 40
             wrapMode: Text.WordWrap
             maximumLineCount: 2
+            elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
             color: colors.offwhite
             font: fonts.primaryFont(30)
-            Layout.topMargin: 40
+            Layout.topMargin: activityLoading.failed ? 34 : 40
             Layout.alignment: Qt.AlignHCenter
         }
+
+        // ----- while the run is going: the current step -----
 
         Text {
             id: smallTitleText
             maximumLineCount: 1
             elide: Text.ElideRight
             color: colors.offwhite
-            opacity: 0.6
             //: Indicating the activity steps
             text: qsTr("Step %1/%2").arg(entityObj ? entityObj.currentStep.index : 0).arg(entityObj ? entityObj.totalSteps : 0)
-            font: fonts.secondaryFont(24,  "Medium")
-            visible: entityObj ? entityObj.totalSteps !== 0 : false
+            font: fonts.secondaryFont(26)
+            visible: !activityLoading.failed && (entityObj ? entityObj.totalSteps !== 0 : false)
 
             Layout.topMargin: 10
             Layout.alignment: Qt.AlignHCenter
@@ -437,13 +569,13 @@ Popup {
             Layout.fillWidth: true
             Layout.leftMargin: 10
             Layout.rightMargin: 10
+            visible: !activityLoading.failed && (entityObj ? entityObj.totalSteps !== 0 : false)
 
             Layout.preferredHeight: centeredRow.implicitHeight
 
             RowLayout {
                 id: centeredRow
                 spacing: 4
-                visible: entityObj ? entityObj.totalSteps !== 0 : false
 
                 anchors.horizontalCenter: parent.horizontalCenter
 
@@ -451,8 +583,16 @@ Popup {
 
                 Components.Icon {
                     id: entityInfoIcon
-                    color: colors.offwhite
-                    icon: entityObj ? entityObj.currentStep.type === SequenceStep.Delay ? "uc:clock" : activityLoading.stepIcon : ""
+                    color: activityLoading.stepFailed ? colors.orange : colors.offwhite
+                    icon: {
+                        if (!entityObj) {
+                            return "";
+                        }
+                        if (activityLoading.stepFailed) {
+                            return "uc:link-slash";
+                        }
+                        return entityObj.currentStep.type === SequenceStep.Delay ? "uc:clock" : activityLoading.stepIcon;
+                    }
                     size: 40
                 }
 
@@ -479,26 +619,103 @@ Popup {
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                     elide: Text.ElideRight
                     maximumLineCount: 2
-                    color: colors.offwhite
-                    opacity: 0.6
-                    font: fonts.secondaryFont(24,  "Medium")
+                    color: activityLoading.stepFailed ? colors.orange : colors.offwhite
+                    font: fonts.secondaryFont(26)
                 }
             }
         }
 
         Text {
-            id: errorText
-            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            visible: !activityLoading.failed && activityLoading.stepFailed
+            //: Under the name of a device that did not react during an activity whose run continues regardless.
+            text: qsTr("No response · carrying on")
+            color: colors.orange
+            opacity: 0.75
+            font: fonts.secondaryFont(24)
+
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        // ----- after a failed run: where it stopped, the device, the reason, and a way out -----
+
+        Text {
+            visible: activityLoading.failed && (entityObj ? entityObj.totalSteps !== 0 : false)
+            //: Position of the step an activity stopped at. %1 is the step, %2 the number of steps.
+            text: qsTr("at step %1 of %2").arg(entityObj ? entityObj.currentStep.index : 0).arg(entityObj ? entityObj.totalSteps : 0)
+            color: colors.light
+            font: fonts.secondaryFont(24)
+
+            Layout.topMargin: 8
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        Text {
+            visible: activityLoading.failed && activityLoading.stepName !== ""
+            text: activityLoading.stepName
+            wrapMode: Text.WordWrap
+            maximumLineCount: 2
             elide: Text.ElideRight
             horizontalAlignment: Text.AlignHCenter
+            color: colors.offwhite
+            font: fonts.primaryFont(28)
+
+            Layout.preferredWidth: 440
+            Layout.topMargin: 26
+            Layout.alignment: Qt.AlignHCenter
+        }
+
+        Text {
+            id: errorText
+            visible: activityLoading.failed
+            wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+            horizontalAlignment: Text.AlignHCenter
             color: colors.red
-            font: fonts.secondaryFont(24,  "Medium")
-            //            lineHeight: 0.7
-            Layout.bottomMargin: 15
+            font: fonts.secondaryFont(26)
+            lineHeight: 1.3
+
+            Layout.topMargin: 8
             Layout.alignment: Qt.AlignHCenter
             Layout.fillWidth: true
-            Layout.leftMargin: 10
-            Layout.rightMargin: 10
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+        }
+
+        Item {
+            visible: activityLoading.failed
+            // fades in with the reason
+            opacity: errorText.opacity
+
+            Layout.preferredWidth: 440
+            Layout.preferredHeight: retryButton.height
+            Layout.topMargin: 40
+            Layout.bottomMargin: 30
+            Layout.alignment: Qt.AlignHCenter
+
+            // Close and Try again are buttons (docs/design-system.md, I-09)
+            Components.Button {
+                id: closeButton
+                //: Button on the failed activity screen: dismiss it.
+                text: qsTr("Close")
+                variant: "secondary"
+                width: (parent.width - 20) / 2
+                anchors { left: parent.left; verticalCenter: parent.verticalCenter }
+                highlight: !activityLoading.retrySelected && ui.keyNavigationActive
+                trigger: function() {
+                    activityLoading.close();
+                }
+            }
+
+            Components.Button {
+                id: retryButton
+                //: Button on the failed activity screen: run the activity again.
+                text: qsTr("Try again")
+                width: (parent.width - 20) / 2
+                anchors { right: parent.right; verticalCenter: parent.verticalCenter }
+                highlight: activityLoading.retrySelected && ui.keyNavigationActive
+                trigger: function() {
+                    activityLoading.retry();
+                }
+            }
         }
     }
 

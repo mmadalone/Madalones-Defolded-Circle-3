@@ -33,6 +33,10 @@ IntegrationDriver::IntegrationDriver(const QString &key, QVariantMap name, const
       m_instanceCount(instanceCount),
       m_language(language),
       m_selected(selected) {
+    // the driver owns its schema: a schema without a parent was leaked with every driver list reload
+    if (m_setupSchema) {
+        m_setupSchema->setParent(this);
+    }
     m_name = Util::getLanguageString(m_name_i18n, m_language);
 
     QQmlEngine::setObjectOwnership(this, QQmlEngine::CppOwnership);
@@ -98,7 +102,17 @@ void IntegrationDriver::setDiscovered(bool discovered) {
 }
 
 void IntegrationDriver::setSetupScehma(SetupSchema *setupSchema) {
+    if (m_setupSchema == setupSchema) {
+        return;
+    }
+    // owned by this driver: nobody else holds it, the setup pages work on copies
+    if (m_setupSchema && m_setupSchema->parent() == this) {
+        m_setupSchema->deleteLater();
+    }
     m_setupSchema = setupSchema;
+    if (m_setupSchema) {
+        m_setupSchema->setParent(this);
+    }
     emit setupSchemaChanged();
 }
 
@@ -135,6 +149,10 @@ int IntegrationDrivers::rowCount(const QModelIndex &parent) const {
 }
 
 bool IntegrationDrivers::removeRows(int row, int count, const QModelIndex &parent) {
+    if (row < 0 || count <= 0 || (row + count) > m_data.size()) {
+        return false;
+    }
+
     beginRemoveRows(parent, row, row + count - 1);
     for (int i = row + count - 1; i >= row; i--) {
         m_data.at(i)->deleteLater();
@@ -210,6 +228,8 @@ QHash<int, QByteArray> IntegrationDrivers::roleNames() const {
 void IntegrationDrivers::append(IntegrationDriver *o) {
     //    int i = m_data.size();
     if (contains(o->getId())) {
+        // the caller created the object for this list: a rejected one would leak
+        o->deleteLater();
         return;
     }
 
@@ -250,7 +270,7 @@ QModelIndex IntegrationDrivers::getModelIndexByKey(const QString &key) {
 
 bool IntegrationDrivers::contains(const QString &key) {
     for (int i = 0; i < m_data.count(); i++) {
-        if (m_data[i]->getId().contains(key)) {
+        if (m_data[i]->getId() == key) {
             return true;
         }
     }
@@ -259,7 +279,7 @@ bool IntegrationDrivers::contains(const QString &key) {
 
 IntegrationDriver *IntegrationDrivers::get(const QString &key) {
     for (int i = 0; i < m_data.count(); i++) {
-        if (m_data[i]->getId().contains(key)) {
+        if (m_data[i]->getId() == key) {
             return m_data[i];
         }
     }

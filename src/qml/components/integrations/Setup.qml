@@ -14,8 +14,37 @@ ColumnLayout {
     id: integrationSetupContainer
 
     signal done()
+    signal home()
 
     spacing: 0
+
+    // called by the hosting popup once it is open (and once the loader is ready): a step that takes
+    // the input while the popup is still invisible is dropped by the input controller
+    function activateCurrentStep() {
+        const step = integrationSetupSwipeView.currentItem;
+        if (step && typeof step.activate === "function") {
+            Qt.callLater(step.activate);
+        }
+    }
+
+    // BACK on the hosting popup: cancel the running setup instead of only closing the popup. Once
+    // the integration exists (the add-entities step) BACK skips to the finish step like the X icon.
+    function cancel() {
+        switch (integrationSetupSwipeView.currentIndex) {
+        case 0:
+            configureStep.cancelSetup();
+            break;
+        case 1:
+            integrationSetupSwipeView.currentIndex = 2;
+            break;
+        default:
+            if (finishStep.success) {
+                finishStep.done();
+            } else {
+                finishStep.failed();
+            }
+        }
+    }
 
     Component.onCompleted: {
         if (IntegrationController.integrationDriverTosetup.discovered) {
@@ -26,37 +55,13 @@ ColumnLayout {
         }
     }
 
-    Item {
+    // the close target only exists on the step that can be left that way: it skips to the result
+    Components.TitleBar {
         id: setupTitle
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: 60
-
-        Text {
-            text: qsTr("Integration setup")
-            width: parent.width - 20
-            elide: Text.ElideRight
-            color: colors.offwhite
-            verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(24)
-        }
-
-        Components.Icon {
-            id: closeIcon
-            color: colors.offwhite
-            icon: "uc:xmark"
-            anchors { verticalCenter: parent.verticalCenter; right: parent.right }
-            size: 60
-            visible: integrationSetupSwipeView.currentIndex == 1;
-
-            Components.HapticMouseArea {
-                width: parent.width + 20; height: width
-                anchors.centerIn: parent
-                onClicked: {
-                    integrationSetupSwipeView.currentIndex = 2;
-                }
-            }
+        action: integrationSetupSwipeView.currentIndex == 1 ? "close" : ""
+        text: qsTr("Integration setup")
+        goBack: function() {
+            integrationSetupSwipeView.currentIndex = 2;
         }
     }
 
@@ -74,22 +79,24 @@ ColumnLayout {
                 loading.stop();
                 integrationSetupContainer.done();
             }
+            onHome: integrationSetupContainer.home()
         }
 
         AddEntities {
             id: entitiesStep
             onDone: integrationSetupSwipeView.currentIndex = 2;
+            onHome: integrationSetupContainer.home()
         }
 
         Finish {
             id: finishStep
 
-            onDone: {
-                integrationSetupContainer.done();
-                integrationSetupSwipeView.currentIndex = 0;
-            }
-
+            // Done closes the hosting popup, which unloads this setup at the end of its fade-out;
+            // resetting the swipe view here re-activated the configure step behind the fading
+            // popup. Try again keeps the popup open and starts over at the configure step.
+            onDone: integrationSetupContainer.done()
             onFailed: integrationSetupSwipeView.currentIndex = 0
+            onHome: integrationSetupContainer.home()
         }
     }
 
@@ -122,7 +129,6 @@ ColumnLayout {
                 finishStep.success = true;
                 loading.success();
                 integrationSetupSwipeView.currentIndex = 1;
-                entitiesStep.currentItem = true;
                 break;
             }
         }

@@ -1,0 +1,104 @@
+## Why
+
+The UI's palette was tuned for the Remote Two OLED panel, which has a true black. On the Remote 3 LCD
+the black is a dark grey, and two things stop working: the d-pad selection of most menus and lists
+is a `#161616` fill on black (1.16:1 on the OLED, about 1.1:1 on the LCD, effectively invisible),
+and secondary text is `#787878` Space Mono 24 px (4.8:1 on the OLED, about 3.6:1 on the LCD), which
+carries every help text, the release notes and the legal texts. An audit of every screen
+(`docs/design-system/audit.md`) also found seven different selection renderings, six side-gutter
+widths and a dozen tappable controls that the d-pad cannot reach.
+
+The design system that fixes this (`docs/design-system.md`) was accepted on 2026-10-07, including
+the designer's revision of the mockups. This change implements it.
+
+## What Changes
+
+The work runs in six phases, one pull request each, in this order:
+
+1. **Tokens:** the palette moves to the accepted values, chosen against a raised black, so
+   secondary text, surfaces, dividers and tracks become readable on both panels at once. The new
+   token names are added next to the old ones.
+2. **Selection:** one selection component replaces the seven renderings. Menu-like lists (tiles,
+   popup menus, page selector, profile switcher, the menus of the profile page, Settings and About,
+   the picker lists) mark the selection with a lighter fill; setting screens with switches, sliders
+   or fields and the set-up steps mark it with a 3 px ring around the row or on the control. Every
+   selection follows the keypad-active state, except the page selector's current page and a picker
+   list's current value, which keep the fill after a touch.
+3. **Type roles:** help text and prose move from Space Mono to Poppins; Space Mono stays the face
+   for values. Nothing is drawn below 22 px.
+4. **Structure:** shared title bar, setting row, menu row, key/value row, form dialog, bottom sheet
+   and prose components; one gutter, one set of row heights, dividers, radii, icon sizes and three
+   button variants. Settings, onboarding, docks and integrations first; the entity detail screens
+   follow in a later change.
+5. **Reachability:** every tappable control the d-pad cannot reach today becomes reachable, and
+   hints stop saying "Tap".
+6. **Guardrails:** checks that keep new screens on the design system.
+
+No behaviour of the Core-API, the input dispatch or the navigation idioms changes.
+
+## Capabilities
+
+### New Capabilities
+
+<!-- None. The visual rules live in docs/design-system.md; the specs reference them. -->
+
+### Modified Capabilities
+
+- `platform-constraints`: "Legibility" points at the accepted design system with one palette for
+  both models; the new "Legibility floors" states the floors every screen keeps.
+- `key-navigation`: new requirements describe the two selection styles by kind of screen ("Selection
+  fill in menu lists", "Selection ring on setting screens and buttons", "One selection style per
+  element") and require the style of its kind of screen from a new screen ("Selection of a new
+  screen"). "Current choice after a touch" keeps the fill on the page selector's current page and on
+  a picker list's current value (`pages`: "Current page in the page selector"); "Keypad-active state
+  and selection rendering" points at it, and the developer contract only updates its scenarios.
+- `activities`: "Activity menu and included entities" draws its selection in the fill style and
+  follows the keypad-active state instead of a flag of its own (phase 2).
+- Phase 5 makes controls reachable on screens owned by other capabilities and rewords their
+  touch-only hints:
+  - `pages`: the page menu (HOME long press) leads to the profile page, also for a restricted
+    profile; the no-page screen takes OK and a HOME long press.
+  - `profiles`: the web configurator screen walks its rows; the first-profile dialog cannot be
+    cancelled into an empty screen.
+  - `settings-menu`: the settings open from the page menu; the WiFi page skips empty lists.
+  - `docks`, `integrations`: empty lists select the "Add" sheet; the unimplemented dock row is
+    hidden; the entity manager's tabs and a scrolling driver text show the selection.
+  - `entity-management`: the filter sheet's Clear and Done are reachable; an empty list selects the
+    filter button.
+  - `onboarding`, `help-overlay`, `core-connection`: the Finish address, the tips' Close and the
+    connection status list; reworded hints. The Finish step shows its scroll indicator when it is
+    taller than the screen (`onboarding` "Finish step taller than the screen").
+  - `groups`, `notifications`: the reworded "Select entities" text.
+- `notifications`: "Actionable notification presentation" also records the look phases 3 and 4 gave
+  the actionable notification: the action and "Cancel" as buttons, the message in the prose role and
+  the primary text colour, and the bar of a neutral notification in the primary text colour.
+- Recorded with the guardrails, what phases 3 and 4 changed on the legal pages and in the tips:
+  - `ui-resources`: "Legal documents" and "Licenses document" are set in the prose role and scroll by
+    half the page per key press.
+  - `settings-menu`: "About page", the key steps of the document pages; `key-navigation`: "Scroll the
+    focused control into view", its example of a legal page; `help-overlay`: "Overlay presentation",
+    the tip text in the help role.
+- Found on the device after phases 4 and 5:
+  - `wifi`: the details of the current network call the MAC key "MAC" and show the MAC and IP
+    addresses in full.
+  - `settings-menu`: the About page shows the Wi-Fi and Bluetooth addresses in full, fits its
+    information and its first entry on the screen, and scrolls back to its information when the
+    keypad selection returns to the first entry.
+- American English for the two settings texts in British spelling, "Localization" and "Inverted
+  button behavior": `settings-menu` "Settings submenu" and "User interface page", `groups` "Group
+  tile by d-pad", `pages` "Tile selection by d-pad", `device-configuration` "Local UI preferences"
+  and `entity-detail-controls` "Inverted button behaviour setting" quote them.
+
+## Impact
+
+- **Hardware models:** both. One palette for both panels (ADR 0019); the Remote 3 benefits most.
+- **remote-core dependency:** none.
+- **Third-party code:** none added. Poppins and Space Mono are the firmware fonts already in use.
+- **Code:** `src/ui/colors.{h,cpp}`, `src/ui/fonts.h`, new shared components under
+  `src/qml/components/` with their `main.qrc` entries, and the QML screens of each phase; unit tests
+  for the token and type-role floors.
+- **Docs:** `docs/design-system.md` stays the reference; `docs/key-navigation.md` names the
+  selection component; two new ADRs (0019, 0020).
+- **Open questions:** Q-1 to Q-4 and Q-8 in `docs/design-system.md` section 11 and Q-5 in
+  `design.md`. All of them are decided; the `#595959` fill of Q-3 stays for now and the checks on
+  both remotes may still adjust it in the design system.

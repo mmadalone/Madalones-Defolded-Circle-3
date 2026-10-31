@@ -7,6 +7,7 @@
 #include <QMetaEnum>
 #include <QNetworkAccessManager>
 #include <QObject>
+#include <QSharedPointer>
 #include <QTimer>
 #include <QUrl>
 #include <QWebSocket>
@@ -53,10 +54,56 @@ class Api : public QObject {
     int updateEntity(const QString &entityId, QVariantMap name, const QString &icon);
     int deleteEntity(const QString &entityId);
     int deleteEntities(const QStringList &entityIds, const QString &integrationId = QString());
+    /**
+     * @brief Correct the runtime power state of an entity without sending a command to the device.
+     * @param entityId: id of the entity
+     * @param state: "ON" or "OFF"
+     * @return request id, or -1 if the request could not be sent
+     */
+    int setEntityState(const QString &entityId, const QString &state);
 
     int entityCommand(const QString &entityId, const QString &cmd, QVariantMap params);
     int browseMedia(const QString &entityId, QVariantMap params);
     int searchMedia(const QString &entityId, QVariantMap params);
+
+    /**
+     * @brief Request the readiness report of an activity or macro sequence.
+     * @param entityId: activity or macro entity id
+     * @param cmdId: command to check, e.g. "activity.on", "activity.off", "macro.run"
+     * @param lang: optional culture code (e.g. "de_CH"), the system language is used if empty
+     * @param errorPolicy: optional "abort", "continue_transition" or "ignore_all", server default if empty
+     * @return request id, or -1 if the request could not be sent
+     */
+    int getSequenceReadiness(const QString &entityId, const QString &cmdId, const QString &lang = QString(),
+                             const QString &errorPolicy = QString());
+
+    /**
+     * @brief Parse a sequence readiness report message payload.
+     * Public for the unit tests: the report is a deep structure and is verified against captured payloads
+     * without going through a websocket connection.
+     */
+    static SequenceReadiness parseSequenceReadiness(const QVariantMap &map);
+
+    /**
+     * Parse an integration setup info object, as returned by the setup requests and carried by the
+     * integration_setup_change event.
+     */
+    static IntegrationSetupInfo parseIntegrationSetupInfo(const QVariantMap &map);
+
+    /**
+     * @brief Parse the profile of a `profile_change` event message payload.
+     *
+     * The profile identifier is a property of the event itself, all other profile data is carried in the
+     * `new_state.profile` object. This holds for the `NEW` and the `CHANGE` event alike.
+     *
+     * @param msgData the `msg_data` object of the event
+     */
+    static Profile parseProfileChange(const QVariantMap &msgData);
+    /**
+     * Dispatches a response message of the core to its handlers. Public for the unit tests, which have no core
+     * to answer their requests.
+     */
+    void processResponseMessage(QVariantMap map);
 
     // profile handling
     int switchProfile(const QString &profileId, const QString &pin);
@@ -65,26 +112,30 @@ class Api : public QObject {
     int getActiveProfile();
     int addProfile(const QString &name, bool restricted = false);
     int updateProfile(const QString &profileId, const QString &name = QString(), const QString &icon = "-1",
-                      int pin = -1, const QStringList pages = QStringList({"-1"}));
-    int deleteProfile(const QString &profileId, int pin = -1);
+                      const QStringList pages = QStringList({"-1"}));
+    int deleteProfile(const QString &profileId);
 
     // page handling
-    int getPages(const QString &profileId, int pin = -1);
-    int getPage(const QString pageId, int pin = 1);
-    int addPage(const QString &profileId, const QString &name, int pos, int pin = -1);
+    int getPages(const QString &profileId);
+    int getPage(const QString pageId);
+    int addPage(const QString &profileId, const QString &name, int pos);
     int updatePage(const QString &pageId, const QString &profileId, const QString &name = QString(),
-                   const QString &image = "-1", int pos = -1, const QVariantList &items = QVariantList({"-1"}),
-                   int pin = -1);
-    int deletePage(const QString &pageId, int pin = -1);
+                   const QString &image = "-1", int pos = -1, const QVariantList &items = QVariantList({"-1"}));
+    int deletePage(const QString &pageId);
 
     // group handling
     int getGroup(const QString &groupId);
     int addGroup(const QString &profileId, const QString &name, const QString &icon = QString(),
                  const QStringList &entities = QStringList());
+    /**
+     * @param setEntities replace the entities of the group with `entities`. An empty list removes all of them, so
+     * it cannot stand for "leave the entities alone": a rename passes false.
+     */
     int updateGroup(const QString &groupId, const QString &profileId, const QString &name,
-                    const QString &icon = QString(), const QStringList &entities = QStringList());
+                    const QString &icon = QString(), const QStringList &entities = QStringList(),
+                    bool setEntities = true);
     int deleteGroup(const QString &groupId);
-    int getGroups(const QString &profileId, int pin = -1);
+    int getGroups(const QString &profileId);
 
     // integration handling
     int getIntegrationStatus(int limit = 100, int page = 1);
@@ -102,7 +153,9 @@ class Api : public QObject {
     int integrationStopDiscovery();
     int integrationGetDiscoveredDriverMetadata(const QString &driverId, const QString &driverUrl = QString(),
                                                const QString &token = QString(), int timeOut = 5);
-    int integrationSetup(const QString &driverId, QVariantMap name, QVariantMap setupData);
+    int integrationSetup(const QString &driverId, QVariantMap name, QVariantMap setupData,
+                         const QString &language = QString());
+    int integrationSetupKeepAlive(const QString &driverId);
     int integrationStopSetup(const QString &driverId);
     int integrationSetUserDataSettings(const QString &driverId, QVariantMap settings);
     int integrationSetUserDataConfirm(const QString &driverId);
@@ -148,7 +201,8 @@ class Api : public QObject {
     int wifiScanStop();
     int wifiGetScanStatus();
     int wifiGetAllNetworks();
-    int wifiAddNetwork(const QString &ssid, const QString &password = "");
+    int wifiAddNetwork(const QString &ssid, const QString &ssidHex = QString(), const QString &password = "",
+                       WifiEnums::WifiSecurity security = WifiEnums::WifiSecurity::AUTO, bool hidden = false);
     int wifiDeleteAllNetworks();
     int wifiGetNetwork(int id);
     int wifiUpdateNetwork(int id, const QString &password);
@@ -202,14 +256,6 @@ class Api : public QObject {
     int getPowerMode();
     int setPowerMode(PowerEnums::PowerMode mode);  // madalone: keeper feature; firmware resets standby_timeout_sec on transition to NORMAL
 
-    // madalone (Phase 0, 2026-05-02): one-shot REST auth probe.
-    // Fires GET /api/system/power against the local firmware in H3 → H2 → H4 → H1
-    // order, short-circuits on first 200 OK. H1 is destructive (calls
-    // Config::generateNewWebConfigPin) and only runs if the three non-destructive
-    // hypotheses all fail. Each step logs at qCInfo(lcCore) with "[REST Auth Probe Hn]"
-    // prefix. Triggered from main.cpp once on connected() if Config::probeRestAuth.
-    Q_INVOKABLE void probeRestAuth();
-
     // madalone (M1, 2026-05-03): standby_inhibitors REST helpers.
     // Authenticated via Bearer <UC_TOKEN content> (Phase 0 H2 winner). Each method
     // returns an internal request ID; success/failure observed via the corresponding
@@ -220,23 +266,55 @@ class Api : public QObject {
     int listStandbyInhibitors();
 
 
+ private:
+    // Shared handle of a response handler connection, so the handler can disconnect itself.
+    using ConnectionPtr = QSharedPointer<QMetaObject::Connection>;
+
+    static void disconnectHandler(const ConnectionPtr &connection) {
+        if (connection) {
+            QObject::disconnect(*connection);
+        }
+    }
+
+    static void disconnectHandlers(const ConnectionPtr &connSuccess, const ConnectionPtr &connFail) {
+        disconnectHandler(connSuccess);
+        disconnectHandler(connFail);
+    }
+
  public:
     /**
      * @brief This response handler is used for common response result processing, that doesn't return anything special.
      * Just status code and error message if any.
+     *
+     * The handler is a one-shot: it is disconnected as soon as the request is settled, no matter how many responses
+     * arrive for it. A request can be answered twice, e.g. when the request timeout fires and the real (slow) response
+     * arrives afterwards.
      */
     template <typename SuccessFunc, typename FailFunc>
     void onResult(int id, const SuccessFunc &functionSuccess, const FailFunc &functionFail) {
-        QMetaObject::Connection connection;
+        // A negative id means the request was never sent (disconnected or send failure), so no response
+        // or timeout will ever arrive to resolve and disconnect this handler. Bail out to avoid leaking a
+        // permanent connection to respResult that runs on every future response.
+        if (id < 0) {
+            return;
+        }
 
-        connection = QObject::connect(this, &Api::respResult, [=](int reqId, int code, QString message) {
-            if (reqId == id) {
-                if (code == 200 || code == 201) {
-                    functionSuccess();
-                } else {
-                    functionFail(code, message);
-                }
-                QObject::disconnect(connection);
+        // The connection handle has to be shared with the handler: a copy captured by the lambda is taken before
+        // connect() returns and would stay null forever, making the disconnect below a no-op.
+        ConnectionPtr connection = ConnectionPtr::create();
+
+        *connection = QObject::connect(this, &Api::respResult, [=](int reqId, int code, QString message) {
+            if (reqId != id) {
+                return;
+            }
+
+            // settle first, so a late duplicate response cannot run the callbacks a second time
+            disconnectHandler(connection);
+
+            if (code == 200 || code == 201) {
+                functionSuccess();
+            } else {
+                functionFail(code, message);
             }
         });
     }
@@ -244,28 +322,67 @@ class Api : public QObject {
     /**
      * @brief This response handler is used for responses which return something special, like a profile, but on error,
      * it's a common result response.
+     *
+     * See onResult() for the one-shot behaviour.
      */
     template <typename Signal, typename SuccessFunc, typename FailFunc>
     void onResponseWithErrorResult(int id, Signal signal, const SuccessFunc &functionSuccess,
                                    const FailFunc &functionFail) {
-        QMetaObject::Connection connSuccess;
-        QMetaObject::Connection connFail = onCommonFail(id, functionFail, connSuccess);
+        // See onResult(): a negative id never resolves, so skip to avoid leaking permanent connections.
+        if (id < 0) {
+            return;
+        }
 
-        connSuccess = QObject::connect(
+        ConnectionPtr connSuccess = ConnectionPtr::create();
+        ConnectionPtr connFail = ConnectionPtr::create();
+
+        *connFail = QObject::connect(this, &Api::respResult, [=](int reqId, int code, QString message) {
+            if (reqId != id) {
+                return;
+            }
+
+            // a common result response settles the request: either it failed, or it was answered without data
+            disconnectHandlers(connSuccess, connFail);
+
+            if (code != 200 && code != 201) {
+                functionFail(code, message);
+            }
+        });
+
+        *connSuccess = QObject::connect(
             this, signal, [=](auto... args) { onSuccess(id, functionSuccess, connSuccess, connFail, args...); });
     }
 
     /**
      * @brief This response handler is used for responses which return something special, even on error
+     *
+     * See onResult() for the one-shot behaviour.
      */
     template <typename Signal, typename SuccessFunc, typename FailFunc>
     void onResponse(int id, Signal signal, const SuccessFunc &functionSuccess, const FailFunc &functionFail) {
-        QMetaObject::Connection connSuccess;
-        QMetaObject::Connection connFail;
+        // See onResult(): a negative id never resolves, so skip to avoid leaking permanent connections.
+        if (id < 0) {
+            return;
+        }
 
-        connSuccess = QObject::connect(this, signal, [=](auto... args) {
-            onSuccess(id, functionSuccess, connSuccess, connFail, args...);
-            onFail(id, functionFail, connSuccess, connFail, args...);
+        ConnectionPtr connSuccess = ConnectionPtr::create();
+        ConnectionPtr connCleanup = ConnectionPtr::create();
+
+        // The request can also be answered with a common result response, e.g. on a request timeout, which never
+        // reaches `signal`. Release the handler in that case, otherwise it stays connected for the whole runtime.
+        *connCleanup = QObject::connect(this, &Api::respResult, [=](int reqId, int code, QString message) {
+            Q_UNUSED(code)
+            Q_UNUSED(message)
+            if (reqId != id) {
+                return;
+            }
+
+            disconnectHandlers(connSuccess, connCleanup);
+        });
+
+        *connSuccess = QObject::connect(this, signal, [=](auto... args) {
+            onSuccess(id, functionSuccess, connSuccess, connCleanup, args...);
+            onFail(id, functionFail, connSuccess, connCleanup, args...);
         });
     }
 
@@ -274,41 +391,29 @@ class Api : public QObject {
      * @brief helper template to process successful slot response
      */
     template <typename T1, typename T2, typename... Args, typename SuccessFunc>
-    void onSuccess(int id, const SuccessFunc &functionSuccess, QMetaObject::Connection connSuccess,
-                   QMetaObject::Connection connFail, T1 reqId, T2 code, Args... args) {
-        if (reqId == id && (code == 200 || code == 201)) {
-            functionSuccess(args...);
-            QObject::disconnect(connSuccess);
-            QObject::disconnect(connFail);
+    void onSuccess(int id, const SuccessFunc &functionSuccess, const ConnectionPtr &connSuccess,
+                   const ConnectionPtr &connFail, T1 reqId, T2 code, Args... args) {
+        if (reqId != id) {
+            return;
         }
-    }
 
-    /**
-     * @brief helper template to handle unsuccessful responses as these are the same for all calls
-     */
-    template <typename FailFunc>
-    QMetaObject::Connection onCommonFail(int id, const FailFunc &function, QMetaObject::Connection connSuccess) {
-        QMetaObject::Connection connFail;
-        connFail = QObject::connect(this, &Api::respResult, [=](int reqId, int code, QString message) {
-            if (reqId == id && (code != 200 && code != 201)) {
-                function(code, message);
-                QObject::disconnect(connFail);
-                QObject::disconnect(connSuccess);
-            }
-        });
-        return connFail;
+        // the response is for this request, so it is settled with either result: release both handlers
+        disconnectHandlers(connSuccess, connFail);
+
+        if (code == 200 || code == 201) {
+            functionSuccess(args...);
+        }
     }
 
     /**
      * @brief helper template to process failed slot response
      */
     template <typename T1, typename T2, typename... Args, typename FailFunc>
-    void onFail(int id, const FailFunc &functionFail, QMetaObject::Connection connSuccess,
-                QMetaObject::Connection connFail, T1 reqId, T2 code, Args... args) {
+    void onFail(int id, const FailFunc &functionFail, const ConnectionPtr &connSuccess, const ConnectionPtr &connFail,
+                T1 reqId, T2 code, Args... args) {
         if (reqId == id && (code != 200 && code != 201)) {
+            disconnectHandlers(connSuccess, connFail);
             functionFail(args...);
-            QObject::disconnect(connSuccess);
-            QObject::disconnect(connFail);
         }
     }
 
@@ -380,6 +485,8 @@ class Api : public QObject {
 
     void respMediaBrowse(int reqId, int code, core::BrowseMediaItem media, core::Pagination pagination);
     void respMediaSearch(int reqId, int code, QList<core::BrowseMediaItem> items, core::Pagination pagination);
+
+    void respSequenceReadiness(int reqId, int code, core::SequenceReadiness report);
 
     // event signals
  signals:
@@ -477,32 +584,20 @@ class Api : public QObject {
     QWebSocket   m_webSocket;
     unsigned int m_requestId = 0;
 
-    // madalone (Phase 0): dedicated QNAM for the REST auth probe. Kept separate
-    // from the WS path so probe lifecycle doesn't entangle with the websocket.
-    QNetworkAccessManager m_probeNam;
-    bool                  m_probeRunning = false;  // re-entrancy guard
-    QUrl                  m_probeEndpoint;
-    QString               m_probeToken;            // UC_TOKEN_PATH content (for H2/H4)
-
-    void probeStep(int hNum);
-    void probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& authLabel);
-
     // madalone (M1, 2026-05-03): persistent QNAM for production REST calls
-    // (standby_inhibitors etc). Separate from m_probeNam so probe re-runs don't
-    // entangle with inhibitor lifecycle. Internal request IDs are unsigned ints
+    // (standby_inhibitors etc). Internal request IDs are unsigned ints
     // independent of WS m_requestId — REST and WS responses live on different
     // signal channels and IDs need not be globally unique.
     QNetworkAccessManager m_restNam;
     unsigned int          m_restRequestId = 0;
 
-    // Shared REST helpers — factored from Phase 0 probe code so M1 and any future
-    // REST consumer reuse the same UC_TOKEN read + URL derivation + Bearer header
-    // construction. Implementation references the probe's logic at core.cpp:3611-3644.
+    // Shared REST helpers so M1 and any future REST consumer reuse the same
+    // UC_TOKEN read + URL derivation + Bearer header construction.
     QString    readUcToken() const;             // reads UC_TOKEN_PATH file, returns empty on failure
     QUrl       restEndpoint(const QString &path) const;  // converts m_url scheme/host/port + appends path
     QByteArray bearerHeader() const;            // "Bearer <token>" — empty if no token
 
-    QTimer *m_keepAliveTimer;
+    QTimer *m_keepAliveTimer = nullptr;
     int     m_keepAliveInterval = 60000;
 
     QTimer *m_reconnectTimer;
@@ -526,7 +621,6 @@ class Api : public QObject {
     int sendRequest(RequestTypes::Enum type, const QVariantMap msgData = QVariantMap());
 
     void processEventMessage(QVariantMap map);
-    void processResponseMessage(QVariantMap map);
     void processRequestMessage(QVariantMap map);
 
     void                 setupTimerForRequest(int requestId);
@@ -591,6 +685,11 @@ class Api : public QObject {
     void processResponseMediaBrowse(int reqId, int code, QVariant msgData);
     void processResponseMediaSearch(int reqId, int code, QVariant msgData);
     BrowseMediaItem parseBrowseMediaItem(const QVariantMap &map);
+
+    void processResponseSequenceReadiness(int reqId, int code, QVariant msgData);
+    static ReadinessReason      parseReadinessReason(const QVariantMap &map);
+    static ReadinessStep        parseReadinessStep(const QVariantMap &map);
+    static ReadinessOmittedStep parseReadinessOmittedStep(const QVariantMap &map);
 
     // processing events
  private:

@@ -21,6 +21,14 @@ ListView {
     header: headerItem
     footer: footerItem
 
+    // the list starts empty and the ListView does not select the first result on its own: without
+    // this the first OK after a discovery did nothing until DOWN was pressed, and nothing was outlined
+    onCountChanged: {
+        if (integrationList.count > 0 && integrationList.currentIndex < 0) {
+            integrationList.currentIndex = 0;
+        }
+    }
+
     add: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1.0; duration: 300; easing.type: Easing.OutExpo }
     }
@@ -38,6 +46,40 @@ ListView {
     }
 
     property alias buttonNavigation: buttonNavigation
+
+    /** KEYPAD SELECTION **/
+    // Driven by the page's button navigation (not the keyboard focus): the page moves the selection
+    // with moveSelection(), activates it with activateSelection() and sets keypadSelected while the
+    // selection is on this list.
+    property bool keypadSelected: false
+
+    // returns false when the selection would leave the list, so the page can move on
+    function moveSelection(delta) {
+        const nextIndex = integrationList.currentIndex + delta;
+        if (integrationList.count === 0 || nextIndex < 0 || nextIndex >= integrationList.count) {
+            return false;
+        }
+
+        integrationList.currentIndex = nextIndex;
+        return true;
+    }
+
+    function selectLast() {
+        if (integrationList.count > 0) {
+            integrationList.currentIndex = integrationList.count - 1;
+        }
+    }
+
+    function activateSelection() {
+        if (integrationList.currentItem && integrationList.currentItem.integrationDriverId) {
+            integrationList.selectIntegration(integrationList.currentItem.integrationDriverId);
+        }
+    }
+
+    function selectIntegration(driverId) {
+        IntegrationController.stopDriverDiscovery();
+        IntegrationController.selectIntegrationToSetup(driverId);
+    }
 
     Components.ButtonNavigation {
         id: buttonNavigation
@@ -73,19 +115,17 @@ ListView {
 
                 onClicked: {
                     IntegrationController.startDriverDiscovery();
-                    console.debug("CLick");
                 }
 
                 Text {
                     id: headerTitle
 
-                    color: colors.offwhite
-                    opacity: 0.6
+                    color: colors.textSecondary
                     //: Title for searching for integrations to setup
                     text: qsTr("Discovering")
                     verticalAlignment: Text.AlignVCenter
                     anchors { left: scanLoading.right; leftMargin: 20; verticalCenter: parent.verticalCenter }
-                    font: fonts.secondaryFont(24)
+                    font: fonts.help()
                 }
 
                 Image {
@@ -133,13 +173,12 @@ ListView {
 
             Text {
                 id: footerItemText
-                width: parent.width - 20
-                color: colors.offwhite
-                opacity: 0.6
+                width: parent.width - 40
+                color: colors.textSecondary
                 text: qsTr("Integrations may require the Web Configurator for setup.")
                 horizontalAlignment: Text.AlignHCenter
                 wrapMode: Text.WordWrap
-                font: fonts.secondaryFont(24)
+                font: fonts.help()
                 anchors { top: parent.top; topMargin: 20; horizontalCenter: parent.horizontalCenter }
             }
 
@@ -152,42 +191,49 @@ ListView {
         Rectangle {
             id: integrationItemContainer
 
-            x: 10
-            width: ListView.view.width - 20
+            property string integrationDriverId: driverId
+            readonly property bool selected: ListView.isCurrentItem && integrationList.keypadSelected
+                                             && ui.keyNavigationActive
+
+            // a selectable card spans 8 px to width - 8, its content keeps the 20 px gutter
+            x: 8
+            width: ListView.view.width - 16
             height: childrenRect.height
-            color: ListView.isCurrentItem ? colors.black : colors.transparent
+            color: colors.transparent
             radius: ui.cornerRadiusSmall
+            // the selection ring of Components.Selectable, drawn as the border: the card is sized by its children,
+            // and a child that fills it would be a binding loop
             border {
-                width: 1
-                color: colors.medium
+                width: integrationItemContainer.selected ? 3 : 2
+                color: integrationItemContainer.selected ? colors.focusRing : colors.divider
             }
 
             Components.Icon {
                 icon: "uc:globe"
                 size: 40
-                color: colors.light
-                anchors { top: parent.top; topMargin: 10; right: parent.right; rightMargin: 10 }
+                color: colors.textSecondary
+                anchors { top: parent.top; topMargin: 10; right: parent.right; rightMargin: 12 }
                 visible: driverExternal
             }
 
             RowLayout {
-                width: parent.width - 60
+                width: parent.width - 24
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 20
 
                 Rectangle {
                     Layout.preferredWidth: 60
                     Layout.preferredHeight: 60
-                    Layout.topMargin: 30
-                    Layout.bottomMargin: 30
+                    Layout.topMargin: 20
+                    Layout.bottomMargin: 20
 
                     radius: 30
-                    color: colors.offwhite
+                    color: colors.textPrimary
 
                     Components.Icon {
                         icon: driverIcon
                         size: 60
-                        color: colors.black
+                        color: colors.bg
                         anchors.centerIn: parent
                     }
                 }
@@ -199,7 +245,7 @@ ListView {
                     Text {
                         Layout.fillWidth: true
 
-                        color: colors.offwhite
+                        color: colors.textPrimary
                         text: driverName
                         maximumLineCount: 1
                         elide: Text.ElideRight
@@ -209,12 +255,12 @@ ListView {
                     Text {
                         Layout.fillWidth: true
 
-                        color: colors.light
+                        color: colors.textSecondary
                         //: Integration driver developer name
                         text: qsTr("By %1").arg(driverDeveloperName)
                         maximumLineCount: 1
                         elide: Text.ElideRight
-                        font: fonts.secondaryFont(22)
+                        font: fonts.help()
                     }
                 }
             }
@@ -223,8 +269,8 @@ ListView {
                 anchors.fill: parent
 
                 onClicked: {
-                    IntegrationController.stopDriverDiscovery();                    
-                    IntegrationController.selectIntegrationToSetup(driverId);
+                    integrationList.currentIndex = index;
+                    integrationList.selectIntegration(driverId);
                 }
             }
         }

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 madalone. Mock Wifi + WifiNetwork for QML tests.
-// Mirrors src/hardware/wifi.h:98-130 (Wifi) and lines 57-96 (WifiNetwork) Q_PROPERTYs,
+// Mirrors src/system/wifi.h:98-130 (Wifi) and lines 57-96 (WifiNetwork) Q_PROPERTYs,
 // but with two deliberate divergences for testability:
 //
 // 1. WRITE setters added on Wifi.isConnected (production is READ-only — driven by

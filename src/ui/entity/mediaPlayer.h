@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.4: hide_volume_overlay entity option.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -6,14 +7,16 @@
 /**
  * @see https://github.com/unfoldedcircle/core-api/blob/main/doc/entities/entity_media_player.md
  */
-
-#include <QBuffer>
 #include <QColor>
 #include <QImage>
+#include <QMetaObject>
 #include <QNetworkAccessManager>
 #include <QNetworkReply>
-#include <QPixmap>
+#include <QPointer>
+#include <QSharedPointer>
+#include <QThreadPool>
 #include <QTimer>
+#include <atomic>
 
 #include "../../core/structs.h"
 #include "entity.h"
@@ -70,7 +73,10 @@ class MediaPlayerFeatures : public QObject {
         Browse_media,
         Search_media,
         Search_media_classes,
-        Play_media_action
+        Search_media_filters,
+        Play_media,
+        Play_media_action,
+        Clear_playlist
     };
     Q_ENUM(Enum)
 };
@@ -113,21 +119,27 @@ class MediaPlayerStates : public QObject {
     static QString getTranslatedString(Enum state) {
         switch (state) {
             case Enum::Unavailable:
-                return QCoreApplication::translate("Media platyer state", "Unavailable");
+                return QCoreApplication::translate("Media player state", "Unavailable");
             case Enum::Unknown:
-                return QCoreApplication::translate("Media platyer state", "Unknown");
+                return QCoreApplication::translate("Media player state", "Unknown");
             case Enum::On:
-                return QCoreApplication::translate("Media platyer state", "On");
+                //: Device state: switched on. Not the preposition "on".
+                return QCoreApplication::translate("Media player state", "On");
             case Enum::Off:
-                return QCoreApplication::translate("Media platyer state", "Off");
+                //: Device state: switched off.
+                return QCoreApplication::translate("Media player state", "Off");
             case Enum::Playing:
-                return QCoreApplication::translate("Media platyer state", "Playing");
+                //: Media player state: playback is running.
+                return QCoreApplication::translate("Media player state", "Playing");
             case Enum::Paused:
-                return QCoreApplication::translate("Media platyer state", "Paused");
+                //: Media player state: playback is paused.
+                return QCoreApplication::translate("Media player state", "Paused");
             case Enum::Standby:
-                return QCoreApplication::translate("Media platyer state", "Standby");
+                //: Media player state: the device is in standby.
+                return QCoreApplication::translate("Media player state", "Standby");
             case Enum::Buffering:
-                return QCoreApplication::translate("Media platyer state", "Buffering");
+                //: Media player state: buffering before playback continues.
+                return QCoreApplication::translate("Media player state", "Buffering");
             default:
                 return Util::convertEnumToString<Enum>(state);
         }
@@ -304,7 +316,7 @@ class MediaPlayer : public Base {
     QStringList getSearchMediaClasses() { return m_searchMediaClasses; }
 
     // options
-    int  getVolumeSteps()       { return m_volumeSteps; }
+    int getVolumeSteps() { return m_volumeSteps; }
     bool getHideVolumeOverlay() { return m_hideVolumeOverlay; }
 
     QString getStateInfo() override { return m_mediaTitle; }
@@ -367,10 +379,12 @@ class MediaPlayer : public Base {
 
     Q_INVOKABLE void playMedia(const QString &mediaId, const QString &mediaType,
                                const QString &action = QString());
-    Q_INVOKABLE void setPreviewImage(const QString &thumbnailUrl);
     Q_INVOKABLE void clearPlaylist();
-    Q_INVOKABLE void browseMedia(const QString &mediaId = QString(),
-                                 const QString &mediaType = QString(),
+    /**
+     * Asks for the content of a media folder. Returns the id of the request, which the result and the error
+     * carry as well, so that the browser can tell which page an answer belongs to; -1 if nothing was sent.
+     */
+    Q_INVOKABLE int  browseMedia(const QString &mediaId = QString(), const QString &mediaType = QString(),
                                  int limit = 10, int page = 1);
     Q_INVOKABLE void searchMedia(const QString &query,
                                  const QString &mediaId = QString(),
@@ -387,9 +401,21 @@ class MediaPlayer : public Base {
     void onLanguageChangedTypeSpecific() override;
 
  public slots:
-    void onBrowseMediaResult(const core::BrowseMediaItem &media, const core::Pagination &pagination);
-    void onSearchMediaResult(const QList<core::BrowseMediaItem> &items, const core::Pagination &pagination);
-    void onMediaBrowseError(int code, const QString &message);
+    void onBrowseMediaRequested(int requestId);
+    void onBrowseMediaResult(int requestId, const core::BrowseMediaItem &media, const core::Pagination &pagination);
+    void onMediaBrowseError(int requestId, int code, const QString &message);
+
+    /**
+     * @brief Remembers which search request the UI is waiting for.
+     *
+     * A live search sends one request per keystroke and every one of them installs its own response
+     * handler, so a slow answer to an earlier term can arrive after a later one. Only the answer to the
+     * most recent request is passed on to QML, the others are dropped.
+     */
+    void onSearchMediaRequested(int requestId);
+    void onSearchMediaResult(int requestId, const QList<core::BrowseMediaItem> &items,
+                             const core::Pagination &pagination);
+    void onSearchMediaError(int requestId, int code, const QString &message);
 
  signals:
     void volumeChanged();
@@ -419,9 +445,11 @@ class MediaPlayer : public Base {
     void mediaPlaylistChanged();
     void searchMediaClassesChanged();
     void hideVolumeOverlayChanged();
-    void browseMediaResult(QVariantMap media, QVariantMap pagination);
+    void browseMediaResult(int requestId, QVariantMap media, QVariantMap pagination);
     void searchMediaResult(QVariantList items, QVariantMap pagination);
-    void mediaBrowseError(int code, QString message);
+    // browsing and searching fail independently: a failed search must not discard the browsed page
+    void mediaBrowseError(int requestId, int code, QString message);
+    void searchMediaError(int code, QString message);
 
  private:
     int                         m_volume;
@@ -431,6 +459,7 @@ class MediaPlayer : public Base {
     QString                     m_mediaType;
     QString                     m_mediaImageUrl;
     QString                     m_mediaImage;
+    QString                     m_mediaImageCacheKey;
     QColor                      m_mediaImageColor;
     QString                     m_mediaTitle;
     QString                     m_mediaArtist;
@@ -442,6 +471,11 @@ class MediaPlayer : public Base {
     QString                     m_mediaId;
     QString                     m_mediaPlaylist;
     QStringList                 m_searchMediaClasses;
+
+    // request id of the search the UI is waiting for, -1 if none is pending
+    int m_activeSearchRequestId = -1;
+    // id of the browse request that was just sent, set by the controller while browseMedia() emits the request
+    int m_lastBrowseRequestId = -1;
 
     // options
     int         m_volumeSteps;
@@ -455,14 +489,18 @@ class MediaPlayer : public Base {
     QTimer m_positionTimer;
 
     QNetworkAccessManager m_nam;
-    void                  getMediaImageColor(QString imageUrl, bool isPreview = false);
+    void                  getMediaImageColor(QString imageUrl, quint64 requestId);
     void                  clearMediaImageState();
-    void                  applyMediaImageUrl(const QString &newImageUrl, bool isPreview);
-    static bool           isKodiDefaultPlaceholder(const QString &url);
+    void                  processMediaImageAsync(const QString &imageUrl, const QByteArray &imageData,
+                                                 quint64 requestId, const QString &dataUrl = QString());
+    void                  applyProcessedMediaImage(const QString &imageUrl, quint64 requestId,
+                                                   const QImage &mediaImage, const QColor &mediaImageColor,
+                                                   bool success);
     int                   m_mediaImageDownloadTries = 0;
-    bool                  m_mediaImageIsPreview = false;
-
-    QColor                computeAverageImageColor(QImage image);
+    // Counts the artwork requests, only the newest one is applied. Shared with the workers of the thread pool,
+    // which read it to stop early: it outlives this object, so a worker never touches the object itself.
+    QSharedPointer<std::atomic<quint64>> m_mediaImageProcessingRequestId =
+        QSharedPointer<std::atomic<quint64>>::create(0);
 
  private slots:
     void onPositionTimerTimeout();

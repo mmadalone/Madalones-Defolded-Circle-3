@@ -8,17 +8,17 @@
 
 #include "../config/config.h"
 #include "../core/core.h"
+#include "../system/battery.h"
+#include "../system/info.h"
+#include "../system/power.h"
+#include "../system/wifi.h"
 #include "activitySessionKeeper.h"
-#include "battery.h"
 #include "haptic.h"
 #include "hardwareModel.h"
-#include "info.h"
 #include "phantomWakeSuppressor.h"
-#include "power.h"
 #include "ucr2/hapticUCR2.h"
 #include "ucr2/hapticUCR3.h"
 #include "ucr3/touchSliderUCR3.h"
-#include "wifi.h"
 #include "touchSlider.h"
 
 namespace uc {

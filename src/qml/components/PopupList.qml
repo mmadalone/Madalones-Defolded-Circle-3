@@ -25,9 +25,18 @@ Rectangle {
     property bool hideClose: false
     property bool closeOnSelected: true
     property int initialSelected: 0
+    // the value of the current choice: its row ends with a check mark (docs/design-system.md section 6)
+    property var currentValue: undefined
     property bool countryList: false
+    // optional: name of a string role that groups adjacent rows under a section header (e.g. "section").
+    // Model rows may also carry the optional roles "secondary" (second text line), "rightText"
+    // (right-aligned text, e.g. a GMT offset) and "searchKey" (matched by the filter in addition
+    // to "name"). ListModel roles are fixed on first append: a model using any of these roles must
+    // set them on every row (empty string when unused).
+    property string sectionRole: ""
 
     property alias popupListmodel: popupListmodel
+    property alias buttonNavigation: buttonNavigation
 
     state: "hidden"
 
@@ -99,6 +108,9 @@ Rectangle {
             },
             "DPAD_MIDDLE": {
                 "pressed": function() {
+                    if (itemList.currentIndex < 0 || itemList.currentIndex >= itemList.model.count) {
+                        return;
+                    }
                     itemSelected(itemList.model.get(itemList.currentIndex).value);
                     if (closeOnSelected) {
                         popupList.state = "hidden";
@@ -128,43 +140,24 @@ Rectangle {
 
     Rectangle {
         id: titleContainer
-        color: colors.black
+        color: colors.bg
         width: parent.width
         height: showSearch ? 180 : 80
         z: 200
         anchors { horizontalCenter: parent.horizontalCenter; top: parent.top }
 
-        Text {
+        Components.TitleBar {
             id: titleText
-            width: parent.width
-            elide: Text.ElideRight
-            color: colors.offwhite
-            horizontalAlignment: Text.AlignHCenter
-            anchors { horizontalCenter: parent.horizontalCenter; top: parent.top; topMargin: 10 }
-            font: fonts.primaryFont(30)
-        }
-
-        Components.Icon {
-            id: closeIcon
-            color: colors.offwhite
-            icon: "uc:xmark"
-            anchors { verticalCenter: titleText.verticalCenter; right: parent.right }
-            size: 80
-            visible: !hideClose
-        }
-
-        Components.HapticMouseArea {
-            enabled: !hideClose
-            width: 120; height: 120
-            anchors.centerIn: closeIcon
-            onClicked: {
+            action: hideClose ? "" : "close"
+            goBack: function() {
                 popupList.state = "hidden";
             }
         }
 
         Components.SearchField {
-            width: parent.width
-            anchors { horizontalCenter: parent.horizontalCenter; top: titleText.bottom; topMargin: 20 }
+            id: searchField
+            width: parent.width - 40
+            anchors { horizontalCenter: parent.horizontalCenter; top: titleText.bottom; topMargin: 10 }
             visible: showSearch
 
             placeholderText: qsTr("Search")
@@ -203,18 +196,20 @@ Rectangle {
 
         delegate: listItem
 
-        ScrollBar.vertical: ScrollBar {
-            opacity: 0.5
-        }
+        section.property: popupList.sectionRole
+        section.delegate: sectionHeader
     }
 
     Components.ScrollIndicator {
         parentObj: itemList
     }
 
+    // Catches the tap that dismisses the on-screen keyboard. It must follow the keyboard, not only
+    // the focus: the keyboard can also be closed with its own hide key, which leaves the search
+    // field focused, and the overlay then stayed armed and swallowed the next tap on the list.
     MouseArea {
         anchors.fill: parent
-        enabled: inputHasFocus
+        enabled: inputHasFocus && keyboard.active
         onClicked: {
             keyboard.hide();
             inputHasFocus = false;
@@ -224,31 +219,61 @@ Rectangle {
     ListModel {
         id: popupListmodel
 
+        // a search term that is still in the field stays applied: the list is reloaded when it is
+        // shown again and whenever its model arrives, and must not silently drop the filter
         function reload() {
+            if (showSearch && searchField.inputField.text.length > 0) {
+                popupListmodel.applyFilter(searchField.inputField.text);
+                return;
+            }
+
+            // detach the current item before resetting the model: a delegate pinned by
+            // currentIndex can survive the clear/append cycle of a visible list and linger as a
+            // stale copy painted over the row below it (showed up as a doubled country row)
+            itemList.currentIndex = -1;
             popupListmodel.clear();
 
             for (var i = 0; i < listModel.count; i++) {
                 popupListmodel.append(listModel.get(i));
             }
 
+            itemList.forceLayout();
             itemList.currentIndex = popupList.initialSelected;
+            if (popupList.initialSelected > 0) {
+                itemList.positionViewAtIndex(popupList.initialSelected, ListView.Center);
+            } else {
+                // positionViewAtIndex(0, Center) can end up past the top and scroll the first
+                // section header out of the view
+                itemList.positionViewAtBeginning();
+            }
         }
 
         function applyFilter(searchCriteria) {
+            itemList.currentIndex = -1;
             popupListmodel.clear();
 
             console.debug("Search length: " + searchCriteria.length);
 
             for (var i = 0; i < listModel.count; i++) {
+                let item = listModel.get(i);
                 let str;
                 if (searchCriteria.length === 2 && popupList.countryList) {
-                    str = listModel.get(i).name.slice(0, 2);
+                    str = item.name.slice(0, 2);
                 } else {
-                    str = listModel.get(i).name;
+                    str = item.name;
                 }
-                if (str.toLowerCase().indexOf(searchCriteria.toLowerCase()) > -1) {
-                    popupListmodel.append(listModel.get(i));
+                let searchKey = item.searchKey === undefined ? "" : item.searchKey;
+                if (str.toLowerCase().indexOf(searchCriteria.toLowerCase()) > -1 ||
+                        (searchKey !== "" && searchKey.toLowerCase().indexOf(searchCriteria.toLowerCase()) > -1)) {
+                    popupListmodel.append(item);
                 }
+            }
+
+            // start the d-pad selection on the first match
+            itemList.forceLayout();
+            if (popupListmodel.count > 0) {
+                itemList.currentIndex = 0;
+                itemList.positionViewAtBeginning();
             }
         }
     }
@@ -259,24 +284,67 @@ Rectangle {
         Rectangle {
             id: listItemBg
             width: ui.width
-            height: 80
-            color: isCurrentItem && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: Qt.lighter(listItemBg.color, 1.3)
-                width: 1
-            }
+            height: hasSecondary ? 110 : 80
+            color: colors.transparent
 
             property bool isCurrentItem: ListView.isCurrentItem
+            // optional roles: access via model.<role> so models without them keep working
+            property bool hasSecondary: model.secondary !== undefined && model.secondary !== ""
+            property bool hasRightText: model.rightText !== undefined && model.rightText !== ""
+
+            // with the keypad the fill follows the selection; without it, it marks the current value next to
+            // its check mark (docs/design-system.md section 6)
+            Components.Selectable {
+                id: selection
+                selected: ui.keyNavigationActive ? listItemBg.isCurrentItem : checkIcon.visible
+                shownAfterTouch: true
+                style: "fill"
+                anchors { leftMargin: 8; rightMargin: 8 }
+            }
 
             Text {
                 id: listItemText
-                color: colors.offwhite
+                color: colors.textPrimary
                 text: name
-                width: parent.width - 20
+                width: parent.width - 40 - (rightTextItem.visible ? rightTextItem.width + 20 : 0)
+                       - (checkIcon.visible ? checkIcon.width + 10 : 0)
                 elide: Text.ElideRight
-                anchors { left: parent.left; leftMargin: 20; verticalCenter: parent.verticalCenter; }
+                anchors {
+                    left: parent.left; leftMargin: 20
+                    verticalCenter: parent.verticalCenter
+                    verticalCenterOffset: listItemBg.hasSecondary ? -18 : 0
+                }
                 font: fonts.primaryFont(30)
+            }
+
+            Text {
+                id: secondaryText
+                visible: listItemBg.hasSecondary
+                color: selection.shown ? colors.textPrimary : colors.textSecondary
+                text: listItemBg.hasSecondary ? model.secondary : ""
+                width: listItemText.width
+                elide: Text.ElideRight
+                anchors { left: listItemText.left; top: listItemText.bottom }
+                font: fonts.help()
+            }
+
+            Text {
+                id: rightTextItem
+                visible: listItemBg.hasRightText
+                color: colors.textPrimary
+                text: listItemBg.hasRightText ? model.rightText : ""
+                anchors { right: checkIcon.visible ? checkIcon.left : parent.right; rightMargin: checkIcon.visible ? 10 : 20
+                          verticalCenter: parent.verticalCenter }
+                font: fonts.value()
+            }
+
+            Components.Icon {
+                id: checkIcon
+                visible: popupList.currentValue !== undefined && value === popupList.currentValue
+                icon: "uc:check"
+                size: 60
+                color: colors.textPrimary
+                anchors { right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
             }
 
             Components.HapticMouseArea {
@@ -284,11 +352,33 @@ Rectangle {
                 onClicked: {
                     itemList.currentIndex = index;
                     itemList.positionViewAtIndex(index, ListView.Beginning);
+                    // a handler may rebuild the list ("All timezones…"), which destroys this row while
+                    // its handler still runs: take what is needed from the row before the signal
+                    const list = popupList;
+                    const close = closeOnSelected;
                     itemSelected(value);
-                    if (closeOnSelected) {
-                        popupList.state = "hidden";
+                    if (close) {
+                        list.state = "hidden";
                     }
                 }
+            }
+        }
+    }
+
+    Component {
+        id: sectionHeader
+
+        Item {
+            width: ui.width
+            height: 70
+
+            Text {
+                text: section.toUpperCase()
+                color: colors.textPrimary
+                width: parent.width - 40
+                elide: Text.ElideRight
+                anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 10 }
+                font: fonts.heading()
             }
         }
     }

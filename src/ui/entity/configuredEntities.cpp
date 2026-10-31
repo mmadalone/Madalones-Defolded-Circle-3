@@ -3,6 +3,7 @@
 #include "configuredEntities.h"
 
 #include "../../logging.h"
+#include "../../util.h"
 #include "entityController.h"
 
 namespace uc {
@@ -86,11 +87,17 @@ void ConfiguredEntities::loadMore() {
 
 void ConfiguredEntities::loadFromCore(int limit, int page) {
     int id = m_core->getEntities(limit, page, m_filter);
+    setActiveRequest(id);
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respEntities,
-        [=](QList<core::Entity> entities, int count, int limit, int page) {
+        [=](QList<core::Entity> entities, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
             // success
+            if (isStaleResponse(id)) {
+                return;
+            }
+
             qCDebug(lcEntities()) << "Configured entities:" << count << "page:" << page << "limit:" << limit;
 
             setCount(count);
@@ -99,7 +106,7 @@ void ConfiguredEntities::loadFromCore(int limit, int page) {
                 m_totalItems = count;
                 if (m_limit == 0) {
                     m_limit = limit;
-                    m_totalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
+                    m_totalPages = Util::pageCount(count, limit);
                 }
                 m_lastPageLoaded = page;
 
@@ -121,6 +128,10 @@ void ConfiguredEntities::loadFromCore(int limit, int page) {
         },
         [=](int code, QString message) {
             // fail
+            if (isStaleResponse(id)) {
+                return;
+            }
+
             qCWarning(lcEntities()) << "Cannot get configured entities" << code << message;
         });
 }

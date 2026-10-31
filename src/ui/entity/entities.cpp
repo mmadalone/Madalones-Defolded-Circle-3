@@ -16,28 +16,34 @@ int Entities::count() const {
 
 int Entities::rowCount(const QModelIndex &parent) const {
     Q_UNUSED(parent)
-    return m_data.size();
+    return m_rows.size();
 }
 
 bool Entities::removeRows(int row, int count, const QModelIndex &parent) {
+    if (row < 0 || count <= 0 || (row + count) > m_rows.size()) {
+        return false;
+    }
+
     beginRemoveRows(parent, row, row + count - 1);
     for (int i = row + count - 1; i >= row; i--) {
-        QHash<QString, entity::Base *>::const_iterator iter = m_data.constBegin() + i;
-        iter.value()->deleteLater();
-        m_data.remove(iter.value()->getId());
+        entity::Base *item = m_rows.takeAt(i);
+        m_rowById.remove(item->getId());
+        item->deleteLater();
+    }
+
+    for (int i = row; i < m_rows.size(); ++i) {
+        m_rowById[m_rows.at(i)->getId()] = i;
     }
     endRemoveRows();
     return true;
 }
 
 QVariant Entities::data(const QModelIndex &index, int role) const {
-    if (index.row() < 0 || index.row() >= m_data.size()) {
+    if (!index.isValid() || index.row() < 0 || index.row() >= m_rows.size()) {
         return QVariant();
     }
 
-    QHash<QString, entity::Base *>::const_iterator iter = m_data.constBegin() + index.row();
-
-    entity::Base *item = iter.value();
+    entity::Base *item = m_rows.at(index.row());
     switch (role) {
         case KeyRole:
             return item->getId();
@@ -67,14 +73,16 @@ QHash<int, QByteArray> Entities::roleNames() const {
 }
 
 void Entities::clear() {
-    for (QHash<QString, entity::Base *>::const_iterator i = m_data.cbegin(); i != m_data.cend(); ++i) {
-        i.value()->deleteLater();
+    for (entity::Base *item : qAsConst(m_rows)) {
+        item->deleteLater();
     }
 
     beginResetModel();
-    m_data.clear();
+    m_rows.clear();
+    m_rowById.clear();
     endResetModel();
     emit countChanged(count());
+    updateAllSelected();
 
     m_totalPages = 0;
     m_lastPageLoaded = 0;
@@ -86,36 +94,98 @@ void Entities::clear() {
 }
 
 bool Entities::contains(const QString &key) {
-    return m_data.contains(key);
+    return m_rowById.contains(key);
+}
+
+void Entities::setActiveRequest(int requestId) {
+    m_activeRequestId = requestId;
+}
+
+bool Entities::isStaleResponse(int requestId) {
+    if (requestId != m_activeRequestId) {
+        qCDebug(lcEntities()) << "Dropping stale entities response" << requestId << ", waiting for"
+                              << m_activeRequestId;
+        return true;
+    }
+
+    m_activeRequestId = -1;
+    return false;
 }
 
 void Entities::selectAll() {
-    for (QHash<QString, entity::Base *>::const_iterator i = m_data.cbegin(); i != m_data.cend(); ++i) {
-        i.value()->setSelected(true);
-        emit dataChanged(getModelIndexByKey(i.key()), getModelIndexByKey(i.key()));
+    bool changed = false;
+
+    for (entity::Base *item : qAsConst(m_rows)) {
+        if (!item->getSelected()) {
+            item->setSelected(true);
+            changed = true;
+        }
     }
-    m_allSelected = true;
-    emit allSelectedChanged();
+
+    if (changed && !m_rows.isEmpty()) {
+        emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0), QVector<int>{SelectedRole});
+    }
+
+    updateAllSelected();
 }
 
 void Entities::clearSelected() {
-    for (QHash<QString, entity::Base *>::const_iterator i = m_data.cbegin(); i != m_data.cend(); ++i) {
-        i.value()->setSelected(false);
-        emit dataChanged(getModelIndexByKey(i.key()), getModelIndexByKey(i.key()));
+    bool changed = false;
+
+    for (entity::Base *item : qAsConst(m_rows)) {
+        if (item->getSelected()) {
+            item->setSelected(false);
+            changed = true;
+        }
     }
-    m_allSelected = false;
-    emit allSelectedChanged();
+
+    if (changed && !m_rows.isEmpty()) {
+        emit dataChanged(index(0, 0), index(m_rows.size() - 1, 0), QVector<int>{SelectedRole});
+    }
+
+    updateAllSelected();
+}
+
+void Entities::updateAllSelected() {
+    // "all selected" is a fact about the rows, not a flag set by the last button press: a search, a filter or
+    // another page replaces or appends rows that are not selected
+    bool allSelected = !m_rows.isEmpty();
+    for (entity::Base *item : qAsConst(m_rows)) {
+        if (!item->getSelected()) {
+            allSelected = false;
+            break;
+        }
+    }
+
+    if (m_allSelected != allSelected) {
+        m_allSelected = allSelected;
+        emit allSelectedChanged();
+    }
 }
 
 void Entities::setSelected(const QString &entityId, bool value) {
-    m_data.value(entityId)->setSelected(value);
-    emit dataChanged(getModelIndexByKey(entityId), getModelIndexByKey(entityId));
+    auto it = m_rowById.constFind(entityId);
+    if (it == m_rowById.cend()) {
+        return;
+    }
+
+    entity::Base *item = m_rows.at(*it);
+    if (item->getSelected() == value) {
+        return;
+    }
+
+    item->setSelected(value);
+
+    const QModelIndex itemIndex = index(*it, 0);
+    emit dataChanged(itemIndex, itemIndex, QVector<int>{SelectedRole});
+
+    updateAllSelected();
 }
 
 QStringList Entities::getSelected() {
     QStringList list;
 
-    for (entity::Base *entity : qAsConst(m_data)) {
+    for (entity::Base *entity : qAsConst(m_rows)) {
         if (entity->getSelected()) {
             list.append(entity->getId());
         }
@@ -125,13 +195,22 @@ QStringList Entities::getSelected() {
 }
 
 void Entities::add(entity::Base *o) {
-    if (m_data.contains(o->getId())) {
+    const QString key = o->getId();
+
+    if (m_rowById.contains(key)) {
+        // the caller created the entity object for this list: a rejected one would leak
+        o->deleteLater();
         return;
     }
 
-    beginInsertRows(QModelIndex(), rowCount(), rowCount());
-    m_data.insert(o->getId(), o);
+    const int row = m_rows.size();
+
+    beginInsertRows(QModelIndex(), row, row);
+    m_rows.append(o);
+    m_rowById.insert(key, row);
     endInsertRows();
+
+    updateAllSelected();
 }
 
 void Entities::remove(const QString &key) {
@@ -141,23 +220,16 @@ void Entities::remove(const QString &key) {
 void Entities::remove(int row) {
     removeRows(row, 1, QModelIndex());
     emit countChanged(count());
+    updateAllSelected();
 }
 
 QModelIndex Entities::getModelIndexByKey(const QString &key) {
-    QModelIndex idx;
-
-    QHash<QString, entity::Base *>::const_iterator iter = m_data.constFind(key);
-
-    int d = 0;
-
-    while (iter != m_data.constBegin()) {
-        ++d;
-        --iter;
+    auto it = m_rowById.constFind(key);
+    if (it == m_rowById.cend()) {
+        return QModelIndex();
     }
 
-    idx = index(d, 0);
-
-    return idx;
+    return index(*it, 0);
 }
 
 void Entities::setCount(int count) {

@@ -11,7 +11,9 @@ Rectangle {
     id: renameEntityContainer
     color: colors.black
     anchors.fill: parent
-    enabled: opacity == 1
+    // enabled by state, not by the finished fade-in: the dialog takes the input and focuses its
+    // field as soon as it is shown, and the input controller drops a disabled owner right away
+    enabled: state === "visible"
 
     signal closed()
 
@@ -42,9 +44,14 @@ Rectangle {
 
     onStateChanged: {
         if (state == "visible") {
-            buttonNavigation.takeControl();
-            inputFieldContainer.inputField.focus = true;
-            inputFieldContainer.inputField.forceActiveFocus();
+            // Deferred: the dialog is shown by a key press (or a tap) that is still being delivered,
+            // and its root only becomes enabled with the state change that triggered this handler.
+            // The field is focused after the input was taken, so the page below records the
+            // control it was on - not our field - as the one to come back to.
+            Qt.callLater(function() {
+                buttonNavigation.takeControl();
+                inputFieldContainer.inputField.forceActiveFocus();
+            });
             keyboard.show();
         } else {
             buttonNavigation.releaseControl();
@@ -82,7 +89,6 @@ Rectangle {
         }
     ]
 
-
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
@@ -95,11 +101,6 @@ Rectangle {
                 "pressed": function() {
                     cancel();
                 }
-            },
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    rename();
-                }
             }
         }
     }
@@ -108,50 +109,54 @@ Rectangle {
         anchors.fill: parent
     }
 
-    Item {
-        id: renameEntityContainerTitle
-        width: parent.width; height: 60
-        anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-
-        Text {
-            id: renameEntityContainerTitleText
-            color: colors.offwhite
-            text: qsTr("Rename entity")
-            anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-            font: fonts.primaryFont(26)
+    Components.FormDialog {
+        id: dialog
+        title: qsTr("Rename entity")
+        goBack: function() {
+            cancelButton.activate();
         }
-    }
 
-    Components.InputField {
-        id: inputFieldContainer
-        width: parent.width; height: 80
-        anchors { top: renameEntityContainerTitle.bottom; horizontalCenter: parent.horizontalCenter }
+        Components.InputField {
+            id: inputFieldContainer
+            width: parent.width; height: 80
 
-        inputField.text: entityName
-        inputField.onAccepted: {
-            rename();
+            inputField.text: entityName
+            inputField.onAccepted: {
+                rename();
+            }
+            moveInput: false
+
+            /** KEYBOARD NAVIGATION **/
+            // DPAD_MIDDLE on the field is its Return key and submits through onAccepted; the buttons
+            // below are reached with DPAD_DOWN
+            navDown: cancelButton
         }
-        moveInput: false
-    }
 
-    Components.Button {
-        id: cancelButton
-        text: qsTr("Cancel")
-        width: parent.width / 2 - 10
-        color: colors.secondaryButton
-        anchors { left: inputFieldContainer.left; top: inputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            cancel();
-        }
-    }
+        buttons: [
+            Components.Button {
+                id: cancelButton
+                text: qsTr("Cancel")
+                width: dialog.buttonWidth
+                variant: "secondary"
+                trigger: function() {
+                    cancel();
+                }
 
-    Components.Button {
-        //: Label for button that will execute the action and rename the entity
-        text: qsTr("Rename")
-        width: parent.width / 2 - 10
-        anchors { right: inputFieldContainer.right; top: inputFieldContainer.bottom; topMargin: 40 }
-        trigger: function() {
-            rename();
-        }
+                KeyNavigation.up: inputFieldContainer.inputField
+                KeyNavigation.right: actionButton
+            },
+            Components.Button {
+                id: actionButton
+                //: Label for button that will execute the action and rename the entity
+                text: qsTr("Rename")
+                width: dialog.buttonWidth
+                trigger: function() {
+                    rename();
+                }
+
+                KeyNavigation.up: inputFieldContainer.inputField
+                KeyNavigation.left: cancelButton
+            }
+        ]
     }
 }

@@ -28,9 +28,28 @@ Popup {
         buttonNavigation.releaseControl();
     }
 
+    // the list only informs: DPAD_UP / DOWN scroll it by half its height when it is longer than the
+    // popup, BACK / HOME close the popup like its close button
+    function scrollList(direction) {
+        const minContentY = itemList.originY;
+        const maxContentY = Math.max(minContentY, itemList.originY + itemList.contentHeight - itemList.height);
+        const step = Math.round(itemList.height / 2);
+        itemList.contentY = Math.max(minContentY, Math.min(maxContentY, itemList.contentY + direction * step));
+    }
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
+            "DPAD_DOWN": {
+                "pressed": function() {
+                    connectionStateRoot.scrollList(1);
+                }
+            },
+            "DPAD_UP": {
+                "pressed": function() {
+                    connectionStateRoot.scrollList(-1);
+                }
+            },
             "BACK": {
                 "pressed": function() {
                     connectionStateRoot.close();
@@ -62,10 +81,8 @@ Popup {
     background: MouseArea {
         onClicked: connectionStateRoot.close()
 
-        Rectangle {
+        Components.Dim {
             anchors.fill: parent
-            color: colors.black
-            opacity: 0.5
         }
     }
 
@@ -73,7 +90,8 @@ Popup {
         Rectangle {
             width: parent.width - 40
             height: iconClose.height + itemList.height + 20 + (itemList.count === 0 ? 60 : 0)
-            color: colors.medium
+            // a popup card over the dim (docs/design-system.md section 5)
+            color: colors.surfaceRaised
             radius: ui.cornerRadiusLarge
             anchors { top: parent.top; topMargin: 40; horizontalCenter: parent.horizontalCenter }
 
@@ -134,8 +152,8 @@ Popup {
                 horizontalAlignment: Text.AlignHCenter
                 maximumLineCount: 1
                 elide: Text.ElideRight
-                color: colors.light
-                font: fonts.secondaryFont(20)
+                color: colors.textSecondary
+                font: fonts.help()
                 anchors { top: itemList.top; topMargin: 20; horizontalCenter: itemList.horizontalCenter }
                 visible: itemList.count === 0
             }
@@ -146,7 +164,7 @@ Popup {
         id: listItem
 
         Item {
-            width: itemList.width; height: 80
+            width: itemList.width; height: Math.max(80, integrationTitle.implicitHeight + 20)
 
             property QtObject integrationObj: IntegrationController.getDriversModelItem(modelData)
             property bool isLast: index + 1 < itemList.count ? false : true
@@ -167,21 +185,21 @@ Popup {
                 maximumLineCount: 2
                 color: colors.offwhite
                 anchors { left: icon.right; leftMargin: 10; right: integrationStateText.left; rightMargin: 10; verticalCenter: parent.verticalCenter; }
-                font: fonts.primaryFont(20)
+                font: fonts.label()
             }
 
             Text {
                 id: integrationStateText
                 text: integrationObj.state
                 maximumLineCount: 1
-                color: colors.light
+                color: colors.textSecondary
                 anchors { right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter; }
-                font: fonts.secondaryFont(20)
+                font: fonts.help()
             }
 
             Rectangle {
                 width: parent.width; height: 2
-                color: colors.dark
+                color: colors.divider
                 anchors { bottom: parent.bottom }
                 visible: !isLast
             }

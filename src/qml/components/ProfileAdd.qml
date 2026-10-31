@@ -12,7 +12,9 @@ Rectangle {
     color: colors.black
     width: parent.width
     height: parent.height
-    enabled: opacity == 1
+    // enabled by state, not by the finished fade-in: the dialog takes the input and focuses its
+    // field as soon as it is shown, and the input controller drops a disabled owner right away
+    enabled: state === "visible"
 
     property string parentController
     property bool noProfile: false
@@ -51,19 +53,30 @@ Rectangle {
     }
 
     function resetForm() {
-        if (!ui.isOnboarding) {
+        // without any profile the form is the whole screen: there is nothing to go back to
+        if (!ui.isOnboarding && !addProfileContainer.noProfile) {
             addProfileContainer.state = "hidden";
         }
         inputFieldContainer.inputField.clear();
         name = "";
     }
 
+    // focus the name field, bring the keyboard up and take the input: what showing the form does,
+    // for a form that is already visible when its step is entered again
+    function focusForm() {
+        keyboard.show();
+        // Deferred: the form is shown by a key press that is still being delivered. The field is
+        // focused after the input was taken, so the layer below records the control it was on -
+        // not our field - as the one to come back to.
+        Qt.callLater(function() {
+            buttonNavigation.takeControl();
+            inputFieldContainer.inputField.forceActiveFocus();
+        });
+    }
+
     onStateChanged: {
         if (state == "visible") {
-            inputFieldContainer.inputField.focus = true;
-            inputFieldContainer.inputField.forceActiveFocus();
-            keyboard.show();
-            buttonNavigation.takeControl();
+            focusForm();
         } else {
             keyboard.hide();
             buttonNavigation.releaseControl();
@@ -77,12 +90,12 @@ Rectangle {
 
         function onProfileAdded(success, code) {
             if (success) {
+                // switching to the new profile is driven by the profile NEW event of the core
                 loading.success(true, function() {
                     if (!ui.isOnboarding) {
                         parent.state = "hidden";
                         parent.parent.closeAnimation.start();
                     }
-                    ui.switchProfile(ui.profile.id);
                 });
                 addProfileContainer.state = "hidden";
                 resetForm();
@@ -115,19 +128,21 @@ Rectangle {
         }
     }
 
+    // DPAD_MIDDLE is the Return key of the focused name field and submits through its onAccepted;
+    // a DPAD_MIDDLE handler here would submit the same key press a second time
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    addProfileContainer.submitForm();
-                }
-            },
             "BACK": {
                 "pressed": function() {
                     addProfileContainer.cancelForm();
                 }
             },
+            "HOME": {
+                "pressed": function() {
+                    addProfileContainer.cancelForm();
+                }
+            }
         }
     }
 
@@ -161,52 +176,56 @@ Rectangle {
     MouseArea {
         anchors.fill: parent
 
-        Item {
-            id: addProfileContainerTitle
-            width: parent.width; height: 60
-            anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-
-            Text {
-                id: addProfileContainerTitleText
-                color: colors.offwhite
-                text: qsTr("Profile name")
-                anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-                font: fonts.primaryFont(26)
+        Components.FormDialog {
+            id: dialog
+            title: qsTr("Profile name")
+            goBack: function() {
+                cancelButton.activate();
             }
-        }
+            closable: cancelButton.visible
 
+            Components.InputField {
+                id: inputFieldContainer
+                width: parent.width; height: 80
 
-        Components.InputField {
-            id: inputFieldContainer
-            width: parent.width; height: 80
-            anchors { top: addProfileContainerTitle.bottom; horizontalCenter: parent.horizontalCenter }
+                //: Example for profile name
+                inputField.placeholderText: qsTr("John")
+                inputField.onAccepted: addProfileContainer.submitForm()
+                moveInput: false
 
-            //: Example for profile name
-            inputField.placeholderText: qsTr("John")
-            inputField.onAccepted: addProfileContainer.submitForm()
-            moveInput: false
-        }
-
-        Components.Button {
-            id: cancelButton
-            text: qsTr("Cancel")
-            width: parent.width / 2 - 10
-            color: colors.secondaryButton
-            anchors { left: inputFieldContainer.left; top: inputFieldContainer.bottom; topMargin: 40 }
-            trigger: function() {
-                addProfileContainer.cancelForm();
+                /** KEYBOARD NAVIGATION **/
+                navDown: cancelButton.visible ? cancelButton : addButton
             }
-            visible: !ui.isOnboarding || addProfileContainer.noProfile
-        }
 
-        Components.Button {
-            //: Label for button that add a profile
-            text: qsTr("Add")
-            width: ui.isOnboarding || addProfileContainer.noProfile ? parent.width : parent.width / 2 - 10
-            anchors { right: inputFieldContainer.right; top: inputFieldContainer.bottom; topMargin: 40 }
-            trigger: function() {
-                addProfileContainer.submitForm();
-            }
+            buttons: [
+                Components.Button {
+                    id: cancelButton
+                    text: qsTr("Cancel")
+                    width: dialog.buttonWidth
+                    variant: "secondary"
+                    trigger: function() {
+                        addProfileContainer.cancelForm();
+                    }
+                    // nothing to cancel during onboarding or when no profile exists yet
+                    visible: !ui.isOnboarding && !addProfileContainer.noProfile
+
+                    KeyNavigation.up: inputFieldContainer.inputField
+                    KeyNavigation.right: addButton
+                },
+                Components.Button {
+                    id: addButton
+                    //: Label for button that add a profile
+                    text: qsTr("Add")
+                    // alone when there is nothing to cancel
+                    width: cancelButton.visible ? dialog.buttonWidth : parent.width
+                    trigger: function() {
+                        addProfileContainer.submitForm();
+                    }
+
+                    KeyNavigation.up: inputFieldContainer.inputField
+                    KeyNavigation.left: cancelButton
+                }
+            ]
         }
     }
 }

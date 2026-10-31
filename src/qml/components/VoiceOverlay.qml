@@ -34,6 +34,15 @@ Popup {
 
     onClosed: {
         buttonNavigation.releaseControl();
+
+        // the session is over, also when it ended without a voice_end: after an error, after the timeout, or
+        // because the overlay was dismissed. A voice_start that is still being resent after a wakeup would
+        // otherwise let the assistant start listening once it finally gets through. Unlike a voice_end, this
+        // reports no error for the dropped start: the overlay is closed and there is nothing to show it on.
+        if (voice.voiceEntityObj) {
+            EntityController.cancelPendingVoiceStart(voice.voiceEntityObj.id, voice.sessionId);
+        }
+
         circleContainer.reset();
         titleText.text = qsTr("Listening ...");
         voice.wasError = false;
@@ -68,6 +77,10 @@ Popup {
             return;
         }
 
+        // the answer to the previous question may still be playing after its overlay was closed: it would be
+        // recorded with the new question, and its end would close this overlay
+        Voice.stopSpeechResponse();
+
         voice.open();
 
         voice.profileId = profileId;
@@ -77,24 +90,7 @@ Popup {
         voice.listening = true;
 
         voice.voiceEntityObj = EntityController.get(voiceEntityId);
-
-        if (!voice.voiceEntityObj) {
-            EntityController.load(voiceEntityId);
-            connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                if (success && entityId == voiceEntityId) {
-                    voice.voiceEntityObj = EntityController.get(voiceEntityId);
-
-                    if (voice.voiceEntityObj) {
-                        voice.init();
-                    } else {
-                        circleContainer.start();
-                        showError(qsTr("Voice Assistant is not available."));
-                    }
-                }
-            });
-        } else {
-            voice.init();
-        }
+        voice.init();
     }
 
     function stop() {
@@ -320,7 +316,7 @@ Popup {
             start: Qt.point(0, 0)
             end: Qt.point(0, parent.height)
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 0.0; color: colors.transparent }
                 GradientStop { position: 1.0; color: colors.black }
             }
         }
@@ -653,12 +649,12 @@ Popup {
     Text {
         id: assistantNameText
         text: voice.voiceEntityObj ? voice.voiceEntityObj.name : ""
-        color: colors.light
+        color: colors.textSecondary
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         width: parent.width - 80
         anchors { horizontalCenter: parent.horizontalCenter; bottom: assistantProfileNameText.top; bottomMargin: 0 }
-        font: fonts.primaryFont(24)
+        font: fonts.help()
     }
 
     Text {
@@ -673,16 +669,17 @@ Popup {
                     return "";
                 }
             }
+
             return "";
         }
 
-        color: colors.light
+        color: colors.textSecondary
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
         width: parent.width - 80
         height: text == "" ? 0 : implicitHeight
         anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 60 }
-        font: fonts.primaryFont(20)
+        font: fonts.help()
     }
 
 

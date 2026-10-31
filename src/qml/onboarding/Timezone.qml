@@ -7,42 +7,210 @@ import Onboarding 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import "qrc:/onboarding" as OnboardingComponents
 
-Item {
-    Components.ButtonNavigation {
-        overrideActive: OnboardingController.currentStep === OnboardingController.Timezone
-        defaultConfig: {
-            "BACK": {
-                "pressed": function() {
-                    OnboardingController.previousStep();
-                }
-            },
+OnboardingComponents.Page {
+    id: timezoneStep
+
+    // Most countries have exactly one timezone: those get a confirm card instead of a list.
+    // Multi-zone countries get their own zones only; the full world list stays reachable as an
+    // escape hatch (border regions, countries missing from the tzdata mapping).
+    property bool confirmMode: false
+    property bool worldList: false
+    property int countryZoneCount: 0
+    property var singleZone: null
+
+    initialFocusItem: buttonConfirm
+
+    onStepEntered: {
+        let zones = Config.getTimeZoneInfos(Config.country);
+        countryZoneCount = zones.length;
+
+        if (zones.length === 1) {
+            confirmMode = true;
+            worldList = false;
+            singleZone = zones[0];
+        } else {
+            confirmMode = false;
+            openList(zones);
         }
+    }
+
+    // a list that stays open on a step that is no longer on screen keeps fighting for the focus
+    onStepLeft: selectList.state = "hidden"
+
+    function appendZone(zone) {
+        // every optional PopupList role on every row: ListModel roles are fixed on first append
+        listModel.append({'name': zone.city, 'value': zone.id, 'secondary': zone.zoneName,
+                          'rightText': zone.offsetLabel, 'searchKey': zone.id});
+    }
+
+    function selectedIndex() {
+        for (let i = 0; i < listModel.count; i++) {
+            if (listModel.get(i).value === Config.timezone) {
+                return i;
+            }
+        }
+        return 0;
+    }
+
+    function openList(zones) {
+        if (zones.length === 0) {
+            openWorldList();
+            return;
+        }
+
+        worldList = false;
+        listModel.clear();
+
+        for (let i = 0; i < zones.length; i++) {
+            appendZone(zones[i]);
+        }
+        listModel.append({'name': qsTr("All timezones…"), 'value': "__all__", 'secondary': "",
+                          'rightText': "", 'searchKey': ""});
+
+        selectList.initialSelected = selectedIndex();
+        selectList.popupListmodel.reload();
+        selectList.state = "visible";
+    }
+
+    function openWorldList() {
+        worldList = true;
+        listModel.clear();
+
+        let zones = Config.getAllTimeZoneInfos();
+        for (let i = 0; i < zones.length; i++) {
+            appendZone(zones[i]);
+        }
+
+        selectList.initialSelected = selectedIndex();
+        selectList.popupListmodel.reload();
+        selectList.state = "visible";
+    }
+
+    // the list owns the input while it is visible, so BACK has to be bound on the list. It walks
+    // back the way the user came: world list -> country list -> previous step, or world list ->
+    // confirm card for single-zone countries.
+    Component.onCompleted: {
+        selectList.buttonNavigation.extendDefaultConfig({
+                                                            "BACK": {
+                                                                "pressed": function() {
+                                                                    if (confirmMode) {
+                                                                        selectList.state = "hidden";
+                                                                    } else if (worldList && countryZoneCount > 1) {
+                                                                        openList(Config.getTimeZoneInfos(Config.country));
+                                                                    } else {
+                                                                        OnboardingController.previousStep();
+                                                                    }
+                                                                }
+                                                            }
+                                                        });
     }
 
     Connections {
         target: selectList
-        enabled: OnboardingController.currentStep == OnboardingController.Timezone
+        ignoreUnknownSignals: true
+        enabled: OnboardingController.currentStep === OnboardingController.Timezone
 
         function onItemSelected(value) {
+            if (value === "__all__") {
+                openWorldList();
+                return;
+            }
             Config.timezone = value;
         }
     }
 
     Connections {
-        target: OnboardingController
+        target: Config
         ignoreUnknownSignals: true
+        enabled: OnboardingController.currentStep === OnboardingController.Timezone
 
-        function onCurrentStepChanged() {
-            if (OnboardingController.currentStep == OnboardingController.Timezone) {
-                selectList.state = "visible";
-                Config.getTimeZones(Config.country);
+        function onTimezoneChanged(success) {
+            if (success) {
+                OnboardingController.setTimezoneSelected(true);
+                OnboardingController.nextStep();
             }
         }
     }
 
+    // ---- confirm card for countries with exactly one timezone ----
+
+    Item {
+        id: confirmCard
+        anchors.fill: parent
+        visible: timezoneStep.confirmMode
+
+        Components.TitleBar {
+            id: title
+            // onboarding steps have no back target: BACK goes to the previous step
+            action: ""
+            text: qsTr("Confirm timezone")
+        }
+
+        Rectangle {
+            id: zoneCard
+            width: parent.width - 40
+            height: 160
+            radius: ui.cornerRadiusSmall
+            color: colors.surface
+            anchors { horizontalCenter: parent.horizontalCenter; top: title.bottom; topMargin: 60 }
+
+            Text {
+                id: countryText
+                text: Config.countryName
+                width: parent.width - 40
+                elide: Text.ElideRight
+                color: colors.textPrimary
+                anchors { left: parent.left; leftMargin: 20; top: parent.top; topMargin: 30 }
+                font: fonts.label()
+            }
+
+            Text {
+                // no current time on purpose: there is no NTP sync yet, the clock may be way off
+                text: timezoneStep.singleZone
+                      ? timezoneStep.singleZone.city + " · " + timezoneStep.singleZone.offsetLabel
+                      : ""
+                width: parent.width - 40
+                elide: Text.ElideRight
+                color: colors.textSecondary
+                anchors { left: countryText.left; top: countryText.bottom; topMargin: 10 }
+                font: fonts.help()
+            }
+        }
+
+        Components.Button {
+            id: buttonConfirm
+            text: qsTr("Confirm")
+            width: parent.width - 40
+            anchors { horizontalCenter: parent.horizontalCenter; top: zoneCard.bottom; topMargin: 60 }
+            KeyNavigation.down: chooseOther
+            trigger: function() {
+                if (timezoneStep.singleZone) {
+                    Config.timezone = timezoneStep.singleZone.id;
+                }
+            }
+        }
+
+        // the alternative to confirming: a secondary button, not a bare text action
+        Components.Button {
+            id: chooseOther
+            text: qsTr("Choose another timezone")
+            variant: "secondary"
+            width: parent.width - 40
+            anchors { horizontalCenter: parent.horizontalCenter; top: buttonConfirm.bottom; topMargin: 20 }
+            KeyNavigation.up: buttonConfirm
+            trigger: function() {
+                timezoneStep.openWorldList();
+            }
+        }
+    }
+
+    // ---- timezone list for multi-zone countries and the world list escape hatch ----
+
     Components.PopupList {
         id: selectList
+        currentValue: Config.timezone
         title: qsTr("Select timezone")
         showSearch: true
         hideClose: true
@@ -53,28 +221,5 @@ Item {
 
     ListModel {
         id: listModel
-    }
-
-    Connections {
-        target: Config
-        enabled: OnboardingController.currentStep == OnboardingController.Timezone
-
-        function onTimeZoneListChanged (list) {
-            listModel.clear();
-
-            let timezoneList = list;
-            for (let i = 0; i < timezoneList.length; i ++) {
-                listModel.append({'name': timezoneList[i], 'value': timezoneList[i]})
-            }
-
-            selectList.popupListmodel.reload();
-        }
-
-        function onTimezoneChanged(success) {
-            if (success) {
-                OnboardingController.setTimezoneSelected(true);
-                OnboardingController.nextStep();
-            }
-        }
     }
 }

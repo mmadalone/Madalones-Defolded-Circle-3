@@ -5,6 +5,13 @@
 
 #include <QObject>
 
+#ifdef Q_OS_WIN
+// windows.h, pulled in by QtQuick / QOpenGL headers, defines ERROR (wingdi.h) and DELETE (winnt.h) as macros.
+// They clash with the enum values below; this header must be included after those Qt headers in such files.
+#undef ERROR
+#undef DELETE
+#endif
+
 namespace uc {
 namespace core {
 
@@ -106,6 +113,7 @@ class RequestTypes {
         update_entity,
         delete_entity,
         delete_entities,
+        set_entity_state,
 
         // profile handling
         get_profiles,
@@ -166,6 +174,7 @@ class RequestTypes {
         stop_all_integration_setups,   // TODO(marton): Implement me
         get_integration_setup_status,  // TODO(marton): Implement me
         set_integration_user_data,
+        integration_setup_keepalive,
         stop_integration_setup,
 
         // configuration handling
@@ -237,6 +246,9 @@ class RequestTypes {
         // media browsing
         browse_media,
         search_media,
+
+        // sequence readiness
+        get_sequence_readiness,
     };
     Q_ENUM(Enum)
 
@@ -333,6 +345,9 @@ class MsgResponse {
         // media browsing
         media_browse,
         media_search,
+
+        // sequence readiness
+        sequence_readiness,
     };
     Q_ENUM(Enum)
 
@@ -384,6 +399,22 @@ class WifiEnums {
         DISABLE_ALL_NETWORKS,
     };
     Q_ENUM(WifiCmd)
+
+    /**
+     * WiFi network security type of the `security` field.
+     *
+     * AUTO means that the field is not set: in an add_wifi_network message the core creates the
+     * strongest profile the WiFi hardware supports, in a scan result or a saved network the core
+     * could not classify the network (e.g. WEP or EAP-only).
+     */
+    enum WifiSecurity {
+        AUTO,
+        OPEN,
+        WPA_PSK,
+        WPA3_SAE,
+        WPA2_WPA3,
+    };
+    Q_ENUM(WifiSecurity)
 
     enum WifiNetworkCmd {
         ENABLE,
@@ -548,6 +579,7 @@ class IntegrationEnums {
     Q_ENUM(Commands)
 
     enum SetupState {
+        NEW,
         SETUP,
         WAIT_USER_ACTION,
         OK,
@@ -561,9 +593,22 @@ class IntegrationEnums {
         CONNECTION_REFUSED,
         AUTHORIZATION_ERROR,
         TIMEOUT,
+        DRIVER_UNAVAILABLE,
+        INVALID_INPUT,
+        ABORTED,
+        ALREADY_CONFIGURED,
+        NOT_SUPPORTED,
         OTHER,
     };
     Q_ENUM(SetupError)
+
+    // why a maximum duration is in force for a setup session (setup_limit_reason)
+    enum SetupLimitReason {
+        NO_LIMIT,
+        BATTERY,
+        LOW_BATTERY,
+    };
+    Q_ENUM(SetupLimitReason)
 
  private:
     IntegrationEnums() {}

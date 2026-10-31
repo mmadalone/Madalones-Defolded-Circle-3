@@ -30,6 +30,15 @@ NotificationItem::~NotificationItem() {
     qCDebug(lcNotification()).noquote() << "Notification item destructor:" << m_id << m_title;
 }
 
+bool NotificationItem::isDuplicateOf(QObject *other) const {
+    const NotificationItem *item = qobject_cast<const NotificationItem *>(other);
+    if (item == nullptr) {
+        return false;
+    }
+
+    return m_title == item->m_title && m_message == item->m_message;
+}
+
 void NotificationItem::action() {
     if (m_action) {
         m_action(m_param);
@@ -60,6 +69,10 @@ int NotificationsModel::rowCount(const QModelIndex &parent) const {
 }
 
 bool NotificationsModel::removeRows(int row, int count, const QModelIndex &parent) {
+    if (row < 0 || count <= 0 || (row + count) > m_data.size()) {
+        return false;
+    }
+
     beginRemoveRows(parent, row, row + count - 1);
     for (int i = row + count - 1; i >= row; i--) {
         m_data.at(i)->deleteLater();
@@ -143,10 +156,14 @@ QModelIndex NotificationsModel::getModelIndexByKey(const QString &key) {
 }
 
 NotificationItem *NotificationsModel::get(const QString &key) {
-    return m_data[getModelIndexByKey(key).row()];
+    return get(getModelIndexByKey(key).row());
 }
 
 NotificationItem *NotificationsModel::get(int row) {
+    if (row < 0 || row >= m_data.count()) {
+        return nullptr;
+    }
+
     return m_data[row];
 }
 
@@ -155,7 +172,10 @@ void NotificationsModel::removeItem(const QString &key) {
 }
 
 void NotificationsModel::removeItem(int row) {
-    removeRows(row, 1, QModelIndex());
+    if (!removeRows(row, 1, QModelIndex())) {
+        return;
+    }
+
     emit countChanged(count());
 }
 

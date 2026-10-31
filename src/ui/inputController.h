@@ -1,14 +1,15 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
 
 #include <QKeyEvent>
+#include <QMutex>
+#include <QPointer>
 #include <QQmlApplicationEngine>
 #include <QQuickItem>
 #include <QTimer>
-#include <QMutex>
-#include <QPointer>
 #include <QVector>
 
 #include "../core/enums.h"
@@ -22,6 +23,10 @@ class InputController : public QQuickItem {
 
     Q_PROPERTY(QObject* activeItem READ activeItem NOTIFY activeItemChanged)
     Q_PROPERTY(int repeatCount READ getRepeatCount CONSTANT)
+    // True from the first physical key press until the screen is touched again. Pages use it to
+    // show their keypad selection only while the keypad is actually in use: a screen opened by
+    // touch shows no selection, and touching resets it.
+    Q_PROPERTY(bool keypadActive READ keypadActive NOTIFY keypadActiveChanged)
 
  public:
     explicit InputController(hw::HardwareModel::Enum model);
@@ -56,10 +61,18 @@ class InputController : public QQuickItem {
     Q_ENUM(Buttons)
 
     QObject* activeItem() const { return m_activeItem.data(); }
-    int     getRepeatCount() { return m_repeatCount; }
+    bool     keypadActive() const { return m_keypadActive; }
+    // True only while the handlers of the key press run that made the keypad active, the first press after a touch
+    // or after the start. A list that keeps a current row while the keypad is not active shows that row on this
+    // press instead of moving past it.
+    Q_INVOKABLE bool pressActivatedKeypad() const { return m_pressActivatedKeypad; }
+    int      getRepeatCount() { return m_repeatCount; }
 
-    Q_INVOKABLE void setSource(QObject *source);
+    Q_INVOKABLE void setSource(QObject* source);
     Q_INVOKABLE void emitKey(Qt::Key key, bool release = false);
+    // Button simulator: a held key auto-repeats like a held device key until it is released.
+    Q_INVOKABLE void pressSimulatorKey(Qt::Key key);
+    Q_INVOKABLE void releaseSimulatorKey(Qt::Key key);
     Q_INVOKABLE void blockInput(bool value);
 
     Q_INVOKABLE void setBaseOwner(QObject* obj);
@@ -67,38 +80,53 @@ class InputController : public QQuickItem {
     Q_INVOKABLE void takeControl(QObject* item);
     Q_INVOKABLE void releaseControl(QObject* item = nullptr);
 
-    static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
+    static QObject* qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine);
 
  signals:
+    void globalPowerLongPressed();
     void keyPressed(QString key);
+    void keyPressedFor(QObject* owner, QString key);
     void keyReleased(QString key);
-    void touchDetected();
+    void touchDetected();  // madalone: press on the touch screen
+    void keyReleasedFor(QObject* owner, QString key);
     void activeItemChanged();
+    void keypadActiveChanged();
 
  public slots:
     void onPowerModeChanged(core::PowerEnums::PowerMode powerMode);
 
  protected:
-    bool eventFilter(QObject *obj, QEvent *event) override;
+    bool eventFilter(QObject* obj, QEvent* event) override;
+
+ private slots:
+    void onOwnerDestroyed(QObject* owner);
 
  private:
-    static InputController *s_instance;
+    static InputController* s_instance;
 
+    void sendKeyEvent(QEvent::Type type, Qt::Key key, bool autoRepeat);
     void cleanupStack();
-    void updateActive();
+    bool updateActive();
+    void notifyActiveChanged(bool changed);
+    void emitKeyRelease(int key, const QString& mappedKey);
+    void cancelDeferredRelease(int key);
+    void setKeypadActive(bool active);
 
     QMutex m_mutex;
 
     hw::HardwareModel::Enum m_model;
 
-    QObject *m_source;
+    QPointer<QObject> m_source;
 
-    QPointer<QObject> m_activeItem;
-    QPointer<QObject> m_baseOwner;
-    QVector<QPointer<QObject>> m_stack;
+    QPointer<QObject>             m_activeItem;
+    QPointer<QObject>             m_baseOwner;
+    QVector<QPointer<QObject>>    m_stack;
     QHash<int, QPointer<QObject>> m_keyOwner;
+    QHash<int, QTimer*>           m_deferredRelease;
 
     bool m_blockInput = false;
+    bool m_keypadActive = false;
+    bool m_pressActivatedKeypad = false;
     bool m_blockTouchInput = false;
 
     QHash<int, QString> m_keyCodeMapping{
@@ -127,6 +155,13 @@ class InputController : public QQuickItem {
         {Qt::Key::Key_MediaRecord, "RECORD"},
         {Qt::Key::Key_F4, "MENU"},
     };
+
+    QTimer m_globalPowerHoldTimer;
+    bool   m_globalPowerPressed = false;
+    bool   m_globalPowerLongPressTriggered = false;
+
+    QTimer  m_simulatorRepeatTimer;
+    Qt::Key m_simulatorKey = Qt::Key_unknown;
 
     int m_repeatCount = 4;
 };

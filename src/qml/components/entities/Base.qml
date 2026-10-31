@@ -26,25 +26,28 @@ import "qrc:/components/entities/media_player" as MediaPlayerComponents
 Rectangle {
     id: entityBaseContainer
     width: isInGroup ? ui.width - 40 : ui.width - 20; height: 130
-    color: isSelected && !editMode ? Qt.darker(colors.medium) : colors.black
-    opacity: entityObj.enabled ? 1 : 0.5
+    color: colors.black
+    opacity: currentEntityObj.enabled ? 1 : 0.5
     radius: ui.cornerRadiusSmall
     border {
-        color: (isInGroup || isSelected) && !editMode ? colors.medium : colors.transparent
+        color: isInGroup && !editMode ? colors.divider : colors.transparent
         width: 1
     }
 
     property string entityId
-    property QtObject entityObj: QtObject {
+    property QtObject entityObjDummy: QtObject {
         property string name
         property string icon
         property string stateAsString
         property string stateInfo
+        property string integrationId
         property bool enabled
         property int state
         property int type
         property string mediaImage
     }
+    property QtObject entityObj: entityObjDummy
+    property QtObject currentEntityObj: entityObj ? entityObj : entityObjDummy
 
     property QtObject integrationObjDummy: QtObject {
         property string state
@@ -63,97 +66,164 @@ Rectangle {
 
     property alias button: button
 
-    property bool hasMediaImage: entityObj && entityObj.type === EntityTypes.Media_player && entityObj.mediaImage != ""
+    property bool hasMediaImage: currentEntityObj.type === EntityTypes.Media_player && currentEntityObj.mediaImage != ""
+
+    function ensureEntityLoaded() {
+        const e = EntityController.get(entityBaseContainer.entityId);
+
+        if (!e) {
+            entityBaseContainer.entityObj = entityBaseContainer.entityObjDummy;
+            entityBaseContainer.integrationObj = entityBaseContainer.integrationObjDummy;
+            entityBaseContainer.iconOn = false;
+            entityBaseContainer.controlTrigger = function() {}
+            button.checked = false;
+            return false;
+        }
+
+        entityBaseContainer.entityObj = e;
+        entityBaseContainer.integrationObj = IntegrationController.getModelItem(currentEntityObj.integrationId);
+        if (!entityBaseContainer.integrationObj) {
+            entityBaseContainer.integrationObj = entityBaseContainer.integrationObjDummy;
+        }
+
+        entityBaseContainer.build();
+        return true;
+    }
 
     function handleActivityOpen() {
-        if (entityBaseContainer.entityObj.type !== EntityTypes.Activity) {
+        if (!entityBaseContainer.entityObj) {
+            return false;
+        }
+
+        if (currentEntityObj.type !== EntityTypes.Activity) {
             return true;
         }
 
+        function openActivity(showFixStates) {
+            const obj = EntityController.get(entityBaseContainer.entityId);
+
+            if (!obj) {
+                return;
+            }
+
+            loadSecondContainer(EntityController.screenUrl(obj),
+                                { "entityId": obj.id, "entityObj": obj, "integrationObj": integrationObj, "openFixStates": showFixStates });
+        }
+
+        // Second level of the error popup: only the recorded state is changed, no sequence runs. The same popup
+        // instance is reused, its footer goes back to the first level.
+        function showFixStatePopup() {
+            const activityId = entityBaseContainer.entityId;
+
+            //: Popup title when fixing the state of an activity. %1 is the activity name
+            popupMenu.title = qsTr("Set the state of %1. No command is sent to the devices.").arg(currentEntityObj.name);
+            popupMenu.menuItems = [
+                {
+                    //: Button. Mark the activity as running without sending any command
+                    title: qsTr("Activity is on"),
+                    icon: "uc:power-on",
+                    callback: function() {
+                        EntityController.setEntityState(activityId, true);
+                        // the screen does not depend on the state: a refusal shows up as a notification on top of it
+                        openActivity(false);
+                    }
+                },
+                {
+                    //: Button. Mark the activity as stopped without sending any command
+                    title: qsTr("Activity is off"),
+                    icon: "uc:power-off",
+                    callback: function() { EntityController.setEntityState(activityId, false); }
+                },
+                {
+                    //: Button. Opens the list of the activity's devices whose on/off state can be corrected
+                    title: qsTr("Fix device states…"),
+                    icon: "uc:list-check",
+                    callback: function() { openActivity(true); }
+                }
+            ];
+            //: Footer of a popup menu that sits one level below another one: return to it
+            popupMenu.footerTitle = qsTr("Back");
+            popupMenu.footerIcon = "uc:arrow-left";
+            popupMenu.footerCallback = function() { showActivityPopup(); };
+            popupMenu.open();
+        }
+
         function showActivityPopup() {
-            popupMenu.title = qsTr("Activity error. Select option below.");
+            //: Popup title when an activity's start or stop sequence failed. %1 is the activity name
+            popupMenu.title = qsTr("%1 failed. What do you want to do?").arg(currentEntityObj.name);
             let menuItems = [];
             menuItems.push({
+                               //: Button. Imperative: start the activity.
                                title: qsTr("Turn activity on"),
                                icon: "uc:arrow-right",
                                callback: function() {
-                                   const res = checkActivityIncludedEntities(entityBaseContainer.entityObj);
-
-                                   if (!res.allIncludedEntitiesConnected && entityBaseContainer.entityObj.readyCheck) {
-                                       ui.createActionableNotification(qsTr("Some devices are not ready"), (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => { entityObj.turnOn(); }, qsTr("Proceed"));
-                                   } else {
-                                       entityObj.turnOn();
-                                   }
+                                   checkActivityReadiness(entityBaseContainer.entityObj, true, function(activityObj) {
+                                       activityObj.turnOn();
+                                   });
                                }
                            });
             menuItems.push({
+                               //: Button. Imperative: stop the activity.
                                title: qsTr("Turn activity off"),
                                icon: "uc:arrow-left",
                                callback: function() {
-                                   const res = checkActivityIncludedEntities(entityBaseContainer.entityObj, false);
-
-                                   if (!res.allIncludedEntitiesConnected && entityBaseContainer.entityObj.readyCheck) {
-                                       ui.createActionableNotification(qsTr("Some devices are not ready"), (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => { entityObj.turnOff(); }, qsTr("Proceed"));
-                                   } else {
-                                       entityObj.turnOff();
-                                   }
+                                   checkActivityReadiness(entityBaseContainer.entityObj, false, function(activityObj) {
+                                       activityObj.turnOff();
+                                   });
                                }
                            });
             menuItems.push({
+                               //: Button. Opens the menu to correct the recorded state of the activity or its devices
+                               title: qsTr("Fix state without sending commands"),
+                               icon: "uc:wrench",
+                               callback: function() { showFixStatePopup(); }
+                           });
+            menuItems.push({
+                               //: Button. Imperative: open the activity screen.
                                title: qsTr("Open activity"),
                                icon: "uc:arrow-up-right-and-arrow-down-left-from-center",
-                               callback: function() {
-                                   loadSecondContainer("qrc:/components/entities/" + entityObj.getTypeAsString() + "/deviceclass/" + entityObj.getDeviceClass() + ".qml", { "entityId": entityId, "entityObj": entityObj, "integrationObj": integrationObj });
-                               }
+                               callback: function() { openActivity(false); }
                            });
             popupMenu.menuItems = menuItems;
             popupMenu.open();
         }
 
 
-        switch (entityObj.state) {
+        switch (currentEntityObj.state) {
         case ActivityStates.Running:
             return true;
         case ActivityStates.Off: {
-            const res = checkActivityIncludedEntities(entityBaseContainer.entityObj);
-
-            if (EntityController.resumeWindow && !res.allIncludedEntitiesConnected) {
-                ui.setTimeOut(500, () => {
-                                  entityBaseContainer.handleActivityOpen();
-                              });
-                return false;
-            } else if (!EntityController.resumeWindow && !res.allIncludedEntitiesConnected && entityBaseContainer.entityObj.readyCheck) {
-                ui.createActionableNotification(qsTr("Some devices are not ready"), (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => {
-                                                    switch (entityObj.state) {
-                                                        case ActivityStates.Off:
-                                                        entityObj.turnOn();
-                                                        break;
-                                                        case ActivityStates.Error:
-                                                        case ActivityStates.Timeout:
-                                                        showActivityPopup();
-                                                        break;
-                                                        case ActivityStates.On:
-                                                        if (!entityObj.enabled) {
-                                                            ui.createNotification(entityObj.name + " " + qsTr("is unavailable"), true);
-                                                        } else {
-                                                            loadSecondContainer("qrc:/components/entities/" + entityObj.getTypeAsString() + "/deviceclass/" + entityObj.getDeviceClass() + ".qml", { "entityId": entityId, "entityObj": entityObj, "integrationObj": integrationObj });
-                                                        }
-                                                        break;
-                                                    }
-                                                }, qsTr("Proceed"));
-                return false;
-            } else {
-                entityObj.turnOn();
-                return false;
-            }
+            checkActivityReadiness(entityBaseContainer.entityObj, true, function(activityObj) {
+                // the state can have moved on while the check waited for the devices, or while the user
+                // was deciding whether to proceed anyway
+                switch (activityObj.state) {
+                case ActivityStates.Off:
+                    activityObj.turnOn();
+                    break;
+                case ActivityStates.Error:
+                case ActivityStates.Timeout:
+                    showActivityPopup();
+                    break;
+                case ActivityStates.On:
+                    if (!activityObj.enabled) {
+                        //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
+                        ui.createNotification(qsTr("%1 is unavailable").arg(activityObj.name), true);
+                    } else {
+                        loadSecondContainer(EntityController.screenUrl(activityObj), { "entityId": entityId, "entityObj": activityObj, "integrationObj": integrationObj });
+                    }
+                    break;
+                }
+            });
+            return false;
         }
         case ActivityStates.Error:
         case ActivityStates.Timeout:
             showActivityPopup();
             return false;
         case ActivityStates.On:
-            if (!entityObj.enabled) {
-                ui.createNotification(entityObj.name + " " + qsTr("is unavailable"), true);
+            if (!currentEntityObj.enabled) {
+                //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
+                ui.createNotification(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
                 return false;
             } else {
                 return true;
@@ -163,87 +233,158 @@ Rectangle {
         }
     }
 
+    /**
+      An unavailable entity accepts no command: the tile refuses it and says so, instead of the
+      press doing nothing at all. Both the tap and the keypad go through commandAllowed(), on a
+      page and inside a group alike, so the refusal is always the same.
+
+      While the remote is coming back from a wakeup every entity is marked unavailable, and the
+      press still has to reach the device: EntityController.mayCommandEntity() carries that
+      exception, see src/ui/entity/entityCommandPolicy.h.
+      */
+    function commandAllowed() {
+        if (EntityController.mayCommandEntity(currentEntityObj.enabled)) {
+            return true;
+        }
+
+        // an entity that could not be loaded has no name to report, the tile shows its placeholder
+        if (currentEntityObj !== entityBaseContainer.entityObjDummy) {
+            //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
+            ui.createNotification(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
+        }
+
+        return false;
+    }
+
+    function control() {
+        if (!entityBaseContainer.commandAllowed()) {
+            return;
+        }
+
+        entityBaseContainer.controlTrigger();
+    }
+
     function open() {
+        if (!entityObj || !entityBaseContainer.commandAllowed()) {
+            return;
+        }
+
         if (entityBaseContainer.handleActivityOpen()) {
-            loadSecondContainer("qrc:/components/entities/" + entityObj.getTypeAsString() + "/deviceclass/" + entityObj.getDeviceClass() + ".qml", { "entityId": entityId, "entityObj": entityObj, "integrationObj": integrationObj });
+            loadSecondContainer(EntityController.screenUrl(entityObj), { "entityId": entityId, "entityObj": entityObj, "integrationObj": integrationObj });
         }
     }
 
     function build() {
-        switch (entityBaseContainer.entityObj.type) {
+        switch (currentEntityObj.type) {
         case EntityTypes.Button:
-            entityBaseContainer.iconOn = Qt.binding( function() { return (entityObj.state === ButtonStates.Available || entityObj.state === ButtonStates.On) ? true : false });
-            entityBaseContainer.controlTrigger = function() { entityObj.push(); }
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === ButtonStates.Available || currentEntityObj.state === ButtonStates.On; });
+            entityBaseContainer.controlTrigger = function() {
+                if (!entityObj) {
+                    return;
+                }
+
+                entityObj.push();
+            }
             button.checked = false;
             break;
 
         case EntityTypes.Switch:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state === SwitchStates.On });
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === SwitchStates.On; });
 
-            if (entityObj.hasAnyFeature([SwitchFeatures.On_off, SwitchFeatures.Toggle])) {
-                entityBaseContainer.controlTrigger = function() { entityObj.toggle(); };
+            if (entityObj && entityObj.hasAnyFeature([SwitchFeatures.On_off, SwitchFeatures.Toggle])) {
+                entityBaseContainer.controlTrigger = function() {
+                    if (!entityObj) {
+                        return;
+                    }
+
+                    entityObj.toggle();
+                };
             }
 
-            button.checked = Qt.binding(()=>{ return entityObj.state === SwitchStates.On; });
+            button.checked = Qt.binding(() => { return currentEntityObj.state === SwitchStates.On; });
             break;
 
         case EntityTypes.Climate:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state !== ClimateStates.Off });
-            button.checked = Qt.binding(()=>{ return entityObj.state !== ClimateStates.Off; });
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state !== ClimateStates.Off; });
+            button.checked = Qt.binding(() => { return currentEntityObj.state !== ClimateStates.Off; });
             break;
 
         case EntityTypes.Cover:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state === CoverStates.Closed });
+            // an open cover is the active state, like the on/off control below: a closed one is not lit
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === CoverStates.Open; });
 
-
-            if (entityObj.hasAllFeatures([CoverFeatures.Open, CoverFeatures.Close])) {
+            if (entityObj && entityObj.hasAllFeatures([CoverFeatures.Open, CoverFeatures.Close])) {
                 entityBaseContainer.controlTrigger = function() {
-                    if (entityObj.state === CoverStates.Open) {
+                    if (!entityObj) {
+                        return;
+                    }
+
+                    if (currentEntityObj.state === CoverStates.Open) {
                         entityObj.close();
-                    } else if (entityObj.state === CoverStates.Closed) {
+                    } else if (currentEntityObj.state === CoverStates.Closed) {
                         entityObj.open();
                     }
                 }
             }
 
-            button.checked = Qt.binding(()=>{ return entityObj.state === CoverStates.Open; });
+            button.checked = Qt.binding(() => { return currentEntityObj.state === CoverStates.Open; });
             break;
 
         case EntityTypes.Light:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state === LightStates.On ? true : false });
-            entityBaseContainer.controlTrigger = function() { entityObj.toggle(); }
-            button.checked = Qt.binding(()=>{ return entityObj.state === LightStates.On; });
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === LightStates.On; });
+            entityBaseContainer.controlTrigger = function() {
+                if (!entityObj) {
+                    return;
+                }
+
+                entityObj.toggle();
+            }
+            button.checked = Qt.binding(() => { return currentEntityObj.state === LightStates.On; });
             break;
 
         case EntityTypes.Media_player:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state !== MediaPlayerStates.Off });
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state !== MediaPlayerStates.Off; });
             entityBaseContainer.controlTrigger = function() {
-                if (entityObj.state === MediaPlayerStates.Off) {
+                if (!entityObj) {
+                    return;
+                }
+
+                if (currentEntityObj.state === MediaPlayerStates.Off) {
                     entityObj.turnOn();
                 } else {
                     entityObj.playPause();
                 }
             }
-            button.checked = Qt.binding(()=>{ return entityObj.state !== MediaPlayerStates.Off; });
+            button.checked = Qt.binding(() => { return currentEntityObj.state !== MediaPlayerStates.Off; });
             break;
 
         case EntityTypes.Remote:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state === RemoteStates.On ? true : false });
-            entityBaseContainer.controlTrigger = function() { entityObj.toggle(); }
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === RemoteStates.On; });
+            entityBaseContainer.controlTrigger = function() {
+                if (!entityObj) {
+                    return;
+                }
+
+                entityObj.toggle();
+            }
             button.checked = false;
             break;
 
         case EntityTypes.Activity:
-            entityBaseContainer.iconOn = Qt.binding( function() { return entityObj.state === ActivityStates.On ? true : false });
+            entityBaseContainer.iconOn = Qt.binding(function() { return currentEntityObj.state === ActivityStates.On; });
             entityBaseContainer.controlTrigger = function() {
                 entityBaseContainer.handleActivityOpen();
             }
-            button.checked = Qt.binding(()=>{ return entityObj.state === ActivityStates.On; });
+            button.checked = Qt.binding(() => { return currentEntityObj.state === ActivityStates.On; });
             break;
 
         case EntityTypes.Macro:
             entityBaseContainer.iconOn = true;
             entityBaseContainer.controlTrigger = function() {
+                if (!entityObj) {
+                    return;
+                }
+
                 activityLoading.start(entityId, EntityTypes.Macro);
                 entityObj.run();
             }
@@ -256,7 +397,13 @@ Rectangle {
             break;
         case EntityTypes.Select:
             entityBaseContainer.iconOn = true;
-            entityBaseContainer.controlTrigger = function() { entityObj.selectNext(); }
+            entityBaseContainer.controlTrigger = function() {
+                if (!entityObj) {
+                    return;
+                }
+
+                entityObj.selectNext();
+            }
             button.checked = false;
             break;
         }
@@ -266,19 +413,11 @@ Rectangle {
         NumberAnimation { duration: 300 }
     }
 
-    Connections {
-        id: entityControllerConnection
-        target: EntityController
-        ignoreUnknownSignals: true
-
-        function onEntityLoaded(success, entityId) {
-            if (success && entityBaseContainer.entityId === entityId) {
-                console.debug("ENTITY LOADED: " + entityId);
-                entityControllerConnection.enabled = false;
-                entityBaseContainer.entityObj = EntityController.get(entityBaseContainer.entityId);
-                entityBaseContainer.build();
-            }
-        }
+    Components.Selectable {
+        id: selection
+        style: "fill"
+        // in the edit mode too: the fill marks the selection, the page adds the ring while a tile is held (Q-5)
+        selected: entityBaseContainer.isSelected
     }
 
     Connections {
@@ -298,13 +437,15 @@ Rectangle {
         id: mouseArea
         anchors.fill: parent
         onClicked: {
-            if (entityObj.enabled) {
-                if (!editMode) {
-                    entityBaseContainer.open();
-                }
+            if (!editMode) {
+                entityBaseContainer.open();
             }
         }
         onPressAndHold: {
+            if (!entityObj) {
+                return;
+            }
+
             if (ui.profile.restricted) {
                 ui.createNotification(qsTr("Profile is restricted"), true);
             } else {
@@ -316,11 +457,11 @@ Rectangle {
     Components.Icon {
         id: icon
         color: colors.offwhite
-        icon: hasMediaImage ? "" : entityObj.icon
-        suffix: entityObj.stateAsString
+        icon: hasMediaImage ? "" : currentEntityObj.icon
+        suffix: currentEntityObj.stateAsString
         anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter; }
         size: 100
-        visible: entityObj.enabled
+        visible: currentEntityObj.enabled
         opacity: entityBaseContainer.iconOn ? 1 : 0.4
 
         Behavior on opacity {
@@ -330,7 +471,7 @@ Rectangle {
         Components.HapticMouseArea {
             anchors.fill: parent
             onClicked: {
-                entityBaseContainer.controlTrigger();
+                entityBaseContainer.control();
             }
         }
     }
@@ -338,11 +479,12 @@ Rectangle {
     MediaPlayerComponents.ImageLoader {
         id: imageClosed
         width: 100
+        height: width
         anchors.centerIn: icon
         opacity: visible ? 1 : 0
         enabled: visible
-        visible: hasMediaImage && entityObj.enabled
-        url: entityObj.mediaImage
+        visible: hasMediaImage && currentEntityObj.enabled
+        url: hasMediaImage ? currentEntityObj.mediaImage : ""
         aspectFit: true
         alignCentered: true
 
@@ -356,7 +498,33 @@ Rectangle {
         icon: "uc:ban"
         anchors.centerIn: icon
         size: 100
-        visible: !editMode && !entityObj.enabled
+        visible: !editMode && !currentEntityObj.enabled
+    }
+
+    // dark disc behind the spinner so it stays legible over album art
+    Rectangle {
+        width: 56; height: 56
+        radius: width / 2
+        color: colors.black
+        opacity: 0.2
+        anchors.centerIn: icon
+        visible: commandLoadingIndicator.visible
+    }
+
+    Image {
+        id: commandLoadingIndicator
+        width: 44; height: 44
+        anchors.centerIn: icon
+        source: "qrc:/images/loader_small.png"
+        fillMode: Image.PreserveAspectFit
+        visible: !editMode && currentEntityObj.commandInProgress
+
+        RotationAnimation on rotation {
+            running: commandLoadingIndicator.visible
+            loops: Animation.Infinite
+            from: 0; to: 360
+            duration: 1200
+        }
     }
 
     ColumnLayout {
@@ -369,7 +537,7 @@ Rectangle {
             id: titleText
 
             Layout.fillWidth: true
-            text: entityObj.name
+            text: currentEntityObj.name
             verticalAlignment: Text.AlignVCenter
             wrapMode: Text.WrapAtWordBoundaryOrAnywhere
             maximumLineCount: 2
@@ -386,20 +554,22 @@ Rectangle {
                 color: colors.red
                 icon: "uc:link-slash"
                 size: 40
-                visible: integrationObj.state != "connected" && integrationObj.state != ""
+                // the integration objects are dropped and loaded again after a reconnect: null in between
+                visible: integrationObj ? integrationObj.state != "connected" && integrationObj.state != "" : false
             }
 
             Text {
                 id: statusText
 
                 Layout.fillWidth: true
-                text: entityObj.stateInfo;
+                text: currentEntityObj.stateInfo
                 maximumLineCount: 1
                 elide: Text.ElideRight
-                color: colors.light
+                // on the selection fill everything is drawn in the primary text colour
+                color: selection.shown ? colors.textPrimary : colors.textSecondary
                 verticalAlignment: Text.AlignVCenter
-                font: fonts.secondaryFont(24)
-                visible: entityObj.stateInfo !== ""
+                font: fonts.help()
+                visible: currentEntityObj.stateInfo !== ""
             }
         }
     }
@@ -409,29 +579,32 @@ Rectangle {
         parent: root
     }
 
-    Component.onCompleted: {
-        let e = EntityController.get(entityBaseContainer.entityId);
-
-        if (e) {
-            entityBaseContainer.entityObj = e;
-            entityBaseContainer.integrationObj = IntegrationController.getModelItem(entityObj.integrationId);
-            if (!entityBaseContainer.integrationObj) {
-                entityBaseContainer.integrationObj = entityBaseContainer.integrationObjDummy;
-            }
-
-            entityBaseContainer.build();
-        }
-    }
+    Component.onCompleted: ensureEntityLoaded()
+    onEntityIdChanged: ensureEntityLoaded()
 
     Connections {
         target: IntegrationController
         ignoreUnknownSignals: true
 
         function onIntegrationsLoaded() {
-            entityBaseContainer.integrationObj = IntegrationController.getModelItem(entityObj.integrationId);
+            entityBaseContainer.integrationObj = IntegrationController.getModelItem(currentEntityObj.integrationId);
             if (!entityBaseContainer.integrationObj) {
                 entityBaseContainer.integrationObj = entityBaseContainer.integrationObjDummy;
             }
+        }
+    }
+
+    Connections {
+        target: EntityController
+        ignoreUnknownSignals: true
+        enabled: !entityBaseContainer.entityObj || entityBaseContainer.entityObj === entityBaseContainer.entityObjDummy
+
+        function onEntityLoaded(success, loadedId) {
+            if (!success || loadedId !== entityBaseContainer.entityId) {
+                return;
+            }
+
+            entityBaseContainer.ensureEntityLoaded();
         }
     }
 }

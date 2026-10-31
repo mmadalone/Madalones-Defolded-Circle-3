@@ -34,12 +34,16 @@ Entities.EntityList {
             EntityController.configuredEntities.clearSelected();
             ui.updatePageItems(pageId);
         } else {
-            ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select entities to add by tapping in the list."));
+            ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select the entities to add in the list."));
         }
     }
 
     onClosed: buttonNavigation.releaseControl()
 
+    // the list is walked and toggled through its own keypad API; DOWN past the last row reaches
+    // Select all / Add
+    keypadSelected: true
+    Component.onCompleted: buttonNavigation.extendDefaultConfig(entitySelectionList.keypadConfig())
 
     Components.ButtonNavigation {
         id: buttonNavigation
@@ -52,11 +56,6 @@ Entities.EntityList {
             "HOME": {
                 "pressed": function() {
                     entitySelectionList.close();
-                }
-            },
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    entitySelectionList.okTrigger();
                 }
             }
         }

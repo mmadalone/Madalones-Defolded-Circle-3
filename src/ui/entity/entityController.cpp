@@ -1,40 +1,50 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. v1.4.10: connect entityAdded signal + late-load fallback for entity_change on unloaded entities.
-// Copyright (c) 2026 madalone. v1.5.0: upstream v0.73.4 merge — m_entities now persist across core reconnects (upstream change), obsoleting v1.4.11's clearEntitiesDeferred helper.
-
+// Copyright (c) 2026 madalone. Mod 5 session-keeper hooks; v1.4.19 LOW_POWER counts as sleep for the wake-up retry.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "entityController.h"
 
+#include <QCryptographicHash>
+#include <QDataStream>
+#include <QDateTime>
 #include <QGuiApplication>
 #include <QJsonDocument>
 #include <QJsonObject>
+#include <QPointer>
+#include <QRegularExpression>
+#include <QTimer>
 #include <QUuid>
 
 #include "../../logging.h"
+#include "../../util.h"
 #include "./../notification.h"
+#include "commandRetryPolicy.h"
+#include "entityCommandPolicy.h"
+#include "sequenceReadinessReport.h"
+#include "voiceSession.h"
 
 namespace uc {
 namespace ui {
 
-static bool isRepeatingCommand(const QString& command, const QVariantMap& params)
-{
-    return command == QStringLiteral("remote.send") && params.contains(QStringLiteral("repeat"));
+/// A readiness check the user is waiting on gives up well before the core's own request timeout does.
+static constexpr int readinessCheckTimeout = 4000;
+
+static QString buildCommandKey(const QString& entityId, const QString& command, const QVariantMap& params) {
+    // QVariantMap keeps its keys sorted, so the stream is stable for equal content. Unlike a conversion to
+    // JSON it is also lossless: a variant without a JSON representation would collapse to null there and
+    // make two commands that only differ in such a value share one key, silently deduplicating the second.
+    QByteArray  buffer;
+    QDataStream stream(&buffer, QIODevice::WriteOnly);
+    stream.setVersion(QDataStream::Qt_5_15);
+    stream << params;
+
+    // the readable prefix keeps the log output usable
+    return entityId + QLatin1Char('.') + command + QLatin1Char('#') +
+           QString::fromLatin1(QCryptographicHash::hash(buffer, QCryptographicHash::Sha1).toHex());
 }
 
-static QString buildCommandKey(const QString& entityId, const QString& command, const QVariantMap& params)
-{
-    QVariantMap keyParts;
-    keyParts.insert(QStringLiteral("entityId"), entityId);
-    keyParts.insert(QStringLiteral("command"), command);
-    keyParts.insert(QStringLiteral("params"), params);
-
-    return QString::fromUtf8(
-        QJsonDocument(QJsonObject::fromVariantMap(keyParts)).toJson(QJsonDocument::Compact));
-}
-
-static QString buildCommandId(const QString& entityId, const QString& command, const QVariantMap& params, bool repeating)
-{
+static QString buildCommandId(const QString& entityId, const QString& command, const QVariantMap& params,
+                              bool repeating) {
     const QString commandKey = buildCommandKey(entityId, command, params);
     if (!repeating) {
         return commandKey;
@@ -49,19 +59,19 @@ QString EntityController::m_language = QString();
 // FIXME(#279) because of static createEntityObject
 Config::UnitSystems EntityController::m_unitSystem = Config::UnitSystems::Metric;
 
-EntityController::EntityController(core::Api* core, const QString& language, const Config::UnitSystems unitSystem, int resumeTimeoutWindowSec,
-                                   QObject* parent)
+EntityController::EntityController(core::Api* core, const QString& language, const Config::UnitSystems unitSystem,
+                                   int resumeTimeoutWindowSec, QObject* parent)
     : QObject(parent), m_core(core), m_availableEntities(core, this), m_configuredEntities(core, this) {
     Q_ASSERT(s_instance == nullptr);
-    s_instance   = this;
-    m_language   = language;
+    s_instance = this;
+    m_language = language;
     m_unitSystem = unitSystem;
     m_resumeTimerTimeout = resumeTimeoutWindowSec * 1000;
 
-            //    qRegisterMetaType<uc::ui::entity::Base::Type>("Entity Types");
+    //    qRegisterMetaType<uc::ui::entity::Base::Type>("Entity Types");
     qmlRegisterUncreatableType<entity::Base>("Entity.Controller", 1, 0, "EntityTypes", "Enum is not a type");
 
-            // button enums
+    // button enums
     qRegisterMetaType<entity::ButtonStates::Enum>("Button States");
     qRegisterMetaType<entity::ButtonFeatures::Enum>("Button Features");
     qRegisterMetaType<entity::ButtonDeviceClass::Enum>("Button Device Classes");
@@ -70,7 +80,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::ButtonDeviceClass>("Entity.Button", 1, 0, "ButtonDeviceClasses",
                                                           "Enum is not a type");
 
-            // climate enums
+    // climate enums
     qRegisterMetaType<entity::ClimateStates::Enum>("Climate States");
     qRegisterMetaType<entity::ClimateFeatures::Enum>("Climate Features");
     qRegisterMetaType<entity::ClimateDeviceClass::Enum>("Climate Device Classes");
@@ -80,7 +90,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::ClimateDeviceClass>("Entity.Climate", 1, 0, "ClimateDeviceClasses",
                                                            "Enum is not a type");
 
-            // cover enums
+    // cover enums
     qRegisterMetaType<entity::CoverStates::Enum>("Cover States");
     qRegisterMetaType<entity::CoverFeatures::Enum>("Cover Features");
     qRegisterMetaType<entity::CoverDeviceClass::Enum>("Cover Device Classes");
@@ -89,7 +99,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::CoverDeviceClass>("Entity.Cover", 1, 0, "CoverDeviceClasses",
                                                          "Enum is not a type");
 
-            // light enums
+    // light enums
     qRegisterMetaType<entity::LightStates::Enum>("Light States");
     qRegisterMetaType<entity::LightFeatures::Enum>("Light Features");
     qRegisterMetaType<entity::LightDeviceClass::Enum>("Light Device Classes");
@@ -98,7 +108,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::LightDeviceClass>("Entity.Light", 1, 0, "LightDeviceClasses",
                                                          "Enum is not a type");
 
-            // media player enums
+    // media player enums
     qRegisterMetaType<entity::MediaPlayerStates::Enum>("MediaPlayer States");
     qRegisterMetaType<entity::MediaPlayerFeatures::Enum>("MediaPlayer Features");
     qRegisterMetaType<entity::MediaPlayerDeviceClass::Enum>("MediaPlayer Device Classes");
@@ -117,14 +127,14 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::MediaPlayAction>("Entity.MediaPlayer", 1, 0, "MediaPlayAction",
                                                         "Enum is not a type");
 
-            // sensor enums
+    // sensor enums
     qRegisterMetaType<entity::SensorStates::Enum>("Sensor States");
     qRegisterMetaType<entity::SensorDeviceClass::Enum>("Sensor Device Classes");
     qmlRegisterUncreatableType<entity::SensorStates>("Entity.Sensor", 1, 0, "SensorStates", "Enum is not a type");
     qmlRegisterUncreatableType<entity::SensorDeviceClass>("Entity.Sensor", 1, 0, "SensorDeviceClasses",
                                                           "Enum is not a type");
 
-            // switch enums
+    // switch enums
     qRegisterMetaType<entity::SwitchStates::Enum>("Switch States");
     qRegisterMetaType<entity::SwitchFeatures::Enum>("Switch Features");
     qRegisterMetaType<entity::SwitchDeviceClass::Enum>("Switch Device Classes");
@@ -133,7 +143,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::SwitchDeviceClass>("Entity.Switch", 1, 0, "SwitchDeviceClasses",
                                                           "Enum is not a type");
 
-            // remote enums
+    // remote enums
     qRegisterMetaType<entity::RemoteStates::Enum>("Remote States");
     qRegisterMetaType<entity::RemoteFeatures::Enum>("Remote Features");
     qRegisterMetaType<entity::RemoteDeviceClass::Enum>("Remote Device Classes");
@@ -142,7 +152,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::RemoteDeviceClass>("Entity.Remote", 1, 0, "RemoteDeviceClasses",
                                                           "Enum is not a type");
 
-            // activity enums
+    // activity enums
     qRegisterMetaType<entity::ActivityStates::Enum>("Activity States");
     qRegisterMetaType<entity::ActivityFeatures::Enum>("Activity Features");
     qRegisterMetaType<entity::ActivityDeviceClass::Enum>("Activity Device Classes");
@@ -152,7 +162,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::ActivityDeviceClass>("Entity.Activity", 1, 0, "ActivityDeviceClasses",
                                                             "Enum is not a type");
 
-            // macro enums
+    // macro enums
     qRegisterMetaType<entity::MacroStates::Enum>("Macro States");
     qRegisterMetaType<entity::MacroFeatures::Enum>("Macro Features");
     qRegisterMetaType<entity::MacroDeviceClass::Enum>("Macro Device Classes");
@@ -161,7 +171,7 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qmlRegisterUncreatableType<entity::MacroDeviceClass>("Entity.Macro", 1, 0, "MacroDeviceClasses",
                                                          "Enum is not a type");
 
-            // sequence types
+    // sequence types
     qRegisterMetaType<entity::SequenceStep::Type>("Sequence Step Type");
     qmlRegisterUncreatableType<entity::SequenceStep>("SequenceStep.Type", 1, 0, "SequenceStep", "Enum is not a type");
 
@@ -169,12 +179,14 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     qRegisterMetaType<entity::VoiceAssistantStates::Enum>("VoiceAssistant States");
     qRegisterMetaType<entity::VoiceAssistantFeatures::Enum>("VoiceAssistant Features");
     qRegisterMetaType<entity::VoiceAssistantDeviceClass::Enum>("VoiceAssistant Device Classes");
-    qmlRegisterUncreatableType<entity::VoiceAssistantStates>("Entity.VoiceAssistant", 1, 0, "VoiceAssistantStates", "Enum is not a type");
-    qmlRegisterUncreatableType<entity::VoiceAssistantFeatures>("Entity.VoiceAssistant", 1, 0, "VoiceAssistantFeatures", "Enum is not a type");
-    qmlRegisterUncreatableType<entity::VoiceAssistantDeviceClass>("Entity.VoiceAssistant", 1, 0, "VoiceAssistantDeviceClasses",
-                                                          "Enum is not a type");
+    qmlRegisterUncreatableType<entity::VoiceAssistantStates>("Entity.VoiceAssistant", 1, 0, "VoiceAssistantStates",
+                                                             "Enum is not a type");
+    qmlRegisterUncreatableType<entity::VoiceAssistantFeatures>("Entity.VoiceAssistant", 1, 0, "VoiceAssistantFeatures",
+                                                               "Enum is not a type");
+    qmlRegisterUncreatableType<entity::VoiceAssistantDeviceClass>("Entity.VoiceAssistant", 1, 0,
+                                                                  "VoiceAssistantDeviceClasses", "Enum is not a type");
 
-            // select enums
+    // select enums
     qRegisterMetaType<entity::SelectStates::Enum>("Select States");
     qRegisterMetaType<entity::SelectDeviceClass::Enum>("Select Device Classes");
     qmlRegisterUncreatableType<entity::SelectStates>("Entity.Select", 1, 0, "SelectStates", "Enum is not a type");
@@ -184,18 +196,20 @@ EntityController::EntityController(core::Api* core, const QString& language, con
     QObject::connect(m_core, &core::Api::connected, this, &EntityController::onCoreConnected);
     QObject::connect(m_core, &core::Api::disconnected, this, &EntityController::onCoreDisconnected);
 
-    QObject::connect(m_core, &core::Api::entityChanged, this, &EntityController::onEntityChanged);
     QObject::connect(m_core, &core::Api::entityAdded, this, &EntityController::onEntityAdded);
+    QObject::connect(m_core, &core::Api::entityChanged, this, &EntityController::onEntityChanged);
     QObject::connect(m_core, &core::Api::entityDeleted, this, &EntityController::onEntityDeleted);
     QObject::connect(m_core, &core::Api::reloadEntities, this, &EntityController::onCoreConnected);
 }
 
-EntityController::~EntityController() { s_instance = nullptr; }
+EntityController::~EntityController() {
+    s_instance = nullptr;
+}
 
 void EntityController::loadConfiguredEntities(const QString& integrationId) {
     struct core::EntityFilter filter;
     filter.integrationIds = QStringList() << integrationId;
-    int id                = m_core->getEntities(1, 1, filter);
+    int id = m_core->getEntities(1, 1, filter);
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respEntities,
@@ -222,43 +236,44 @@ entity::Base* EntityController::createEntityObject(const QString& type, const QS
 
     switch (entityType) {
         case entity::Base::Type::Light:
-            return new entity::Light(id, name, m_language, icon, area, deviceClass, features,
-                                     enabled, attributes, options, integrationId, parent);
+            return new entity::Light(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                     options, integrationId, parent);
         case entity::Base::Type::Button:
-            return new entity::Button(id, name, m_language, icon, area, deviceClass, features,
-                                      enabled, attributes, integrationId, parent);
+            return new entity::Button(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                      integrationId, parent);
         case entity::Base::Type::Switch:
-            return new entity::Switch(id, name, m_language, icon, area, deviceClass, features,
-                                      enabled, attributes, options, integrationId, parent);
+            return new entity::Switch(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                      options, integrationId, parent);
         case entity::Base::Type::Climate:
-            return new entity::Climate(id, name, m_language, icon, area, deviceClass, features,
-                                       enabled, attributes, options, integrationId, m_unitSystem, parent);
+            return new entity::Climate(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                       options, integrationId, m_unitSystem, parent);
         case entity::Base::Type::Cover:
-            return new entity::Cover(id, name, m_language, icon, area, deviceClass, features,
-                                     enabled, attributes, integrationId, parent);
+            return new entity::Cover(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                     integrationId, parent);
         case entity::Base::Type::Media_player:
-            return new entity::MediaPlayer(id, name, m_language, icon, area, deviceClass,
-                                           features, enabled, attributes, options, integrationId, parent);
+            return new entity::MediaPlayer(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                           options, integrationId, parent);
         case entity::Base::Type::Activity:
-            return new entity::Activity(id, name, m_language, icon, area, deviceClass, features,
-                                        enabled, attributes, options, integrationId, parent);
+            return new entity::Activity(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                        options, integrationId, parent);
         case entity::Base::Type::Macro:
-            return new entity::Macro(id, name, m_language, icon, area, deviceClass, features, enabled,
-                                     attributes, integrationId, parent);
+            return new entity::Macro(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                     integrationId, parent);
         case entity::Base::Type::Remote:
-            return new entity::Remote(id, name, m_language, icon, area, deviceClass, features,
-                                      enabled, attributes, options, integrationId, parent);
+            return new entity::Remote(id, name, m_language, icon, area, deviceClass, features, enabled, attributes,
+                                      options, integrationId, parent);
         case entity::Base::Type::Sensor:
-            return new entity::Sensor(id, name, m_language, icon, area, deviceClass, enabled,
-                                      attributes, options, integrationId, parent);
+            return new entity::Sensor(id, name, m_language, icon, area, deviceClass, enabled, attributes, options,
+                                      integrationId, parent);
         case entity::Base::Type::Voice_assistant:
-            return new entity::VoiceAssistant(id, name, m_language, icon, area, deviceClass, features,
-                                      enabled, attributes, options, integrationId, parent);
+            return new entity::VoiceAssistant(id, name, m_language, icon, area, deviceClass, features, enabled,
+                                              attributes, options, integrationId, parent);
         case entity::Base::Type::Select:
-            return new entity::Select(id, name, m_language, icon, area, deviceClass, enabled,
-                                      attributes, integrationId, parent);
+            return new entity::Select(id, name, m_language, icon, area, deviceClass, enabled, attributes, integrationId,
+                                      parent);
         default:
-            return new entity::Base(id, name, m_language, icon, area, entity::Base::Type::Unsupported, true, QVariantMap(), integrationId, false, parent);
+            return new entity::Base(id, name, m_language, icon, area, entity::Base::Type::Unsupported, true,
+                                    QVariantMap(), integrationId, false, parent);
     }
 }
 
@@ -273,9 +288,9 @@ void EntityController::configureEntities(const QString& integrationId, const QSt
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Couldn't configured entity: " + message;
-            qCWarning(lcEntityController()) << code << errorMsg;
-            Notification::createNotification(errorMsg, true);
+            qCWarning(lcEntityController()) << "Couldn't configure entity:" << code << message;
+            //: Error while configuring an entity. %1 is an error message from the remote
+            Notification::createNotification(tr("Could not configure the entity: %1").arg(message), true);
         });
 }
 
@@ -298,8 +313,51 @@ void EntityController::setEntityName(const QString& entityId, const QString& nam
     m_core->onResponseWithErrorResult(
         id, &core::Api::respEntity, [=](core::Entity entity) { Q_UNUSED(entity) },
         [=](int code, QString message) {
-            QString errorMsg = "Error while setting entity name: " + message;
-            qCWarning(lcEntityController()) << code << errorMsg;
+            qCWarning(lcEntityController()) << "Error while setting entity name:" << code << message;
+            //: Error while renaming an entity. %1 is an error message from the remote
+            Notification::createNotification(tr("Could not rename the entity: %1").arg(message), true);
+        });
+}
+
+void EntityController::setEntityState(const QString& entityId, bool on) {
+    const QString state = on ? "ON" : "OFF";
+    int           id = m_core->setEntityState(entityId, state);
+
+    if (id < 0) {
+        Notification::createNotification(tr("Could not change the entity state: not connected"), true);
+        return;
+    }
+
+    m_core->onResponseWithErrorResult(
+        id, &core::Api::respEntity,
+        [=](core::Entity entity) {
+            qCDebug(lcEntityController()) << "Entity state corrected:" << entity.id << state;
+            // the response carries the corrected entity: apply it right away for immediate feedback, the
+            // entity_change event only follows if the state actually changed
+            onEntityChanged(entityId, entity);
+        },
+        [=](int code, QString message) {
+            qCWarning(lcEntityController()) << "Error while setting entity state:" << code << message;
+
+            QString errorMsg;
+            switch (code) {
+                case 409:
+                    //: Error while fixing an entity state
+                    errorMsg =
+                        tr("The state cannot be changed while the entity is unavailable or the activity is running");
+                    break;
+                case 422:
+                    //: Error while fixing an entity state
+                    errorMsg = tr("The state of this entity type cannot be changed");
+                    break;
+                case 403:
+                    //: Error while fixing an entity state
+                    errorMsg = tr("Not allowed to change the entity state");
+                    break;
+                default:
+                    //: Error while fixing an entity state. %1 is an error message from the remote
+                    errorMsg = tr("Could not change the entity state: %1").arg(message);
+            }
             Notification::createNotification(errorMsg, true);
         });
 }
@@ -315,17 +373,65 @@ void EntityController::setEntityIcon(const QString& entityId, const QString& ico
     m_core->onResponseWithErrorResult(
         id, &core::Api::respEntity, [=](core::Entity entity) { Q_UNUSED(entity) },
         [=](int code, QString message) {
-            QString errorMsg = "Error while setting entity icon: " + message;
-            qCWarning(lcEntityController()) << code << errorMsg;
-            Notification::createNotification(errorMsg, true);
+            qCWarning(lcEntityController()) << "Error while setting entity icon:" << code << message;
+            //: Error while changing the icon of an entity. %1 is an error message from the remote
+            Notification::createNotification(tr("Could not change the entity icon: %1").arg(message), true);
         });
+}
+
+int EntityController::checkSequenceReadiness(const QString& entityId, const QString& cmdId) {
+    // the core answers 400 for anything its culture code pattern doesn't match and falls back to the system
+    // language - the same language - when the field is left out
+    static const QRegularExpression langRe(QStringLiteral("^[a-z]{2}(_[A-Z]{2})?$"));
+    const QString                   lang = langRe.match(m_language).hasMatch() ? m_language : QString();
+
+    int id = m_core->getSequenceReadiness(entityId, cmdId, lang);
+
+    if (id < 0) {
+        return -1;
+    }
+
+    // the first of the ceiling and the response answers, the other one stays quiet
+    auto settled = QSharedPointer<bool>::create(false);
+
+    // The user is waiting on a button press: a check that cannot answer promptly is a failed check, well before
+    // the core's own request timeout would give up on it.
+    QTimer::singleShot(readinessCheckTimeout, this, [this, id, settled]() {
+        if (*settled) {
+            return;
+        }
+        *settled = true;
+        qCDebug(lcEntityController()) << "Sequence readiness check timed out:" << id;
+        emit sequenceReadinessResult(id, QVariantMap({{"supported", false}}));
+    });
+
+    m_core->onResponseWithErrorResult(
+        id, &core::Api::respSequenceReadiness,
+        [this, id, settled](core::SequenceReadiness report) {
+            if (*settled) {
+                return;
+            }
+            *settled = true;
+            emit sequenceReadinessResult(id, entity::SequenceReadinessReport::toSummary(report));
+        },
+        [this, id, settled](int code, QString message) {
+            if (*settled) {
+                return;
+            }
+            *settled = true;
+            // an unknown request, an unknown entity or a timeout: no report, and the caller runs the sequence
+            qCDebug(lcEntityController()) << "Sequence readiness check failed:" << code << message;
+            emit sequenceReadinessResult(id, QVariantMap({{"supported", false}}));
+        });
+
+    return id;
 }
 
 QStringList EntityController::getIdsByIntegration(const QString& integrationId) {
     QStringList list;
 
     for (entity::Base* entity : qAsConst(m_entities)) {
-        if (entity->getIntegration().contains(integrationId)) {
+        if (entity->getIntegration() == integrationId) {
             list.append(entity->getId());
         }
     }
@@ -344,9 +450,9 @@ void EntityController::deleteEntities(const QStringList& entities) {
         },
         [=](int code, QString message) {
             // fail
-            QString errorMsg = "Couldn't delete entities: " + message;
-            qCWarning(lcEntityController()) << code << errorMsg;
-            Notification::createNotification(errorMsg, true);
+            qCWarning(lcEntityController()) << "Couldn't delete entities:" << code << message;
+            //: Error while deleting entities. %1 is an error message from the remote
+            Notification::createNotification(tr("Could not delete the entities: %1").arg(message), true);
         });
 }
 
@@ -360,35 +466,81 @@ QObject* EntityController::qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngi
 }
 
 void EntityController::onCoreConnected() {
-    m_activities.clear();
-    emit activitiesChanged();
+    const quint64 generation = ++m_entityLoadGeneration;
+    loadAllEntities(1, generation, QSharedPointer<QSet<QString>>::create());
+}
+
+void EntityController::loadAllEntities(int page, quint64 generation,
+                                       const QSharedPointer<QSet<QString>>& loadedEntityIds) {
+    static constexpr int pageSize = 100;
+    int                  id = m_core->getEntities(pageSize, page);
+
+    m_core->onResponseWithErrorResult(
+        id, &core::Api::respEntities,
+        [=](QList<core::Entity> entities, int count, int responseLimit, int pageNum) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
+            if (generation != m_entityLoadGeneration || !loadedEntityIds) {
+                qCDebug(lcEntityController()) << "Ignoring stale bulk entity load page:" << pageNum;
+                return;
+            }
+
+            const int totalPages = Util::pageCount(count, pageSize);
+            qCDebug(lcEntityController()) << "Bulk loading entities, page:" << pageNum << "of" << totalPages
+                                          << "total:" << count;
+            for (const auto& entity : entities) {
+                loadedEntityIds->insert(entity.id);
+
+                if (m_entities.contains(entity.id)) {
+                    onEntityChanged(entity.id, entity);
+                } else {
+                    addEntityObject(entity);
+                }
+            }
+            // an empty page means the end was reached, whatever the count says (entities may have been removed)
+            if (pageNum < totalPages && !entities.isEmpty()) {
+                loadAllEntities(pageNum + 1, generation, loadedEntityIds);
+            } else {
+                removeMissingEntities(*loadedEntityIds);
+                emit allEntitiesLoaded();
+            }
+        },
+        [=](int code, QString message) {
+            if (generation != m_entityLoadGeneration) {
+                qCDebug(lcEntityController()) << "Ignoring stale bulk entity load failure:" << code << message;
+                return;
+            }
+
+            qCWarning(lcEntityController()) << "Failed to bulk load entities:" << code << message;
+            emit allEntitiesLoaded();
+        });
 }
 
 void EntityController::onCoreDisconnected() {
+    ++m_entityLoadGeneration;
+    // nothing can still be answered over a closed connection: without this the loading indicators of the
+    // in-flight commands would keep spinning, and an identical command would be refused as a duplicate
+    clearPendingCommands();
     setAllEntitiesAvailable(false);
-
     m_activities.clear();
     emit activitiesChanged();
 }
 
 void EntityController::addEntityObject(core::Entity entity) {
     if (m_entities.contains(entity.id)) {
-        qCDebug(lcEntityController()) << "Entity already loaded, refreshing:" << entity.id;
-        onEntityChanged(entity.id, entity);
+        qCDebug(lcEntityController()) << "Entity is already loaded:" << entity.id;
         emit entityLoaded(true, entity.id);
         return;
     }
 
-            // create entity object here
+    // create entity object here
     entity::Base* obj = createEntityObject(entity.type, entity.id, entity.name, entity.icon, entity.area,
                                            entity.deviceClass, entity.features, entity.options, entity.enabled,
                                            entity.attributes, entity.integrationId, this);
 
     if (obj != nullptr) {
+        // Eager signals — needed regardless of whether entity is displayed
         QObject::connect(obj, &entity::Base::command, this, &EntityController::onEntityCommand);
-        QObject::connect(this, &EntityController::languageChanged, obj, &entity::Base::onLanguageChanged);
 
-                // if media player, then hook up signals to add to activites bar
         if (obj->getType() == entity::Base::Type::Media_player) {
             auto mediaPlayer = qobject_cast<entity::MediaPlayer*>(obj);
 
@@ -398,31 +550,8 @@ void EntityController::addEntityObject(core::Entity entity) {
                 QObject::connect(mediaPlayer, &entity::MediaPlayer::removeFromActivities, this,
                                  &EntityController::onRemoveFromActivities);
 
-                QObject::connect(mediaPlayer, &entity::MediaPlayer::browseMediaRequested,
-                    this, [=](const QString &entityId, QVariantMap params) {
-                        int id = m_core->browseMedia(entityId, params);
-                        m_core->onResponseWithErrorResult(id, &core::Api::respMediaBrowse,
-                            [mediaPlayer](core::BrowseMediaItem media, core::Pagination pagination) {
-                                mediaPlayer->onBrowseMediaResult(media, pagination);
-                            },
-                            [mediaPlayer](int code, QString message) {
-                                mediaPlayer->onMediaBrowseError(code, message);
-                            });
-                    });
-
-                QObject::connect(mediaPlayer, &entity::MediaPlayer::searchMediaRequested,
-                    this, [=](const QString &entityId, QVariantMap params) {
-                        int id = m_core->searchMedia(entityId, params);
-                        m_core->onResponseWithErrorResult(id, &core::Api::respMediaSearch,
-                            [mediaPlayer](QList<core::BrowseMediaItem> items, core::Pagination pagination) {
-                                mediaPlayer->onSearchMediaResult(items, pagination);
-                            },
-                            [mediaPlayer](int code, QString message) {
-                                mediaPlayer->onMediaBrowseError(code, message);
-                            });
-                    });
-
-                // madalone: forward state changes to ActivitySessionKeeper. Wired in main.cpp.
+                // madalone (Mod 5): forward state changes to ActivitySessionKeeper (wired in main.cpp). Eager on
+                // purpose, not in connectLazySignals(): the keeper must see players the UI never shows.
                 QObject::connect(mediaPlayer, &entity::Base::stateChanged, this,
                                  [this](QString id, int newState) { emit mediaPlayerStateChanged(id, newState); });
 
@@ -434,7 +563,6 @@ void EntityController::addEntityObject(core::Entity entity) {
             }
         }
 
-                // if activity, then hook up signals to add to activites bar
         if (obj->getType() == entity::Base::Type::Activity) {
             auto activity = qobject_cast<entity::Activity*>(obj);
 
@@ -445,22 +573,20 @@ void EntityController::addEntityObject(core::Entity entity) {
                                  &EntityController::onRemoveFromActivities);
                 QObject::connect(activity, &entity::Activity::startedRunning, this,
                                  &EntityController::onActivityStartedRunning);
+                QObject::connect(activity, &entity::Activity::startedExternally, this,
+                                 &EntityController::onActivityStartedExternally);
                 QObject::connect(activity, &entity::Activity::sendCommandToEntity, this,
-                                 &EntityController::onEntityCommand);
+                                 [this](const QString& entityId, const QString& command, QVariantMap params) {
+                                     if (refuseUnavailableEntity(entityId, command)) {
+                                         return;
+                                     }
+
+                                     onEntityCommand(entityId, command, params);
+                                 });
 
                 if (activity->getState() == entity::ActivityStates::On) {
                     onAddToActivities(entity.id);
                 }
-            }
-        }
-
-                // climate entity might switch between celsius & fahrenheit
-        if (obj->getType() == entity::Base::Type::Climate) {
-            auto climate = qobject_cast<entity::Climate*>(obj);
-
-            if (climate) {
-                QObject::connect(this, &EntityController::unitSystemChanged, climate,
-                                 &entity::Climate::onUnitSystemChanged);
             }
         }
 
@@ -472,34 +598,111 @@ void EntityController::addEntityObject(core::Entity entity) {
     }
 }
 
+void EntityController::connectLazySignals(entity::Base* obj) {
+    // Language updates — connect then sync to current language
+    QObject::connect(this, &EntityController::languageChanged, obj, &entity::Base::onLanguageChanged);
+    obj->onLanguageChanged(m_language);
+
+    if (obj->getType() == entity::Base::Type::Media_player) {
+        auto mediaPlayer = qobject_cast<entity::MediaPlayer*>(obj);
+
+        if (mediaPlayer) {
+            QObject::connect(
+                mediaPlayer, &entity::MediaPlayer::browseMediaRequested, this,
+                [=](const QString& entityId, QVariantMap params) {
+                    int id = m_core->browseMedia(entityId, params);
+                    // the id lets the browser tell which of its pages an answer belongs to
+                    mediaPlayer->onBrowseMediaRequested(id);
+                    // A request that was never sent never gets a response: report it right away,
+                    // otherwise the UI keeps waiting for it forever.
+                    if (id < 0) {
+                        mediaPlayer->onMediaBrowseError(id, 503, QString());
+                        return;
+                    }
+                    // The response handlers have no context object and outlive the entity if it is deleted
+                    // while the request is on its way: guard the pointer.
+                    const QPointer<entity::MediaPlayer> guard(mediaPlayer);
+                    m_core->onResponseWithErrorResult(
+                        id, &core::Api::respMediaBrowse,
+                        [guard, id](core::BrowseMediaItem media, core::Pagination pagination) {
+                            if (guard) {
+                                guard->onBrowseMediaResult(id, media, pagination);
+                            }
+                        },
+                        [guard, id](int code, QString message) {
+                            if (guard) {
+                                guard->onMediaBrowseError(id, code, message);
+                            }
+                        });
+                });
+
+            QObject::connect(
+                mediaPlayer, &entity::MediaPlayer::searchMediaRequested, this,
+                [=](const QString& entityId, QVariantMap params) {
+                    int id = m_core->searchMedia(entityId, params);
+                    // The request id lets the entity tell the answer to the current search term apart
+                    // from a late answer to an earlier one.
+                    mediaPlayer->onSearchMediaRequested(id);
+                    if (id < 0) {
+                        mediaPlayer->onSearchMediaError(id, 503, QString());
+                        return;
+                    }
+                    const QPointer<entity::MediaPlayer> guard(mediaPlayer);
+                    m_core->onResponseWithErrorResult(
+                        id, &core::Api::respMediaSearch,
+                        [guard, id](QList<core::BrowseMediaItem> items, core::Pagination pagination) {
+                            if (guard) {
+                                guard->onSearchMediaResult(id, items, pagination);
+                            }
+                        },
+                        [guard, id](int code, QString message) {
+                            if (guard) {
+                                guard->onSearchMediaError(id, code, message);
+                            }
+                        });
+                });
+        }
+    }
+
+    // Climate: unit system — connect then sync to current unit system
+    if (obj->getType() == entity::Base::Type::Climate) {
+        auto climate = qobject_cast<entity::Climate*>(obj);
+
+        if (climate) {
+            QObject::connect(this, &EntityController::unitSystemChanged, climate,
+                             &entity::Climate::onUnitSystemChanged);
+            climate->onUnitSystemChanged(m_unitSystem);
+        }
+    }
+}
+
 void EntityController::setAllEntitiesAvailable(bool value) {
     for (entity::Base* entity : qAsConst(m_entities)) {
         entity->setState(value);
     }
 }
 
+void EntityController::removeMissingEntities(const QSet<QString>& loadedEntityIds) {
+    const QStringList currentEntityIds = m_entities.keys();
+
+    for (const QString& entityId : currentEntityIds) {
+        if (!loadedEntityIds.contains(entityId)) {
+            onEntityDeleted(entityId);
+        }
+    }
+}
+
 void EntityController::onEntityAdded(core::Entity entity) {
-    // ucapi MsgEventTypes::NEW path — fires when an integration creates an entity at runtime
-    // (e.g., post-reinstall, post-discovery). Upstream emitted core::Api::entityAdded but
-    // never connected it; subsequent CHANGE events for the same entity then silently dropped
-    // through the m_entities-empty guard in onEntityChanged. Routing it through addEntityObject
-    // closes that hole — addEntityObject is idempotent (early-return when already loaded), so
-    // it's safe even if a NEW arrives for an entity already in the map.
-    qCDebug(lcEntityController()) << "Entity added (NEW event):" << entity.id;
+    if (m_entities.contains(entity.id)) {
+        onEntityChanged(entity.id, entity);
+        return;
+    }
+
     addEntityObject(entity);
 }
 
 void EntityController::onEntityChanged(const QString& entityId, core::Entity entity) {
     if (!m_entities.contains(entityId)) {
-        // Late entity_change for an unloaded entity. With the entityAdded wiring above this
-        // should now be rare, but kept as a backstop for: (a) integrations that emit CHANGE
-        // without a prior NEW (spec violation but observed in practice), and (b) reconnect
-        // races where m_entities was just cleared in onCoreConnected. Trigger a fetch so the
-        // current core-side state lands; addEntityObject populates m_entities and the next
-        // entity_change applies normally. Multiple in-flight loads for the same id are safe
-        // (addEntityObject short-circuits after the first response inserts).
-        qCWarning(lcEntityController()) << "Late entity_change for unloaded entity, fetching:" << entityId;
-        load(entityId);
         return;
     }
 
@@ -514,11 +717,27 @@ void EntityController::onEntityChanged(const QString& entityId, core::Entity ent
         entityObj->setIcon(entity.icon);
     }
 
+    // The state summarizes the other attributes, so it is applied last: whatever reacts to the state change
+    // then sees the attributes that belong to it, for example the failed sequence step of an activity.
+    // A QVariantMap iterates its keys sorted, which would deliver "state" before "step".
+    bool     hasState = false;
+    QVariant state;
+
     for (QVariantMap::iterator i = entity.attributes.begin(); i != entity.attributes.end(); i++) {
+        if (i.key() == QLatin1String("state")) {
+            hasState = true;
+            state = i.value();
+            continue;
+        }
+
         entityObj->updateAttribute(uc::Util::FirstToUpper(i.key()), i.value());
     }
 
-    if (entity.features.size() > 0) {
+    if (hasState) {
+        entityObj->updateAttribute(QStringLiteral("State"), state);
+    }
+
+    if (entity.featuresProvided) {
         entity::Base::Type entityType = uc::Util::convertStringToEnum<entity::Base::Type>(entity.type);
 
         switch (entityType) {
@@ -555,8 +774,10 @@ void EntityController::onEntityChanged(const QString& entityId, core::Entity ent
 
             case entity::Base::Type::Sensor:
             case entity::Base::Type::Select:
+                // no features, the core sends an empty list
+                break;
             default:
-                qCWarning(lcEntityController()) << "Not updating features, unsupported entity type.";
+                qCWarning(lcEntityController()) << "Not updating features, unsupported entity type:" << entity.type;
                 break;
         }
     }
@@ -567,33 +788,46 @@ void EntityController::onEntityChanged(const QString& entityId, core::Entity ent
 }
 
 void EntityController::onEntityDeleted(const QString& entityId) {
-    if (m_entities.contains(entityId)) {
-        // leave a bit of time for the UI to do it's thing to avoid QML type errors
-        QTimer::singleShot(100, [=] {
-            m_entities.value(entityId)->deleteLater();
-            m_entities.remove(entityId);
-        });
+    m_connectedEntities.remove(entityId);
+    // drop the commands before the object goes away: a leftover busy entry would keep the global
+    // "command in progress" indicator running, and block the indicator of a new entity with the same id
+    removePendingCommandsForEntity(entityId);
+
+    entity::Base* entityObj = m_entities.take(entityId);
+    if (entityObj) {
+        // leave a bit of time for the UI to do its thing to avoid QML type errors,
+        // but detach the old object from lookup immediately so a same-id re-add can replace it.
+        QTimer::singleShot(100, this, [entityObj] { entityObj->deleteLater(); });
     }
 
     onRemoveFromActivities(entityId);
 }
 
-QObject* EntityController::get(const QString& entityId) { return m_entities.value(entityId); }
-
-void EntityController::load(const QString& entityId) {
-    int id = m_core->getEntity(entityId);
-
-    m_core->onResponseWithErrorResult(
-        id, &core::Api::respEntity, [=](core::Entity entity) { addEntityObject(entity); },
-        [=](int code, QString message) {
-            // fail
-            qCWarning(lcEntityController()) << "Cannot get entity:" << entityId << code << message;
-            emit entityLoaded(false, entityId);
-        });
+QObject* EntityController::get(const QString& entityId) {
+    auto* obj = m_entities.value(entityId);
+    if (obj && !m_connectedEntities.contains(entityId)) {
+        connectLazySignals(obj);
+        m_connectedEntities.insert(entityId);
+    }
+    return obj;
 }
 
-void EntityController::refreshEntity(const QString &entityId)
-{
+QUrl EntityController::screenUrl(QObject* entity) {
+    auto* obj = qobject_cast<entity::Base*>(entity);
+    if (!obj) {
+        qCDebug(lcEntityController()) << "No detail screen: not an entity";
+        return QUrl();
+    }
+
+    const QUrl url = EntityScreens::screenUrl(obj->getType(), obj->getDeviceClass());
+    if (url.isEmpty()) {
+        qCDebug(lcEntityController()) << "No detail screen for entity" << obj->getId() << "of type"
+                                      << obj->getTypeAsString();
+    }
+    return url;
+}
+
+void EntityController::refreshEntity(const QString& entityId) {
     int id = m_core->getEntity(entityId);
 
     m_core->onResponseWithErrorResult(
@@ -604,9 +838,156 @@ void EntityController::refreshEntity(const QString &entityId)
         });
 }
 
+// delay before a still-in-flight command shows a loading indicator, so fast commands don't flash
+static constexpr int kCommandBusyDelayMs = 200;
+// delay between two send attempts of a command issued around a wakeup
+static constexpr int kResumeRetryDelayMs = 500;
+
+bool EntityController::hasPendingForEntity(const QString& entityId) const {
+    for (auto it = m_pendingCommands.constBegin(); it != m_pendingCommands.constEnd(); ++it) {
+        if (it.value().entityId == entityId) {
+            return true;
+        }
+    }
+    return false;
+}
+
+void EntityController::setEntityBusy(const QString& entityId, bool busy) {
+    bool changed = false;
+    if (busy) {
+        if (!m_busyEntities.contains(entityId)) {
+            m_busyEntities.insert(entityId);
+            changed = true;
+        }
+    } else {
+        changed = m_busyEntities.remove(entityId);
+    }
+
+    if (!changed) {
+        return;
+    }
+
+    if (entity::Base* e = m_entities.value(entityId)) {
+        e->setCommandInProgress(busy);
+    }
+
+    // the global property flips only when the set of busy entities becomes (non-)empty
+    if (m_busyEntities.size() == (busy ? 1 : 0)) {
+        emit commandInProgressChanged();
+    }
+}
+
+void EntityController::removePendingCommand(const QString& commandId) {
+    auto it = m_pendingCommands.find(commandId);
+    if (it == m_pendingCommands.end()) {
+        return;
+    }
+
+    const QString entityId = it.value().entityId;
+    m_pendingCommands.erase(it);
+
+    if (!hasPendingForEntity(entityId)) {
+        setEntityBusy(entityId, false);
+    }
+}
+
+void EntityController::removePendingCommandsForEntity(const QString& entityId) {
+    for (auto it = m_pendingCommands.begin(); it != m_pendingCommands.end();) {
+        if (it.value().entityId == entityId) {
+            it = m_pendingCommands.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    setEntityBusy(entityId, false);
+}
+
+void EntityController::clearPendingCommands() {
+    if (!m_pendingCommands.isEmpty()) {
+        qCDebug(lcEntityController()) << "Dropping" << m_pendingCommands.count() << "pending command(s)";
+        m_pendingCommands.clear();
+    }
+
+    // the responses of the dropped commands either never arrive or are ignored, so nothing would ever
+    // clear the indicators again
+    const QSet<QString> busyEntities = m_busyEntities;
+    for (const QString& busyEntityId : busyEntities) {
+        setEntityBusy(busyEntityId, false);
+    }
+}
+
+bool EntityController::mayCommandEntity(bool entityAvailable) const {
+    return uc::ui::mayCommandEntity(entityAvailable, getResumePending());
+}
+
+bool EntityController::refuseUnavailableEntity(const QString& entityId, const QString& command) {
+    entity::Base* e = m_entities.value(entityId);
+
+    // an entity this remote does not know about is left to the core to reject
+    if (!e || mayCommandEntity(e->isEnabled())) {
+        return false;
+    }
+
+    qCDebug(lcEntityController()) << "Entity is unavailable, command refused:" << entityId << command;
+    //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
+    Notification::createNotification(tr("%1 is unavailable").arg(e->getName()), true);
+    return true;
+}
+
+bool EntityController::cancelPendingVoiceStart(const QString& entityId, int sessionId) {
+    QStringList obsolete;
+
+    for (auto it = m_pendingCommands.constBegin(); it != m_pendingCommands.constEnd(); ++it) {
+        if (isVoiceStartOfEndedSession(it.value().entityId, it.value().command, it.value().params, entityId,
+                                       sessionId)) {
+            obsolete.append(it.key());
+        }
+    }
+
+    for (const QString& commandId : obsolete) {
+        qCDebug(lcEntityController()) << "Voice session ended, dropping the pending start:" << commandId;
+        removePendingCommand(commandId);
+    }
+
+    return !obsolete.isEmpty();
+}
+
 void EntityController::onEntityCommand(const QString& entityId, const QString& command, QVariantMap params) {
-    // madalone: notify ActivitySessionKeeper of user-initiated traffic.
-    // Keeper itself filters via curated allowlist; we emit unconditionally.
+    // The end of a voice session arrives here just like its start. A start that was not acknowledged yet is
+    // still being sent again for the resume window of a wakeup, and getting through now would start the
+    // assistant listening for a session the UI has already closed - after the user let go of the microphone
+    // button. voice_end names no session, so every start of that entity that is still pending goes.
+    //
+    // This stays the first thing the function does, ahead of anything that can return early. Withdrawing a
+    // command the remote itself still has queued is not sending one, so it must happen even when the entity
+    // may not be commanded at all - and right after a wakeup that is exactly the state every entity is in,
+    // which is the very situation this cancellation exists for. refuseUnavailableEntity() lets a command
+    // through while the remote is waking up, so nothing skips it today; keeping it first means a refusal
+    // added here later cannot turn the pending start back into an orphan.
+    if (endsVoiceSession(command)) {
+        if (cancelPendingVoiceStart(entityId, voiceSessionIdOf(params))) {
+            // The dropped start never reached the assistant, so nothing will answer this session: the overlay
+            // would sit in "Processing" until its own timeout. Report it the way a failed start is reported,
+            // so the overlay shows the "unavailable" message right away. Only here, for a session the overlay
+            // is still showing: the overlay's own close handler drops a start too, but must not get an error
+            // for a session it has already closed.
+            emit voiceAssistantCommandError(entityId, 503);
+        }
+    }
+
+    // every activity start triggered on the remote passes through here, no matter if it comes from
+    // an entity page, an activity page or a button mapping: remember it so that the activity does
+    // not report the resulting On state as an external (API) start
+    if (command == "activity.on" || command == "activity.start") {
+        if (auto activity = qobject_cast<entity::Activity*>(m_entities.value(entityId))) {
+            activity->markStartedFromRemote();
+        }
+    }
+
+    // madalone (Mod 5/6): every command reaching here comes from a user action. The keeper arms its idle
+    // window for media-control commands, the phantom-wake suppressor takes any command as wake-press
+    // evidence. Emitted before the duplicate check below, so a repeated press still counts.
     emit entityCommandIssued(entityId, command);
 
     pendingCommand pendingCmd;
@@ -615,10 +996,20 @@ void EntityController::onEntityCommand(const QString& entityId, const QString& c
     pendingCmd.params = params;
     pendingCmd.repeating = isRepeatingCommand(command, params);
     pendingCmd.commandId = buildCommandId(entityId, command, params, pendingCmd.repeating);
+    pendingCmd.epoch = ++m_commandEpoch;
+    // The button press that wakes the remote sends its command before the core reports that the remote is
+    // awake again, so the resume window is not open yet at that point. m_wasSuspended still marks it: it is
+    // set when the remote goes to sleep and only cleared once the wakeup has been reported.
+    // Only the timing is sampled here. Whether this particular command and this particular failure may be
+    // sent again is decided by mayResendAfterWakeup() once the failure is known.
+    pendingCmd.retryOnFailure = m_resumeTimerTimeout > 0 && (m_resumeWindow || m_wasSuspended);
+    // provisional as long as the remote is still waking up, extended to the end of the window once it opens
+    pendingCmd.retryDeadlineMs = QDateTime::currentMSecsSinceEpoch() + m_resumeTimerTimeout;
 
     if (!pendingCmd.repeating) {
         if (m_pendingCommands.contains(pendingCmd.commandId)) {
-            qCDebug(lcEntityController()) << "The command is still being executed. Not doing anything." << entityId << command;
+            qCDebug(lcEntityController())
+                << "The command is still being executed. Not doing anything." << entityId << command;
             return;
         }
     }
@@ -628,137 +1019,180 @@ void EntityController::onEntityCommand(const QString& entityId, const QString& c
     retrySendAttempt(pendingCmd.commandId);
 }
 
-void EntityController::retrySendAttempt(const QString& commandId)
-{
+void EntityController::retrySendAttempt(const QString& commandId) {
     auto it = m_pendingCommands.find(commandId);
     if (it == m_pendingCommands.end()) return;
 
-    pendingCommand& live = it.value();
-    int id = m_core->entityCommand(live.entityId, live.command, live.params);
-    if (id < 0) {
-        qCWarning(lcEntityController()) << "Cannot execute command: invalid request id" << commandId;
-        m_pendingCommands.remove(commandId);
+    it.value().attemptCount += 1;
+
+    const int         attemptCount = it.value().attemptCount;
+    const quint64     epoch = it.value().epoch;
+    const QString     entityId = it.value().entityId;
+    const QString     command = it.value().command;
+    const QVariantMap params = it.value().params;
+
+    const int id = m_core->entityCommand(entityId, command, params);
+
+    // sending can run the event loop, so the entry is looked up again instead of holding a reference to it
+    auto sent = m_pendingCommands.find(commandId);
+    if (sent == m_pendingCommands.end() || sent.value().epoch != epoch) {
         return;
     }
+    sent.value().requestId = id;
 
-    live.requestId = id;
-    live.attemptCount += 1;
+    // on the first attempt, show a loading indicator if the command is still in flight after a short delay
+    if (attemptCount == 1) {
+        QTimer::singleShot(kCommandBusyDelayMs, this, [this, commandId, entityId, epoch]() {
+            auto pending = m_pendingCommands.constFind(commandId);
+            if (pending != m_pendingCommands.constEnd() && pending.value().epoch == epoch) {
+                setEntityBusy(entityId, true);
+            }
+        });
+    }
 
-    const int requestId = live.requestId;
-    const int attemptCount = live.attemptCount;
+    if (id < 0) {
+        // the request never left the remote: the core connection is down, or the socket rejected the
+        // message. No response and no timeout will ever arrive for it, so report the failure right away
+        // instead of dropping the command without the user noticing anything.
+        handleCommandFailure(commandId, id, 503, QStringLiteral("Not connected to the core"));
+        return;
+    }
 
     m_core->onResult(
         id,
         // success
-        [this, commandId, requestId, attemptCount]() {
-            auto current = m_pendingCommands.find(commandId);
-            if (current == m_pendingCommands.end() || current.value().requestId != requestId) {
-                qCDebug(lcEntityController()) << "Ignoring stale command success" << commandId << requestId;
+        [this, commandId, id, epoch, attemptCount]() {
+            auto current = m_pendingCommands.constFind(commandId);
+            if (current == m_pendingCommands.constEnd() || current.value().epoch != epoch ||
+                current.value().requestId != id) {
+                qCDebug(lcEntityController()) << "Ignoring stale command success" << commandId << id;
                 return;
             }
 
             qCDebug(lcEntityController()) << "Command executed successfully" << commandId << "attempt" << attemptCount;
-            m_pendingCommands.remove(commandId);
+            removePendingCommand(commandId);
         },
         // failure
-        [this, commandId, requestId, attemptCount](int code, QString message) {
-            auto it2 = m_pendingCommands.find(commandId);
-            if (it2 == m_pendingCommands.end()) {
+        [this, commandId, id](int code, QString message) { handleCommandFailure(commandId, id, code, message); });
+}
+
+void EntityController::handleCommandFailure(const QString& commandId, int requestId, int code, const QString& message) {
+    auto it = m_pendingCommands.constFind(commandId);
+    if (it == m_pendingCommands.constEnd()) {
+        return;
+    }
+
+    const pendingCommand live = it.value();
+    if (live.requestId != requestId) {
+        qCDebug(lcEntityController()) << "Ignoring stale command failure" << commandId << requestId;
+        return;
+    }
+
+    qCWarning(lcEntityController()) << "Cannot execute command:" << commandId << "attempt" << live.attemptCount << code
+                                    << message;
+
+    // a command issued around a wakeup keeps being sent for the configured window: the core and the
+    // integrations are likely still coming back up. The timing was sampled when the command was issued,
+    // because the failure is regularly reported only after the window has closed again. What the command and
+    // the failure code say about sending it again is decided here, where both are known: a request the core
+    // or the driver rejected is reported to the user right away instead.
+    if (live.retryOnFailure && !mayResendAfterWakeup(live.command, live.params, code)) {
+        qCDebug(lcEntityController()) << "Not sending the command again after a wakeup:" << commandId << code;
+    } else if (live.retryOnFailure && QDateTime::currentMSecsSinceEpoch() < live.retryDeadlineMs) {
+        qCDebug(lcEntityController()) << "Issued around a wakeup, trying command again:" << commandId << "attempt"
+                                      << live.attemptCount;
+
+        const quint64 epoch = live.epoch;
+        QTimer::singleShot(kResumeRetryDelayMs, this, [this, commandId, requestId, epoch]() {
+            auto current = m_pendingCommands.constFind(commandId);
+            if (current == m_pendingCommands.constEnd() || current.value().epoch != epoch ||
+                current.value().requestId != requestId) {
                 return;
             }
 
-            pendingCommand live2 = it2.value();
-            if (live2.requestId != requestId) {
-                qCDebug(lcEntityController()) << "Ignoring stale command failure" << commandId << requestId;
-                return;
-            }
+            retrySendAttempt(commandId);
+        });
+        return;
+    }
 
-            qCWarning(lcEntityController())
-                << "Cannot execute command:" << commandId << "attempt" << attemptCount << code << message;
+    // we ignore voice commands as they have their own error handling
+    if (live.command == "voice_start") {
+        emit voiceAssistantCommandError(live.entityId, code);
+        removePendingCommand(commandId);
+        return;
+    }
 
-            // if we're in the resume window, we try again in 500ms
-            if (m_resumeWindow) {
-                qCDebug(lcEntityController()) << "In resume window, trying command again:" << commandId << "attempt" << attemptCount;
-                QTimer::singleShot(500, this, [this, commandId, requestId]() {
-                    auto current = m_pendingCommands.find(commandId);
-                    if (current == m_pendingCommands.end() || current.value().requestId != requestId) {
+    // a key repeat is stale the moment it fails: offering to send it again would replay a button press the
+    // user has long released, and a held button would raise one prompt per repeat
+    if (live.repeating) {
+        removePendingCommand(commandId);
+        return;
+    }
+
+    // get entity name
+    QString       entityName = tr("The device");
+    entity::Base* e = m_entities.value(live.entityId);
+
+    if (e) {
+        entityName = e->getName();
+    }
+
+    switch (code) {
+        case 408:
+        case 503: {
+            QVariantMap payload;
+            payload["commandId"] = commandId;
+            payload["entityId"] = live.entityId;
+            payload["command"] = live.command;
+            payload["params"] = live.params;
+
+            // Remove current pending; will recreate if user taps
+            removePendingCommand(commandId);
+
+            Notification::createActionableNotification(
+                tr("%1 is not responding").arg(entityName),
+                tr("The command did not reach the device. Would you like to try again?"), "uc:warning",
+                [](QVariant param) {
+                    // the action is a plain function pointer and cannot capture anything, so the controller
+                    // is reached through its singleton rather than through a raw pointer in the payload,
+                    // which the QVariant would not keep alive
+                    EntityController* self = s_instance;
+                    if (!self) {
                         return;
                     }
 
-                    retrySendAttempt(commandId);
-                });
-                return;
-            }
+                    const auto    m = param.toMap();
+                    const QString cmdId = m.value("commandId").toString();
 
-            // we ignore voice commands as they have their own error handling
-            if (live2.command == "voice_start") {
-                emit voiceAssistantCommandError(live2.entityId, code);
-                m_pendingCommands.remove(commandId);
-                return;
-            }
+                    // the command may have been issued again in the meantime
+                    if (self->m_pendingCommands.contains(cmdId)) {
+                        return;
+                    }
 
-            // get entity name
-            QString entityName = "The device";
-            entity::Base* e = m_entities.value(live2.entityId);
+                    // retryOnFailure stays off: the user asked for exactly one more attempt and is asked
+                    // again if it fails, rather than the remote retrying on its own behind the prompt
+                    pendingCommand pc;
+                    pc.entityId = m.value("entityId").toString();
+                    pc.command = m.value("command").toString();
+                    pc.params = m.value("params").toMap();
+                    pc.commandId = cmdId;
+                    pc.repeating = isRepeatingCommand(pc.command, pc.params);
+                    pc.epoch = ++self->m_commandEpoch;
 
-            if (e) {
-                entityName = e->getName();
-            }
-
-            // Helper to show actionable + remove pending
-            auto showActionable = [this, commandId, live2, entityName]() {
-                QVariantMap payload;
-                payload["commandId"] = commandId;
-                payload["entityId"]  = live2.entityId;
-                payload["command"]   = live2.command;
-                payload["params"]    = live2.params;
-                payload["self"]      = QVariant::fromValue(static_cast<QObject*>(this));
-
-                // Remove current pending; will recreate if user taps
-                m_pendingCommands.remove(commandId);
-
-                Notification::createActionableNotification(
-                    tr("%1 is not responding").arg(entityName),
-                    tr("The command did not reach the device. Would you like to try again?"),
-                    "uc:warning",
-                    [](QVariant param) {
-                        const auto m = param.toMap();
-                        auto* self = qobject_cast<EntityController*>(m.value("self").value<QObject*>());
-                        if (!self) return;
-
-                        const QString cmdId = m.value("commandId").toString();
-
-                        pendingCommand pc;
-                        pc.entityId    = m.value("entityId").toString();
-                        pc.command     = m.value("command").toString();
-                        pc.params      = m.value("params").toMap();
-                        pc.commandId   = cmdId;
-                        pc.repeating   = isRepeatingCommand(pc.command, pc.params);
-
-                        self->m_pendingCommands.insert(cmdId, pc);
-                        self->retrySendAttempt(cmdId);
-                    },
-                    payload,
-                    "Try again"
-                    );
-            };
-
-            switch (code) {
-                case 408:
-                case 503:
-                    showActionable();
-                    break;
-                default:
-                    m_pendingCommands.remove(commandId);
-                    Notification::createActionableWarningNotification(
-                        tr("Error sending the command"),
-                        tr("%1 is not responding. Error code: %2").arg(entityName).arg(code),
-                        "uc:warning");
-                    break;
-            }
-        });
+                    self->m_pendingCommands.insert(cmdId, pc);
+                    self->retrySendAttempt(cmdId);
+                },
+                payload, tr("Try again"));
+            break;
+        }
+        default:
+            removePendingCommand(commandId);
+            Notification::createActionableWarningNotification(
+                tr("Error sending the command"), tr("%1 is not responding. Error code: %2").arg(entityName).arg(code),
+                "uc:warning");
+            break;
+    }
 }
-
 
 void EntityController::onLanguageChanged(QString language) {
     m_language = language;
@@ -788,30 +1222,35 @@ void EntityController::onRemoveFromActivities(QString entityId) {
     }
 }
 
-void EntityController::onActivityStartedRunning(QString entityId) { emit activityStartedRunning(entityId); }
-
-void EntityController::onResumeTimerTimeout()
-{
-    m_resumeWindow = false;
-    emit resumewindowChanged();
-    qCDebug(lcEntityController())  << "Resume timer disabled";
+void EntityController::onActivityStartedRunning(QString entityId, QString cmdId) {
+    emit activityStartedRunning(entityId, cmdId);
 }
 
-void EntityController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode)
-{
+void EntityController::onActivityStartedExternally(QString entityId) {
+    emit activityStartedExternally(entityId);
+}
+
+void EntityController::onResumeTimerTimeout() {
+    m_resumeWindow = false;
+    emit resumewindowChanged();
+    emit resumePendingChanged();
+    qCDebug(lcEntityController()) << "Resume timer disabled";
+}
+
+void EntityController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode) {
     if (m_resumeTimerTimeout == 0) {
         return;
     }
 
-    // madalone (v1.4.19, Wake-replay HUD): broaden the upstream SUSPEND-only wake-trigger to also
-    // cover LOW_POWER -> NORMAL. UCR3's 5-min standby goes to LOW_POWER; SUSPEND is rarely/never
-    // entered (REST probe of /api/system/power across 6 v1.4.x releases never observed mode:SUSPEND),
-    // so the upstream SUSPEND-only check meant the resume-retry window never engaged in daily use.
-    // Adopts upstream 0.73.5's flag + !m_resumeWindow debounce + early-return; the OR-on-LOW_POWER
-    // is the only intentional divergence (kept on upstream's var name per project rule #10).
+    // madalone (v1.4.19): LOW_POWER counts as sleep too. The UCR3's standby goes to LOW_POWER and rarely or never
+    // to SUSPEND (and never while Mod 5's BLOCK inhibitor is held), so a SUSPEND-only check would not open the
+    // resume window, or upstream's held activity POWER press, in daily use. Only intentional divergence here.
     if (powerMode == core::PowerEnums::PowerMode::SUSPEND ||
         powerMode == core::PowerEnums::PowerMode::LOW_POWER) {
-        m_wasSuspended = true;   // also set on LOW_POWER (UCR3 standby) - v1.4.19
+        m_wasSuspended = true;
+        // the remote is awake and taking input again before the core reports the wakeup, so everything that
+        // has to survive it is gated from here on, not only from the moment the resume window opens
+        emit resumePendingChanged();
         return;
     }
 
@@ -824,15 +1263,28 @@ void EntityController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode)
             emit resumewindowChanged();
             QTimer::singleShot(m_resumeTimerTimeout, this, &EntityController::onResumeTimerTimeout);
 
-            qCDebug(lcEntityController())  << "Resume timer enabled" << m_resumeTimerTimeout << "ms";
+            // commands issued while the remote was still waking up only got a provisional deadline, because
+            // the wakeup they belong to had not been reported yet. Give them the full configured window,
+            // measured from the wakeup, so a button press that wakes the remote is retried just as long as
+            // one made right after it.
+            const qint64 windowEndMs = QDateTime::currentMSecsSinceEpoch() + m_resumeTimerTimeout;
+            for (auto it = m_pendingCommands.begin(); it != m_pendingCommands.end(); ++it) {
+                if (it.value().retryOnFailure && it.value().retryDeadlineMs < windowEndMs) {
+                    it.value().retryDeadlineMs = windowEndMs;
+                }
+            }
+
+            qCDebug(lcEntityController()) << "Resume timer enabled" << m_resumeTimerTimeout << "ms";
         }
     }
 }
 
-void EntityController::onResumeTimeoutWindowSecChanged(int value)
-{
+void EntityController::onResumeTimeoutWindowSecChanged(int value) {
     m_resumeTimerTimeout = value * 1000;
-    qCDebug(lcEntityController())  << "Resume timer changed" << m_resumeTimerTimeout << "ms";
+    emit resumeTimeoutChanged();
+    // setting the window to zero turns retrying after a wakeup off altogether
+    emit resumePendingChanged();
+    qCDebug(lcEntityController()) << "Resume timer changed" << m_resumeTimerTimeout << "ms";
 }
 
 }  // namespace ui

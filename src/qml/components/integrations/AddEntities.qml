@@ -14,12 +14,18 @@ Item {
     id: integrationAddEntitiesContainer
 
     signal done
+    signal home
 
     property string integrationId
-    property bool currentItem: false
 
-    onCurrentItemChanged: {
-        if (integrationAddEntitiesContainer.currentItem) {
+    /** KEYBOARD NAVIGATION **/
+    // The step owns the input while it is the current step of the setup (deferred, see Configure).
+    // The entity list is driven through the button navigation: no control has the focus.
+    readonly property bool isCurrentStep: SwipeView.isCurrentItem
+    onIsCurrentStepChanged: Qt.callLater(activate)
+
+    function activate() {
+        if (integrationAddEntitiesContainer.isCurrentStep) {
             buttonNavigation.takeControl();
         } else {
             buttonNavigation.releaseControl();
@@ -37,26 +43,22 @@ Item {
         }
     }
 
+    Component.onCompleted: buttonNavigation.extendDefaultConfig(entitySelectionList.keypadConfig())
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
-            "DPAD_DOWN": {
+            // this step owns the input while it is shown: without these the keypad had no way
+            // out of it. Leaving it skips adding entities, like its X icon.
+            "BACK": {
                 "pressed": function() {
-                    entitySelectionList.itemList.incrementCurrentIndex();
-                    entitySelectionList.itemList.positionViewAtIndex(entitySelectionList.itemList.currentIndex, ListView.Contain);
+                    integrationAddEntitiesContainer.done();
                 }
             },
-            "DPAD_UP": {
+            "HOME": {
                 "pressed": function() {
-                    entitySelectionList.itemList.decrementCurrentIndex();
-                    entitySelectionList.itemList.positionViewAtIndex(entitySelectionList.itemList.currentIndex, ListView.Contain);
-                }
-            },
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    entitySelectionList.itemSelected(
-                                entitySelectionList.itemList.currentItem.key,
-                                !entitySelectionList.itemList.currentItem.selected);
+                    integrationAddEntitiesContainer.done();
+                    integrationAddEntitiesContainer.home();
                 }
             }
         }
@@ -64,13 +66,12 @@ Item {
 
     Text {
         id: descriptionText
-        width: parent.width - 20
-        color: colors.offwhite
-        opacity: 0.6
+        width: parent.width - 40
+        color: colors.textSecondary
         text: qsTr("Select entities to control with the remote")
         horizontalAlignment: Text.AlignHCenter
         wrapMode: Text.WordWrap
-        font: fonts.secondaryFont(24)
+        font: fonts.help()
         anchors { top: parent.top; topMargin: 10; horizontalCenter: parent.horizontalCenter }
     }
 
@@ -79,6 +80,7 @@ Item {
         anchors { top: descriptionText.bottom; topMargin: 10; bottom: parent.bottom; left: parent.left; right: parent.right }
         model: EntityController.availableEntities
         entityDescriptionIntegration: false
+        keypadSelected: true
         closeListOnTrigger: false
 
         okTrigger: function() {
@@ -89,7 +91,7 @@ Item {
                 integrationAddEntitiesContainer.currentItem = false;
                 integrationAddEntitiesContainer.done();
             } else {
-                ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select entities to add by tapping in the list."));
+                ui.createActionableNotification(qsTr("Select entities"), qsTr("Please select the entities to add in the list."));
             }
         }
     }

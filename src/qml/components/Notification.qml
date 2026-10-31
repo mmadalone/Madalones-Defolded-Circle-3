@@ -25,7 +25,14 @@ Popup {
 
         function onNotificationCreated(message, warning) {
             notificationMessage.text = message;
-            notificationBg.color = warning ? colors.red : colors.primaryButton
+            notificationBg.color = warning ? colors.red : colors.buttonPrimary
+
+            // a message replacing one that is already showing gets the full display time instead of
+            // whatever is left of the previous one, which made it flash by
+            if (notification.opened) {
+                displayTimer.restart();
+            }
+
             notification.open();
         }
     }
@@ -64,13 +71,16 @@ Popup {
             color: colors.offwhite
             verticalAlignment: Text.AlignVCenter
             anchors { left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20; verticalCenter: parent.verticalCenter }
-            font: fonts.primaryFont(20)
-            lineHeight: 0.8
+            font: fonts.prose()
+            lineHeight: fonts.proseLineHeight
         }
     }
 
+    onOpened: displayTimer.restart()
+    onClosed: displayTimer.stop()
+
     Timer {
-        running: notification.opened
+        id: displayTimer
         repeat: false
         interval: 4000
         onTriggered: notification.close()

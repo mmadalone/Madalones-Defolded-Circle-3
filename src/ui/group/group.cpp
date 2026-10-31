@@ -18,6 +18,8 @@ int GroupItemList::count() const {
 
 void GroupItemList::append(GroupItem *item) {
     if (contains(item->groupItemId())) {
+        // the caller created the item for this list: a rejected one would leak
+        item->deleteLater();
         return;
     }
 
@@ -35,6 +37,10 @@ int GroupItemList::rowCount(const QModelIndex &parent) const {
 }
 
 bool GroupItemList::removeRows(int row, int count, const QModelIndex &parent) {
+    if (row < 0 || count <= 0 || (row + count) > m_data.size()) {
+        return false;
+    }
+
     beginRemoveRows(parent, row, row + count - 1);
     for (int i = row + count - 1; i >= row; i--) {
         m_data.at(i)->deleteLater();
@@ -74,11 +80,15 @@ void GroupItemList::clear() {
 }
 
 GroupItem *GroupItemList::getGroupItem(int row) {
+    if (row < 0 || row >= m_data.count()) {
+        return nullptr;
+    }
+
     return m_data[row];
 }
 
 GroupItem *GroupItemList::getGroupItem(const QString &key) {
-    return m_data[getModelIndexByKey(key).row()];
+    return getGroupItem(getModelIndexByKey(key).row());
 }
 
 QModelIndex GroupItemList::getModelIndexByKey(const QString &key) {
@@ -125,7 +135,11 @@ void GroupItemList::swapData(int from, int to) {
         QModelIndex fromIdx = index(from, 0);
         QModelIndex toIdx = index(to, 0);
 
-        beginMoveRows(QModelIndex(), from, from, QModelIndex(), to);
+        // beginMoveRows takes the row the item is inserted in front of, QList::move the index it ends up at:
+        // moving down by more than one row they differ by one
+        const int destinationRow = to > from ? to + 1 : to;
+
+        beginMoveRows(QModelIndex(), from, from, QModelIndex(), destinationRow);
         m_data.move(from, to);
         endMoveRows();
 
@@ -160,7 +174,9 @@ QStringList Group::getEntities() {
     QStringList list;
 
     for (int i = 0; i < m_items->count(); i++) {
-        list.append(m_items->getGroupItem(i)->groupItemId());
+        if (GroupItem *item = m_items->getGroupItem(i)) {
+            list.append(item->groupItemId());
+        }
     }
 
     return list;
@@ -179,7 +195,6 @@ void Group::addEntity(const QString &entityId) {
         return;
     }
 
-    emit requestEntity(entityId);
     m_items->addItem(entityId);
 }
 

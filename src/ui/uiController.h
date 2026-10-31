@@ -41,6 +41,9 @@ class Controller : public QObject {
 
     Q_PROPERTY(bool editMode READ getEditMode WRITE setEditMode NOTIFY editModeChanged)
     Q_PROPERTY(bool keyNavigationEnabled READ getKeyNavigationEnabled CONSTANT)
+    // keyNavigationEnabled while the keypad is in use (see InputController::keypadActive): the
+    // condition for rendering a keypad selection
+    Q_PROPERTY(bool keyNavigationActive READ getKeyNavigationActive NOTIFY keyNavigationActiveChanged)
     Q_PROPERTY(bool showRegulatoryInfo READ getShowRegulatoryInfo CONSTANT)
     Q_PROPERTY(bool coreConnected READ getCoreConnected NOTIFY coreConnectedChanged)
     Q_PROPERTY(bool rotateScreen READ getRotateScreen CONSTANT)
@@ -56,7 +59,6 @@ class Controller : public QObject {
 
     Q_PROPERTY(bool isConnecting READ getIsConnecting NOTIFY isConnectingChanged)
     Q_PROPERTY(bool isOnboarding READ getIsOnboarding NOTIFY isOnboardingChanged)
-    Q_PROPERTY(bool isNoProfile READ getIsNoProfile NOTIFY isNoProfileChanged)
     Q_PROPERTY(bool showHelp READ getShowHelp WRITE setShowHelp NOTIFY showHelpChanged)
 
     Q_PROPERTY(Profiles* profiles READ getProfiles CONSTANT)
@@ -81,6 +83,7 @@ class Controller : public QObject {
     bool   getEditMode() { return m_editMode; }
     void   setEditMode(bool editMode);
     bool   getKeyNavigationEnabled();
+    bool   getKeyNavigationActive() { return getKeyNavigationEnabled() && m_inputController.keypadActive(); }
     bool   getShowRegulatoryInfo();
     bool   getCoreConnected() { return m_coreConnected; }
     bool   getRotateScreen() { return m_rotateScreen; }
@@ -97,7 +100,6 @@ class Controller : public QObject {
 
     bool getIsConnecting() { return m_isConnecting; }
     bool getIsOnboarding() { return m_isOnboarding; }
-    bool getIsNoProfile() { return m_isNoProfile; }
     bool getShowHelp() { return m_showHelp; }
     void setShowHelp(bool value);
 
@@ -115,9 +117,9 @@ class Controller : public QObject {
     Q_INVOKABLE int  switchProfile(const QString& profileId, const QString& pin = "");
 
     Q_INVOKABLE int addProfile(const QString& name, bool restricted = false);
-    Q_INVOKABLE int renameProfile(const QString& profileId, const QString& name, int pin = -1);
-    Q_INVOKABLE int changeProfileIcon(const QString& profileId, const QString& icon, int pin = -1);
-    Q_INVOKABLE int deleteProfile(const QString& profileId, int pin = -1);
+    Q_INVOKABLE int renameProfile(const QString& profileId, const QString& name);
+    Q_INVOKABLE int changeProfileIcon(const QString& profileId, const QString& icon);
+    Q_INVOKABLE int deleteProfile(const QString& profileId);
 
     Q_INVOKABLE int addPage(const QString& name);
     Q_INVOKABLE int renamePage(const QString& pageId, const QString& name);
@@ -155,14 +157,15 @@ class Controller : public QObject {
     void syncWithCore();
 
     void loadProfile(const QString& profileId);
-    int  updateProfile(const QString& profileId, const QString& name, const QString& icon = "-1", int pin = -1,
+    int  updateProfile(const QString& profileId, const QString& name, const QString& icon = "-1",
                        const QStringList& pages = QStringList({"-1"}));
 
-    void loadPages(const QString& profileId, int pin = -1);
+    void loadPages(const QString& profileId);
     int  updatePage(const QString& pageId, const QString& name, const QString& image, int pos = -1,
                     const QVariantList& items = QVariantList());
 
  signals:
+    void keyNavigationActiveChanged();
     void editModeChanged();
     void configLoaded();
     void coreConnectedChanged();
@@ -176,6 +179,10 @@ class Controller : public QObject {
     void profileChanged();
     void profileAdded(bool success, int code = 200);
     void profileSwitch(bool success);
+    /**
+     * @brief Result of the factory reset token request. Without a token the reset cannot be started.
+     */
+    void factoryResetTokenReceived(bool success);
 
  public slots:
     void onCoreConnected();
@@ -207,7 +214,8 @@ class Controller : public QObject {
     void onActivityAdded(QString entityId);
     void onActivityRemoved(QString entityId);
 
-    void onEntityRequested(QString entityId);
+    // the activity bar of every page: the running activities and playing media players on the page or in its groups
+    void updatePageActivities();
 
  private:
     QQmlApplicationEngine* m_engine;
@@ -224,8 +232,8 @@ class Controller : public QObject {
     Profiles m_profiles;
     Profile  m_profile;
     Pages    m_pages;
-
-    bool m_isNoProfile = false;
+    // id of the newest page list request, answers to older ones are ignored
+    int m_pagesRequestId = -1;
 
     bool m_coreConnected = false;
     bool m_isConnecting = false;
@@ -244,7 +252,9 @@ class Controller : public QObject {
     QFontDatabase m_fontDatabase;
     bool          loadFont(const QString& path);
 
-    void onActivity(QString entityId, bool remove = false);
+    static QString factoryResetNotStartedMsg() {
+        return tr("The factory reset could not be started. Please try again.");
+    }
 
  private:
     /**
@@ -267,13 +277,9 @@ class Controller : public QObject {
     Notification          m_notification;
     EntityController*     m_entityController;
     GroupController*      m_groupController;
-    OnboardingController* m_onboardingController;
+    OnboardingController* m_onboardingController = nullptr;
 
     QString m_factoryResetToken;
-
-    void checkConfigLoaded();
-    bool m_profilesLoaded = false;
-    bool m_pagesLoaded = false;
 };
 
 }  // namespace ui

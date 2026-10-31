@@ -58,7 +58,6 @@ Rectangle {
     function open() {
         state = "visible";
         loading.stop();
-
     }
 
     function close() {
@@ -66,36 +65,197 @@ Rectangle {
         state = "hidden";
     }
 
+    /** KEYPAD SELECTION (edit mode) **/
+    // The selection is the main screen's page index, as for the normal mode. In edit mode a long
+    // press on DPAD_MIDDLE picks the page up (UP / DOWN move it, DPAD_MIDDLE drops it), RIGHT
+    // reveals the delete of the row and DPAD_MIDDLE then deletes it, LEFT hides it again, DOWN past
+    // the last page selects the "+" footer. The edit mode itself is entered with a long press on
+    // DPAD_MIDDLE, like the pencil at the top with a tap.
+    property bool footerSelected: false
+    property int heldIndex: -1
+
+    readonly property var pages: containerMain.item.pages
+
+    function currentRow() {
+        return roomList.currentItem;
+    }
+
+    function leaveEditMode() {
+        roomSelector.heldIndex = -1;
+        roomSelector.footerSelected = false;
+        editMode = false;
+        editModeOff();
+    }
+
+    function dropHeld() {
+        const index = roomSelector.heldIndex;
+        roomSelector.heldIndex = -1;
+        Haptic.play(Haptic.Click);
+        roomSelector.pages.currentIndex = index;
+        roomSelector.pages.positionViewAtIndex(index, ListView.Visible);
+        ui.updatePagePos();
+    }
+
+    function moveSelection(delta) {
+        if (roomSelector.heldIndex >= 0) {
+            const to = roomSelector.heldIndex + delta;
+            if (to < 0 || to >= roomList.count) {
+                return;
+            }
+
+            ui.pages.swapData(roomSelector.heldIndex, to);
+            roomSelector.heldIndex = to;
+            roomSelector.pages.currentIndex = to;
+            return;
+        }
+
+        if (roomSelector.footerSelected) {
+            if (delta < 0) {
+                roomSelector.footerSelected = false;
+            }
+            return;
+        }
+
+        if (delta > 0 && editMode && roomSelector.pages.currentIndex >= roomList.count - 1) {
+            const row = roomSelector.currentRow();
+            if (row) {
+                row.closeDelete();
+            }
+            roomSelector.footerSelected = true;
+            roomList.positionViewAtEnd();
+            return;
+        }
+
+        if (delta > 0) {
+            roomSelector.pages.incrementCurrentIndex();
+        } else {
+            roomSelector.pages.decrementCurrentIndex();
+        }
+    }
+
+    function activateSelection() {
+        if (!editMode) {
+            if (keyboard.state === "") {
+                roomSelector.close();
+            }
+            return;
+        }
+
+        if (roomSelector.footerSelected) {
+            pageAdd.state = "visible";
+            return;
+        }
+
+        if (roomSelector.heldIndex >= 0) {
+            roomSelector.dropHeld();
+            return;
+        }
+
+        const row = roomSelector.currentRow();
+        if (!row) {
+            return;
+        }
+
+        if (row.deleteOpen) {
+            ui.deletePage(row.rowPageId);
+            return;
+        }
+
+        pageRename.currentPage = row.rowPageName;
+        pageRename.pageId = row.rowPageId;
+        pageRename.state = "visible";
+    }
+
+    function holdSelection() {
+        if (ui.profile.restricted) {
+            return;
+        }
+
+        if (!editMode) {
+            editMode = true;
+            return;
+        }
+
+        const row = roomSelector.currentRow();
+        if (roomSelector.footerSelected || roomSelector.heldIndex >= 0 || !row) {
+            return;
+        }
+
+        row.closeDelete();
+        Haptic.play(Haptic.Click);
+        roomSelector.heldIndex = roomSelector.pages.currentIndex;
+    }
+
+    onEditModeChanged: {
+        if (!editMode) {
+            roomSelector.heldIndex = -1;
+            roomSelector.footerSelected = false;
+        }
+    }
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
             "DPAD_DOWN": {
                 "pressed": function() {
-                    containerMain.item.pages.incrementCurrentIndex();
+                    roomSelector.moveSelection(1);
                 }
             },
             "DPAD_UP": {
                 "pressed": function() {
-                    containerMain.item.pages.decrementCurrentIndex();
+                    roomSelector.moveSelection(-1);
+                }
+            },
+            "DPAD_RIGHT": {
+                "pressed": function() {
+                    const row = roomSelector.currentRow();
+                    if (editMode && !roomSelector.footerSelected && roomSelector.heldIndex < 0 && row) {
+                        row.openDelete();
+                    }
+                }
+            },
+            "DPAD_LEFT": {
+                "pressed": function() {
+                    const row = roomSelector.currentRow();
+                    if (editMode && row) {
+                        row.closeDelete();
+                    }
                 }
             },
             "DPAD_MIDDLE": {
                 "pressed": function() {
-                    if (keyboard.state === "") {
-                        editMode = false;
-                        roomSelector.close();
-                    }
+                    roomSelector.activateSelection();
+                },
+                "long_press": function() {
+                    roomSelector.holdSelection();
                 }
             },
             "BACK": {
                 "pressed": function() {
-                    editMode = false;
+                    // one layer at a time: drop the held page, hide the delete, leave the edit
+                    // mode, close the selector
+                    if (roomSelector.heldIndex >= 0) {
+                        roomSelector.dropHeld();
+                        return;
+                    }
+
+                    const row = roomSelector.currentRow();
+                    if (editMode && row && row.deleteOpen) {
+                        row.closeDelete();
+                        return;
+                    }
+
+                    if (editMode) {
+                        roomSelector.leaveEditMode();
+                        return;
+                    }
+
                     roomSelector.close();
                 }
             },
             "HOME": {
                 "pressed": function() {
-                    editMode = false;
+                    roomSelector.leaveEditMode();
                     roomSelector.close();
                 }
             }
@@ -115,7 +275,7 @@ Rectangle {
 
     ListView {
         id: roomList
-        width: parent.width; height: parent.height-60
+        width: parent.width; height: parent.height - titleBar.height
         anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
 
         maximumFlickVelocity: 6000
@@ -127,8 +287,9 @@ Rectangle {
 
         footer: footerItem
 
-        ScrollBar.vertical: ScrollBar {
-            opacity: 0.5
+        Components.ScrollIndicator {
+            parent: roomList
+            parentObj: roomList
         }
 
         remove: Transition {
@@ -149,35 +310,20 @@ Rectangle {
         id: pageListGroup
     }
 
-    Rectangle {
-        width: ui.width; height: 60
-        color: colors.black
-        anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
-
-        Text {
-            id: titleText
-            color: colors.offwhite
-            //: Title for the page selector menu
-            text: editMode ? qsTr("Edit pages")  : qsTr("Select page")
-            anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
-            font: fonts.primaryFont(26)
-        }
-
-        Components.Icon {
-            visible: !ui.profile.restricted
-            color: editMode ? colors.offwhite : colors.light
-            icon: "uc:pen-to-square"
-            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
-            size: 60
-
-            Components.HapticMouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    editMode = !editMode;
-                    if (!editMode) {
-                        editModeOff();
-                    }
-                }
+    // the edit-mode toggle takes the end target of the title bar; it is lit while edit mode is on
+    Components.TitleBar {
+        id: titleBar
+        anchors.top: parent.top
+        //: Title for the page selector menu
+        text: editMode ? qsTr("Edit pages")  : qsTr("Select page")
+        action: ui.profile.restricted ? "" : "close"
+        icon: "uc:pen-to-square"
+        iconSize: 60
+        iconColor: editMode ? colors.textPrimary : colors.textSecondary
+        onActionTriggered: {
+            editMode = !editMode;
+            if (!editMode) {
+                editModeOff();
             }
         }
     }
@@ -198,6 +344,7 @@ Rectangle {
         MouseArea {
             id: dragArea
             width: ui.width
+            // the page name in the display role, up to two lines (docs/design-system.md section 5)
             height: 150
             enabled: editMode
             pressAndHoldInterval: 200
@@ -205,8 +352,20 @@ Rectangle {
             property alias dragArea: dragArea
             property bool held: false
             property bool deleteOpen: false
-
             property int toVal: 0
+            readonly property string rowPageId: pageId
+            readonly property string rowPageName: pageName
+            readonly property bool keypadHeld: roomSelector.heldIndex === index
+
+            function openDelete() {
+                content.x = 150;
+                deleteOpen = true;
+            }
+
+            function closeDelete() {
+                content.x = 0;
+                deleteOpen = false;
+            }
 
             drag.target: held ? content : undefined
             drag.axis: Drag.YAxis
@@ -302,8 +461,8 @@ Rectangle {
             Rectangle {
                 id: content
                 width: ui.width
-                height: 150
-                color: colors.black
+                height: dragArea.height
+                color: colors.bg
                 radius: ui.cornerRadiusSmall
 
                 Drag.active: dragArea.held
@@ -388,23 +547,33 @@ Rectangle {
                     }
                 }
 
-                Rectangle {
-                    anchors.fill: parent
-                    color: index === containerMain.item.pages.currentIndex && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-                    radius: ui.cornerRadiusSmall
+                // the current page is filled after a touch as well, to mark the page that is shown
+                Components.Selectable {
+                    id: pageSelection
+                    anchors { leftMargin: 8; rightMargin: 8 }
+                    style: "fill"
+                    selected: index === containerMain.item.pages.currentIndex && !roomSelector.footerSelected
+                    shownAfterTouch: true
                 }
 
+                // the ring marks the page held for reordering, on top of the fill of the selection (Q-5)
+                Components.Selectable {
+                    anchors { leftMargin: 8; rightMargin: 8 }
+                    selected: dragArea.keypadHeld
+                }
+
+                // centred in the display role, unlike other lists (docs/design-system.md, I-20)
                 Text {
                     id: titleText
-                    color: colors.offwhite
+                    color: colors.textPrimary
                     text: pageName
-                    width: parent.width - (editMode ? 160 : 20)
+                    width: parent.width - (editMode ? 180 : 40)
                     wrapMode: Text.WordWrap
                     elide: Text.ElideRight
                     maximumLineCount: 2
                     verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
                     anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter; horizontalCenterOffset: deleteOpen ? -80 : 0 }
-                    font: fonts.primaryFont(50, "Light")
+                    font: fonts.display(56)
                     lineHeight: 0.8
 
                     Behavior on anchors.horizontalCenterOffset {
@@ -415,7 +584,7 @@ Rectangle {
 
                 Components.Icon {
                     id: moveIcon
-                    color: colors.light
+                    color: pageSelection.shown ? colors.textPrimary : colors.textSecondary
                     opacity: editMode ? 1 : 0
                     icon: "uc:bars"
                     anchors { right: parent.right; verticalCenter: parent.verticalCenter }
@@ -427,7 +596,7 @@ Rectangle {
                 }
 
                 Components.Icon {
-                    color: colors.light
+                    color: pageSelection.shown ? colors.textPrimary : colors.textSecondary
                     visible: !deleteOpen
                     opacity: editMode ? deleteOpen ? 0 : 1 : 0
                     icon: "uc:pen-to-square"
@@ -453,7 +622,7 @@ Rectangle {
 
             DropArea {
                 width: parent.width
-                height: 150
+                height: dragArea.height
 
                 onEntered: {
                     let from = drag.source.DelegateModel.itemsIndex;
@@ -471,6 +640,12 @@ Rectangle {
         Item {
             width: ui.width; height: editMode ? 150 : 0
             visible: editMode
+
+            Components.Selectable {
+                style: "fill"
+                selected: roomSelector.footerSelected
+                anchors.margins: 20
+            }
 
             Item {
                 id: plusIcon

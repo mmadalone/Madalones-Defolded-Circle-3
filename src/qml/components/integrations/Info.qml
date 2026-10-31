@@ -66,11 +66,21 @@ Flickable {
         integrationInfoFlickable.contentY = 0;
         deleteContainer.state = "closed";
         integrationId = "";
+        // a reopened popup starts on its first control again
+        buttonNavigation.lastFocusItem = null;
+        buttonNavigation.lastFocusAnchor = null;
     }
 
+    /** KEYBOARD NAVIGATION **/
+    // The popup navigates through the QML focus chain: Manage entities -> connected switch ->
+    // Delete. The button navigation only binds BACK / HOME; a DPAD handler here would act on the
+    // same key press as the focused control.
     Components.ButtonNavigation {
         id: buttonNavigation
         overrideActive: ui.inputController.activeItem === popup
+        manageFocus: true
+        scrollTarget: integrationInfoFlickable
+        initialFocusItem: manageEntitiesRow
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -85,14 +95,34 @@ Flickable {
         }
     }
 
+    // a key nobody in the chain accepted: the focus is at the end of the chain, scroll on so the
+    // rest of the content can be reached (see Settings.Page)
+    function scrollChainEnd(event, direction) {
+        if (!buttonNavigation.hasInputControl) {
+            return;
+        }
+
+        const focused = buttonNavigation.windowFocusItem;
+        if (!focused || focused === integrationInfoFlickable || focused === buttonNavigation
+                || !buttonNavigation.isInScope(focused)) {
+            return;
+        }
+
+        event.accepted = buttonNavigation.scrollBy(direction * Math.round(integrationInfoFlickable.height / 2));
+    }
+
+    Keys.onDownPressed: scrollChainEnd(event, 1)
+    Keys.onUpPressed: scrollChainEnd(event, -1)
+
     ColumnLayout {
         id: content
         spacing: 0
-        x: 10
-        width: integrationInfoFlickable.width - 20
+        width: integrationInfoFlickable.width
 
         RowLayout {
             Layout.topMargin: 20
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
 
             Rectangle {
                 Layout.alignment: Qt.AlignTop
@@ -100,10 +130,10 @@ Flickable {
                 width: 80
                 height: width
                 radius: 40
-                color: integrationObj.icon.includes("uc") ? colors.offwhite : colors.transparent
+                color: integrationObj.icon.includes("uc") ? colors.textPrimary : colors.transparent
 
                 Components.Icon {
-                    color: colors.black
+                    color: colors.bg
                     icon: integrationObj.icon === "" ? "uc:puzzle" : integrationObj.icon
                     size: 80
                     anchors.centerIn: parent
@@ -117,7 +147,7 @@ Flickable {
             Components.Icon {
                 Layout.rightMargin: -20
 
-                color: colors.offwhite
+                color: colors.textPrimary
                 size: 80
                 icon: "uc:xmark"
 
@@ -133,28 +163,34 @@ Flickable {
         Text {
             Layout.fillWidth: true
             Layout.topMargin: 20
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
 
             text: integrationObj.name
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
             maximumLineCount: 2
-            color: colors.offwhite
-            font: fonts.primaryFont(50)
+            color: colors.textPrimary
+            font: fonts.title()
         }
 
         Text {
             Layout.fillWidth: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
 
             text: integrationDriverObj.external ? qsTr("External integration") : qsTr("Local integration")
             maximumLineCount: 1
-            color: colors.light
-            font: fonts.secondaryFont(24)
+            color: colors.textSecondary
+            font: fonts.help()
         }
 
         Item {
             id: manageEntitiesContainer
 
             Layout.topMargin: 20
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
             Layout.fillWidth: true
             Layout.preferredHeight: manageEntitiesText.implicitHeight + entityCountText.implicitHeight + entityDescText.implicitHeight + 20
 
@@ -163,7 +199,7 @@ Flickable {
                     name: "opened"
                     when: manageEntitiesPopup.opened
                     ParentChange { target: manageEntities; parent: manageEntitiesPopupContent; width: manageEntitiesPopupContent.width; height: manageEntitiesPopupContent.height }
-                    PropertyChanges {target: manageEntities; color: colors.black; border.color: colors.transparent }
+                    PropertyChanges {target: manageEntities; color: colors.bg; border.color: colors.transparent }
                     PropertyChanges {target: manageEntitiesClosedElements; opacity: 0; visible: false }
                     PropertyChanges {target: manageEntitiesOpenedElements; opacity: 1; visible: true }
                 },
@@ -171,7 +207,7 @@ Flickable {
                     name: "closed"
                     when: manageEntitiesPopup.closed
                     ParentChange { target: manageEntities; parent: manageEntitiesContainer; width: manageEntitiesContainer.width; height: manageEntitiesContainer.height }
-                    PropertyChanges {target: manageEntities; color: colors.dark; border.color: colors.medium }
+                    PropertyChanges {target: manageEntities; color: colors.surface; border.color: colors.divider }
                     PropertyChanges {target: manageEntitiesClosedElements; opacity: 1; visible: true }
                     PropertyChanges {target: manageEntitiesOpenedElements; opacity: 0; visible: false }
                 }
@@ -242,7 +278,7 @@ Flickable {
                     NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; duration: 0 }
                 }
 
-                background: Rectangle { color: colors.black }
+                background: Rectangle { color: colors.bg }
                 contentItem: Item {
                     id: manageEntitiesPopupContent
                 }
@@ -251,11 +287,11 @@ Flickable {
             Rectangle {
                 id: manageEntities
                 anchors.centerIn: parent
-                color: colors.dark
+                color: colors.surface
                 radius: ui.cornerRadiusSmall
                 border {
-                    color: colors.medium
-                    width: 1
+                    color: colors.divider
+                    width: 2
                 }
 
                 Item {
@@ -267,8 +303,8 @@ Flickable {
                         id: manageEntitiesText
                         text: qsTr("Manage entities")
                         maximumLineCount: 1
-                        color: colors.offwhite
-                        font: fonts.primaryFont(24)
+                        color: colors.textPrimary
+                        font: fonts.label()
                         anchors { left: parent.left; leftMargin: 20; top: parent.top; topMargin: 20; right: parent.right; rightMargin: 20 }
                     }
 
@@ -277,7 +313,7 @@ Flickable {
                         text: EntityController.configuredEntitiesCount
                         maximumLineCount: 1
                         color: colors.offwhite
-                        font: fonts.primaryFont(120, "Thin")
+                        font: fonts.display(120)
                         anchors { left: parent.left; leftMargin: 20; top: manageEntitiesText.top; topMargin: 20  }
                     }
 
@@ -285,13 +321,20 @@ Flickable {
                         id: entityDescText
                         text: qsTr("configured entities")
                         maximumLineCount: 1
-                        color: colors.offwhite
-                        font: fonts.primaryFont(24)
+                        color: colors.textSecondary
+                        font: fonts.help()
                         anchors { left: parent.left; leftMargin: 20; top: entityCountText.bottom; topMargin: -20 }
                     }
 
+                    Components.Selectable {
+                        selected: manageEntitiesRow.activeFocus
+                    }
+
                     Components.HapticMouseArea {
+                        id: manageEntitiesRow
                         anchors.fill: parent
+                        keypadActivatable: true
+                        KeyNavigation.down: connectedSwitch
                         onClicked: {
                             manageEntitiesPopup.open();
                         }
@@ -309,109 +352,79 @@ Flickable {
             }
         }
 
-        ColumnLayout {
-            Layout.topMargin: 20
-            Layout.bottomMargin: 10
-            Layout.fillWidth: true
+        Components.SettingRow {
+            Layout.topMargin: 10
+            title: connectedSwitch.checked ? qsTr("Connected") : qsTr("Disconnected")
 
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 10
-                Layout.bottomMargin: 10
-
-                Text {
-                    id: title
-
-                    Layout.fillWidth: true
-
-                    text: connectedSwitch.checked ? qsTr("Connected") : qsTr("Disconnected")
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    color: colors.light
-                    font: fonts.secondaryFont(24)
-                }
-
-                Components.Switch {
-                    id: connectedSwitch
-
-                    Layout.alignment: Qt.AlignRight
+            Components.Switch {
+                id: connectedSwitch
 
                     icon: "uc:check"
-                    checked: integrationObj.state === "connected"
-                    trigger: function() {
-                        if (integrationObj.state === "connected") {
-                            IntegrationController.integrationDisconnect(integrationObj.id);
-                        } else if (integrationObj.state === "disconnected" || integrationObj.state === "error") {
-                            IntegrationController.integrationConnect(integrationObj.id);
-                        }
+                checked: integrationObj.state === "connected"
+                trigger: function() {
+                    if (integrationObj.state === "connected") {
+                        IntegrationController.integrationDisconnect(integrationObj.id);
+                    } else if (integrationObj.state === "disconnected" || integrationObj.state === "error") {
+                        IntegrationController.integrationConnect(integrationObj.id);
                     }
-                    enabled: integrationObj.state === "connected" || integrationObj.state === "disconnected" || integrationObj.state === "error"
-                    opacity: enabled ? 1 : 0.3
                 }
-            }
+                enabled: integrationObj.state === "connected" || integrationObj.state === "disconnected" || integrationObj.state === "error"
+                opacity: enabled ? 1 : 0.4
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-
-                color: colors.medium
+                /** KEYBOARD NAVIGATION **/
+                KeyNavigation.up: manageEntitiesRow
+                KeyNavigation.down: deleteRow
+                highlight: activeFocus && ui.keyNavigationActive
             }
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("State")
             value: integrationObj.state
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("Enabled")
             value: integrationObj.enabled
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("Id")
             value: integrationObj.id
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("Version")
             value: integrationDriverObj.version
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("Developer")
             value: integrationDriverObj.developerName
-            multiline: true
+            stacked: true
         }
 
-        Components.AboutInfo {
-            Layout.bottomMargin: 10
-
+        Components.KeyValueRow {
             key: qsTr("Website")
             value: integrationDriverObj.homepage
-            multiline: true
-            lineBottom: descriptionInfo.visible
+            stacked: true
+            showDivider: descriptionInfo.visible
             visible: integrationDriverObj.homepage
         }
 
-        Components.AboutInfo {
+        Text {
             id: descriptionInfo
 
-            Layout.bottomMargin: 10
+            Layout.fillWidth: true
+            Layout.leftMargin: 20
+            Layout.rightMargin: 20
+            Layout.topMargin: 14
 
-            value: integrationDriverObj.description
-            multiline: true
-            lineBottom: false
+            text: integrationDriverObj.description
+            wrapMode: Text.WordWrap
+            color: colors.textPrimary
+            font: fonts.prose()
+            lineHeight: fonts.proseLineHeight
             visible: integrationDriverObj.description
         }
 
@@ -428,9 +441,21 @@ Flickable {
         anchors.top: content.bottom
         state: "closed"
 
+        // the selection starts on Cancel: deleting an integration must take a deliberate second step
+        property bool cancelSelected: true
+
         onStateChanged: {
             if (state == "opened") {
+                deleteContainer.cancelSelected = true;
                 deleteContainerButtonNavigation.takeControl();
+                // The opener row lives inside this drawer, so the page's focus management leaves
+                // the focus on it (a layer inside the scope keeps its own control). Park it on the
+                // page's button navigation ourselves: otherwise DPAD_MIDDLE on Cancel would close
+                // the drawer on the input path and reopen it through the row's Return on the focus
+                // path. The page claims the row back when the drawer releases the input.
+                if (deleteRow.activeFocus) {
+                    buttonNavigation.forceActiveFocus();
+                }
             } else {
                 deleteContainerButtonNavigation.releaseControl();
             }
@@ -449,9 +474,23 @@ Flickable {
                         deleteContainer.state = "closed";
                     }
                 },
+                "DPAD_LEFT": {
+                    "pressed": function() {
+                        deleteContainer.cancelSelected = true;
+                    }
+                },
+                "DPAD_RIGHT": {
+                    "pressed": function() {
+                        deleteContainer.cancelSelected = false;
+                    }
+                },
                 "DPAD_MIDDLE": {
                     "pressed": function() {
-                        deleteContainer.deleteIntegration();
+                        if (deleteContainer.cancelSelected) {
+                            deleteContainer.state = "closed";
+                        } else {
+                            deleteContainer.deleteIntegration();
+                        }
                     }
                 }
             }
@@ -483,7 +522,7 @@ Flickable {
                 PropertyChanges { target: openIcon; opacity: 0 }
                 PropertyChanges { target: deleteConfirmText; opacity: 1 }
                 PropertyChanges { target: deleteConfirmButtons; opacity: 1 }
-                PropertyChanges { target: blockOutOverlay; opacity: 0.8 }
+                PropertyChanges { target: blockOutOverlay; opacity: 0.85 }
                 PropertyChanges { target: integrationInfoFlickable; interactive: false }
             }
         ]
@@ -521,7 +560,7 @@ Flickable {
 
             width: parent.width
             height: ui.height - deleteContainerContent.height + ui.cornerRadiusLarge
-            color: colors.black
+            color: colors.bg
             anchors.bottom: deleteContainerContent.top
             enabled: opacity != 0
 
@@ -537,14 +576,18 @@ Flickable {
             }
         }
 
-        Rectangle {
+        // a bottom sheet like every other (docs/design-system.md section 5, Q-4): black with a divider edge
+        Item {
             id: deleteContainerContent
             width: parent.width
-            height: childrenRect.height + ui.cornerRadiusLarge
-            color: Qt.darker(colors.red, 1.3)
-            radius: ui.cornerRadiusLarge
+            height: deleteColumn.height + ui.cornerRadiusLarge
+
+            Components.Sheet {
+                anchors.fill: parent
+            }
 
             ColumnLayout {
+                id: deleteColumn
                 width: parent.width
                 spacing: 0
 
@@ -558,8 +601,8 @@ Flickable {
                         text: qsTr("Delete integration")
                         elide: Text.ElideRight
                         maximumLineCount: 1
-                        color: colors.offwhite
-                        font: fonts.secondaryFont(28)
+                        color: colors.red
+                        font: fonts.heading()
                     }
 
                     Components.Icon {
@@ -567,12 +610,20 @@ Flickable {
 
                         Layout.alignment: Qt.AlignRight
 
-                        icon: "uc:xmark"
+                        icon: "uc:trash"
                         size: 100
-                        color: colors.offwhite
+                        color: colors.red
+
+                        Components.Selectable {
+                            anchors.margins: 10
+                            selected: deleteRow.activeFocus
+                        }
 
                         Components.HapticMouseArea {
+                            id: deleteRow
                             anchors.fill: parent
+                            keypadActivatable: true
+                            KeyNavigation.up: connectedSwitch
                             onClicked: {
                                 deleteContainer.state = "opened";
                             }
@@ -591,10 +642,12 @@ Flickable {
 
                     text: qsTr("Are you sure you want to delete the %1 integration?").arg(integrationObj.name)
                     wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    font: fonts.secondaryFont(24)
+                    color: colors.textPrimary
+                    font: fonts.prose()
+                    lineHeight: fonts.proseLineHeight
                 }
 
+                // Cancel and Delete are buttons, Cancel first and preselected (docs/design-system.md section 6)
                 RowLayout {
                     id: deleteConfirmButtons
 
@@ -603,44 +656,27 @@ Flickable {
                     Layout.leftMargin: 20
                     Layout.rightMargin: 20
                     Layout.bottomMargin: 20
+                    spacing: 20
 
-                    Text {
+                    Components.Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: implicitHeight
-
+                        Layout.preferredWidth: 1
                         text: qsTr("Cancel")
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignLeft
-                        color: colors.offwhite
-                        font: fonts.secondaryFont(26, "Bold")
-
-                        Components.HapticMouseArea {
-                            width: parent.width + 40
-                            height: parent.width + 40
-                            anchors.centerIn: parent
-                            onClicked: {
-                                deleteContainer.state = "closed";
-                            }
+                        variant: "secondary"
+                        highlight: deleteContainer.cancelSelected && ui.keyNavigationActive
+                        trigger: function() {
+                            deleteContainer.state = "closed";
                         }
                     }
 
-                    Text {
+                    Components.Button {
                         Layout.fillWidth: true
-                        Layout.preferredHeight: implicitHeight
-
+                        Layout.preferredWidth: 1
                         text: qsTr("Delete")
-                        verticalAlignment: Text.AlignVCenter
-                        horizontalAlignment: Text.AlignRight
-                        color: colors.offwhite
-                        font: fonts.secondaryFont(26, "Bold")
-
-                        Components.HapticMouseArea {
-                            width: parent.width + 40
-                            height: parent.width + 40
-                            anchors.centerIn: parent
-                            onClicked: {
-                                deleteContainer.deleteIntegration();
-                            }
+                        variant: "destructive"
+                        highlight: !deleteContainer.cancelSelected && ui.keyNavigationActive
+                        trigger: function() {
+                            deleteContainer.deleteIntegration();
                         }
                     }
                 }

@@ -26,7 +26,7 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
                 Q_UNUSED(modelName)
                 Q_UNUSED(modelNumber)
 
-                m_info->set(model, serialNumber, hwRevision);
+                m_info->set(serialNumber, hwRevision);
             },
             [=](int code, QString message) {
                 // fail
@@ -34,7 +34,7 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
             });
     });
 
-    m_info = new Info(this);
+    m_info = new Info(model, this);
     m_wifi = new Wifi(m_core, this);
     // Only where the app owns the display (eglfs on a remote) is the window hidden while the display is off. A
     // desktop run keeps it shown in every power mode, also with UC_MODEL=UCR2/UCR3: nothing there wakes the
@@ -61,6 +61,9 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
             break;
         case HardwareModel::UCR3:
             m_haptic = new HapticUCR3(qgetenv("UC_HAPTIC_DEV_PATH"), this);
+            // Note: no proactive reopen on resume. The driver self-heals from a stale fd
+            // when a read fails; tearing the device down on every wake was disruptive and
+            // is the suspected cause of a crash right after waking from suspend.
             m_touchSlider = new TouchSliderUCR3(qgetenv("UC_TOUCHSLIDER_DEV_PATH"), this);
             break;
         default:

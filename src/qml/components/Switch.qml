@@ -11,6 +11,7 @@
  - _opacity
  - trigger
  - highlight
+ - icon
 **/
 
 import QtQuick 2.15
@@ -25,9 +26,39 @@ Item {
 
     property alias checked: button.checked
     property alias _opacity: button.opacity
-    property bool highlight: false
+    property bool highlight: activeFocus && ui.keyNavigationActive
     property var trigger
-    property string icon
+    // Shown inside the knob while checked. Defaults to the check mark used throughout the settings;
+    // set to "" for a switch where a check mark would be misleading.
+    property string icon: "uc:check"
+
+    function activate() {
+        Haptic.play(Haptic.Click);
+        button.toggle();
+        if (trigger) {
+            trigger();
+        }
+    }
+
+    // DPAD_MIDDLE maps to Key_Return. The inner QtQuick Switch never sees it: focus is held by this
+    // container, and an unhandled key bubbles up the parent chain, not down to the child. Handle it
+    // here so a switch reached with the d-pad can actually be toggled.
+    // a control reached with the d-pad while the on-screen keyboard is up would sit under it
+    onActiveFocusChanged: {
+        if (activeFocus && typeof keyboard !== "undefined" && keyboard.active) {
+            keyboard.hide();
+        }
+    }
+
+    Keys.onReturnPressed: {
+        buttonContainer.activate();
+        event.accepted = true;
+    }
+
+    Keys.onEnterPressed: {
+        buttonContainer.activate();
+        event.accepted = true;
+    }
 
     Switch {
         id: button
@@ -38,9 +69,7 @@ Item {
         Keys.onEnterPressed: clicked()
 
         onClicked: {
-            Haptic.play(Haptic.Click);
-            button.toggle();
-            trigger();
+            buttonContainer.activate();
         }
 
         indicator: Rectangle {
@@ -66,7 +95,11 @@ Item {
         background: Rectangle {
             radius: buttonContainer.height / 2
             color: colors.medium
-            border { width: 2; color: highlight ? colors.highlight : colors.transparent }
+
+            Components.Selectable {
+                selected: buttonContainer.highlight
+                radius: parent.radius
+            }
         }
     }
 }

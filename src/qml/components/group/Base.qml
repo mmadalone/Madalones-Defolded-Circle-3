@@ -12,7 +12,7 @@ import "qrc:/components" as Components
 Rectangle {
     id: container
     width: ui.width - 20; height: groups.count * 140 + title.height
-    border { color: isSelected ? colors.medium : colors.transparent; width: 1 }
+    border { color: colors.divider; width: 1 }
     radius: ui.cornerRadiusSmall
     clip: true
 
@@ -28,7 +28,7 @@ Rectangle {
         State {
             name: "closed"
             PropertyChanges {target: groups; opacity: 0 }
-            PropertyChanges {target: container; height: 130; color: isSelected ? Qt.darker(colors.medium) : colors.black }
+            PropertyChanges {target: container; height: 130; color: colors.black }
             PropertyChanges {target: titleContainer; height: 130 }
         }
     ]
@@ -103,19 +103,21 @@ Rectangle {
 
     function enableHighLight(value) {
         for (let i = 0; i < groups.count; i++) {
-            if (groups.itemAtIndex(i)) {
-                groups.itemAtIndex(i).item.isHighLightEnabled = value;
+            const groupItemLoader = groups.itemAtIndex(i);
+            if (groupItemLoader && groupItemLoader.item) {
+                groupItemLoader.item.isHighLightEnabled = value;
             }
         }
     }
 
     function turnOnGroupItems(value) {
         for (let i = 0; i < groups.count; i++) {
-            if (groups.itemAtIndex(i)) {
+            const groupItemLoader = groups.itemAtIndex(i);
+            if (groupItemLoader && groupItemLoader.item && groupItemLoader.item.entityObj) {
                 if (!value) {
-                    groups.itemAtIndex(i).item.entityObj.turnOff();
+                    groupItemLoader.item.entityObj.turnOff();
                 } else {
-                    groups.itemAtIndex(i).item.entityObj.turnOn();
+                    groupItemLoader.item.entityObj.turnOn();
                 }
             }
         }
@@ -149,9 +151,17 @@ Rectangle {
         }
     }
 
+    // the closed group is a tile of the main UI; an open group shows the selection on its entities
+    Components.Selectable {
+        id: selection
+        style: "fill"
+        selected: container.isSelected && container.state == "closed"
+    }
+
     Rectangle {
         anchors.fill: parent
-        color: Qt.darker(colors.dark, 2)
+        // the open group is a card
+        color: colors.surface
         radius: ui.cornerRadiusSmall
         opacity: container.state == "open" ? 1 : 0
 
@@ -226,11 +236,10 @@ Rectangle {
             maximumLineCount: 1
             //: Tap and hold down to edit a group
             text: groups.count === 1 ? qsTr("%1 entity").arg(1) : qsTr("%1 entities").arg(groups.count)
-            color: colors.offwhite
-            opacity: 0.6
+            color: selection.shown ? colors.textPrimary : colors.textSecondary
+            // on the selection fill everything is drawn in the primary text colour
             anchors { left: title.left; top: title.bottom }
-            font: fonts.secondaryFont(22, "Medium")
-            lineHeight: 0.8
+            font: fonts.help()
             visible: container.state == "closed"
         }
     }
@@ -238,6 +247,9 @@ Rectangle {
     Components.Switch {
         id: onOffSwitch
         checked: false
+        // checked already means "at least one entity is on" (see entitySwitchGroup), so the default
+        // check mark would claim the whole group is on
+        icon: ""
         anchors { right: parent.right; rightMargin: 10; verticalCenter: titleContainer.verticalCenter }
         visible: !editMode && groups.count !== 0
         trigger: function() {

@@ -20,6 +20,8 @@ Item {
     property QtObject dockObjDummy: QtObject {
         property string id
         property string name
+        property string model
+        property string serial
         property int state
         property string connectionType
         property int ledBrightness
@@ -37,7 +39,8 @@ Item {
             connectSignalSlot(DockController.gotDock, function(success, dockIdFromCore) {
                 dockObj = DockController.getConfiguredDock(dockIdFromCore);
                 if (!success) {
-                    ui.createNotification("There was an error while getting the latest dock data", true);
+                    //: Notification: the details of a dock could not be loaded
+                    ui.createNotification(qsTr("There was an error while getting the latest dock data"), true);
                 }
             });
         } else {
@@ -49,11 +52,25 @@ Item {
         dockInfoFlickable.contentY = 0;
         deleteContainer.state = "closed";
         dockId = "";
+        // a reopened popup starts on its first control again
+        buttonNavigation.lastFocusItem = null;
+        buttonNavigation.lastFocusAnchor = null;
     }
+
+    /** KEYBOARD NAVIGATION **/
+    // The popup navigates through the QML focus chain: name row -> Identify / Connect -> LED
+    // brightness -> Change password -> Change WiFi settings -> Factory reset -> Delete. Invisible
+    // and disabled links are skipped by KeyNavigation on its own. The button navigation only
+    // binds BACK / HOME; a DPAD handler here would act on the same key press as the focused control.
+    readonly property Item firstFocusItem: nameRow.enabled ? nameRow
+                                                           : connectButton.visible ? connectButton : deleteRow
 
     Components.ButtonNavigation {
         id: buttonNavigation
         overrideActive: ui.inputController.activeItem === popup
+        manageFocus: true
+        scrollTarget: dockInfoFlickable
+        initialFocusItem: dockInfoContainer.firstFocusItem
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -67,6 +84,25 @@ Item {
             }
         }
     }
+
+    // a key nobody in the chain accepted: the focus is at the end of the chain, scroll on so the
+    // rest of the content can be reached (see Settings.Page)
+    function scrollChainEnd(event, direction) {
+        if (!buttonNavigation.hasInputControl) {
+            return;
+        }
+
+        const focused = buttonNavigation.windowFocusItem;
+        if (!focused || focused === dockInfoContainer || focused === buttonNavigation
+                || !buttonNavigation.isInScope(focused)) {
+            return;
+        }
+
+        event.accepted = buttonNavigation.scrollBy(direction * Math.round(dockInfoFlickable.height / 2));
+    }
+
+    Keys.onDownPressed: scrollChainEnd(event, 1)
+    Keys.onUpPressed: scrollChainEnd(event, -1)
 
     Flickable {
         id: dockInfoFlickable
@@ -84,11 +120,12 @@ Item {
         ColumnLayout {
             id: content
             spacing: 0
-            x: 10
-            width: dockInfoFlickable.width - 20
+            width: dockInfoFlickable.width
 
             Item {
                 Layout.fillWidth: true
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
                 Layout.preferredHeight: childrenRect.height
 
                 Image {
@@ -101,9 +138,9 @@ Item {
                         const model = dockInfoContainer.dockObj.model.toUpperCase();
                         const serial = dockInfoContainer.dockObj.serial.toUpperCase();
 
-                        if (model == "UCR2") {
+                        if (model == "UCD2") {
                             return "qrc:/images/dock_2.png"
-                        } else if (model == "UCR3") {
+                        } else if (model == "UCD3") {
                             if (serial.length >= 2) {
                                 const dockType = serial[serial.length - 1];
                                 const dockColor = serial[serial.length - 2];
@@ -185,13 +222,13 @@ Item {
 
                                 width: 30
                                 height: width
-                                color: colors.offwhite
+                                color: colors.textPrimary
                                 radius: width / 2
 
                                 Components.Icon {
                                     icon: dockInfoContainer.dockObj.state === DockStates.ERROR ? "uc:xmark" : "uc:check"
                                     size: 26
-                                    color: colors.black
+                                    color: colors.bg
                                     anchors.centerIn: parent
                                 }
                             }
@@ -202,15 +239,24 @@ Item {
 
                                 text: dockInfoContainer.dockObj.name
                                 textFormat: Text.RichText
+                                linkColor: colors.textPrimary
                                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                                 elide: Text.ElideRight
                                 maximumLineCount: 2
                                 color: colors.offwhite
                                 font: fonts.primaryFont(30)
 
+                                Components.Selectable {
+                                    anchors.margins: -6
+                                    selected: nameRow.activeFocus
+                                }
+
                                 Components.HapticMouseArea {
+                                    id: nameRow
                                     anchors.fill: parent
                                     enabled: dockInfoContainer.dockEditable
+                                    keypadActivatable: true
+                                    KeyNavigation.down: identifyButton
                                     onClicked: {
                                         renameContainer.open(dockInfoContainer.dockObj.id, dockInfoContainer.dockObj.name);
                                     }
@@ -238,11 +284,12 @@ Item {
                         Layout.topMargin: -10
                         Layout.fillWidth: true
 
-                        text: qsTr("Tap to edit name")
+                        //: Hint under the dock name: selecting the name (touch or OK) opens the rename dialog
+                        text: qsTr("Select to edit the name")
                         elide: Text.ElideRight
                         maximumLineCount: 1
-                        color: colors.light
-                        font: fonts.secondaryFont(20)
+                        color: colors.textSecondary
+                        font: fonts.help()
                         visible: dockInfoContainer.dockEditable
 
                         Components.HapticMouseArea {
@@ -260,7 +307,7 @@ Item {
                         elide: Text.ElideRight
                         maximumLineCount: 1
                         color: colors.red
-                        font: fonts.secondaryFont(20)
+                        font: fonts.help()
                         visible: dockInfoContainer.dockObj.state === DockStates.ERROR
                     }
 
@@ -270,37 +317,40 @@ Item {
                     }
 
                     Components.Button {
+                        id: identifyButton
                         Layout.alignment: Qt.AlignRight
 
                         text: qsTr("Identify")
-                        fontSize: 20
-                        height: 50
-                        color: colors.medium
+                        variant: "secondary"
                         visible: dockInfoContainer.dockEditable
                         trigger: function() {
                             DockController.identify(dockInfoContainer.dockObj.id);
                             identifyAnimation.start();
                         }
+
+                        KeyNavigation.up: nameRow
+                        KeyNavigation.down: connectButton
                     }
 
                     Components.Button {
+                        id: connectButton
                         text: qsTr("Connect")
-                        fontSize: 20
-                        height: 50
-                        color: colors.medium
+                        variant: "secondary"
                         visible: dockInfoContainer.dockObj.state === DockStates.ERROR
                         trigger: function() {
                             DockController.connect(dockInfoContainer.dockObj.id);
                         }
+
+                        KeyNavigation.up: identifyButton
+                        KeyNavigation.down: ledSlider
                     }
                 }
 
 
             }
 
-            Components.AboutInfo {
+            Components.KeyValueRow {
                 Layout.topMargin: 20
-                Layout.bottomMargin: 10
 
                 key: qsTr("State")
                 value: {
@@ -312,6 +362,7 @@ Item {
                     case DockStates.ERROR:
                         return qsTr("Error");
                     case DockStates.IDLE:
+                        //: Dock state: connected but doing nothing.
                         return qsTr("Idle");
                     case DockStates.RECONNECTING:
                         return qsTr("Reconnecting");
@@ -319,36 +370,27 @@ Item {
                 }
             }
 
-            Components.AboutInfo {
-                Layout.bottomMargin: 10
-
+            Components.KeyValueRow {
                 key: qsTr("Connection type")
                 value: dockObj.connectionType ? dockObj.connectionType : qsTranslate("Abbreviation for not available", "N/A")
             }
 
-            Components.AboutInfo {
-                Layout.bottomMargin: 10
-
+            Components.KeyValueRow {
                 key: qsTr("Service name")
                 value: dockObj.id
-                multiline: true
+                stacked: true
             }
 
-            Components.AboutInfo {
-                Layout.bottomMargin: 10
-
+            Components.KeyValueRow {
                 key: qsTr("Custom IP or URL")
                 value: dockObj.customWsUrl ? dockObj.customWsUrl : qsTr("Not set")
-                multiline: true
+                stacked: true
             }
 
 
-            Components.AboutInfo {
-                Layout.bottomMargin: 10
-
+            Components.KeyValueRow {
                 key: qsTr("Firmware version")
                 value: dockObj.version ? dockObj.version : qsTranslate("Abbreviation for not available", "N/A")
-//                lineBottom: false
             }
 
 //            Components.Button {
@@ -362,25 +404,16 @@ Item {
 
             // TODO(marton): add firmware update section
 
-            ColumnLayout {
-                Layout.fillWidth: true
-                Layout.topMargin: 20
-                Layout.bottomMargin: 20
-
-                opacity: dockInfoContainer.dockEditable ? 1 : 0.3
-                enabled: opacity === 1
-
-                Text {
-                    Layout.fillWidth: true
-
-                    text: qsTr("Led brightness")
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    color: colors.offwhite
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                // the whole setting is disabled (0.4) while the dock cannot be edited
+                opacity: dockInfoContainer.dockEditable ? 1 : 0.4
+                enabled: dockInfoContainer.dockEditable
+                title: qsTr("Led brightness")
+                value: Math.round(ledSlider.value) + "%"
+                controlBelow: true
 
                 Components.Slider {
+                    id: ledSlider
                     height: 60
                     from: 0
                     to: 100
@@ -391,80 +424,64 @@ Item {
                     onUserInteractionEnded: {
                         DockController.setDockLedBrightness(dockObj.id, value);
                     }
+
+                    // DPAD_LEFT / RIGHT step the slider without a press: send those steps right away
+                    onMoved: {
+                        if (!pressed) {
+                            DockController.setDockLedBrightness(dockObj.id, value);
+                        }
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: connectButton
+                    KeyNavigation.down: passwordRow
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Components.HapticMouseArea {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
-
-                opacity: dockInfoContainer.dockEditable ? 1 : 0.3
-                enabled: opacity === 1
+            Components.MenuRow {
+                id: passwordRow
+                opacity: dockInfoContainer.dockEditable ? 1 : 0.4
+                enabled: dockInfoContainer.dockEditable
+                text: qsTr("Change password")
+                chevron: true
+                selected: activeFocus
+                keypadActivatable: true
+                KeyNavigation.up: ledSlider
+                KeyNavigation.down: resetRow
                 onClicked: {
                     passwordChangeContainter.open(dockInfoContainer.dockObj.id);
                 }
-
-                Text {
-                    width: parent.width
-                    anchors.centerIn: parent
-
-                    text: qsTr("Change password")
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    color: colors.offwhite
-                    font: fonts.primaryFont(30)
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: colors.medium
-                    anchors.top: parent.top
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: colors.medium
-                    anchors.bottom: parent.bottom
-                }
             }
 
-            Components.HapticMouseArea {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
-
-                opacity: dockInfoContainer.dockEditable ? 1 : 0.3
-                enabled: opacity === 1
+            // hidden until changing the dock's WiFi is implemented: a row that does nothing is a dead
+            // end for the keypad (audit N-09); the chain goes from password to reset directly
+            Components.MenuRow {
+                id: wifiRow
+                visible: false
+                opacity: dockInfoContainer.dockEditable ? 1 : 0.4
+                enabled: dockInfoContainer.dockEditable
+                text: qsTr("Change WiFi settings")
+                chevron: true
+                selected: activeFocus
+                keypadActivatable: true
+                KeyNavigation.up: passwordRow
+                KeyNavigation.down: resetRow
                 onClicked: {
                     ui.createNotification("Not implemented yet");
                 }
-
-                Text {
-                    width: parent.width
-                    anchors.centerIn: parent
-
-                    text: qsTr("Change WiFi settings")
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    color: colors.offwhite
-                    font: fonts.primaryFont(30)
-                }
-
-                Rectangle {
-                    width: parent.width
-                    height: 1
-                    color: colors.medium
-                    anchors.bottom: parent.bottom
-                }
             }
 
-            Components.HapticMouseArea {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 100
-
-                opacity: dockInfoContainer.dockEditable ? 1 : 0.3
-                enabled: opacity === 1
+            Components.MenuRow {
+                id: resetRow
+                opacity: dockInfoContainer.dockEditable ? 1 : 0.4
+                enabled: dockInfoContainer.dockEditable
+                text: qsTr("Factory reset")
+                chevron: true
+                selected: activeFocus
+                keypadActivatable: true
+                KeyNavigation.up: passwordRow
+                KeyNavigation.down: deleteRow
                 onClicked: {
                     ui.createActionableWarningNotification(qsTr("Factory reset"),
                                                            qsTr("Are you sure you want to factory reset %1?").arg(dockObj.name),
@@ -474,17 +491,6 @@ Item {
                                                                dockInfoContainer.reset();
                                                                popup.close();
                                                            }, qsTr("Reset"));
-                }
-
-                Text {
-                    width: parent.width
-                    anchors.centerIn: parent
-
-                    text: qsTr("Factory reset")
-                    elide: Text.ElideRight
-                    maximumLineCount: 1
-                    color: colors.offwhite
-                    font: fonts.primaryFont(30)
                 }
             }
 
@@ -501,9 +507,24 @@ Item {
             anchors.top: content.bottom
             state: "closed"
 
+            // The drawer opens on the press of DPAD_MIDDLE on the delete row (the row's Return
+            // handler), so its own handlers act on "pressed": a "released" handler would fire on
+            // the release of that very key press. The selection starts on Cancel: deleting a dock
+            // must take a deliberate second step.
+            property bool cancelSelected: true
+
             onStateChanged: {
                 if (state == "opened") {
+                    deleteContainer.cancelSelected = true;
                     deleteContainerButtonNavigation.takeControl();
+                    // The opener row lives inside this drawer, so the page's focus management leaves
+                    // the focus on it (a layer inside the scope keeps its own control). Park it on the
+                    // page's button navigation ourselves: otherwise DPAD_MIDDLE on Cancel would close
+                    // the drawer on the input path and reopen it through the row's Return on the focus
+                    // path. The page claims the row back when the drawer releases the input.
+                    if (deleteRow.activeFocus) {
+                        buttonNavigation.forceActiveFocus();
+                    }
                 } else {
                     deleteContainerButtonNavigation.releaseControl();
                 }
@@ -513,18 +534,32 @@ Item {
                 id: deleteContainerButtonNavigation
                 defaultConfig: {
                     "BACK": {
-                        "released": function() {
+                        "pressed": function() {
                             deleteContainer.state = "closed";
                         }
                     },
                     "HOME": {
-                        "released": function() {
+                        "pressed": function() {
                             deleteContainer.state = "closed";
                         }
                     },
+                    "DPAD_LEFT": {
+                        "pressed": function() {
+                            deleteContainer.cancelSelected = true;
+                        }
+                    },
+                    "DPAD_RIGHT": {
+                        "pressed": function() {
+                            deleteContainer.cancelSelected = false;
+                        }
+                    },
                     "DPAD_MIDDLE": {
-                        "released": function() {
-                            deleteContainer.deleteDock();
+                        "pressed": function() {
+                            if (deleteContainer.cancelSelected) {
+                                deleteContainer.state = "closed";
+                            } else {
+                                deleteContainer.deleteDock();
+                            }
                         }
                     }
                 }
@@ -552,7 +587,7 @@ Item {
                     PropertyChanges { target: openIcon; opacity: 0 }
                     PropertyChanges { target: deleteConfirmText; opacity: 1 }
                     PropertyChanges { target: deleteConfirmButtons; opacity: 1 }
-                    PropertyChanges { target: blockOutOverlay; opacity: 0.8 }
+                    PropertyChanges { target: blockOutOverlay; opacity: 0.85 }
                     PropertyChanges { target: dockInfoFlickable; interactive: false }
                 }
             ]
@@ -590,7 +625,7 @@ Item {
 
                 width: parent.width
                 height: ui.height - deleteContainerContent.height + ui.cornerRadiusLarge
-                color: colors.black
+                color: colors.bg
                 anchors.bottom: deleteContainerContent.top
                 enabled: opacity != 0
 
@@ -606,14 +641,18 @@ Item {
                 }
             }
 
-            Rectangle {
+            // a bottom sheet like every other (docs/design-system.md section 5, Q-4): black with a divider edge
+            Item {
                 id: deleteContainerContent
                 width: parent.width
-                height: childrenRect.height + ui.cornerRadiusLarge
-                color: Qt.darker(colors.red, 1.3)
-                radius: ui.cornerRadiusLarge
+                height: deleteColumn.height + ui.cornerRadiusLarge
+
+                Components.Sheet {
+                    anchors.fill: parent
+                }
 
                 ColumnLayout {
+                    id: deleteColumn
                     width: parent.width
                     spacing: 0
 
@@ -627,8 +666,8 @@ Item {
                             text: qsTr("Delete dock")
                             elide: Text.ElideRight
                             maximumLineCount: 1
-                            color: colors.offwhite
-                            font: fonts.secondaryFont(28)
+                            color: colors.red
+                            font: fonts.heading()
                         }
 
                         Components.Icon {
@@ -636,12 +675,20 @@ Item {
 
                             Layout.alignment: Qt.AlignRight
 
-                            icon: "uc:xmark"
+                            icon: "uc:trash"
                             size: 100
-                            color: colors.offwhite
+                            color: colors.red
+
+                            Components.Selectable {
+                                anchors.margins: 10
+                                selected: deleteRow.activeFocus
+                            }
 
                             Components.HapticMouseArea {
+                                id: deleteRow
                                 anchors.fill: parent
+                                keypadActivatable: true
+                                KeyNavigation.up: resetRow
                                 onClicked: {
                                     deleteContainer.state = "opened";
                                 }
@@ -660,10 +707,12 @@ Item {
 
                         text: qsTr("Are you sure you want to delete %1?").arg(dockObj.name)
                         wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        font: fonts.secondaryFont(24)
+                        color: colors.textPrimary
+                        font: fonts.prose()
+                        lineHeight: fonts.proseLineHeight
                     }
 
+                    // Cancel and Delete are buttons, Cancel first and preselected (docs/design-system.md section 6)
                     RowLayout {
                         id: deleteConfirmButtons
 
@@ -672,44 +721,27 @@ Item {
                         Layout.leftMargin: 20
                         Layout.rightMargin: 20
                         Layout.bottomMargin: 20
+                        spacing: 20
 
-                        Text {
+                        Components.Button {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: implicitHeight
-
+                            Layout.preferredWidth: 1
                             text: qsTr("Cancel")
-                            verticalAlignment: Text.AlignVCenter
-                            horizontalAlignment: Text.AlignLeft
-                            color: colors.offwhite
-                            font: fonts.secondaryFont(26, "Bold")
-
-                            Components.HapticMouseArea {
-                                width: parent.width + 40
-                                height: parent.width + 40
-                                anchors.centerIn: parent
-                                onClicked: {
-                                    deleteContainer.state = "closed";
-                                }
+                            variant: "secondary"
+                            highlight: deleteContainer.cancelSelected && ui.keyNavigationActive
+                            trigger: function() {
+                                deleteContainer.state = "closed";
                             }
                         }
 
-                        Text {
+                        Components.Button {
                             Layout.fillWidth: true
-                            Layout.preferredHeight: implicitHeight
-
+                            Layout.preferredWidth: 1
                             text: qsTr("Delete")
-                            verticalAlignment: Text.AlignVCenter
-                            horizontalAlignment: Text.AlignRight
-                            color: colors.offwhite
-                            font: fonts.secondaryFont(26, "Bold")
-
-                            Components.HapticMouseArea {
-                                width: parent.width + 40
-                                height: parent.width + 40
-                                anchors.centerIn: parent
-                                onClicked: {
-                                    deleteContainer.deleteDock();
-                                }
+                            variant: "destructive"
+                            highlight: !deleteContainer.cancelSelected && ui.keyNavigationActive
+                            trigger: function() {
+                                deleteContainer.deleteDock();
                             }
                         }
                     }

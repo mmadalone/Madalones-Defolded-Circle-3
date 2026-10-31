@@ -5,9 +5,11 @@
 
 #include <QJSEngine>
 #include <QObject>
+#include <QPointer>
 #include <QQmlEngine>
 #include <QRegularExpression>
 #include <QSortFilterProxyModel>
+#include <QTimer>
 #include <QtMath>
 
 #include "../core/core.h"
@@ -30,6 +32,12 @@ class IntegrationController : public QObject {
     Q_PROPERTY(
         QObject* integrationDriverTosetup READ getIntegrationDriverTosetup NOTIFY integrationDriverToSetupChanged)
     Q_PROPERTY(QList<QObject*> configPages READ getConfigPages NOTIFY configPagesChanged)
+    // a setup session started by this UI is running: it has to be stopped when the setup is cancelled
+    Q_PROPERTY(bool setupSessionActive READ getSetupSessionActive NOTIFY setupSessionActiveChanged)
+    // battery budget of the running setup session: the session ends when it expires. Only while on battery.
+    Q_PROPERTY(bool setupLimitActive READ getSetupLimitActive NOTIFY setupLimitChanged)
+    Q_PROPERTY(int setupExpiresInSec READ getSetupExpiresInSec NOTIFY setupLimitChanged)
+    Q_PROPERTY(bool setupLimitLowBattery READ getSetupLimitLowBattery NOTIFY setupLimitChanged)
 
  public:
     explicit IntegrationController(core::Api* core, const QString& language, QObject* parent = nullptr);
@@ -55,8 +63,14 @@ class IntegrationController : public QObject {
     QSortFilterProxyModel* getDriversModel() { return &m_integrationDriversFilter; }
     QStringList            getDriversError() { return m_integrationDriversError; }
     QAbstractListModel*    getDiscoveredIntegrationDrivers() { return &m_discoveredIntegrationDrivers; }
-    QObject*               getIntegrationDriverTosetup() { return m_integrationDriverToSetup; }
+    QObject*               getIntegrationDriverTosetup() { return m_integrationDriverToSetup.data(); }
     QList<QObject*>        getConfigPages() { return m_configPages; }
+    bool                   getSetupSessionActive() { return !m_integrationDriverSetupId.isEmpty(); }
+    bool                   getSetupLimitActive() { return m_setupLimitActive; }
+    int                    getSetupExpiresInSec() { return m_setupExpiresInSec; }
+    bool                   getSetupLimitLowBattery() {
+        return m_setupLimitReason == core::IntegrationEnums::SetupLimitReason::LOW_BATTERY;
+    }
 
  public:
     // QML accessible methods
@@ -101,6 +115,8 @@ class IntegrationController : public QObject {
     void driversErrorChanged();
     void integrationDriverToSetupChanged();
     void configPagesChanged();
+    void setupSessionActiveChanged();
+    void setupLimitChanged();
 
     void integrationIsConnecting(bool value);
     void integrationError(QString name, QString id);
@@ -112,6 +128,12 @@ class IntegrationController : public QObject {
     void integrationDriverLoaded(QString driverId);
     void integrationDriversLoaded();
     void integrationSetupStopped();
+    /**
+     * State change of the running setup session.
+     * @param error human readable error text. Set for state Error, and for state Wait_user_action if the driver
+     *        rejected the provided user data: the current page is shown again with the error text.
+     * @param requireUserAction true if a new page has been appended to the config pages.
+     */
     void integrationSetupChange(QString driverId, SetupState state, QString error, bool requireUserAction);
     void integrationUserDataError(QString labelId, QString error);
 
@@ -123,9 +145,11 @@ class IntegrationController : public QObject {
 
  public slots:
     void onIntegrationDriverStateChanged(QString driverId, QString state);
+    void updateDriversError(const QString& driverId, const QString& state);
     void onIntegrationDeviceStateChanged(QString integrationId, QString driverId, QString state);
     void onLanguageChanged(QString language);
     void onIntegrationSetupChange(core::IntegrationSetupInfo integrationSetupInfo);
+    void onPowerModeChanged(core::PowerEnums::PowerMode powerMode);
 
  private:
     static IntegrationController* s_instance;
@@ -138,12 +162,35 @@ class IntegrationController : public QObject {
     IntegrationDrivers    m_integrationDrivers;
     QSortFilterProxyModel m_integrationDriversFilter;
     QStringList           m_integrationDriversError;
-    int                   m_integrationDriversLoaded = 0;
+    // Counts the (re)loads of the driver list: an answer of an earlier load is ignored. Never 0, which marks a
+    // single driver request outside a list load.
+    quint64 m_driverLoadGeneration = 0;
+    // driver requests of the current page that are not settled yet
+    int m_integrationDriversPending = 0;
+    // receiver of the pending "start discovery once the drivers are loaded", deleted when it fired
+    QPointer<QObject> m_discoveryStartScope;
 
     IntegrationDrivers m_discoveredIntegrationDrivers;
-    IntegrationDriver* m_integrationDriverToSetup;
-    QString            m_integrationDriverSetupId;
-    QList<QObject*>    m_configPages;
+    // an item of m_discoveredIntegrationDrivers, which deletes its items whenever a discovery is started: guarded,
+    // so that a deleted driver reads as "no driver" instead of a dangling pointer
+    QPointer<IntegrationDriver> m_integrationDriverToSetup;
+    // driver id of the setup session started by this UI, empty if none is running
+    QString         m_integrationDriverSetupId;
+    QList<QObject*> m_configPages;
+    // require_user_action of the last appended config page, to recognize an event repeating the current page
+    QVariantMap m_lastUserAction;
+    // set once this UI aborted the session: the resulting STOP / ERROR / ABORTED event is not a failure
+    bool m_setupStopRequested = false;
+    // the rejection of the user data has been shown on the page: the core emits the INVALID_INPUT event before
+    // it answers the user data request with 400, which doesn't need a notification anymore
+    bool m_inputErrorShown = false;
+
+    // keep-alive lease of the setup session: renewed at a third of the lease time
+    QTimer m_setupKeepAliveTimer;
+
+    bool                                     m_setupLimitActive = false;
+    int                                      m_setupExpiresInSec = 0;
+    core::IntegrationEnums::SetupLimitReason m_setupLimitReason = core::IntegrationEnums::SetupLimitReason::NO_LIMIT;
 
     int m_integrationStatusLimit = 0;
     int m_integrationStatusTotalItems = 0;
@@ -153,9 +200,25 @@ class IntegrationController : public QObject {
  private:
     bool checkConnections();
 
+    /**
+     * Apply the session parameters of a setup response or event: the keep-alive lease and the battery budget.
+     */
+    void applySetupSession(const core::IntegrationSetupInfo& integrationSetupInfo);
+    void startSetupKeepAlive(int keepaliveTimeoutSec);
+    void stopSetupKeepAlive();
+    void sendSetupKeepAlive();
+    void setupSessionEnded();
+
+    /**
+     * Human readable error text of a setup error: the driver provided message in the UI language if available,
+     * otherwise a text for the error code.
+     */
+    QString setupErrorText(const core::IntegrationSetupInfo& integrationSetupInfo);
+
  private slots:
     void onIntegrationStatusLoaded();
-    void onIntegrationDriverLoaded(QString driverId);
+    void getIntegrationDriver(const QString& driverId, quint64 generation);
+    void onIntegrationDriverSettled(quint64 generation);
     void onIntegrationDriversLoaded();
     void onIntegrationsLoaded();
 

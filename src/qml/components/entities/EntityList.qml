@@ -34,9 +34,176 @@ Rectangle {
     property alias count: itemList.count
     property QtObject model
 
+    /** KEYPAD SELECTION **/
+    // Driven by the hosting layer's button navigation, not the keyboard focus: the model is reset on
+    // every init / search / filter, which would destroy a focused delegate. The host extends its
+    // button navigation with keypadConfig() and sets keypadSelected while the selection is on this
+    // list. The selection walks three zones: the filter button, the rows, and the footer buttons.
+    property bool keypadSelected: false
+
+    enum Zone { Header, List, Footer }
+    property int zone: EntityList.Zone.List
+    // 0 = Select all / Clear, 1 = Add / Remove
+    property int footerIndex: 1
+
+    // An empty list has no row to stand on: the selection is on the filter button then, also when the
+    // list never loads (an integration in error), not only once the answer of the core arrived.
+    readonly property bool headerSelected: entityList.zone === EntityList.Zone.Header
+                                           || (entityList.zone === EntityList.Zone.List && itemList.count === 0)
+
+    function normalizeZone() {
+        if (entityList.zone === EntityList.Zone.List && itemList.count === 0) {
+            entityList.zone = EntityList.Zone.Header;
+        }
+    }
+
+    // returns false when the selection would leave the list, so the host can move on
+    function moveSelection(delta) {
+        entityList.normalizeZone();
+
+        if (entityList.zone === EntityList.Zone.Header) {
+            if (delta < 0) {
+                return false;
+            }
+
+            // an empty list has no row to land on: go straight to the footer buttons
+            if (itemList.count === 0) {
+                entityList.zone = EntityList.Zone.Footer;
+                return true;
+            }
+
+            entityList.zone = EntityList.Zone.List;
+            if (itemList.currentIndex < 0) {
+                itemList.currentIndex = 0;
+            }
+            return true;
+        }
+
+        if (entityList.zone === EntityList.Zone.Footer) {
+            if (delta > 0) {
+                return false;
+            }
+
+            entityList.zone = itemList.count > 0 ? EntityList.Zone.List : EntityList.Zone.Header;
+            return true;
+        }
+
+        // the selection can sit on the (empty) list after a reset: leave it in the direction pressed
+        // instead of bouncing between the filter button and an invisible row
+        if (itemList.count === 0) {
+            entityList.zone = delta > 0 ? EntityList.Zone.Footer : EntityList.Zone.Header;
+            return true;
+        }
+
+        const next = itemList.currentIndex + delta;
+        if (next < 0) {
+            entityList.zone = EntityList.Zone.Header;
+            return true;
+        }
+
+        if (next >= itemList.count) {
+            if (entityList.model.canLoadMore()) {
+                entityList.loadMoreItems();
+                return true;
+            }
+
+            entityList.zone = EntityList.Zone.Footer;
+            return true;
+        }
+
+        itemList.currentIndex = next;
+        return true;
+    }
+
+    // LEFT / RIGHT between the two footer buttons; false outside the footer so the host can use
+    // the keys for something else (tabs)
+    function moveFooter(delta) {
+        if (entityList.zone !== EntityList.Zone.Footer) {
+            return false;
+        }
+
+        entityList.footerIndex = Math.min(1, Math.max(0, entityList.footerIndex + delta));
+        return true;
+    }
+
+    function selectLast() {
+        entityList.zone = EntityList.Zone.Footer;
+        entityList.footerIndex = 1;
+    }
+
+    function activateSelection() {
+        entityList.normalizeZone();
+
+        switch (entityList.zone) {
+        case EntityList.Zone.Header:
+            entityFilterPopup.open();
+            break;
+        case EntityList.Zone.Footer:
+            if (entityList.footerIndex === 1) {
+                buttonOk.activate();
+            } else {
+                selectAllButton.activate();
+            }
+            break;
+        default:
+            const item = itemList.currentItem;
+            if (item) {
+                entityList.model.setSelected(item.key, !item.selected);
+            }
+        }
+    }
+
+    // the DPAD handlers for the host's ButtonNavigation.extendDefaultConfig()
+    function keypadConfig() {
+        return {
+            "DPAD_DOWN": { "pressed": function() { entityList.moveSelection(1); } },
+            "DPAD_UP": { "pressed": function() { entityList.moveSelection(-1); } },
+            "DPAD_LEFT": { "pressed": function() { entityList.moveFooter(-1); } },
+            "DPAD_RIGHT": { "pressed": function() { entityList.moveFooter(1); } },
+            "DPAD_MIDDLE": { "pressed": function() { entityList.activateSelection(); } }
+        };
+    }
+
+    function resetSelection() {
+        entityList.zone = EntityList.Zone.List;
+        entityList.footerIndex = 1;
+        itemList.currentIndex = 0;
+    }
+
+    // the first d-pad press after typing in the search field takes the keyboard down
+    Connections {
+        target: ui.inputController
+
+        function onKeypadActiveChanged() {
+            if (ui.inputController.keypadActive && entityList.inputHasFocus) {
+                keyboard.hide();
+                entityList.inputHasFocus = false;
+            }
+        }
+    }
+
+    // The search term and the filters belong to one visit of the list: opening it reloads the list
+    // unfiltered, so the search field and the filter check marks are cleared with it. Without this the
+    // list came back showing every entity while the header still claimed a search term and filters.
+    // Set while the reset runs so that emptying the input field does not trigger another search.
+    property bool resettingSearch: false
+
+    function resetSearchAndFilters() {
+        entityList.resettingSearch = true;
+        entitySearch.clear();
+
+        for (let i = 0; i < filterTypesListModel.count; i++) {
+            filterTypesListModel.get(i).typeChecked = false;
+        }
+
+        entityList.resettingSearch = false;
+    }
+
     function open() {
+        resetSearchAndFilters();
         entityList.model.init(entityList.integrationId);
         stopLoading();
+        resetSelection();
         openTrigger();
     }
 
@@ -69,6 +236,15 @@ Rectangle {
 
         function onEntitiesLoaded(count) {
             entityList.stopLoading();
+            // a model reset leaves the view without a current row; with no rows at all the selection
+            // moves to the filter button, so something is outlined
+            if (entityList.zone === EntityList.Zone.List) {
+                if (itemList.count === 0) {
+                    entityList.zone = EntityList.Zone.Header;
+                } else if (itemList.currentIndex < 0) {
+                    itemList.currentIndex = 0;
+                }
+            }
         }
     }
 
@@ -118,10 +294,10 @@ Rectangle {
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
             maximumLineCount: 2
-            color: colors.light
+            color: colors.textSecondary
             horizontalAlignment: Text.AlignHCenter
             anchors { horizontalCenter: parent.horizontalCenter; top:titleText.bottom; topMargin: 5 }
-            font: fonts.secondaryFont(24)
+            font: fonts.help()
         }
 
         RowLayout {
@@ -152,16 +328,27 @@ Rectangle {
                     }
                 }
                 inputField.onTextChanged: {
+                    if (entityList.resettingSearch) {
+                        return;
+                    }
+
                     entityList.model.search(inputField.text);
                 }
             }
 
             Rectangle {
+                id: filterButton
                 Layout.preferredHeight: entitySearch.height
                 Layout.preferredWidth: entitySearch.height
 
-                color: entityList.model.filtered ? colors.highlight : colors.transparent
+                // a light fill while a filter is active; the ring is the keypad selection
+                color: entityList.model.filtered ? colors.textPrimary : colors.transparent
                 radius: ui.cornerRadiusSmall
+
+                Components.Selectable {
+                    radius: parent.radius
+                    selected: entityList.keypadSelected && entityList.headerSelected
+                }
 
                 Behavior on color {
                     ColorAnimation { duration: 300 }
@@ -169,7 +356,7 @@ Rectangle {
 
                 Components.Icon {
                     icon: "uc:filter"
-                    color: entityList.model.filtered ? colors.black : colors.offwhite
+                    color: entityList.model.filtered ? colors.bg : colors.textPrimary
                     size: 80
                     anchors.centerIn: parent
 
@@ -196,7 +383,12 @@ Rectangle {
             closePolicy: Popup.CloseOnPressOutside
             padding: 0
 
+            // the header button the keypad selection is on: -1 the type rows, 0 Clear, 1 Done
+            property int headerButton: -1
+
             onOpened: {
+                filterTypesListView.currentIndex = 0;
+                entityFilterPopup.headerButton = -1;
                 entityFilterPopupButtonNavigation.takeControl();
             }
 
@@ -214,13 +406,79 @@ Rectangle {
                 NumberAnimation { property: "opacity"; from: 1.0; to: 0.0; easing.type: Easing.InExpo; duration: 300 }
             }
 
+            // the sheet owns the input while it is open: DPAD_UP / DOWN walk the filter rows, DPAD_UP on
+            // the first row selects Done in the header, DPAD_LEFT / RIGHT move between Clear and Done there.
+            // DPAD_MIDDLE toggles the row or activates the button; on the rows DPAD_LEFT clears all
+            // filters. BACK / HOME close the sheet.
             Components.ButtonNavigation {
                 id: entityFilterPopupButtonNavigation
+                defaultConfig: {
+                    "DPAD_DOWN": {
+                        "pressed": function() {
+                            if (entityFilterPopup.headerButton >= 0) {
+                                entityFilterPopup.headerButton = -1;
+                                return;
+                            }
+
+                            filterTypesListView.incrementCurrentIndex();
+                        }
+                    },
+                    "DPAD_UP": {
+                        "pressed": function() {
+                            if (entityFilterPopup.headerButton >= 0) {
+                                return;
+                            }
+
+                            if (filterTypesListView.currentIndex <= 0) {
+                                entityFilterPopup.headerButton = 1;
+                                return;
+                            }
+
+                            filterTypesListView.decrementCurrentIndex();
+                        }
+                    },
+                    "DPAD_MIDDLE": {
+                        "pressed": function() {
+                            if (entityFilterPopup.headerButton === 0) {
+                                clearFiltersButton.activate();
+                            } else if (entityFilterPopup.headerButton === 1) {
+                                filterDoneButton.activate();
+                            } else if (filterTypesListView.currentItem) {
+                                filterTypesListView.currentItem.toggle();
+                            }
+                        }
+                    },
+                    "DPAD_LEFT": {
+                        "pressed": function() {
+                            if (entityFilterPopup.headerButton >= 0) {
+                                entityFilterPopup.headerButton = 0;
+                                return;
+                            }
+
+                            clearFiltersButton.activate();
+                        }
+                    },
+                    "DPAD_RIGHT": {
+                        "pressed": function() {
+                            if (entityFilterPopup.headerButton >= 0) {
+                                entityFilterPopup.headerButton = 1;
+                            }
+                        }
+                    },
+                    "BACK": {
+                        "pressed": function() {
+                            entityFilterPopup.close();
+                        }
+                    },
+                    "HOME": {
+                        "pressed": function() {
+                            entityFilterPopup.close();
+                        }
+                    }
+                }
             }
 
-            background: Rectangle {
-                color: colors.black; opacity: 0.6
-
+            background: Components.Dim {
                 MouseArea {
                     anchors.fill: parent
                     onClicked: entityFilterPopup.close()
@@ -228,13 +486,16 @@ Rectangle {
             }
 
             contentItem: Item {
-                Rectangle {
+                // a bottom sheet (docs/design-system.md section 5): black with a divider edge
+                Item {
                     id: entityFilterContainer
                     width: parent.width
                     height: entityFilterContainerContent.height + ui.cornerRadiusLarge
-                    radius: ui.cornerRadiusLarge
-                    color: colors.dark
                     anchors.bottom: parent.bottom
+
+                    Components.Sheet {
+                        anchors.fill: parent
+                    }
 
                     MouseArea {
                         anchors.fill: parent
@@ -251,25 +512,19 @@ Rectangle {
                             Layout.leftMargin: 20
                             Layout.rightMargin: 20
 
-                            Components.HapticMouseArea {
-                                Layout.preferredHeight: 80
-                                Layout.preferredWidth: parent.width / 3
-
-                                onClicked: {
+                            // Clear and Done are buttons, not text actions (docs/design-system.md, I-09)
+                            Components.Button {
+                                id: clearFiltersButton
+                                //: Button that clears the active filters in the entity list.
+                                text: qsTr("Clear")
+                                variant: "secondary"
+                                highlight: entityFilterPopup.headerButton === 0 && ui.keyNavigationActive
+                                trigger: function() {
                                     entityList.model.cleanEntityTypes();
 
                                     for (let i = 0; i < filterTypesListView.count; i++) {
                                         filterTypesListView.model.get(i).typeChecked = false;
                                     }
-                                }
-
-                                Text {
-                                    anchors.fill: parent
-                                    text: qsTr("Clear")
-                                    verticalAlignment: Text.AlignVCenter
-                                    maximumLineCount: 1
-                                    color: colors.light
-                                    font: fonts.secondaryFont(24)
                                 }
                             }
 
@@ -280,38 +535,22 @@ Rectangle {
                                 horizontalAlignment: Text.AlignHCenter
                                 verticalAlignment: Text.AlignVCenter
                                 maximumLineCount: 1
-                                color: colors.offwhite
-                                font: fonts.primaryFont(26)
+                                elide: Text.ElideRight
+                                color: colors.textPrimary
+                                font: fonts.title()
                             }
 
-                            Components.HapticMouseArea {
-                                Layout.preferredHeight: 80
-                                Layout.preferredWidth: parent.width / 3
-
-                                onClicked: {
+                            Components.Button {
+                                id: filterDoneButton
+                                text: qsTr("Done")
+                                highlight: entityFilterPopup.headerButton === 1 && ui.keyNavigationActive
+                                trigger: function() {
                                     entityFilterPopup.close();
                                 }
-
-                                Text {
-                                    anchors.fill: parent
-                                    text: qsTr("Done")
-                                    horizontalAlignment: Text.AlignRight
-                                    verticalAlignment: Text.AlignVCenter
-                                    maximumLineCount: 1
-                                    color: colors.light
-                                    font: fonts.secondaryFont(24)
-                                }
                             }
                         }
 
-                        Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 1
-                            Layout.topMargin: -10
-                            Layout.leftMargin: 20
-                            Layout.rightMargin: 20
-                            color: Qt.lighter(colors.medium, 1.3)
-                        }
+                        Components.Divider {}
 
                         ListView {
                             id: filterTypesListView
@@ -340,6 +579,7 @@ Rectangle {
                                     typeChecked: false
                                 }
                                 ListElement {
+                                    //: Entity type: blinds, shades, curtains. Not a lid or a book cover.
                                     typeName: qsTr("Cover")
                                     typeIcon: "uc:blinds"
                                     typeValue: EntityTypes.Cover
@@ -371,67 +611,81 @@ Rectangle {
                                 }
                             }
 
-                            delegate: RowLayout {
+                            delegate: Item {
                                 id: filterListViewDelegate
                                 width: ListView.view.width
                                 height: 60
-                                spacing: 20
 
                                 property bool checked: entityList.model.containsEntityType(typeValue)
                                 Component.onCompleted: typeChecked = false// entityList.model.containsEntityType(typeValue)
 
-                                Components.Icon {
-                                    size: 60
-                                    color: colors.offwhite
-                                    icon: typeIcon
+                                function toggle() {
+                                    if (typeChecked) {
+                                        entityList.model.removeEntityType(typeValue);
+                                    } else {
+                                        entityList.model.setEntityType(typeValue);
+                                    }
+                                    typeChecked = entityList.model.containsEntityType(typeValue);
                                 }
 
-                                Text {
-                                    Layout.fillWidth: true
-                                    Layout.preferredHeight: 60
-                                    text: typeName
-                                    color: colors.offwhite
-                                    verticalAlignment: Text.AlignVCenter
-                                    font: fonts.primaryFont(28)
+                                // the ring around the selected type, inside the list's 20 px gutter
+                                Components.Selectable {
+                                    anchors { leftMargin: -12; rightMargin: -12 }
+                                    selected: filterListViewDelegate.ListView.isCurrentItem && entityFilterPopup.headerButton < 0
                                 }
 
-                                Components.HapticMouseArea {
-                                    Layout.preferredWidth: 60
-                                    Layout.preferredHeight: 60
-                                    Layout.alignment: Qt.AlignRight
+                                RowLayout {
+                                    anchors.fill: parent
+                                    spacing: 20
 
-                                    onClicked: {
-                                        if (typeChecked) {
-                                            entityList.model.removeEntityType(typeValue);
-                                        } else {
-                                            entityList.model.setEntityType(typeValue);
-                                        }
-                                        typeChecked = entityList.model.containsEntityType(typeValue);
+                                    Components.Icon {
+                                        size: 60
+                                        color: colors.textPrimary
+                                        icon: typeIcon
                                     }
 
-                                    Rectangle {
-                                        width: 30
-                                        height: width
-                                        anchors.centerIn: parent
-                                        color: typeChecked ? colors.white : colors.transparent
-                                        radius: width / 2
-                                        border {
-                                            width: 1
-                                            color: colors.light
+                                    Text {
+                                        Layout.fillWidth: true
+                                        Layout.preferredHeight: 60
+                                        text: typeName
+                                        color: colors.textPrimary
+                                        verticalAlignment: Text.AlignVCenter
+                                        font: fonts.label()
+                                    }
+
+                                    Components.HapticMouseArea {
+                                        Layout.preferredWidth: 60
+                                        Layout.preferredHeight: 60
+                                        Layout.alignment: Qt.AlignRight
+
+                                        onClicked: {
+                                            filterListViewDelegate.toggle();
                                         }
 
-                                        Behavior on color {
-                                            ColorAnimation { duration: 300 }
-                                        }
+                                        Rectangle {
+                                            width: 30
+                                            height: width
+                                            anchors.centerIn: parent
+                                            color: typeChecked ? colors.white : colors.transparent
+                                            radius: width / 2
+                                            border {
+                                                width: 1
+                                                color: colors.light
+                                            }
 
-                                        Components.Icon {
-                                            size: parent.width
-                                            color: colors.black
-                                            icon: "uc:check"
-                                            opacity: typeChecked ? 1 : 0
+                                            Behavior on color {
+                                                ColorAnimation { duration: 300 }
+                                            }
 
-                                            Behavior on opacity {
-                                                NumberAnimation { duration: 300 }
+                                            Components.Icon {
+                                                size: parent.width
+                                                color: colors.black
+                                                icon: "uc:check"
+                                                opacity: typeChecked ? 1 : 0
+
+                                                Behavior on opacity {
+                                                    NumberAnimation { duration: 300 }
+                                                }
                                             }
                                         }
                                     }
@@ -520,7 +774,7 @@ Rectangle {
             start: Qt.point(0, 0)
             end: Qt.point(0, 50)
             gradient: Gradient {
-                GradientStop { position: 0.0; color: "#00000000" }
+                GradientStop { position: 0.0; color: colors.transparent }
                 GradientStop { position: 1.0; color: colors.black }
             }
         }
@@ -542,6 +796,8 @@ Rectangle {
             text: entityList.okText
             width: (parent.width - 20 ) / 2
             anchors { right: parent.right; bottom: parent.bottom }
+            highlight: entityList.keypadSelected && entityList.zone === EntityList.Zone.Footer
+                       && entityList.footerIndex === 1 && ui.keyNavigationActive
             trigger: function() {
                 entityList.okTrigger();
 
@@ -554,10 +810,13 @@ Rectangle {
         }
 
         Components.Button {
+            id: selectAllButton
             text: entityList.model.allSelected ? qsTr("Clear") : qsTr("Select all")
             width: (parent.width - 20 ) / 2
-            color: colors.secondaryButton
+            variant: "secondary"
             anchors { left: parent.left; bottom: parent.bottom }
+            highlight: entityList.keypadSelected && entityList.zone === EntityList.Zone.Footer
+                       && entityList.footerIndex === 0 && ui.keyNavigationActive
             trigger: function() {
                 if (entityList.model.allSelected) {
                     entityList.model.clearSelected();
@@ -696,16 +955,17 @@ Rectangle {
 
         Rectangle {
             width: ListView.view.width; height: entityInfoContainer.height + 40
-            color: isCurrentItem && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: isCurrentItem && ui.keyNavigationEnabled ? colors.medium : colors.transparent
-                width: 1
-            }
+            color: colors.transparent
 
             property bool isCurrentItem: ListView.isCurrentItem
+            readonly property bool keypadCurrent: isCurrentItem && entityList.keypadSelected
+                                                  && entityList.zone === EntityList.Zone.List && ui.keyNavigationActive
             property string key: itemKey
             property bool selected: itemSelected
+
+            Components.Selectable {
+                selected: parent.keypadCurrent
+            }
 
             Components.Icon {
                 id: entityIcon
@@ -740,10 +1000,9 @@ Rectangle {
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    color: colors.light
+                    color: colors.textSecondary
                     anchors { left: parent.left; top: entityTitle.bottom; topMargin: 5 }
-                    font: fonts.secondaryFont(20)
-                    lineHeight: 0.8
+                    font: fonts.help()
                 }
             }
 

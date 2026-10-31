@@ -1,10 +1,10 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. WiFi indicator everywhere, volume overlay and media-control button toggles.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-
 
 import Haptic 1.0
 import Config 1.0
@@ -14,6 +14,8 @@ import "qrc:/components" as Components
 
 Settings.Page {
     id: uiPageContent
+    scrollTarget: flickable
+    initialFocusItem: buttonFuncSwitch
 
     Flickable {
         id: flickable
@@ -25,15 +27,7 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
-
-        onContentYChanged: {
-            if (contentY < 0) {
-                contentY = 0;
-            }
-            if (contentY > 2080) {
-                contentY = 2080;
-            }
-        }
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
             NumberAnimation { duration: 300 }
@@ -41,591 +35,267 @@ Settings.Page {
 
         ColumnLayout {
             id: content
-            spacing: 20
+            spacing: 0
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
 
             /** INVERTED BUTTON BEHAVIOUR **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                //: Switch in the user interface settings: swaps what a short and a long press do on the main screen.
+                title: qsTr("Inverted button behavior")
+                help: qsTr("Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: buttonFuncText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Inverted button behaviour")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: buttonFuncSwitch
+                    icon: "uc:check"
+                    checked: Config.entityButtonFuncInverted
+                    trigger: function() {
+                        Config.entityButtonFuncInverted = !Config.entityButtonFuncInverted;
                     }
 
-                    Components.Switch {
-                        id: buttonFuncSwitch
-                        icon: "uc:check"
-                        checked: Config.entityButtonFuncInverted
-                        trigger: function() {
-                            Config.entityButtonFuncInverted = !Config.entityButtonFuncInverted;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.down: batteryPercentSwitch
-
-                        Component.onCompleted: {
-                            buttonFuncSwitch.forceActiveFocus();
-                        }
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.down: batteryPercentSwitch
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.")
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** SHOW BATTERY PERCENTAGE **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                title: qsTr("Show battery percentage")
+                help: qsTr("Always show the battery percentage next to the icon.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: batteryPercentText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show battery percentage")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: batteryPercentSwitch
+                    icon: "uc:check"
+                    checked: Config.showBatteryPercentage
+                    trigger: function() {
+                        Config.showBatteryPercentage = !Config.showBatteryPercentage;
                     }
 
-                    Components.Switch {
-                        id: batteryPercentSwitch
-                        icon: "uc:check"
-                        checked: Config.showBatteryPercentage
-                        trigger: function() {
-                            Config.showBatteryPercentage = !Config.showBatteryPercentage;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: buttonFuncSwitch
-                        KeyNavigation.down: batteryEveryWhereSwitch
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: buttonFuncSwitch
+                    KeyNavigation.down: batteryEveryWhereSwitch
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Always show the battery percentage next to the icon.")
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** SHOW BATTERY EVERYWHERE **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                title: qsTr("Show battery indicator everywhere")
+                help: qsTr("Shows the battery level indicator on all pages and activities.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: batteryEveryWhereText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show battery indicator everywhere")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: batteryEveryWhereSwitch
+                    icon: "uc:check"
+                    checked: Config.showBatteryEveryWhere
+                    trigger: function() {
+                        Config.showBatteryEveryWhere = !Config.showBatteryEveryWhere;
                     }
 
-                    Components.Switch {
-                        id: batteryEveryWhereSwitch
-                        icon: "uc:check"
-                        checked: Config.showBatteryEveryWhere
-                        trigger: function() {
-                            Config.showBatteryEveryWhere = !Config.showBatteryEveryWhere;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: batteryPercentSwitch
-                        KeyNavigation.down: wifiEveryWhereSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Shows the battery level indicator on all pages and activities.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: batteryPercentSwitch
+                    KeyNavigation.down: wifiEveryWhereSwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW WIFI EVERYWHERE (madalone) **/
+            Components.SettingRow {
+                title: qsTr("Show WiFi indicator everywhere")
+                help: qsTr("Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.")
 
-            /** SHOW WIFI INDICATOR EVERYWHERE (madalone, v1.4.21) **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: wifiEveryWhereText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show WiFi indicator everywhere")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: wifiEveryWhereSwitch
+                    icon: "uc:check"
+                    checked: Config.showWifiEveryWhere
+                    trigger: function() {
+                        Config.showWifiEveryWhere = !Config.showWifiEveryWhere;
                     }
 
-                    Components.Switch {
-                        id: wifiEveryWhereSwitch
-                        icon: "uc:check"
-                        checked: Config.showWifiEveryWhere
-                        trigger: function() {
-                            Config.showWifiEveryWhere = !Config.showWifiEveryWhere;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: batteryEveryWhereSwitch
-                        KeyNavigation.down: activityBarSwitch
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: batteryEveryWhereSwitch
+                    KeyNavigation.down: activityBarSwitch
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.")
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** ENABLE ACTIVITY BAR **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                title: qsTr("Activities on pages")
+                help: qsTr("Show the running activities and playing media players in the page header.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: activityBarText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Activities on pages")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: activityBarSwitch
+                    icon: "uc:check"
+                    checked: Config.enableActivityBar
+                    trigger: function() {
+                        Config.enableActivityBar = !Config.enableActivityBar;
                     }
 
-                    Components.Switch {
-                        id: activityBarSwitch
-                        icon: "uc:check"
-                        checked: Config.enableActivityBar
-                        trigger: function() {
-                            Config.enableActivityBar = !Config.enableActivityBar;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: wifiEveryWhereSwitch
-                        KeyNavigation.down: mediaComponentSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Show the running activities and playing media players in the page header.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: wifiEveryWhereSwitch
+                    KeyNavigation.down: apiActivitySwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
+            /** OPEN ACTIVITIES STARTED VIA THE API **/
+            Components.SettingRow {
+                title: qsTr("Open activities started with the API")
+                help: qsTr("Open the activity screen when an activity is started outside of the remote, replacing whatever is on screen.")
+
+                Components.Switch {
+                    id: apiActivitySwitch
+                    icon: "uc:check"
+                    checked: Config.openActivityOnApiStart
+                    trigger: function() {
+                        Config.openActivityOnApiStart = !Config.openActivityOnApiStart;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: activityBarSwitch
+                    KeyNavigation.down: mediaComponentSwitch
+                }
             }
 
             /** FILL IMAGE IN MEDIA COMPONENT **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                title: qsTr("Zoom media image")
+                help: qsTr("Zoom & crop artwork in media player widgets instead of scaling to fit.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: mediaComponentText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Zoom media image")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: mediaComponentSwitch
+                    icon: "uc:check"
+                    checked: Config.fillMediaArtwork
+                    trigger: function() {
+                        Config.fillMediaArtwork = !Config.fillMediaArtwork;
                     }
 
-                    Components.Switch {
-                        id: mediaComponentSwitch
-                        icon: "uc:check"
-                        checked: Config.fillMediaArtwork
-                        trigger: function() {
-                            Config.fillMediaArtwork = !Config.fillMediaArtwork;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: activityBarSwitch
-                        KeyNavigation.down: mediaCoverflowSwitch
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: apiActivitySwitch
+                    KeyNavigation.down: mediaCoverflowSwitch
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Zoom & crop artwork in media player widgets instead of scaling to fit.")
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** MEDIA BROWSER COVERFLOW DEFAULT **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                title: qsTr("Coverflow in media browser")
+                help: qsTr("Use coverflow as the default view when opening the media browser.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: mediaCoverflowText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Coverflow in media browser")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: mediaCoverflowSwitch
+                    icon: "uc:check"
+                    checked: Config.mediaCoverflowDefault
+                    trigger: function() {
+                        Config.mediaCoverflowDefault = !Config.mediaCoverflowDefault;
                     }
 
-                    Components.Switch {
-                        id: mediaCoverflowSwitch
-                        icon: "uc:check"
-                        checked: Config.mediaCoverflowDefault
-                        trigger: function() {
-                            Config.mediaCoverflowDefault = !Config.mediaCoverflowDefault;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: mediaComponentSwitch
-                        KeyNavigation.down: volumeOverlaySwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Use coverflow as the default view when opening the media browser.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: mediaComponentSwitch
+                    KeyNavigation.down: volumeOverlaySwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW VOLUME OVERLAY (madalone) **/
+            Components.SettingRow {
+                title: qsTr("Show volume overlay")
+                help: qsTr("Display volume indicator overlay when volume keys are pressed.")
 
-            /** SHOW VOLUME OVERLAY **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: volumeOverlayText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show volume overlay")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: volumeOverlaySwitch
+                    icon: "uc:check"
+                    checked: Config.showVolumeOverlay
+                    trigger: function() {
+                        Config.showVolumeOverlay = !Config.showVolumeOverlay;
                     }
 
-                    Components.Switch {
-                        id: volumeOverlaySwitch
-                        icon: "uc:check"
-                        checked: Config.showVolumeOverlay
-                        trigger: function() {
-                            Config.showVolumeOverlay = !Config.showVolumeOverlay;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: mediaCoverflowSwitch
-                        KeyNavigation.down: shuffleButtonSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Display volume indicator overlay when volume keys are pressed.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: mediaCoverflowSwitch
+                    KeyNavigation.down: shuffleButtonSwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW SHUFFLE BUTTON (madalone) **/
+            Components.SettingRow {
+                title: qsTr("Show shuffle button")
+                help: qsTr("Show the shuffle toggle on the media player controls row.")
 
-            /** SHOW SHUFFLE BUTTON **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: shuffleButtonText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show shuffle button")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: shuffleButtonSwitch
+                    icon: "uc:check"
+                    checked: Config.showShuffleButton
+                    trigger: function() {
+                        Config.showShuffleButton = !Config.showShuffleButton;
                     }
 
-                    Components.Switch {
-                        id: shuffleButtonSwitch
-                        icon: "uc:check"
-                        checked: Config.showShuffleButton
-                        trigger: function() {
-                            Config.showShuffleButton = !Config.showShuffleButton;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: volumeOverlaySwitch
-                        KeyNavigation.down: repeatButtonSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Show the shuffle toggle on the media player controls row.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: volumeOverlaySwitch
+                    KeyNavigation.down: repeatButtonSwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW REPEAT BUTTON (madalone) **/
+            Components.SettingRow {
+                title: qsTr("Show repeat button")
+                help: qsTr("Show the repeat-mode toggle on the media player controls row.")
 
-            /** SHOW REPEAT BUTTON **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: repeatButtonText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show repeat button")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: repeatButtonSwitch
+                    icon: "uc:check"
+                    checked: Config.showRepeatButton
+                    trigger: function() {
+                        Config.showRepeatButton = !Config.showRepeatButton;
                     }
 
-                    Components.Switch {
-                        id: repeatButtonSwitch
-                        icon: "uc:check"
-                        checked: Config.showRepeatButton
-                        trigger: function() {
-                            Config.showRepeatButton = !Config.showRepeatButton;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: shuffleButtonSwitch
-                        KeyNavigation.down: mediaBrowserButtonSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Show the repeat-mode toggle on the media player controls row.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: shuffleButtonSwitch
+                    KeyNavigation.down: mediaBrowserButtonSwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW MEDIA BROWSER BUTTON (madalone) **/
+            Components.SettingRow {
+                title: qsTr("Show media browser button")
+                help: qsTr("Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.")
 
-            /** SHOW MEDIA BROWSER BUTTON **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: mediaBrowserButtonText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show media browser button")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: mediaBrowserButtonSwitch
+                    icon: "uc:check"
+                    checked: Config.showMediaBrowserButton
+                    trigger: function() {
+                        Config.showMediaBrowserButton = !Config.showMediaBrowserButton;
                     }
 
-                    Components.Switch {
-                        id: mediaBrowserButtonSwitch
-                        icon: "uc:check"
-                        checked: Config.showMediaBrowserButton
-                        trigger: function() {
-                            Config.showMediaBrowserButton = !Config.showMediaBrowserButton;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: repeatButtonSwitch
-                        KeyNavigation.down: mediaSourceButtonSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: repeatButtonSwitch
+                    KeyNavigation.down: mediaSourceButtonSwitch
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SHOW SOURCE PICKER BUTTON (madalone) **/
+            Components.SettingRow {
+                showDivider: false
+                title: qsTr("Show source picker button")
+                help: qsTr("Show the source picker button on the media player controls row.")
 
-            /** SHOW MEDIA SOURCE BUTTON **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: mediaSourceButtonText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Show source picker button")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: mediaSourceButtonSwitch
+                    icon: "uc:check"
+                    checked: Config.showMediaSourceButton
+                    trigger: function() {
+                        Config.showMediaSourceButton = !Config.showMediaSourceButton;
                     }
 
-                    Components.Switch {
-                        id: mediaSourceButtonSwitch
-                        icon: "uc:check"
-                        checked: Config.showMediaSourceButton
-                        trigger: function() {
-                            Config.showMediaSourceButton = !Config.showMediaSourceButton;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: mediaBrowserButtonSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Show the source picker button on the media player controls row.")
-                    font: fonts.secondaryFont(24)
+                    /** KEYBOARD NAVIGATION **/
+                    highlight: activeFocus && ui.keyNavigationActive
+                    KeyNavigation.up: mediaBrowserButtonSwitch
                 }
             }
         }

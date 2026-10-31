@@ -20,6 +20,11 @@ Settings.Page {
         integrationDetailPopup.open();
     }
 
+    // the "add an integration" sheet sits below the list: DPAD_DOWN past the last entry selects it.
+    // Without an entry the sheet is the only thing to select, so it is selected while the list is empty.
+    property bool addSheetSelected: false
+    readonly property bool sheetSelected: addSheetSelected || itemList.count === 0
+
     Component.onCompleted: {
         IntegrationController.getAllIntegrationDrivers();
         IntegrationController.getAllIntegrations();
@@ -27,16 +32,39 @@ Settings.Page {
         buttonNavigation.extendDefaultConfig({
                                                  "DPAD_DOWN": {
                                                      "pressed": function() {
+                                                         if (integrationsPage.sheetSelected) {
+                                                             return;
+                                                         }
+
+                                                         if (itemList.currentIndex >= itemList.count - 1) {
+                                                             integrationsPage.addSheetSelected = true;
+                                                             return;
+                                                         }
+
                                                          itemList.incrementCurrentIndex();
                                                      }
                                                  },
                                                  "DPAD_UP": {
                                                      "pressed": function() {
+                                                         if (integrationsPage.addSheetSelected) {
+                                                             integrationsPage.addSheetSelected = false;
+                                                             return;
+                                                         }
+
                                                          itemList.decrementCurrentIndex();
                                                      }
                                                  },
                                                  "DPAD_MIDDLE": {
                                                      "pressed": function() {
+                                                         if (integrationsPage.sheetSelected) {
+                                                             addIntegrationSheet.state = "opened";
+                                                             return;
+                                                         }
+
+                                                         if (!itemList.currentItem) {
+                                                             return;
+                                                         }
+
                                                          loadIntegrationInfo(itemList.currentItem.key);
                                                      }
                                                  }
@@ -59,11 +87,17 @@ Settings.Page {
 
         delegate: listItem
         currentIndex: 0
+
+        // an integration was removed below the selection: keep the selection on the list
+        onCountChanged: {
+            if (itemList.currentIndex >= itemList.count) {
+                itemList.currentIndex = Math.max(0, itemList.count - 1);
+            }
+        }
     }
 
     Components.ScrollIndicator {
         parentObj: itemList
-        hideOverride: itemList.atYEnd
     }
 
     Components.BottomSheet {
@@ -71,14 +105,15 @@ Settings.Page {
         titleOpened: qsTr("Add an integration")
         titleClosed: qsTr("Add an integration")
         openItemSource: "qrc:/components/integrations/Discovery.qml"
+        highlight: integrationsPage.sheetSelected
 
         onOpened: {
             IntegrationController.startDriverDiscovery();
-            addIntegrationSheet.openItem.buttonNavigation.overrideActive = true;
         }
 
         onClosed: {
             IntegrationController.stopDriverDiscovery();
+            integrationsPage.addSheetSelected = false;
             integrationsPage.buttonNavigation.takeControl();
         }
 
@@ -135,8 +170,13 @@ Settings.Page {
         padding: 0
         parent: Overlay.overlay
 
+        // the popup's own navigation is the fallback owner (before the setup is loaded); the
+        // current setup step takes the input on top of it once the popup is visible
         onOpened: {
             integrationSetupPopupButtonNavigation.takeControl();
+            if (integrationSetupLoader.item) {
+                integrationSetupLoader.item.activateCurrentStep();
+            }
         }
 
         onClosed: {
@@ -166,12 +206,23 @@ Settings.Page {
             asynchronous: true
             source: "qrc:/components/integrations/Setup.qml"
 
+            onStatusChanged: {
+                if (status == Loader.Ready && integrationSetupPopup.opened) {
+                    integrationSetupLoader.item.activateCurrentStep();
+                }
+            }
+
             Connections {
                 target: integrationSetupLoader.item
                 ignoreUnknownSignals: true
 
                 function onDone() {
                     integrationSetupPopup.close();
+                }
+
+                function onHome() {
+                    integrationSetupPopup.close();
+                    goHome();
                 }
             }
 
@@ -193,18 +244,28 @@ Settings.Page {
             }
         }
 
+        // leaving the popup cancels the setup that is running in it; the popup closes on the
+        // setup's done signal
+        function cancelSetup() {
+            if (integrationSetupLoader.item) {
+                integrationSetupLoader.item.cancel();
+            } else {
+                integrationSetupPopup.close();
+            }
+        }
+
         Components.ButtonNavigation {
             id: integrationSetupPopupButtonNavigation
             defaultConfig: {
                 "HOME": {
                     "pressed": function() {
-                        integrationSetupPopup.close();
+                        integrationSetupPopup.cancelSetup();
                         goHome();
                     }
                 },
                 "BACK": {
                     "pressed": function() {
-                        integrationSetupPopup.close();
+                        integrationSetupPopup.cancelSetup();
                     }
                 }
             }
@@ -217,16 +278,16 @@ Settings.Page {
         Rectangle {
             width: ListView.view.width
             height: mainColumnLayout.height
-            color: isCurrentItem && ui.keyNavigationEnabled ? Qt.darker(colors.dark, 1.5) : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: isCurrentItem && ui.keyNavigationEnabled ? colors.medium : colors.transparent
-                width: 1
-            }
+            color: colors.transparent
 
             property bool isCurrentItem: ListView.isCurrentItem
             property string key: integrationId
             property bool selected: selected
+
+            Components.Selectable {
+                anchors { leftMargin: 8; rightMargin: 8 }
+                selected: parent.isCurrentItem && !integrationsPage.sheetSelected
+            }
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -283,8 +344,8 @@ Settings.Page {
                             text: integrationState
                             elide: Text.ElideRight
                             maximumLineCount: 1
-                            color: colors.light
-                            font: fonts.secondaryFont(24)
+                            color: colors.textSecondary
+                            font: fonts.help()
                         }
                     }
                 }
@@ -300,21 +361,23 @@ Settings.Page {
                         Layout.fillWidth: true
                         Layout.alignment: Qt.AlignLeft
 
-                        text: qsTr("Version: ") + IntegrationController.getDriversModelItem(driverId).version
+                        text: qsTr("Version: %1").arg(IntegrationController.getDriversModelItem(driverId).version)
                         wrapMode: Text.WordWrap
                         elide: Text.ElideRight
                         maximumLineCount: 1
-                        color: colors.light
-                        font: fonts.secondaryFont(20)
+                        color: colors.textSecondary
+                        font: fonts.help()
                     }
 
                     Components.Icon {
                         icon: "uc:globe"
                         size: 40
-                        color: colors.light
+                        color: colors.textSecondary
                         visible: IntegrationController.getDriversModelItem(driverId).external
                     }
 
+                    // The switch of a list entry stays touch-only: DPAD_MIDDLE opens the integration
+                    // details, where the same switch is reachable with the keypad.
                     Components.Switch {
                         Layout.alignment: Qt.AlignRight
 
@@ -328,7 +391,7 @@ Settings.Page {
                             }
                         }
                         enabled: integrationState == "connected" || integrationState == "disconnected" || integrationState == "error"
-                        opacity: enabled ? 1 : 0.3
+                        opacity: enabled ? 1 : 0.4
                     }
                 }
             }

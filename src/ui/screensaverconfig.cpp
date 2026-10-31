@@ -6,7 +6,7 @@
 #include <QCoreApplication>
 #include <QtMath>
 
-#include "../hardware/battery.h"
+#include "../system/battery.h"
 
 namespace uc {
 

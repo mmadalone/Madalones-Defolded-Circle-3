@@ -25,13 +25,29 @@ ListView {
     maximumFlickVelocity: 6000
     flickDeceleration: 1000
     highlightMoveDuration: 200
-    cacheBuffer: 260 * 30
+    cacheBuffer: 260 * 4
     pressDelay: 200
     keyNavigationEnabled: false
 
     model: visualModel
     header: header
     currentIndex: 0
+
+    // The selection must always point at a tile: the main container's key handlers dereference the
+    // current item. The item list is rewritten when the page is saved after a reorder and shrinks
+    // when a tile is removed, and both can leave currentIndex past the end - with the keypad there
+    // is no tap to select a tile again, so the page went dead until a page change.
+    function clampCurrentIndex() {
+        if (page.count > 0 && page.currentIndex >= page.count) {
+            page.currentIndex = page.count - 1;
+        }
+    }
+
+    // Deferred: the index is pushed past the end from inside the model change, and the view has to
+    // finish that change before the index is moved again - moved right away, it ended on a valid
+    // index without a current item.
+    onCountChanged: Qt.callLater(clampCurrentIndex)
+    onCurrentIndexChanged: Qt.callLater(clampCurrentIndex)
 
     signal draggedDownYChanged(int contentY, int treshold)
 
@@ -41,13 +57,42 @@ ListView {
     property bool _isCurrentItem: pages.currentItem._id === page._id
 
     property bool blockDraggedDownSignal: false
+    // Disables the contentY animation so the header resize logic can follow the
+    // top of the view instantly, frame by frame, instead of lagging behind.
+    property bool suppressContentYAnimation: false
 
     Behavior on height {
         NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
     }
 
     Behavior on contentY {
+        enabled: !page.suppressContentYAnimation
         NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
+    }
+
+    /** KEYPAD REORDERING (edit mode) **/
+    // DPAD_MIDDLE picks the selected tile up, UP / DOWN then move it, DPAD_MIDDLE drops it. Driven
+    // by the main container's button navigation.
+    property int heldIndex: -1
+
+    function toggleHeld() {
+        if (page.count === 0) {
+            return;
+        }
+
+        Haptic.play(Haptic.Click);
+        page.heldIndex = page.heldIndex < 0 ? page.currentIndex : -1;
+    }
+
+    function moveHeld(delta) {
+        const to = page.heldIndex + delta;
+        if (page.heldIndex < 0 || to < 0 || to >= page.count) {
+            return;
+        }
+
+        pageItems.swapData(page.heldIndex, to);
+        page.heldIndex = to;
+        page.currentIndex = to;
     }
 
     Connections {
@@ -55,6 +100,8 @@ ListView {
         ignoreUnknownSignals: true
 
         function onEditModeChanged() {
+            page.heldIndex = -1;
+
             if (!page._isCurrentItem) {
                 return;
             }
@@ -117,15 +164,61 @@ ListView {
         Item {
             id: headerContainer
             width: ListView.view.width
-            height: activityList.count > 0 && Config.enableActivityBar ? 680 - (activityList.currentItem.entityIcon.visible ? 240 : 0) : 260
+            height: 260
+            property int targetHeight: 260
+            // While the header animates its height (e.g. album art appearing or
+            // disappearing when a media player starts/stops) the scroll position
+            // is preserved: a page that sits at the top keeps following the top,
+            // a page scrolled into its content is left alone because the view
+            // already keeps the items in place when the header resizes.
+            property bool pinToTop: false
             //            clip: true
 
-            Behavior on height {
-                NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
+            function reCalculateHeaderHeight() {
+                const hasMediaComponent = activityList.currentItem && activityList.currentItem.hasMediaComponent;
+                const nextHeight = activityList.count > 0 && Config.enableActivityBar
+                        ? 680 - (hasMediaComponent ? 0 : 240)
+                        : 260;
+
+                if (headerContainer.height === nextHeight) {
+                    return;
+                }
+
+                // The header lives above the first item, so the top of the view
+                // is contentY === originY (a negative value the size of the
+                // header), not 0. Only pin when the page really is at the top,
+                // and never while a finger is on the screen: the pull down
+                // gesture must not be fought by the header animation.
+                headerContainer.pinToTop = !page.dragging && page.contentY <= page.originY + 1;
+                // Pinning adjusts contentY every frame to track the growing or
+                // shrinking header, so bypass the contentY animation meanwhile.
+                page.suppressContentYAnimation = headerContainer.pinToTop;
+
+                headerContainer.targetHeight = nextHeight;
+                headerContainer.height = nextHeight;
+            }
+
+            Component.onCompleted: {
+                reCalculateHeaderHeight();
             }
 
             onHeightChanged: {
-                page.positionViewAtBeginning();
+                if (!headerContainer.pinToTop) {
+                    return;
+                }
+
+                // originY already reflects the new header size here, so the page
+                // stays glued to the top of the header while it animates.
+                page.contentY = page.originY;
+
+                if (headerContainer.height === headerContainer.targetHeight) {
+                    headerContainer.pinToTop = false;
+                    page.suppressContentYAnimation = false;
+                }
+            }
+
+            Behavior on height {
+                NumberAnimation { easing.type: Easing.OutExpo; duration: 500 }
             }
 
             Image {
@@ -157,7 +250,7 @@ ListView {
                     }
                 }
 
-                layer.enabled: true
+                layer.enabled: headerImage.visible
                 layer.effect: OpacityMask {
                     maskSource:
                         Rectangle {
@@ -167,12 +260,6 @@ ListView {
                     }
                 }
 
-                Behavior on height {
-                    NumberAnimation {
-                        duration: 500
-                        easing.type: Easing.OutExpo
-                    }
-                }
             }
 
             Components.HapticMouseArea {
@@ -233,6 +320,14 @@ ListView {
                     visible: activityList.count > 0 && !ui.editMode && Config.enableActivityBar
                     model: pageActivities
 
+                    onCountChanged: {
+                        headerContainer.reCalculateHeaderHeight();
+                    }
+
+                    onCurrentItemChanged: {
+                        headerContainer.reCalculateHeaderHeight();
+                    }
+
                     delegate: Components.HapticMouseArea {
                         id: activityListItem
                         width: ListView.view.width
@@ -240,7 +335,6 @@ ListView {
 
                         property QtObject entity: QtObject
                         property QtObject mediaComponentEntity: QtObject
-                        property string _expectedMediaEntityId: ""
                         property bool _isCurrentItem: ListView.isCurrentItem
                         property bool _touchSliderActive: !isSecondContainerLoaded && page._isCurrentItem && activityListItem._isCurrentItem
 
@@ -249,6 +343,23 @@ ListView {
                         }
 
                         property alias entityIcon: entityIcon
+                        property bool hasMediaComponent: false
+                        property int mediaComponentHeight: hasMediaComponent ? 420 : 180
+
+                        onHasMediaComponentChanged: {
+                            Qt.callLater(function() {
+                                activityList.forceLayout();
+                                if (activityListItem._isCurrentItem) {
+                                    headerContainer.reCalculateHeaderHeight();
+                                }
+                            });
+                        }
+
+                        function syncMediaComponentState() {
+                            hasMediaComponent = mediaComponentEntity
+                                                && mediaComponentEntity.type === EntityTypes.Media_player
+                                                && mediaComponentEntity.mediaImage !== "";
+                        }
 
                         function findButtonMap(entity, buttonName) {
                             const buttonMap = entity.buttonMapping.find(buttonMap => buttonMap.button === buttonName);
@@ -268,29 +379,17 @@ ListView {
                                         (params ? params : {}))
                         }
 
-                        function setMediaComponentEntity(id) {
-                            activityListItem._expectedMediaEntityId = id;
-                            const e = EntityController.get(id);
-                            if (e) {
-                                mediaComponentEntity = e;
-                            } else {
-                                EntityController.load(id);
-                            }
-                        }
-
                         onMediaComponentEntityChanged: {
                             touchSlider.entityObj = mediaComponentEntity;
+                            syncMediaComponentState();
                         }
 
                         Connections {
-                            target: EntityController
+                            target: mediaComponentEntity
                             ignoreUnknownSignals: true
 
-                            function onEntityLoaded(success, loadedId) {
-                                if (success && loadedId === activityListItem._expectedMediaEntityId
-                                        && activityListItem.mediaComponentEntity !== EntityController.get(loadedId)) {
-                                    activityListItem.mediaComponentEntity = EntityController.get(loadedId);
-                                }
+                            function onMediaImageChanged() {
+                                activityListItem.syncMediaComponentState();
                             }
                         }
 
@@ -301,12 +400,16 @@ ListView {
                             if (entity.type === EntityTypes.Activity) {
                                 if (!entity.sliderConfig.enabled) {
                                     touchSlider.active = false;
-                                    return;
                                 }
 
                                 if (entity.sliderConfig.entityId !== "default") {
-                                    setMediaComponentEntity(entity.sliderConfig.entityId);
-                                    touchSlider.feature = entity.sliderConfig.entityFeature === "default" ? "volume" : entity.sliderConfig.entityFeature;
+                                    mediaComponentEntity = EntityController.get(entity.sliderConfig.entityId);
+                                    activityMediaComponent.entityId = entity.sliderConfig.entityId;
+                                    if (entity.sliderConfig.enabled) {
+                                        // "default" is resolved by TouchSlider based on the target entity's type
+                                        touchSlider.feature = entity.sliderConfig.entityFeature;
+                                    }
+                                    syncMediaComponentState();
                                     return;
                                 }
 
@@ -318,19 +421,24 @@ ListView {
 
                                     for (const item of pageItems) {
                                         if (item.type === "media_player") {
-                                            setMediaComponentEntity(item.media_player_id);
-                                            activityMediaComponent.entityId = item.media_player_id;
+
+                                            const itemMediaPlayerId = item.media_player_id;
+
+                                            mediaComponentEntity = EntityController.get(itemMediaPlayerId);
+                                            activityMediaComponent.entityId = itemMediaPlayerId;
+                                            syncMediaComponentState();
                                             break;
                                         }
                                     }
                                 }
                             } else if (entity.type === EntityTypes.Media_player) {
                                 mediaComponentEntity = entity;
+                                syncMediaComponentState();
                             }
                         }
 
                         onClicked: {
-                            loadSecondContainer("qrc:/components/entities/" + entity.getTypeAsString() + "/deviceclass/" + entity.getDeviceClass() + ".qml", { "entityId": entity.id, "entityObj": entity });
+                            loadSecondContainer(EntityController.screenUrl(entity), { "entityId": entity.id, "entityObj": entity });
                         }
 
                         Components.TouchSlider {
@@ -477,28 +585,10 @@ ListView {
                                                                    title: entityObj.name,
                                                                    icon: entityObj.icon,
                                                                    callback: function() {
-                                                                       function retry() {
-                                                                           const res = checkActivityIncludedEntities(entityObj, false);
-
-                                                                           if (!EntityController.resumeWindow) {
-                                                                               if (!res.allIncludedEntitiesConnected && entityObj.readyCheck) {
-                                                                                   ui.createActionableNotification(qsTr("Some devices are not ready"), (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => { entityObj.turnOff(); }, qsTr("Proceed"));
-                                                                                   return;
-                                                                               }
-
-                                                                               entityObj.turnOff();
-                                                                               return;
-                                                                           }
-
-                                                                           if (!res.allIncludedEntitiesConnected) {
-                                                                               ui.setTimeOut(500, retry);
-                                                                           } else {
-                                                                               entityObj.turnOff();
-                                                                           }
-                                                                       }
-
                                                                        if (entityObj.type == EntityTypes.Activity) {
-                                                                           retry();
+                                                                           checkActivityReadiness(entityObj, false, function(activityObj) {
+                                                                               activityObj.turnOff();
+                                                                           });
                                                                        } else {
                                                                            entityObj.turnOff();
                                                                        }
@@ -515,28 +605,10 @@ ListView {
                                                                    for (let i = 0; i<EntityController.activities.length; i++) {
                                                                        const eObj = EntityController.get(EntityController.activities[i]);
 
-                                                                       function retry() {
-                                                                           const res = checkActivityIncludedEntities(eObj, false);
-
-                                                                           if (!EntityController.resumeWindow) {
-                                                                               if (!res.allIncludedEntitiesConnected && eObj.readyCheck) {
-                                                                                   ui.createActionableNotification(eObj.name, (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => { eObj.turnOff(); }, qsTr("Proceed"));
-                                                                                   return;
-                                                                               }
-
-                                                                               eObj.turnOff();
-                                                                               return;
-                                                                           }
-
-                                                                           if (!res.allIncludedEntitiesConnected) {
-                                                                               ui.setTimeOut(500, retry);
-                                                                           } else {
-                                                                               eObj.turnOff();
-                                                                           }
-                                                                       }
-
                                                                        if (eObj.type == EntityTypes.Activity) {
-                                                                           retry();
+                                                                           checkActivityReadiness(eObj, false, function(activityObj) {
+                                                                               activityObj.turnOff();
+                                                                           });
                                                                        } else {
                                                                            eObj.turnOff();
                                                                        }
@@ -552,14 +624,14 @@ ListView {
                             }
                         }
 
-                        ColumnLayout {
+                        Column {
                             width: parent.width
-                            height: parent.height
-                            spacing: 0
+                            anchors.top: parent.top
+                            spacing: 10
 
                             Text {
-                                Layout.fillWidth: true
-                                color: Qt.lighter(colors.light)
+                                width: parent.width
+                                color: colors.textSecondary
                                 text: {
                                     //: Used to show the entity state: %1 is the entity name, %2 is the state
                                     return qsTr("%1 is %2").arg(entity.name).arg(entity.stateAsString.toLowerCase());
@@ -567,14 +639,13 @@ ListView {
                                 elide: Text.ElideRight
                                 maximumLineCount: 1
                                 horizontalAlignment: Text.AlignHCenter
-                                font: fonts.secondaryFont(22)
+                                font: fonts.help()
                             }
 
                             Item {
-                                Layout.fillWidth: true
-                                Layout.preferredHeight: entityIcon.visible ? 180 : 420
-                                Layout.leftMargin: 20
-                                Layout.rightMargin: 20
+                                width: parent.width - 40
+                                height: activityListItem.mediaComponentHeight
+                                x: 20
 
                                 Rectangle {
                                     id: entityIcon
@@ -582,7 +653,7 @@ ListView {
                                     height: 180
                                     color: colors.dark
                                     radius: 8
-                                    visible: mediaComponentEntity.mediaImage == "" || mediaComponentEntity.type != EntityTypes.Media_player
+                                    visible: !activityListItem.hasMediaComponent
                                     anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
 
                                     Components.Icon {
@@ -598,7 +669,7 @@ ListView {
                                     width: parent.width
                                     height: parent.height
                                     isComponentHorizontal: false
-                                    visible: !entityIcon.visible
+                                    visible: activityListItem.hasMediaComponent
                                     anchors { top: parent.top; horizontalCenter: parent.horizontalCenter }
 
                                     Component.onCompleted: {
@@ -643,14 +714,14 @@ ListView {
         visible: visualModel.count === 0 && !ui.editMode
 
         Text {
-            color: colors.offwhite
+            color: colors.textSecondary
             //: Web configurator is the name of the application, does not need translation
             text: qsTr("Press and hold the Home button or use the Web Configurator to configure the page")
             width: parent.width - 40
             wrapMode: Text.WordWrap
             verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
             anchors.centerIn: parent
-            font: fonts.secondaryFont(22)
+            font: fonts.help()
         }
     }
 
@@ -663,17 +734,22 @@ ListView {
             height: delegate.item ? delegate.item.height : delegate.height
             enabled: ui.editMode
             pressAndHoldInterval: 100
-            anchors.horizontalCenter: parent.horizontalCenter
+            anchors.horizontalCenter: parent ? parent.horizontalCenter : undefined
 
             property alias dragArea: dragArea
             property alias delegate: delegate
             property alias delegateItem: delegate.item
-
             property bool isCurrentItem: ListView.isCurrentItem
             property bool held: false
             property int toVal: 0
-
             property string itemId: pageItemId
+
+            // the tile's own fill marks the selection; the ring marks the tile while it is held for reordering,
+            // the one element that shows both (docs/design-system.md section 6, Q-5)
+            Components.Selectable {
+                z: 3000
+                selected: dragArea.isCurrentItem && ui.editMode && page.heldIndex === index
+            }
 
             drag.target: held ? delegate : undefined
             drag.axis: Drag.YAxis

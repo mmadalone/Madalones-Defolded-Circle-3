@@ -20,20 +20,48 @@ Settings.Page {
         dockDetailPopup.open();
     }
 
+    // the "add a new dock" sheet sits below the list: DPAD_DOWN past the last dock selects it.
+    // Without an entry the sheet is the only thing to select, so it is selected while the list is empty.
+    property bool addSheetSelected: false
+    readonly property bool sheetSelected: addSheetSelected || itemList.count === 0
+
     Component.onCompleted: {
         buttonNavigation.extendDefaultConfig({
                                                  "DPAD_DOWN": {
                                                      "pressed": function() {
+                                                         if (docksPage.sheetSelected) {
+                                                             return;
+                                                         }
+
+                                                         if (itemList.currentIndex >= itemList.count - 1) {
+                                                             docksPage.addSheetSelected = true;
+                                                             return;
+                                                         }
+
                                                          itemList.incrementCurrentIndex();
                                                      }
                                                  },
                                                  "DPAD_UP": {
                                                      "pressed": function() {
+                                                         if (docksPage.addSheetSelected) {
+                                                             docksPage.addSheetSelected = false;
+                                                             return;
+                                                         }
+
                                                          itemList.decrementCurrentIndex();
                                                      }
                                                  },
                                                  "DPAD_MIDDLE": {
                                                      "pressed": function() {
+                                                         if (docksPage.sheetSelected) {
+                                                             addDockSheet.state = "opened";
+                                                             return;
+                                                         }
+
+                                                         if (!itemList.currentItem) {
+                                                             return;
+                                                         }
+
                                                          loadDockInfo(itemList.currentItem.key);
                                                      }
                                                  }
@@ -56,11 +84,17 @@ Settings.Page {
 
         delegate: listItem
         currentIndex: 0
+
+        // a dock was removed below the selection: keep the selection on the list
+        onCountChanged: {
+            if (itemList.currentIndex >= itemList.count) {
+                itemList.currentIndex = Math.max(0, itemList.count - 1);
+            }
+        }
     }
 
     Components.ScrollIndicator {
         parentObj: itemList
-        hideOverride: itemList.atYEnd
     }
 
     Components.BottomSheet {
@@ -68,13 +102,11 @@ Settings.Page {
         titleOpened: qsTr("Add a new dock")
         titleClosed: qsTr("Add a new dock")
         openItemSource: "qrc:/components/docks/Discovery.qml"
-
-        onOpened: {
-            addDockSheet.openItem.buttonNavigation.overrideActive = true;
-        }
+        highlight: docksPage.sheetSelected
 
         onClosed: {
             DockController.stopDiscovery();
+            docksPage.addSheetSelected = false;
             docksPage.buttonNavigation.takeControl();
         }
 
@@ -132,8 +164,13 @@ Settings.Page {
         closePolicy: Popup.NoAutoClose
         padding: 0
 
+        // the popup's own navigation is the fallback owner; the current setup step takes the input
+        // on top of it once the popup is visible
         onOpened: {
             dockSetupPopupButtonNavigation.takeControl();
+            if (dockSetupLoader.item) {
+                dockSetupLoader.item.activateCurrentStep();
+            }
         }
 
         onClosed: {
@@ -184,6 +221,11 @@ Settings.Page {
                 function onFailed() {
                     dockSetupPopup.close();
                 }
+
+                function onHome() {
+                    dockSetupPopup.close();
+                    goHome();
+                }
             }
         }
 
@@ -199,18 +241,28 @@ Settings.Page {
             }
         }
 
+        // leaving the popup cancels the setup that is running in it; the popup closes on the
+        // setup's done / failed signal
+        function cancelSetup() {
+            if (dockSetupLoader.item) {
+                dockSetupLoader.item.cancel();
+            } else {
+                dockSetupPopup.close();
+            }
+        }
+
         Components.ButtonNavigation {
             id: dockSetupPopupButtonNavigation
             defaultConfig: {
                 "HOME": {
                     "pressed": function() {
-                        dockSetupPopup.close();
+                        dockSetupPopup.cancelSetup();
                         goHome();
                     }
                 },
                 "BACK": {
                     "pressed": function() {
-                        dockSetupPopup.close();
+                        dockSetupPopup.cancelSetup();
                     }
                 }
             }
@@ -220,20 +272,27 @@ Settings.Page {
     Component {
         id: listItem
 
-        Rectangle {
+        Item {
             id: dockListItem
             width: ListView.view.width
             height: 300
-            color: isCurrentItem && ui.keyNavigationEnabled ? Qt.darker(colors.dark, 1.5) : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: colors.medium
-                width: 1
-            }
 
             property bool isCurrentItem: ListView.isCurrentItem
             property string key: dockId
             property alias identifyAnimation: identifyAnimation
+
+            // the card spans 8 px to width - 8 like every selectable row, its content keeps the 20 px gutter
+            Rectangle {
+                anchors { fill: parent; leftMargin: 8; rightMargin: 8 }
+                color: colors.transparent
+                radius: ui.cornerRadiusSmall
+                border { color: colors.divider; width: 2 }
+            }
+
+            Components.Selectable {
+                anchors { leftMargin: 8; rightMargin: 8 }
+                selected: dockListItem.isCurrentItem && !docksPage.sheetSelected
+            }
 
             Components.HapticMouseArea {
                 anchors.fill: parent
@@ -321,7 +380,7 @@ Settings.Page {
 
             ColumnLayout {
                 id: mainColumnLayout
-                anchors { top: parent.top; topMargin: 30; bottom: parent.bottom; bottomMargin: 30; left: parent.left; leftMargin: 30; right: parent.right; rightMargin: 30 }
+                anchors { top: parent.top; topMargin: 20; bottom: parent.bottom; bottomMargin: 20; left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20 }
                 spacing: 0
 
                 RowLayout {
@@ -334,13 +393,13 @@ Settings.Page {
 
                         width: 30
                         height: width
-                        color: colors.offwhite
+                        color: colors.textPrimary
                         radius: width / 2
 
                         Components.Icon {
                             icon: dockState === DockStates.ERROR ? "uc:xmark" : "uc:check"
                             size: 26
-                            color: colors.black
+                            color: colors.bg
                             anchors.centerIn: parent
                         }
                     }
@@ -351,6 +410,7 @@ Settings.Page {
 
                         text: dockName
                         textFormat: Text.RichText
+                        linkColor: colors.textPrimary
                         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                         elide: Text.ElideRight
                         maximumLineCount: 2
@@ -371,6 +431,7 @@ Settings.Page {
                         case DockStates.ERROR:
                             return qsTr("Error");
                         case DockStates.IDLE:
+                            //: Dock state: connected but doing nothing.
                             return qsTr("Idle");
                         case DockStates.RECONNECTING:
                             return qsTr("Reconnecting");
@@ -379,8 +440,8 @@ Settings.Page {
 
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    color: colors.light
-                    font: fonts.secondaryFont(20)
+                    color: colors.textSecondary
+                    font: fonts.help()
                 }
 
                 Text {
@@ -390,7 +451,7 @@ Settings.Page {
                     elide: Text.ElideRight
                     maximumLineCount: 1
                     color: colors.red
-                    font: fonts.secondaryFont(20)
+                    font: fonts.help()
                     visible: dockState === DockStates.ERROR
                 }
 
@@ -399,11 +460,11 @@ Settings.Page {
                     Layout.fillHeight: true
                 }
 
+                // The Identify / Connect buttons of a list entry stay touch-only: DPAD_MIDDLE opens
+                // the dock details, where both actions are reachable with the keypad.
                 Components.Button {
                     text: qsTr("Identify")
-                    fontSize: 20
-                    height: 50
-                    color: colors.medium
+                    variant: "secondary"
                     visible: dockState === DockStates.ACTIVE || dockState === DockStates.IDLE
                     trigger: function() {
                         DockController.identify(dockId);
@@ -413,9 +474,7 @@ Settings.Page {
 
                 Components.Button {
                     text: qsTr("Connect")
-                    fontSize: 20
-                    height: 50
-                    color: colors.medium
+                    variant: "secondary"
                     visible: dockState === DockStates.ERROR
                     trigger: function() {
                         DockController.connect(dockId);

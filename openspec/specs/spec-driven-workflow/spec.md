@@ -1,0 +1,191 @@
+# spec-driven-workflow Specification
+
+## Purpose
+
+How the project plans and records work: OpenSpec changes, living capability specs, injected project conventions, immutable ADRs and the documentation link check.
+
+## Requirements
+
+### Requirement: Non-trivial changes are planned as OpenSpec changes
+
+The project SHALL plan non-trivial work as OpenSpec changes under `openspec/changes/` using the
+repository-forked `spec-driven-with-adr` schema (`proposal → specs → design → adr → tasks`), and
+SHALL archive a completed change so its delta specs merge into `openspec/specs/`. A trivial fix
+(typo, one-line guard, translator comment) MAY skip the change and go straight to a PR with its
+`CHANGELOG.md` entry.
+
+#### Scenario: A change is proposed and completed
+
+- **WHEN** a new piece of non-trivial work is started
+- **THEN** it is created as a change (`/opsx:propose`), its artifacts are completed, and on
+  completion it is archived — merging its spec deltas into `openspec/specs/` and moving the
+  change folder to `openspec/changes/archive/`
+
+#### Scenario: A trivial fix
+
+- **WHEN** a fix is a one-line change with no behavioural decision
+- **THEN** it is implemented directly with a `CHANGELOG.md` entry and no change folder
+
+### Requirement: Living specs are the behavioural source of truth
+
+`openspec/specs/` SHALL describe the shipped behaviour of the app, one capability per folder. It
+SHALL only change through an archived change; a change that alters shipped behaviour SHALL carry a
+`MODIFIED` (or `REMOVED`) delta for the affected capability. Where a seeded spec and the code
+disagree, the code is what ships and the next change touching the capability SHALL correct the
+spec.
+
+#### Scenario: A behaviour change is reviewed
+
+- **WHEN** a pull request changes what a user or the core observes
+- **THEN** its change folder contains a `MODIFIED` requirement for the capability, reviewed next
+  to the code
+
+#### Scenario: A seeded spec is found inaccurate
+
+- **WHEN** an author finds that a requirement misstates shipped behaviour
+- **THEN** the correction is made as a delta in the change that touches the capability, not by
+  editing `openspec/specs/` directly
+
+### Requirement: Project conventions are injected into every artifact
+
+`openspec/config.yaml` SHALL carry the project context (platform, build, backend, input model,
+conventions) and per-artifact rules, so that every proposal names the affected hardware models and
+core-version dependency, every design opens with a Current State Analysis against a named commit,
+includes a Failure Mode Analysis for a risky surface, states the resource impact and the
+verification target, and every task list includes the file-registration and `CHANGELOG.md`
+checkboxes.
+
+#### Scenario: An agent writes a design
+
+- **WHEN** an author runs the `design` step of a change
+- **THEN** the instructions it receives contain the project context and the CSA / FMA / resource
+  impact / verification-target rules without the author having to recall them
+
+### Requirement: Durable architecture decisions are immutable ADRs
+
+Architecture decisions SHALL be recorded at `docs/adr/NNNN-kebab-title.md` (4-digit, monotonic,
+never reused) and are immutable once accepted. A changed decision SHALL be a new ADR whose
+`Supersedes:` field names the prior one; the prior file is never edited. The `adr` step of every
+change SHALL review the in-force ADRs and record the review in the change's `adr.md`.
+
+#### Scenario: A prior decision is revisited
+
+- **WHEN** an accepted decision needs to change
+- **THEN** a new ADR is added with `Status: accepted, supersedes ADR-NNNN`, the superseded ADR
+  file is left unchanged as history, and the index in `docs/adr/README.md` marks both
+
+#### Scenario: A change introduces no durable decision
+
+- **WHEN** the design of a change contains only tactical choices
+- **THEN** the change's `adr.md` states that the in-force ADRs were reviewed and none was created
+
+### Requirement: Non-functional requirements are decided, not derived
+
+Resource budgets, compatibility policies, verification obligations and similar non-functional
+requirements SHALL be set by the maintainers and recorded in the `platform-constraints`
+capability (and as ADRs where they are policies); an author SHALL NOT invent a number the
+repository does not state, and SHALL raise the gap as an open question instead.
+
+#### Scenario: A design needs an unspecified budget
+
+- **WHEN** a change would need a limit the specs do not state (e.g. an idle CPU budget)
+- **THEN** the design lists it under Open Questions for the maintainer rather than assuming a value
+
+### Requirement: Documentation links are checked
+
+Internal Markdown links and anchors under `docs/`, `openspec/`, `README.md`, `AGENTS.md` and
+`CONTRIBUTING.md` SHALL be verified offline by CI on every pull request that touches Markdown;
+the vendored schema templates and archived changes are excluded.
+
+#### Scenario: A doc is moved
+
+- **WHEN** a pull request renames or moves a Markdown file that other docs link to
+- **THEN** the docs-links workflow fails until the links are retargeted
+
+### Requirement: Requirement descriptions stay within 500 characters
+
+A requirement that a change adds SHALL keep its description, the text between its header and its
+first scenario, within 500 characters: one behaviour per requirement, examples and edge cases in
+scenarios. New behaviour SHALL be added as its own requirement instead of lengthening a modified
+one. A modified requirement keeps its text whole; an existing longer requirement SHALL be split
+only in a change made for that purpose. The `specs` instructions SHALL state this rule.
+
+#### Scenario: An agent writes a spec delta
+
+- **WHEN** an author runs the `specs` step of a change
+- **THEN** the instructions it receives contain the 500-character rule without the author having
+  to recall it
+
+#### Scenario: A long added requirement
+
+- **WHEN** a change adds a requirement whose description is longer than 500 characters
+- **THEN** `openspec validate <change> --strict` fails
+
+#### Scenario: An existing long requirement is split
+
+- **WHEN** a change made for that purpose splits an existing requirement longer than 500 characters
+- **THEN** the modified requirement keeps its header and every scenario, its description states
+  one behaviour with its meaning unchanged, and each behaviour removed from it is an added
+  requirement with its own scenarios
+
+### Requirement: Validation gate
+
+Open changes SHALL pass `openspec validate --changes --strict`. The living specs SHALL pass
+`openspec validate --specs`, without `--strict` until their requirements longer than 500
+characters are split. Once the living specs pass with `--strict`, `openspec validate --all
+--strict` SHALL be the gate again.
+
+#### Scenario: A pull request with a change
+
+- **WHEN** a pull request adds or edits a change under `openspec/changes/`
+- **THEN** `openspec validate --changes --strict` passes before it is merged
+
+#### Scenario: Long living requirements
+
+- **WHEN** the only findings in the living specs are requirements longer than 500 characters
+- **THEN** `openspec validate --specs` passes and the requirements are left for dedicated changes
+
+### Requirement: The workflow schema is kept in step with OpenSpec
+
+The `spec-driven-with-adr` schema under `openspec/schemas/` is a copy and does not receive
+OpenSpec's updates. It SHALL be compared with the built-in `spec-driven` schema when an OpenSpec
+release changes the built-in instructions, templates or validation, and the relevant changes SHALL
+be ported. Local edits to the copy SHALL be limited to the ADR location `docs/adr/`; project rules
+go into `openspec/config.yaml`.
+
+#### Scenario: OpenSpec adds guidance to an instruction
+
+- **WHEN** an OpenSpec release adds guidance to an instruction of the built-in `spec-driven`
+  schema that this project needs
+- **THEN** the pull request adopting it ports the guidance into the matching artifact of the copy,
+  or adds it to `openspec/config.yaml` as a project rule
+
+#### Scenario: The copy is synced again
+
+- **WHEN** the copy is replaced by a newer version of the schema
+- **THEN** the ADR location stays `docs/adr/` and `openspec schema validate spec-driven-with-adr`
+  passes
+
+### Requirement: The OpenSpec CLI version is pinned and watched
+
+Every command in the repository SHALL run the OpenSpec CLI with the same explicit version, never a
+tag such as `latest`. CI SHALL fail a pull request or a push to `main` whose commands name different
+versions. Once a week CI SHALL check whether OpenSpec has released a newer version; that check SHALL
+fail with the steps to adopt the release until the pinned version is changed.
+
+#### Scenario: A command names another version
+
+- **WHEN** a pull request changes one OpenSpec command to another version or to `latest`
+- **THEN** the OpenSpec version check fails, lists every command with the version it names, and
+  gives the command that sets one version everywhere
+
+#### Scenario: OpenSpec releases a newer version
+
+- **WHEN** the npm registry has a newer OpenSpec release than the pinned version
+- **THEN** the weekly check fails, and its job summary lists the steps: read the release notes,
+  bring the workflow schema copy up to date, set the new version, check, open a pull request
+
+#### Scenario: The pinned version is the latest release
+
+- **WHEN** the weekly check runs and the pinned version is the newest release
+- **THEN** it passes

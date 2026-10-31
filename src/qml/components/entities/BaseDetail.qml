@@ -3,16 +3,9 @@
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
-import QtQuick.Layouts 1.15
 
 import Entity.Controller 1.0
 import Haptic 1.0
-
-import Config 1.0
-
-import Wifi 1.0
-import Wifi.SignalStrength 1.0
-import SoftwareUpdate 1.0
 
 import Integration.Controller 1.0
 
@@ -73,6 +66,11 @@ Rectangle {
 
     property string entityId
     property QtObject entityObj
+    // The integration of the entity is not connected. The title shows it in its status row (TitleStatus),
+    // next to the WiFi and battery icons, not on top of them. The integration objects are dropped and
+    // loaded again after a reconnect: null in between.
+    readonly property bool integrationDisconnected: integrationObj ? integrationObj.state != "connected" && integrationObj.state != "" : false
+
     property QtObject integrationObj: QtObject {
         property string state
     }
@@ -80,19 +78,16 @@ Rectangle {
     property bool skipAnimation: false
     property var overrideConfig: ([])
 
+    /**
+      Whether the screen may still send a command. An unavailable entity accepts none, except while
+      the remote is coming back from a wakeup, when every entity carries that state until they have
+      been reloaded - see src/ui/entity/entityCommandPolicy.h for the rule. Read as a binding, from
+      the two properties the rule is made of, so that it follows both of them.
+      */
+    readonly property bool acceptsCommands: entityObj.state != 0 || EntityController.resumePending
+
     property alias iconClose: iconClose
     property alias buttonNavigation: buttonNavigation
-
-    // WiFi warning predicate aligned with StatusBar.qml:252 (the home-screen
-    // reference). Drops the WEAK condition that earlier inherited from the
-    // pre-Mod-3 detail-page implementations — UC3's embedded WiFi reports
-    // WEAK for signals that are subjectively fine, producing a permanently-
-    // visible warning even when the home StatusBar correctly hides it.
-    // Now: detail pages and home screen behave identically (warn only on
-    // disconnect or NONE signal).
-    readonly property bool _wifiWarningActive:
-        !Wifi.isConnected
-        || Wifi.currentNetwork.signalStrength === SignalStrength.NONE
 
     function open(skipAnimation = false) {
         // get the latest entity data from the core
@@ -114,7 +109,6 @@ Rectangle {
 
     Components.ButtonNavigation {
         id: buttonNavigation
-        ignoreInput: entityObj.state == 0
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -141,7 +135,12 @@ Rectangle {
                 }
             }
         }
-        overrideConfig: entityBaseDetailContainer.overrideConfig
+        // An unavailable entity accepts no command. Every key that sends one is declared by the
+        // screen itself, in overrideConfig, so dropping that config while the entity is unavailable
+        // blocks them all - including the BACK / HOME overrides of the media player screens, which
+        // then fall back to the handlers above and always leave the screen. The overlay on top says
+        // why nothing happens, so a refused key needs no notification of its own here.
+        overrideConfig: entityBaseDetailContainer.acceptsCommands ? entityBaseDetailContainer.overrideConfig : ({})
     }
 
     Components.Icon {
@@ -163,183 +162,6 @@ Rectangle {
         }
     }
 
-    RowLayout {
-        id: titleStatusStrip
-        anchors {
-            right: iconClose.left
-            rightMargin: 10
-            verticalCenter: iconClose.verticalCenter
-        }
-        spacing: 5
-        z: 1001
-
-        // 1. Integration loading spinner (ui.isConnecting)
-        Item {
-            id: integrationLoadingIndicator
-
-            Layout.preferredWidth: 40
-            Layout.preferredHeight: 40
-            Layout.alignment: Qt.AlignVCenter
-
-            visible: ui.isConnecting
-
-            property int circleSize: 14
-
-            Rectangle {
-                id: fillCircle
-                width: integrationLoadingIndicator.circleSize; height: integrationLoadingIndicator.circleSize
-                radius: 7
-                color: colors.offwhite
-                x: 0
-                z: 1
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            Rectangle {
-                id: outlineCircle
-                width: integrationLoadingIndicator.circleSize; height: integrationLoadingIndicator.circleSize
-                radius: integrationLoadingIndicator.circleSize/2
-                color: colors.offwhite
-                opacity: 0.3
-                x: 20
-                z: 2
-                anchors.verticalCenter: parent.verticalCenter
-            }
-
-            SequentialAnimation {
-                running: integrationLoadingIndicator.visible
-                loops: Animation.Infinite
-
-                ParallelAnimation {
-                    NumberAnimation { target: fillCircle; properties: "z"; to: 1; duration: 1 }
-                    NumberAnimation { target: outlineCircle; properties: "z"; to: 2; duration: 1 }
-                }
-
-                ParallelAnimation {
-                    NumberAnimation { target: fillCircle; properties: "x"; to: integrationLoadingIndicator.circleSize; easing.type: Easing.OutExpo; duration: 400 }
-                    NumberAnimation { target: outlineCircle; properties: "x"; to: 0; easing.type: Easing.OutExpo; duration: 400 }
-                }
-
-                PauseAnimation { duration: 500 }
-
-                ParallelAnimation {
-                    NumberAnimation { target: fillCircle; properties: "z"; to: 2; duration: 1 }
-                    NumberAnimation { target: outlineCircle; properties: "z"; to: 1; duration: 1 }
-                }
-
-                ParallelAnimation {
-                    NumberAnimation { target: fillCircle; properties: "x"; to: 0; easing.type: Easing.OutExpo; duration: 400 }
-                    NumberAnimation { target: outlineCircle; properties: "x"; to: integrationLoadingIndicator.circleSize; easing.type: Easing.OutExpo; duration: 400 }
-                }
-
-                PauseAnimation { duration: 500 }
-            }
-        }
-
-        // 2. Core-disconnected dot (!ui.coreConnected)
-        Rectangle {
-            Layout.alignment: Qt.AlignVCenter
-
-            width: 12; height: 12
-            radius: 6
-            color: colors.red
-            visible: !ui.coreConnected
-        }
-
-        // 3. Software update indicator
-        Components.Icon {
-            Layout.leftMargin: -10
-            Layout.rightMargin: -10
-
-            icon: "uc:cloud-arrow-down"
-            size: 60
-            color: colors.yellow
-            visible: SoftwareUpdate.updateAvailable
-        }
-
-        // 4. WiFi warning (detail-page wider predicate: NONE || WEAK || disconnected).
-        // v1.4.21: hidden when the always-visible WiFi chip is on — chip carries the full
-        // signal-state info including the disconnected red-X strikethrough, so this warning
-        // becomes redundant. When chip is OFF, original v1.4.0 behavior preserved.
-        Components.Icon {
-            id: iconWifiWarning
-
-            Layout.leftMargin: -10
-            Layout.rightMargin: -10
-
-            icon: "uc:wifi"
-            color: colors.offwhite
-            opacity: 0.5
-            size: 60
-            visible: !Config.showWifiEveryWhere && entityBaseDetailContainer._wifiWarningActive
-
-            Components.Icon {
-                size: 60
-                icon: {
-                    switch (Wifi.currentNetwork.signalStrength) {
-                    case SignalStrength.NONE:
-                        return "";
-                    case SignalStrength.WEAK:
-                        return "uc:wifi-weak";
-                    default:
-                        return "";
-                    }
-                }
-                opacity: icon === "" ? 0 : 1
-                anchors.centerIn: parent
-            }
-
-            Rectangle {
-                width: 30
-                height: 2
-                color: colors.red
-                rotation: -45
-                transformOrigin: Item.Center
-                anchors.centerIn: parent
-                visible: !Wifi.isConnected
-            }
-        }
-
-        // 5. Integration-disconnected (per-entity)
-        Components.Icon {
-            id: iconIntegrationDisconnected
-
-            Layout.preferredWidth: visible ? 40 : 0
-            Layout.preferredHeight: 40
-            Layout.alignment: Qt.AlignVCenter
-
-            icon: "uc:link-slash"
-            color: colors.red
-            size: 40
-            visible: integrationObj.state != "connected" && integrationObj.state != ""
-        }
-
-        // 6. WiFi chip (v1.4.21) — sits just left of the persistent battery anchor.
-        // Replaces the warning icon at section 4 (which is hidden when this chip is on).
-        // Default ON; mirrors StatusBar.qml's always-visible WiFi indicator.
-        Loader {
-            id: wifiChipLoader
-
-            Layout.preferredWidth: (active && item) ? item.implicitWidth : 0
-            Layout.preferredHeight: 40
-            Layout.alignment: Qt.AlignVCenter
-
-            active: Config.showWifiEveryWhere
-            source: "qrc:/components/overlays/WifiStatusChip.qml"
-        }
-
-        // 7. Battery chip (rightmost, fixed anchor)
-        Loader {
-            id: batteryChipLoader
-
-            Layout.preferredWidth: (active && item) ? item.implicitWidth : 0
-            Layout.preferredHeight: 40
-            Layout.alignment: Qt.AlignVCenter
-
-            active: Config.showBatteryEveryWhere
-            source: "qrc:/components/overlays/BatteryStatusChip.qml"
-        }
-    }
 
     Rectangle {
         id: unavailableOverlay

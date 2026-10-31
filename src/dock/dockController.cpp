@@ -285,35 +285,66 @@ void DockController::setDockLedBrightness(const QString &dockId, int brightness)
 }
 
 void DockController::getDocks(int limit, int page) {
+    // a new load replaces one that is still on its way
+    loadDocks(limit, page, ++m_dockLoadGeneration, QSharedPointer<QSet<QString>>::create());
+}
+
+void DockController::loadDocks(int limit, int page, quint64 generation,
+                               const QSharedPointer<QSet<QString>> &loadedDockIds) {
     int id = m_core->getDocks(limit, page);
 
     qCDebug(lcDockController()) << "Get docks, limit:" << limit << "page:" << page;
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respDocks,
-        [=](QList<core::DockConfiguration> docks, int count, int limit, int page) {
-            qCDebug(lcIntegrationController()) << "Docks:" << count << "page:" << page << "limit:" << limit;
+        [=](QList<core::DockConfiguration> docks, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
+            if (generation != m_dockLoadGeneration) {
+                qCDebug(lcDockController()) << "Ignoring stale docks page:" << page;
+                return;
+            }
+            qCDebug(lcDockController()) << "Docks:" << count << "page:" << page << "limit:" << limit;
 
-            if (count > 0) {
-                m_configuredDocks.totalItems = count;
-                if (m_configuredDocks.limit == 0) {
-                    m_configuredDocks.limit = limit;
-                    m_configuredDocks.totalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
-                }
-                m_configuredDocks.lastPageLoaded = page;
+            m_configuredDocks.totalItems = count;
+            m_configuredDocks.limit = limit;
+            m_configuredDocks.totalPages = Util::pageCount(count, limit);
+            m_configuredDocks.lastPageLoaded = page;
 
-                if (docks.size() > 0) {
-                    for (QList<core::DockConfiguration>::iterator i = docks.begin(); i != docks.end(); i++) {
-                        qCDebug(lcDockController()) << i->name << m_configuredDocks.contains(i->id);
+            for (QList<core::DockConfiguration>::iterator i = docks.begin(); i != docks.end(); i++) {
+                loadedDockIds->insert(i->id);
 
-                        if (!m_configuredDocks.contains(i->id)) {
-                            m_configuredDocks.append(new ConfiguredDock(
-                                i->id, i->name, i->customWsUrl, i->active, i->model, i->revision, i->serial, i->connectionType, i->version,
-                                static_cast<ConfiguredDock::State>(i->state), i->learningActive, i->description, i->ledBrightness, this));
-                            qCDebug(lcDockController()) << "Dock created:" << i->name << i->id;
-                        }
+                if (m_configuredDocks.contains(i->id)) {
+                    // The docks are loaded again after every reconnect: a dock that is already known may have
+                    // changed while the connection was down.
+                    onDockChanged(i->id, *i);
+                    if (static_cast<int>(i->state) >= 0) {
+                        m_configuredDocks.updateState(i->id, static_cast<ConfiguredDock::State>(i->state));
                     }
+                } else {
+                    m_configuredDocks.append(
+                        new ConfiguredDock(i->id, i->name, i->customWsUrl, i->active, i->model, i->revision, i->serial,
+                                           i->connectionType, i->version, static_cast<ConfiguredDock::State>(i->state),
+                                           i->learningActive, i->description, i->ledBrightness, this));
+                    qCDebug(lcDockController()) << "Dock created:" << i->name << i->id;
                 }
+            }
+
+            // an empty page means the end was reached, whatever the count says
+            if (page < m_configuredDocks.totalPages && !docks.isEmpty()) {
+                loadDocks(limit, page + 1, generation, loadedDockIds);
+                return;
+            }
+
+            // a dock that was deleted while the connection was down is in no page
+            QStringList missingDockIds;
+            for (int row = 0; row < m_configuredDocks.count(); row++) {
+                const QString dockId = m_configuredDocks.get(row)->getId();
+                if (!loadedDockIds->contains(dockId)) {
+                    missingDockIds.append(dockId);
+                }
+            }
+            for (const QString &dockId : qAsConst(missingDockIds)) {
+                onDockDeleted(dockId);
             }
 
             emit docksLoaded();
@@ -350,6 +381,8 @@ void DockController::startDockSetup(const QString &dockId, const QString &friend
         [=](int code, QString message) {
             // fail
             qCWarning(lcDockController()) << "Error starting dock setup:" << code << message;
+            // like a failed setup creation in setupDock(): the setup screen is waiting behind a loading screen
+            emit setupFinished(false, message);
         });
 }
 

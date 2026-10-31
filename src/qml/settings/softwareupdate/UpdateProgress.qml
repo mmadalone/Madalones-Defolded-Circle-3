@@ -29,8 +29,16 @@ Popup {
 
         function onUpdateFailed(error) {
             console.debug("UpdateProgress: onUpdateFailed received, error:", error);
+            // only an installation shown in this popup can fail here: taking the input for a popup that is not
+            // shown would leave the keys with an invisible screen
+            if (!updateProgress.opened) {
+                return;
+            }
             failMessage.text = error;
             failedScreen.opacity = 1;
+            // the input was blocked for the whole update: the failure screen must be usable again
+            ui.inputController.blockInput(false);
+            Qt.callLater(buttonNavigation.takeControl);
         }
     }
 
@@ -45,6 +53,26 @@ Popup {
                        "successScreen.opacity:", successScreen.opacity);
         failedScreen.opacity = 0;
         ui.inputController.blockInput(false);
+        buttonNavigation.releaseControl();
+    }
+
+    // the failure screen: Back holds the focus (Return activates it), BACK / HOME close as well
+    Components.ButtonNavigation {
+        id: buttonNavigation
+        manageFocus: true
+        initialFocusItem: backButton
+        defaultConfig: {
+            "BACK": {
+                "pressed": function() {
+                    updateProgress.close();
+                }
+            },
+            "HOME": {
+                "pressed": function() {
+                    updateProgress.close();
+                }
+            }
+        }
     }
 
     enter: Transition {
@@ -89,10 +117,10 @@ Popup {
         id: percentage
         width: parent.width - 40
         wrapMode: Text.WordWrap
-        color: colors.light
+        color: colors.textSecondary
         text: qsTr("Installing step %1/%2 %3%").arg(SoftwareUpdate.currentStep).arg(SoftwareUpdate.totalSteps).arg(SoftwareUpdate.updateProgress)
         horizontalAlignment: Text.AlignHCenter
-        font: fonts.secondaryFont(20)
+        font: fonts.help()
         anchors { top: progress.bottom; topMargin: 20; horizontalCenter: parent.horizontalCenter }
     }
 
@@ -103,7 +131,7 @@ Popup {
         color: colors.red
         text: qsTr("Do not turn off the remote during the installation process!")
         horizontalAlignment: Text.AlignHCenter
-        font: fonts.secondaryFont(20)
+        font: fonts.help()
         anchors { bottom: parent.bottom; bottomMargin: 30; horizontalCenter: parent.horizontalCenter }
     }
 
@@ -135,7 +163,8 @@ Popup {
             color: colors.offwhite
             text: qsTr("Software update was successful.%1The remote will reboot now.").arg("\n");
             horizontalAlignment: Text.AlignHCenter
-            font: fonts.secondaryFont(20)
+            font: fonts.prose()
+            lineHeight: fonts.proseLineHeight
             anchors { top: successTitle.bottom; topMargin: 40; horizontalCenter: parent.horizontalCenter }
         }
     }
@@ -169,7 +198,8 @@ Popup {
             color: colors.offwhite
             text: qsTr("There was an error during installing the update.")
             horizontalAlignment: Text.AlignHCenter
-            font: fonts.secondaryFont(20)
+            font: fonts.prose()
+            lineHeight: fonts.proseLineHeight
             anchors { top: failTitle.bottom; topMargin: 40; horizontalCenter: parent.horizontalCenter }
         }
 
@@ -179,11 +209,13 @@ Popup {
             wrapMode: Text.WordWrap
             color: colors.offwhite
             horizontalAlignment: Text.AlignHCenter
-            font: fonts.secondaryFont(20)
+            font: fonts.prose()
+            lineHeight: fonts.proseLineHeight
             anchors { top: failDescriptiopn.bottom; topMargin: 30; horizontalCenter: parent.horizontalCenter }
         }
 
         Components.Button {
+            id: backButton
             width: parent.width - 40
             text: qsTr("Back")
             trigger: function() { updateProgress.close(); }

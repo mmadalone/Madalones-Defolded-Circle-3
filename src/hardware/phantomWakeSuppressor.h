@@ -14,7 +14,7 @@
 #include <QTimer>
 
 #include "../core/core.h"
-#include "power.h"
+#include "../system/power.h"
 
 namespace uc {
 namespace hw {

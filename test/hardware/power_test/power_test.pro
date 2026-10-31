@@ -24,7 +24,7 @@ QMAKE_LFLAGS   += -Wl,--gc-sections
 SOURCES += \
     test_power.cpp \
     ../mock_core_api.cpp \
-    ../../../src/hardware/power.cpp \
+    ../../../src/system/power.cpp \
     ../../../src/ui/notification.cpp \
     ../../../src/util.cpp \
     ../../../src/logging.cpp \
@@ -35,7 +35,7 @@ HEADERS += \
     ../../../src/core/core.h \
     ../../../src/core/enums.h \
     ../../../src/core/structs.h \
-    ../../../src/hardware/power.h \
+    ../../../src/system/power.h \
     ../../../src/ui/notification.h \
     ../../../src/util.h \
     ../../../src/logging.h \

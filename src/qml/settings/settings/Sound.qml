@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Dock chime picker and chime timing.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -15,6 +16,8 @@ import "qrc:/components" as Components
 
 Settings.Page {
     id: soundPageContent
+    scrollTarget: flickable
+    initialFocusItem: soundEffectsSwitch
 
     Flickable {
         id: flickable
@@ -26,17 +29,7 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
-
-        onContentYChanged: {
-            if (contentY < 0) {
-                contentY = 0;
-            }
-            // madalone: cap raised to 1750 to accommodate the new "Chime after screensaver"
-            // toggle + description (was 1600 with just the 12-variant grid).
-            if (contentY > 1750) {
-                contentY = 1750;
-            }
-        }
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
             NumberAnimation { duration: 300 }
@@ -44,25 +37,13 @@ Settings.Page {
 
         ColumnLayout {
             id: content
-            spacing: 20
+            spacing: 0
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
 
             /** SOUND EFFECTS **/
-            RowLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                Text {
-                    id: soundEffectsText
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Sound effects")
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                title: qsTr("Sound effects")
 
                 Components.Switch {
                     id: soundEffectsSwitch
@@ -74,35 +55,14 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.down: soundEffectsVolumeSlider
-                    highlight: activeFocus && ui.keyNavigationEnabled
-
-                    Component.onCompleted: {
-                        soundEffectsSwitch.forceActiveFocus();
-                    }
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** SOUND EFFECTS VOLUME **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height
-
-                Text {
-                    id: soundEffectsVolumeText
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Sound effects volume")
-                    anchors { left: parent.left; top:parent.top }
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                title: qsTr("Sound effects volume")
+                controlBelow: true
 
                 Components.Slider {
                     id: soundEffectsVolumeSlider
@@ -112,7 +72,6 @@ Settings.Page {
                     stepSize: 1
                     value: Config.soundVolume
                     live: true
-                    anchors { top: soundEffectsVolumeText.bottom; topMargin: 10 }
 
                     onUserInteractionEnded: {
                         Config.soundVolume = value;
@@ -121,45 +80,43 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: soundEffectsSwitch
-                    KeyNavigation.down: buttonBacklightSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    KeyNavigation.down: dockChimePicker
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** DOCK CHIME (madalone, v1.4.41 / v1.4.42) **/
+            Components.SettingRow {
+                title: qsTr("Dock chime")
+                help: qsTr("Plays when you place the remote on the dock. Choosing a variant plays it as a preview.")
+                controlBelow: true
 
-            /** DOCK CHIME VARIANT (madalone) **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                Layout.fillWidth: true
-                spacing: 10
+                // 12 chips in 3 columns, explicit x/y math (a GridLayout costs ~30 ms per child on the device).
+                Item {
+                    id: dockChimePicker
+                    width: parent.width
+                    height: 4 * cellHeight + 3 * cellSpacing
 
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Dock chime")
-                    font: fonts.primaryFont(30)
-                }
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Tap a variant to preview and select. The chime plays when you place the remote on the dock.")
-                    font: fonts.primaryFont(22)
-                }
+                    readonly property real cellSpacing: 10
+                    readonly property real cellWidth: (width - 2 * cellSpacing) / 3
+                    readonly property real cellHeight: 60
+                    readonly property int variantCount: 12
 
-                GridLayout {
-                    Layout.fillWidth: true
-                    columns: 3
-                    rowSpacing: 10
-                    columnSpacing: 10
+                    // Config.dockChimeVariant previews the chime when it changes (SoundEffects::setDockChimeVariant)
+                    function step(delta) {
+                        Config.dockChimeVariant = ((Config.dockChimeVariant - 1 + delta + variantCount) % variantCount) + 1;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: soundEffectsVolumeSlider
+                    KeyNavigation.down: dockChimeAfterSwitch
+                    Keys.onLeftPressed: step(-1)
+                    Keys.onRightPressed: step(1)
+
+                    Components.Selectable {
+                        anchors.margins: -6
+                        selected: dockChimePicker.activeFocus
+                    }
 
                     Repeater {
                         model: [
@@ -176,21 +133,27 @@ Settings.Page {
                             { variant: 11, label: qsTr("TOS") },
                             { variant: 12, label: qsTr("TOS Long") }
                         ]
+
                         Rectangle {
-                            Layout.fillWidth: true
-                            Layout.preferredHeight: 50
-                            radius: 8
-                            color: Config.dockChimeVariant === modelData.variant ? colors.offwhite : colors.dark
-                            border { color: colors.medium; width: 1 }
+                            x: (index % 3) * (dockChimePicker.cellWidth + dockChimePicker.cellSpacing)
+                            y: Math.floor(index / 3) * (dockChimePicker.cellHeight + dockChimePicker.cellSpacing)
+                            width: dockChimePicker.cellWidth
+                            height: dockChimePicker.cellHeight
+                            radius: ui.cornerRadiusSmall
+                            readonly property bool chosen: Config.dockChimeVariant === modelData.variant
+                            color: chosen ? colors.textPrimary : colors.surface
+                            border { color: colors.divider; width: 2 }
+
                             Text {
                                 anchors.centerIn: parent
-                                text: modelData.label
-                                color: Config.dockChimeVariant === modelData.variant ? colors.black : colors.offwhite
-                                font: fonts.primaryFont(22)
-                                elide: Text.ElideRight
                                 width: parent.width - 12
+                                text: modelData.label
+                                color: parent.chosen ? colors.bg : colors.textPrimary
+                                font: fonts.caption()
+                                elide: Text.ElideRight
                                 horizontalAlignment: Text.AlignHCenter
                             }
+
                             Components.HapticMouseArea {
                                 anchors.fill: parent
                                 onClicked: Config.dockChimeVariant = modelData.variant
@@ -200,68 +163,30 @@ Settings.Page {
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** DOCK CHIME TIMING (madalone, v1.4.43) **/
+            Components.SettingRow {
+                title: qsTr("Chime after screensaver")
+                help: qsTr("On: screensaver appears immediately, chime plays once it's visible (best for long chimes). Off: chime plays first, screensaver appears after the chime ends.")
 
-            /** DOCK CHIME TIMING (madalone v1.4.43) **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                Layout.fillWidth: true
-                spacing: 10
-
-                RowLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Chime after screensaver")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: dockChimeAfterSwitch
+                    icon: "uc:check"
+                    checked: Config.dockChimeAfterScreensaver
+                    trigger: function() {
+                        Config.dockChimeAfterScreensaver = !Config.dockChimeAfterScreensaver;
                     }
-                    Components.Switch {
-                        id: dockChimeAfterSwitch
-                        icon: "uc:check"
-                        checked: Config.dockChimeAfterScreensaver
-                        trigger: function() { Config.dockChimeAfterScreensaver = !Config.dockChimeAfterScreensaver; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                    }
-                }
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("On: screensaver appears immediately, chime plays once it's visible (best for long chimes). Off: chime plays first, screensaver appears after the chime ends.")
-                    font: fonts.primaryFont(22)
-                }
-            }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: dockChimePicker
+                    KeyNavigation.down: buttonBacklightSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
+                }
             }
 
             /** HAPTIC FEEDBACK **/
-            RowLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
-
-                Text {
-                    id: hapticFeedbackText
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Haptic feedback")
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                showDivider: false
+                title: qsTr("Haptic feedback")
 
                 Components.Switch {
                     id: buttonBacklightSwitch
@@ -272,8 +197,8 @@ Settings.Page {
                     }
 
                     /** KEYBOARD NAVIGATION **/
-                    KeyNavigation.up: soundEffectsVolumeSlider
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    KeyNavigation.up: dockChimeAfterSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
         }

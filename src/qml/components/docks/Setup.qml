@@ -15,23 +15,37 @@ ColumnLayout {
 
     signal done()
     signal failed()
+    signal home()
 
     spacing: 0
 
-    Item {
+    // called by the hosting popup once it is open (and once the loader is ready): a step that takes
+    // the input while the popup is still invisible is dropped by the input controller
+    function activateCurrentStep() {
+        const step = dockSetupSwipeView.currentItem;
+        if (step && typeof step.activate === "function") {
+            Qt.callLater(step.activate);
+        }
+    }
+
+    // BACK on the hosting popup: cancel the running setup instead of only closing the popup
+    function cancel() {
+        if (dockSetupSwipeView.currentIndex === 0) {
+            configureStep.cancelSetup();
+        } else if (finishStep.success) {
+            finishStep.done();
+        } else {
+            finishStep.failed();
+        }
+    }
+
+    // the close target does what BACK does: cancel the running setup
+    Components.TitleBar {
         id: setupTitle
-
-        Layout.fillWidth: true
-        Layout.preferredHeight: 60
-
-        Text {
-            text: qsTr("Dock setup")
-            width: parent.width - 20
-            elide: Text.ElideRight
-            color: colors.offwhite
-            verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(24)
+        action: "close"
+        text: qsTr("Dock setup")
+        goBack: function() {
+            dockSetupContainer.cancel();
         }
     }
 
@@ -49,20 +63,19 @@ ColumnLayout {
                 loading.stop();
                 dockSetupContainer.done();
             }
+            onHome: dockSetupContainer.home()
         }
 
+        // Done / Try again close the hosting popup, which unloads this setup at the end of its
+        // fade-out. The swipe view is not reset to the configure step here: that re-activated the
+        // step behind the fading popup, which claimed its name field and left the on-screen
+        // keyboard open over the page below.
         Finish {
             id: finishStep
 
-            onDone: {
-                dockSetupContainer.done();
-                dockSetupSwipeView.currentIndex = 0;
-            }
-
-            onFailed: {
-                dockSetupContainer.failed();
-                dockSetupSwipeView.currentIndex = 0;
-            }
+            onDone: dockSetupContainer.done()
+            onFailed: dockSetupContainer.failed()
+            onHome: dockSetupContainer.home()
         }
     }
 

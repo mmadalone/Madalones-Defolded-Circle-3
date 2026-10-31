@@ -1,15 +1,17 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "inputController.h"
 
-#include <QCoreApplication>
-
-#include "../hardware/battery.h"
 #include "../logging.h"
 
 namespace uc {
 namespace ui {
+
+// auto-repeat of a held device key as set by the firmware: first repeat after the delay, then every period
+static constexpr int SIMULATOR_REPEAT_DELAY_MS = 600;
+static constexpr int SIMULATOR_REPEAT_PERIOD_MS = 150;
 
 static bool isActuallyVisible(QQuickItem* it) {
     if (!it) return false;
@@ -24,21 +26,30 @@ static bool isActuallyVisible(QQuickItem* it) {
     return true;
 }
 
-InputController *InputController::s_instance = nullptr;
+InputController* InputController::s_instance = nullptr;
 
 InputController::InputController(hw::HardwareModel::Enum model) : m_model(model) {
     Q_ASSERT(s_instance == nullptr);
     s_instance = this;
 
     m_source = nullptr;
+    m_globalPowerHoldTimer.setInterval(3000);
+    m_globalPowerHoldTimer.setSingleShot(true);
+    connect(&m_globalPowerHoldTimer, &QTimer::timeout, this, [this]() {
+        if (!m_globalPowerPressed || m_globalPowerLongPressTriggered) {
+            return;
+        }
 
-    // DEV-only: install an application-level event filter so F12 (fake-dock
-    // shortcut) is caught BEFORE QtQuick Controls Popups can swallow it with
-    // their focus scopes. Regular key handling still goes through the
-    // per-window filter installed by setSource().
-    if (m_model == hw::HardwareModel::DEV) {
-        qApp->installEventFilter(this);
-    }
+        m_globalPowerLongPressTriggered = true;
+        emit globalPowerLongPressed();
+    });
+
+    m_simulatorRepeatTimer.setSingleShot(true);
+    connect(&m_simulatorRepeatTimer, &QTimer::timeout, this, [this]() {
+        // restart first: a handler of the press may release the key and stop the timer
+        m_simulatorRepeatTimer.start(SIMULATOR_REPEAT_PERIOD_MS);
+        sendKeyEvent(QEvent::Type::KeyPress, m_simulatorKey, true);
+    });
 }
 
 InputController::~InputController() {
@@ -47,93 +58,158 @@ InputController::~InputController() {
     if (m_source != nullptr) {
         m_source->removeEventFilter(this);
     }
-    if (m_model == hw::HardwareModel::DEV) {
-        qApp->removeEventFilter(this);
-    }
 }
 
-void InputController::setSource(QObject *source) {
-    source->installEventFilter(this);
+void InputController::setSource(QObject* source) {
+    if (m_source == source) {
+        return;
+    }
+
+    if (m_source != nullptr) {
+        m_source->removeEventFilter(this);
+    }
+
     m_source = source;
+
+    if (m_source != nullptr) {
+        m_source->installEventFilter(this);
+    }
+
     qCDebug(lcInput()) << "Installed event filter for" << m_source;
 }
 
 void InputController::emitKey(Qt::Key key, bool release) {
-    QKeyEvent keyPressEvent = QKeyEvent(release ? QEvent::Type::KeyRelease : QEvent::Type::KeyPress, key,
-                                        Qt::NoModifier, QKeySequence(key).toString());
-    QCoreApplication::sendEvent(m_source, &keyPressEvent);
+    sendKeyEvent(release ? QEvent::Type::KeyRelease : QEvent::Type::KeyPress, key, false);
+}
+
+// Sends the events of a held device key: one press, auto-repeat presses without releases in between, and one plain
+// release in releaseSimulatorKey().
+void InputController::pressSimulatorKey(Qt::Key key) {
+    // one mouse holds one area at a time, but a key that is still held is released first
+    if (m_simulatorKey != Qt::Key_unknown && m_simulatorKey != key) {
+        releaseSimulatorKey(m_simulatorKey);
+    }
+
+    // the key is held before the press is sent: a handler of the press may release it again
+    m_simulatorKey = key;
+    m_simulatorRepeatTimer.start(SIMULATOR_REPEAT_DELAY_MS);
+    sendKeyEvent(QEvent::Type::KeyPress, key, false);
+}
+
+void InputController::releaseSimulatorKey(Qt::Key key) {
+    if (m_simulatorKey == Qt::Key_unknown || key != m_simulatorKey) {
+        return;
+    }
+
+    m_simulatorRepeatTimer.stop();
+    m_simulatorKey = Qt::Key_unknown;
+    sendKeyEvent(QEvent::Type::KeyRelease, key, false);
+}
+
+void InputController::sendKeyEvent(QEvent::Type type, Qt::Key key, bool autoRepeat) {
+    QKeyEvent keyEvent = QKeyEvent(type, key, Qt::NoModifier, QKeySequence(key).toString(), autoRepeat);
+    QCoreApplication::sendEvent(m_source, &keyEvent);
 }
 
 void InputController::blockInput(bool value) {
     m_blockInput = value;
+
+    if (m_blockInput) {
+        m_globalPowerHoldTimer.stop();
+        m_globalPowerPressed = false;
+        m_globalPowerLongPressTriggered = false;
+    }
 }
 
-void InputController::setBaseOwner(QObject *obj) {
-    QMutexLocker lock(&m_mutex);
+void InputController::setBaseOwner(QObject* obj) {
+    bool changed = false;
+    {
+        QMutexLocker lock(&m_mutex);
 
-    auto* item = qobject_cast<QQuickItem*>(obj);
-    if (!item) return;
+        auto* item = qobject_cast<QQuickItem*>(obj);
+        if (!item) return;
 
-    m_baseOwner = obj;
-    updateActive();
+        m_baseOwner = obj;
+        changed = updateActive();
+    }
+    notifyActiveChanged(changed);
 }
 
 void InputController::takeControl(QObject* obj) {
-    QMutexLocker lock(&m_mutex);
+    bool changed = false;
+    {
+        QMutexLocker lock(&m_mutex);
 
-    if (!obj) return;
+        if (!obj) return;
 
-            // ensure it's a QQuickItem (or at least something that can be used as a scope)
-    auto* item = qobject_cast<QQuickItem*>(obj);
-    if (!item) return;
+        // ensure it's a QQuickItem (or at least something that can be used as a scope)
+        auto* item = qobject_cast<QQuickItem*>(obj);
+        if (!item) return;
 
-            // remove if already in stack, then push to top
-    for (int i = m_stack.size() - 1; i >= 0; --i) {
-        if (m_stack[i] == obj) {
-            m_stack.removeAt(i);
-            break;
-            // Invariant: each object appears at most once in the stack
-        }
-    }
-    m_stack.push_back(obj);
-
-            // auto-clean when destroyed
-    connect(obj, &QObject::destroyed, this, [this](QObject* dead){
-            QMutexLocker lock(&m_mutex);
-            for (int i = m_stack.size() - 1; i >= 0; --i) {
-                if (m_stack[i].data() == dead)
-                    m_stack.removeAt(i);
-            }
-            updateActive();
-        }, Qt::UniqueConnection);
-
-    updateActive();
-}
-
-void InputController::releaseControl(QObject* obj) {
-    QMutexLocker lock(&m_mutex);
-
-    if (obj) {
-        // remove that specific scope (e.g. notification closing)
+        // remove if already in stack, then push to top
         for (int i = m_stack.size() - 1; i >= 0; --i) {
             if (m_stack[i] == obj) {
                 m_stack.removeAt(i);
                 break;
+                // Invariant: each object appears at most once in the stack
             }
         }
-    } else {
-        // "release myself": pop top
-        if (!m_stack.isEmpty())
-            m_stack.removeLast();
-    }
+        m_stack.push_back(obj);
 
-    updateActive();
+        // auto-clean when destroyed.
+        // Qt::UniqueConnection only works when connecting to a member function: with a lambda every
+        // takeControl() call for the same object would add yet another connection, and scopes like the
+        // main container are never destroyed, so those connections piled up for the whole runtime.
+        connect(obj, &QObject::destroyed, this, &InputController::onOwnerDestroyed, Qt::UniqueConnection);
+
+        changed = updateActive();
+    }
+    notifyActiveChanged(changed);
 }
 
-QObject *InputController::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
+void InputController::onOwnerDestroyed(QObject* owner) {
+    bool changed = false;
+    {
+        QMutexLocker lock(&m_mutex);
+
+        for (int i = m_stack.size() - 1; i >= 0; --i) {
+            if (m_stack[i].data() == owner) {
+                m_stack.removeAt(i);
+            }
+        }
+
+        changed = updateActive();
+    }
+    notifyActiveChanged(changed);
+}
+
+void InputController::releaseControl(QObject* obj) {
+    bool changed = false;
+    {
+        QMutexLocker lock(&m_mutex);
+
+        if (obj) {
+            // remove that specific scope (e.g. notification closing)
+            for (int i = m_stack.size() - 1; i >= 0; --i) {
+                if (m_stack[i] == obj) {
+                    m_stack.removeAt(i);
+                    break;
+                }
+            }
+        } else {
+            // "release myself": pop top
+            if (!m_stack.isEmpty()) m_stack.removeLast();
+        }
+
+        changed = updateActive();
+    }
+    notifyActiveChanged(changed);
+}
+
+QObject* InputController::qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine) {
     Q_UNUSED(scriptEngine);
 
-    QObject *obj = s_instance;
+    QObject* obj = s_instance;
     engine->setObjectOwnership(obj, QQmlEngine::CppOwnership);
     return obj;
 }
@@ -155,62 +231,107 @@ void InputController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode) 
     }
 }
 
-bool InputController::eventFilter(QObject *obj, QEvent *event) {
-    QKeyEvent *keyEvent;
+bool InputController::eventFilter(QObject* obj, QEvent* event) {
+    QKeyEvent* keyEvent;
 
-    // DEV-only: F12 fakes a dock/undock event by toggling Battery.powerSupply.
-    // This branch runs for events from the application-level filter (installed
-    // in the constructor when model == DEV), which fires BEFORE QtQuick Controls
-    // Popups can swallow the event with their focus scopes. Consumed unconditionally.
-    if (m_model == hw::HardwareModel::DEV && event->type() == QEvent::KeyPress) {
-        auto *ke = static_cast<QKeyEvent *>(event);
-        if (ke->key() == Qt::Key_F12) {
-            auto *battery = hw::Battery::instance();
-            if (battery) {
-                const bool next = !battery->getPowerSupply();
-                battery->setPowerSupply(next);
-                qCInfo(lcInput()) << "[DEV] Faked dock event — Battery.powerSupply =" << next;
-            }
-            return true;  // consume — stop all further propagation
+    if (m_blockInput) {
+        switch (event->type()) {
+            case QEvent::KeyPress:
+            case QEvent::KeyRelease:
+            case QEvent::MouseButtonPress:
+            case QEvent::MouseButtonRelease:
+            case QEvent::TouchBegin:
+            case QEvent::TouchUpdate:
+            case QEvent::TouchEnd:
+            case QEvent::TouchCancel:
+                event->accept();
+                return true;
+            default:
+                break;
         }
     }
 
-    // Everything below is the per-window key handling. The app-level filter
-    // hook (DEV only) should NOT run this logic — the per-window filter
-    // installed by setSource() will handle it when the event reaches the
-    // application window. Gating on obj == m_source avoids double-emit.
-    if (obj != m_source) {
-        return false;
-    }
-
-    if (m_blockInput) {
-        return false;
+    // desktop simulator: Escape of the computer keyboard is the BACK button on both input paths
+    if (m_model == hw::HardwareModel::DEV &&
+        (event->type() == QEvent::ShortcutOverride || event->type() == QEvent::KeyPress ||
+         event->type() == QEvent::KeyRelease) &&
+        static_cast<QKeyEvent*>(event)->key() == Qt::Key_Escape) {
+        if (event->type() != QEvent::ShortcutOverride) {
+            sendKeyEvent(event->type(), Qt::Key_Exit, static_cast<QKeyEvent*>(event)->isAutoRepeat());
+        }
+        // an accepted ShortcutOverride keeps the Escape shortcut of a popup from firing
+        event->accept();
+        return true;
     }
 
     switch (event->type()) {
         case QEvent::KeyPress: {
-            keyEvent = static_cast<QKeyEvent *>(event);
-            int key = keyEvent->key();
+            keyEvent = static_cast<QKeyEvent*>(event);
+            int           key = keyEvent->key();
+            const QString mappedKey = m_keyCodeMapping.value(key);
 
-            m_keyOwner[key] = m_activeItem;
+            if (mappedKey.isEmpty()) {
+                break;
+            }
 
-            emit keyPressed(m_keyCodeMapping.value(key));
-            qCInfo(lcInput()) << "Key pressed:" << m_keyCodeMapping.value(key) << m_activeItem;
+            cancelDeferredRelease(key);
+            const bool activated = !m_keypadActive;
+            setKeypadActive(true);
+
+            if (key == Qt::Key_PowerOff && !keyEvent->isAutoRepeat() && !m_globalPowerPressed) {
+                m_globalPowerPressed = true;
+                m_globalPowerLongPressTriggered = false;
+                m_globalPowerHoldTimer.start();
+            }
+
+            QPointer<QObject> owner;
+
+            if (keyEvent->isAutoRepeat()) {
+                owner = m_keyOwner.value(key);
+                if (owner.isNull()) {
+                    owner = m_activeItem.isNull() ? m_baseOwner : m_activeItem;
+                }
+            } else {
+                owner = m_activeItem.isNull() ? m_baseOwner : m_activeItem;
+                m_keyOwner[key] = owner;
+            }
+
+            m_pressActivatedKeypad = activated;
+            emit keyPressed(mappedKey);
+            emit keyPressedFor(owner.data(), mappedKey);
+            m_pressActivatedKeypad = false;
+            qCDebug(lcInput()) << "Key pressed:" << mappedKey << owner.data();
             break;
         }
-        // Release events are always delivered to the component that pressed the key,
-        // even if focus has shifted. Uses QPointer for safe nulling if component destroyed.
         case QEvent::KeyRelease: {
-            keyEvent = static_cast<QKeyEvent *>(event);
-            int key = keyEvent->key();
+            keyEvent = static_cast<QKeyEvent*>(event);
+            int           key = keyEvent->key();
+            const QString mappedKey = m_keyCodeMapping.value(key);
 
-            QPointer<QObject> owner = m_keyOwner.take(key);
-            QPointer<QObject> saved = m_activeItem;
-            m_activeItem = owner;
-            emit keyReleased(m_keyCodeMapping.value(key));
-            m_activeItem = saved;
+            if (mappedKey.isEmpty()) {
+                break;
+            }
 
-            qCInfo(lcInput()) << "Key released:" << m_keyCodeMapping.value(key) << m_activeItem;
+            if (keyEvent->isAutoRepeat()) {
+                // An auto-repeat flagged release is either a synthetic mid-hold release
+                // (followed by another press within the repeat period) or the terminal
+                // release of a held key. Defer it: a follow-up press cancels the timer,
+                // otherwise the release is delivered so stop handlers still fire.
+                QTimer* timer = m_deferredRelease.value(key, nullptr);
+                if (!timer) {
+                    timer = new QTimer(this);
+                    timer->setSingleShot(true);
+                    timer->setInterval(150);
+                    connect(timer, &QTimer::timeout, this,
+                            [this, key] { emitKeyRelease(key, m_keyCodeMapping.value(key)); });
+                    m_deferredRelease.insert(key, timer);
+                }
+                timer->start();
+                break;
+            }
+
+            cancelDeferredRelease(key);
+            emitKeyRelease(key, mappedKey);
             break;
         }
         case QEvent::MouseButtonPress:
@@ -223,9 +344,11 @@ bool InputController::eventFilter(QObject *obj, QEvent *event) {
                 event->ignore();
                 return true;
             }
-            // Signal touch activity for idle timer reset
-            if (event->type() == QEvent::TouchBegin || event->type() == QEvent::MouseButtonPress)
-                emit touchDetected();
+
+            if (event->type() == QEvent::MouseButtonPress || event->type() == QEvent::TouchBegin) {
+                setKeypadActive(false);
+                emit touchDetected();  // madalone: idle-screensaver timer reset + Mod 6 grace cancel
+            }
             break;
         }
         default:  // do nothing
@@ -235,30 +358,70 @@ bool InputController::eventFilter(QObject *obj, QEvent *event) {
     return QQuickItem::eventFilter(obj, event);
 }
 
+void InputController::emitKeyRelease(int key, const QString& mappedKey) {
+    if (key == Qt::Key_PowerOff) {
+        m_globalPowerHoldTimer.stop();
+        m_globalPowerPressed = false;
+        m_globalPowerLongPressTriggered = false;
+    }
+
+    QPointer<QObject> owner = m_keyOwner.take(key);
+    if (owner.isNull()) {
+        owner = m_activeItem.isNull() ? m_baseOwner : m_activeItem;
+    }
+
+    emit keyReleased(mappedKey);
+    emit keyReleasedFor(owner.data(), mappedKey);
+    qCDebug(lcInput()) << "Key released:" << mappedKey << owner.data();
+}
+
+void InputController::setKeypadActive(bool active) {
+    if (m_keypadActive == active) {
+        return;
+    }
+
+    m_keypadActive = active;
+    emit keypadActiveChanged();
+}
+
+void InputController::cancelDeferredRelease(int key) {
+    QTimer* timer = m_deferredRelease.value(key, nullptr);
+    if (timer) {
+        timer->stop();
+    }
+}
+
 void InputController::cleanupStack() {
     // remove null/dead or not-visible items from the top until we find a valid one
     // (or clean all invalid entries)
     for (int i = m_stack.size() - 1; i >= 0; --i) {
         auto* item = qobject_cast<QQuickItem*>(m_stack[i].data());
-        if (!item || !isActuallyVisible(item))
-            m_stack.removeAt(i);
+        if (!item || !isActuallyVisible(item)) m_stack.removeAt(i);
     }
 }
 
-void InputController::updateActive() {
+// Called with m_mutex held. Only records the new owner; the change is announced by
+// notifyActiveChanged() once the lock is released, because a QML handler of activeItemChanged may
+// well call takeControl() / releaseControl() again - with the lock still held that deadlocked the
+// ui thread (help overlay taking the input back after the main container).
+bool InputController::updateActive() {
     cleanupStack();
 
     QObject* newActive = m_stack.isEmpty() ? nullptr : m_stack.last().data();
 
-    if (!newActive)
-        newActive = m_baseOwner.data();
+    if (!newActive) newActive = m_baseOwner.data();
 
-    if (newActive == m_activeItem.data())
-        return;
+    if (newActive == m_activeItem.data()) return false;
 
     m_activeItem = newActive;
-    emit activeItemChanged();
+    return true;
+}
+
+void InputController::notifyActiveChanged(bool changed) {
+    if (!changed) return;
+
     qCInfo(lcInput()) << "ACTIVE CONTROL ->" << m_activeItem.data();
+    emit activeItemChanged();
 }
 
 }  // namespace ui

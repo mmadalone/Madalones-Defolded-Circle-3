@@ -25,15 +25,7 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
-
-        onContentYChanged: {
-            if (contentY < 0) {
-                contentY = 0;
-            }
-            if (contentY > 1100) {
-                contentY = 1100;
-            }
-        }
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
             NumberAnimation { duration: 300 }
@@ -47,7 +39,8 @@ Settings.Page {
 
             Item {
                 Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
+                Layout.topMargin: 20
+                width: parent.width - 40
                 height: childrenRect.height
 
 
@@ -55,23 +48,37 @@ Settings.Page {
                     id: descriptionText
                     width: parent.width
                     wrapMode: Text.WordWrap
-                    color: colors.light
+                    color: colors.textPrimary
                     text: qsTr("Resetting will delete all settings, configuration and any information saved on the remote. Data cannot be recovered. Continue?")
-                    font: fonts.secondaryFont(24)
+                    font: fonts.prose()
+                    lineHeight: fonts.proseLineHeight
                 }
 
                 Components.Button {
                     id: eraseButton
                     width: parent.width
                     anchors { top: descriptionText.bottom; topMargin: 30 }
-                    color: colors.red
+                    variant: "destructive"
                     text: qsTr("Erase everything")
+                    // the confirmation is only offered once the reset token is there: confirming without
+                    // one would send an empty token to the core and the reset would never start
                     trigger: function() {
                         ui.getFactoryResetToken();
-                        confirmationPopup.open();
                     }
                     // keypad control is not enabled for earese button to avoid accidental presses
                 }
+            }
+        }
+    }
+
+    Connections {
+        target: ui
+        ignoreUnknownSignals: true
+
+        // the reset cannot be started without a token, the controller reports the failure to the user
+        function onFactoryResetTokenReceived(success) {
+            if (success) {
+                confirmationPopup.open();
             }
         }
     }
@@ -119,17 +126,17 @@ Settings.Page {
         }
 
         background: Rectangle {
-            color: colors.red
+            color: colors.bg
         }
 
         contentItem: Item {
             Text {
                 id: title
                 wrapMode: Text.WordWrap
-                color: colors.offwhite
+                color: colors.red
                 //: Factory reset, after this step, everything is deleted
                 text: qsTr("Point of\nno return")
-                anchors { left: parent.left; leftMargin: 10; right: parent.right; rightMargin: 10; top: parent.top; topMargin: 10 }
+                anchors { left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20; top: parent.top; topMargin: 20 }
                 font: fonts.primaryFont(60)
                 lineHeight: 0.8
             }
@@ -137,18 +144,17 @@ Settings.Page {
             Text {
                 id: description
                 wrapMode: Text.WordWrap
-                color: colors.offwhite
+                color: colors.textPrimary
                 text: qsTr("Confirming factory reset will erase all configuration and data. Data cannot be recovered.")
-                anchors { left: parent.left; leftMargin: 10; right: parent.right; rightMargin: 10; top: title.bottom; topMargin: 20 }
-                font: fonts.secondaryFont(24)
-                lineHeight: 0.8
+                anchors { left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20; top: title.bottom; topMargin: 20 }
+                font: fonts.prose()
+                lineHeight: fonts.proseLineHeight
             }
 
             Components.Button {
                 text: qsTr("Confirm")
-                color: colors.offwhite
-                textColor: colors.black
-                width: parent.width - 20
+                variant: "destructive"
+                width: parent.width - 40
                 anchors { horizontalCenter: parent.horizontalCenter; top: description.bottom; topMargin: 40 }
                 trigger: function() {
                     ui.factoryReset();
@@ -157,8 +163,9 @@ Settings.Page {
 
             Components.Button {
                 text: qsTr("Cancel")
-                width: parent.width - 20
-                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 10 }
+                variant: "secondary"
+                width: parent.width - 40
+                anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom; bottomMargin: 20 }
                 trigger: function() {
                     confirmationPopup.close();
                 }

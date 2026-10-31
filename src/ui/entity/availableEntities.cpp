@@ -3,6 +3,7 @@
 #include "availableEntities.h"
 
 #include "../../logging.h"
+#include "../../util.h"
 #include "entityController.h"
 
 namespace uc {
@@ -20,7 +21,10 @@ void AvailableEntities::init(const QString &integrationId) {
     if (!integrationId.isEmpty()) {
         m_filter.integrationId = integrationId;
     }
-    loadFromCore();
+
+    // opening the list is the moment a fresh list is wanted: let the core fetch the entities from the
+    // integration again. Every other load reuses what the core already has.
+    loadFromCore(DEFAULT_LIMIT, 1, true);
 }
 
 void AvailableEntities::search(const QString &searchString) {
@@ -81,12 +85,22 @@ void AvailableEntities::loadMore() {
 }
 
 void AvailableEntities::loadFromCore(int limit, int page) {
-    int id = m_core->getAvailableEntities(limit, page, true, m_filter);
+    loadFromCore(limit, page, false);
+}
+
+void AvailableEntities::loadFromCore(int limit, int page, bool forceReload) {
+    int id = m_core->getAvailableEntities(limit, page, forceReload, m_filter);
+    setActiveRequest(id);
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respAvailableEntities,
-        [=](QList<core::Entity> entities, int count, int limit, int page) {
+        [=](QList<core::Entity> entities, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
             // success
+            if (isStaleResponse(id)) {
+                return;
+            }
+
             qCDebug(lcEntities()) << "Available entities:" << count << "page:" << page << "limit:" << limit;
 
             setCount(count);
@@ -95,7 +109,7 @@ void AvailableEntities::loadFromCore(int limit, int page) {
                 m_totalItems = count;
                 if (m_limit == 0) {
                     m_limit = limit;
-                    m_totalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
+                    m_totalPages = Util::pageCount(count, limit);
                 }
                 m_lastPageLoaded = page;
 
@@ -117,6 +131,10 @@ void AvailableEntities::loadFromCore(int limit, int page) {
         },
         [=](int code, QString message) {
             // fail
+            if (isStaleResponse(id)) {
+                return;
+            }
+
             qCWarning(lcEntities()) << "Cannot get available entities" << code << message;
         });
 }

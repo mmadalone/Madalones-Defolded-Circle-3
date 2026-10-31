@@ -11,6 +11,10 @@
  - width
  - placeHolderText
  - onAccepted
+ - enterKeyAction: what the on-screen keyboard's enter key does, e.g. EnterKeyAction.Search
+ - enterKeyLabel: the text on that key, e.g. qsTr("Search"). Required, the key is blank without it
+ - keepFocusWhileKeyboardOpen: keep the input focused as long as the keyboard is up, so a live
+   search that rebuilds the result list underneath cannot dismiss the keyboard
 
  ********************************************************************
  FUNCTIONS:
@@ -19,10 +23,15 @@
  Calling this function automatically triggers the error animation.
 
  showError function display the error message
+
+ focusInput function focuses the input and brings up the keyboard
+
+ clear function empties the input and restores the placeholder and the search icon
 **/
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
+import QtQuick.VirtualKeyboard 2.3
 
 import Haptic 1.0
 
@@ -44,8 +53,14 @@ Rectangle {
     }
 
     property alias inputField: inputField
-    property string errorMsg: "Input field is empty"
+    //: Error under a text field that has to be filled in
+    property string errorMsg: qsTr("Input field is empty")
     property string placeholderText
+    property int enterKeyAction: EnterKeyAction.None
+    // The keyboard's enter key only shows a text when a label is set: its icons come from image files
+    // the keyboard style cannot load. Without a label the key stays blank.
+    property string enterKeyLabel: ""
+    property bool keepFocusWhileKeyboardOpen: true
 
     function isEmpty() {
         if (inputField.text == "") {
@@ -73,9 +88,24 @@ Rectangle {
         errorResetTimer.start();
     }
 
-    function focus() {
+    function focusInput() {
         inputField.focus = true;
         inputField.forceActiveFocus();
+        keyboard.show();
+    }
+
+    /**
+      Resets the field to its empty state. Clearing the text alone is not enough: the placeholder and the
+      search icon are hidden as soon as the input is focused and only come back when it loses the focus
+      while being empty, so a field cleared from the outside would stay blank without its hint.
+      */
+    function clear() {
+        inputField.clear();
+
+        if (!inputField.focus) {
+            inputField.placeholderText = "   " + inputFieldContainer.placeholderText;
+            searchIcon.visible = true;
+        }
     }
 
     Connections {
@@ -84,6 +114,40 @@ Rectangle {
         function onClosed() {
             inputField.focus = false;
         }
+    }
+
+    /**
+      Declared as Connections instead of an inline onFocusChanged handler on the TextField: call sites
+      assign inputField.onFocusChanged from the outside, which replaces an inline handler on the same
+      object and would silently drop everything below.
+      */
+    Connections {
+        target: inputField
+
+        function onFocusChanged() {
+            if (inputField.focus) {
+                searchIcon.visible = false;
+                inputField.placeholderText = "";
+                return;
+            }
+
+            // The keyboard is still up, so the focus was taken away by something rebuilding underneath
+            // the input, not by the user. Take it back, otherwise the keyboard closes with it.
+            if (inputFieldContainer.keepFocusWhileKeyboardOpen && keyboard.active) {
+                inputField.forceActiveFocus();
+                return;
+            }
+
+            if (inputField.text.length === 0) {
+                searchIcon.visible = true;
+                inputField.placeholderText = "   " + inputFieldContainer.placeholderText;
+            }
+        }
+    }
+
+    Components.Selectable {
+        selected: inputField.activeFocus
+        radius: inputFieldContainer.radius
     }
 
     TextField {
@@ -97,16 +161,12 @@ Rectangle {
 
         placeholderText: "   " + inputFieldContainer.placeholderText
 
+        EnterKeyAction.actionId: inputFieldContainer.enterKeyAction
+        EnterKeyAction.label: inputFieldContainer.enterKeyLabel
+
         background: Rectangle {
             color: colors.transparent
             border.width: 0
-        }
-
-        onFocusChanged: {
-            if (inputField.focus) {
-                searchIcon.visible = false;
-                inputField.placeholderText = "";
-            }
         }
     }
 
@@ -136,9 +196,9 @@ Rectangle {
         maximumLineCount: 2
         color: colors.red
         opacity: 0
-        text: qsTr(errorMsg)
+        text: errorMsg
         anchors { left: inputField.left; top: inputField.bottom; bottomMargin: 5 }
-        font: fonts.secondaryFont(22)
+        font: fonts.caption()
 
         Behavior on opacity {
             NumberAnimation { duration: 300 }
@@ -174,9 +234,14 @@ Rectangle {
 
         onClicked: {
             inputField.clear();
-            inputField.placeholderText = "   " + placeholderText;
-            searchIcon.visible = true;
-            inputField.focus = false;
+
+            // Clearing the query keeps the keyboard: the input stays focused so the next word can be
+            // typed right away.
+            if (!inputFieldContainer.keepFocusWhileKeyboardOpen || !keyboard.active) {
+                inputField.placeholderText = "   " + placeholderText;
+                searchIcon.visible = true;
+                inputField.focus = false;
+            }
         }
     }
 }

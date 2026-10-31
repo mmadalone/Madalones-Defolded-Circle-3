@@ -1,9 +1,11 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Null guard, non-blocking spinner, extra media keys, volume-overlay guard.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
 import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
+import QtQuick.VirtualKeyboard 2.3
 
 import Entity.MediaPlayer 1.0
 import Haptic 1.0
@@ -50,6 +52,7 @@ Popup {
     property var  searchResults: []
     property bool searchNoResults: false
     property bool searchLoading: false
+    property string lastSearchQuery: ""
     property var  selectedMediaClasses: []
     property string pendingPlayMediaId: ""
     property string pendingPlayIcon: "uc:play"
@@ -59,22 +62,26 @@ Popup {
     readonly property var  currentPage: browseNav.currentItem
     readonly property bool currentIsContainer: currentPage && currentPage.isContainerView
 
-    // drives the global loading-screen timer
-    readonly property bool isLoading: (currentPage ? currentPage.pageLoading : false) || searchLoading
+    // Drives the global loading-screen timer. Searching is deliberately left out: the loading screen
+    // blocks all input while it is up, which would swallow the keystrokes of the next search term.
+    // Searching shows an inline indicator instead.
+    readonly property bool isLoading: currentPage ? currentPage.pageLoading : false
 
     // ----------- play menu helper -----------
-    function buildPlayMenu(mediaId, mediaType, actions, thumbnail) {
+    function buildPlayMenu(mediaId, mediaType, actions) {
         var all = !actions || actions.length === 0;
         var items = [];
         if (all || actions.indexOf("PLAY_NOW") >= 0)
+            //: Action: start playing this item now. Not playing a game.
             items.push({ title: qsTr("Play now"),     icon: "uc:play",
-                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, undefined, th); }; })(mediaId, mediaType, thumbnail) });
+                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t); }; })(mediaId, mediaType) });
         if (all || actions.indexOf("PLAY_NEXT") >= 0)
+            //: Action: queue this item to play after the current one.
             items.push({ title: qsTr("Play next"),    icon: "uc:forward-step",
-                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, "PLAY_NEXT", th); }; })(mediaId, mediaType, thumbnail) });
+                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t, "PLAY_NEXT"); }; })(mediaId, mediaType) });
         if (all || actions.indexOf("ADD_TO_QUEUE") >= 0)
             items.push({ title: qsTr("Add to queue"), icon: "uc:album-circle-plus",
-                         callback: (function(id, t, th) { return function() { mediaBrowser.requestPlayMedia(id, t, "ADD_TO_QUEUE", th); }; })(mediaId, mediaType, thumbnail) });
+                         callback: (function(id, t) { return function() { mediaBrowser.requestPlayMedia(id, t, "ADD_TO_QUEUE"); }; })(mediaId, mediaType) });
         return items;
     }
 
@@ -95,16 +102,15 @@ Popup {
             page.pageLimit       = defaultPageLimit;
             page.pageHasMore     = false;
             page.pageLoadingMore = false;
+            page.pendingRequestId = entityObj.browseMedia("", "", defaultPageLimit, 1);
         }
-
-        entityObj.browseMedia("", "", defaultPageLimit, 1);
     }
 
     function browseInto(mediaId, mediaType, title, thumbnail) {
         searchMode = false;
-        browseNav.push(levelPage, {
+        var page = browseNav.push(levelPage, {
             pageTitle:       title,
-            pageThumbnail:   (thumbnail && !thumbnail.startsWith("icon://")) ? thumbnail : "",
+            pageThumbnail:   (thumbnail && !thumbnail.startsWith("icon://")) ? decodeURIComponent(thumbnail) : "",
             pageMediaId:     mediaId,
             pageMediaType:   mediaType,
             pageLoading:     true,
@@ -116,17 +122,35 @@ Popup {
             pageHasMore:     false,
             pageLoadingMore: false
         });
-        entityObj.browseMedia(mediaId, mediaType, defaultPageLimit, 1);
+        page.pendingRequestId = entityObj.browseMedia(mediaId, mediaType, defaultPageLimit, 1);
+    }
+
+    // The page a browse answer belongs to: the one that sent the request with that id, wherever it is in the
+    // stack. A page that was left (BACK) is gone with its request, so a late answer finds no page and is dropped;
+    // an answer to a page below the current one lands on that page, not on the one shown.
+    function pageForRequest(requestId) {
+        // a request that could not be sent (-1) is reported while browseMedia() runs, for the page shown
+        if (requestId < 0) return browseNav.currentItem;
+        for (var i = 0; i < browseNav.depth; i++) {
+            var page = browseNav.get(i, StackView.ForceLoad);
+            if (page && page.pendingRequestId === requestId) return page;
+        }
+        return null;
     }
 
     function goBack() { browseNav.pop(); }
 
     function clearSearch() {
         searchDebounce.stop();
+        // Hide the keyboard before dropping the focus, otherwise SearchField takes the focus straight
+        // back to keep the keyboard alive.
+        keyboard.hide();
         inlineSearch.inputField.clear();
         inlineSearch.inputField.focus = false;
         searchResults        = [];
         searchNoResults      = false;
+        searchLoading        = false;
+        lastSearchQuery      = "";
         selectedMediaClasses = [];
     }
 
@@ -140,13 +164,25 @@ Popup {
     }
 
     function doSearch(query) {
-        if (!query.trim()) return;
+        if (!query || !query.trim()) return;
+        lastSearchQuery = query.trim();
         searchLoading = true;
         searchNoResults = false;
-        entityObj.searchMedia(query.trim(), "", "", selectedMediaClasses, defaultPageLimit, 1);
+        entityObj.searchMedia(lastSearchQuery, "", "", selectedMediaClasses, defaultPageLimit, 1);
     }
 
-    function requestPlayMedia(mediaId, mediaType, action, thumbnail) {
+    /**
+      Runs the search term that is currently in the input field and gets the keyboard out of the way so
+      the results are visible. Called from the keyboard's search key.
+      */
+    function submitSearch() {
+        searchDebounce.stop();
+        var query = inlineSearch.inputField.text;
+        keyboard.hide();
+        doSearch(query);
+    }
+
+    function requestPlayMedia(mediaId, mediaType, action) {
         pendingPlayMediaId = mediaId || "";
         if (action === "PLAY_NEXT")
             pendingPlayIcon = "uc:forward-step";
@@ -155,12 +191,6 @@ Popup {
         else
             pendingPlayIcon = "uc:play";
         pendingPlayFeedback.restart();
-
-        // Hand browse-time thumbnail to the entity as an immediate preview; the
-        // integration's later Media_image_url update replaces it with real art
-        // (or the preview is preserved by the placeholder guard in C++).
-        if (entityObj && thumbnail)
-            entityObj.setPreviewImage(thumbnail);
 
         if (action)
             entityObj.playMedia(mediaId, mediaType, action);
@@ -214,7 +244,7 @@ Popup {
 
         page.pageLoadingMore = true;
         page.requestedPage = page.pagePage + 1;
-        entityObj.browseMedia(page.pageMediaId, page.pageMediaType, page.pageLimit, page.requestedPage);
+        page.pendingRequestId = entityObj.browseMedia(page.pageMediaId, page.pageMediaType, page.pageLimit, page.requestedPage);
     }
 
     // ----------- page-scroll helpers (CHANNEL_UP/DOWN in MediaBrowser = PgUp/PgDn) -----------
@@ -226,6 +256,7 @@ Popup {
         return Math.max(1, Math.floor(lv.height / itemHeight));
     }
     function pageScrollUp() {
+        if (keyboard.active) return;  // the list behind the keyboard must not move
         var page = currentPage; if (!page || !page.pageListView) return;
         var lv = page.pageListView;
         var newIndex = Math.max(0, lv.currentIndex - pageScrollIncrement(lv));
@@ -233,6 +264,7 @@ Popup {
         lv.positionViewAtIndex(newIndex, ListView.Beginning);
     }
     function pageScrollDown() {
+        if (keyboard.active) return;
         var page = currentPage; if (!page || !page.pageListView) return;
         var lv = page.pageListView;
         var items = page.displayItems || [];
@@ -250,7 +282,7 @@ Popup {
         }
         coverFlowMode = Config.mediaCoverflowDefault;
         browseNav.clear();
-        browseNav.push(levelPage, {
+        var rootPage = browseNav.push(levelPage, {
             pageLoading: true,
             pagePage: 1,
             requestedPage: 1,
@@ -258,14 +290,14 @@ Popup {
             pageHasMore: false,
             pageLoadingMore: false
         }, StackView.Immediate);
-        entityObj.browseMedia("", "", defaultPageLimit, 1);
+        rootPage.pendingRequestId = entityObj.browseMedia("", "", defaultPageLimit, 1);
         buttonNavigation.takeControl();
     }
 
     onClosed: {
         buttonNavigation.releaseControl();
-        searchMode = false;
         clearSearch();
+        searchMode = false;
         clearPendingPlay();
     }
 
@@ -287,37 +319,10 @@ Popup {
     }
 
     Timer {
-        id: loadingWatchdog
-        repeat: false
-        interval: 15000
-        running: isLoading
-        onTriggered: {
-            console.warn("MediaBrowser: browseMedia timed out after 15 s — closing");
-            inlineLoading.running = false;
-            var page = browseNav.currentItem;
-            if (page) {
-                page.pageLoading = false;
-                page.pageLoadingMore = false;
-            }
-            ui.createActionableWarningNotification(
-                qsTr("Could not load media"),
-                qsTr("An error occurred while loading media content."),
-                "uc:warning"
-            );
-            mediaBrowser.close();
-        }
-    }
-
-    Timer {
         id: searchDebounce
         repeat: false; interval: 800; running: false
-        onTriggered: {
-            var q = inlineSearch.inputField.text.trim();
-            if (q) {
-                inlineSearch.inputField.focus = false;
-                mediaBrowser.doSearch(q);
-            }
-        }
+        // The keyboard stays up and keeps the focus while the results are refreshed underneath it.
+        onTriggered: mediaBrowser.doSearch(inlineSearch.inputField.text)
     }
 
     Timer {
@@ -333,21 +338,25 @@ Popup {
         defaultConfig: {
             "DPAD_UP": {
                 "pressed": function() {
+                    if (keyboard.active) return;
                     var lv = currentPage ? currentPage.pageListView : null;
                     if (lv && lv.currentIndex > 0) lv.currentIndex--;
                 },
                 "pressed_repeat": function() {
+                    if (keyboard.active) return;
                     var lv = currentPage ? currentPage.pageListView : null;
                     if (lv && lv.currentIndex > 0) lv.currentIndex--;
                 }
             },
             "DPAD_DOWN": {
                 "pressed": function() {
+                    if (keyboard.active) return;
                     var lv    = currentPage ? currentPage.pageListView  : null;
                     var items = currentPage ? currentPage.displayItems  : [];
                     if (lv && lv.currentIndex < items.length - 1) lv.currentIndex++;
                 },
                 "pressed_repeat": function() {
+                    if (keyboard.active) return;
                     var lv    = currentPage ? currentPage.pageListView  : null;
                     var items = currentPage ? currentPage.displayItems  : [];
                     if (lv && lv.currentIndex < items.length - 1) lv.currentIndex++;
@@ -355,11 +364,17 @@ Popup {
             },
             "DPAD_MIDDLE": {
                 "pressed": function() {
+                    // While the keyboard is up the list is hidden behind it: run the search instead of
+                    // opening whatever happens to be selected out of sight.
+                    if (keyboard.active) {
+                        mediaBrowser.submitSearch();
+                        return;
+                    }
                     var page = currentPage; if (!page) return;
                     var item = page.displayItems[page.pageListView.currentIndex];
                     if (!item) return;
                     if (item.can_browse) mediaBrowser.browseInto(item.media_id, item.media_type, item.title, item.thumbnail);
-                    else if (item.can_play) mediaBrowser.requestPlayMedia(item.media_id, item.media_type, undefined, item.thumbnail);
+                    else if (item.can_play) mediaBrowser.requestPlayMedia(item.media_id, item.media_type);
                 }
             },
             "PLAY": {
@@ -421,9 +436,12 @@ Popup {
             },
             "BACK": {
                 "pressed": function() {
-                    if (searchMode) {
-                        mediaBrowser.searchMode = false;
+                    // First back press only puts the keyboard away and keeps the term and its results.
+                    if (keyboard.active) {
+                        keyboard.hide();
+                    } else if (searchMode) {
                         mediaBrowser.clearSearch();
+                        mediaBrowser.searchMode = false;
                         mediaBrowser.loadRoot();
                     } else if (browseNav.depth > 1) {
                         mediaBrowser.goBack();
@@ -441,11 +459,12 @@ Popup {
         target: entityObj
         ignoreUnknownSignals: true
 
-        function onBrowseMediaResult(media, pagination) {
-            var page = browseNav.currentItem;
+        function onBrowseMediaResult(requestId, media, pagination) {
+            var page = mediaBrowser.pageForRequest(requestId);
             if (!page) return;
+            page.pendingRequestId = -1;
 
-            if (browseNav.depth > 1) {
+            if (page !== browseNav.get(0, StackView.ForceLoad)) {
                 page.pageContainer = media;
                 var t = media.thumbnail || "";
                 if (t && !t.startsWith("icon://"))
@@ -493,19 +512,48 @@ Popup {
             searchNoResults  = (items.length === 0);
         }
 
-        function onMediaBrowseError(code, message) {
+        function onSearchMediaError(code, message) {
+            searchLoading = false;
+
+            // 404: treat as empty result — show "no results" screen
+            if (code === 404) {
+                searchResults   = [];
+                searchNoResults = true;
+                return;
+            }
+
+            var query = mediaBrowser.lastSearchQuery;
+
+            // Retryable errors: offer to run the same search again
+            if (code === 408 || code === 503) {
+                ui.createActionableWarningNotification(
+                    qsTr("Could not search media"),
+                    message || qsTr("An error occurred while searching media content."),
+                    "uc:warning",
+                    function() { mediaBrowser.doSearch(query); },
+                    qsTr("Retry")
+                );
+                return;
+            }
+
+            // Anything else: report it, but stay in the browser so the term can be corrected
+            ui.createActionableWarningNotification(
+                qsTr("Could not search media"),
+                message || qsTr("An error occurred while searching media content."),
+                "uc:warning"
+            );
+        }
+
+        function onMediaBrowseError(requestId, code, message) {
             inlineLoading.running = false;
-            var page = browseNav.currentItem; if (!page) return;
+            var page = mediaBrowser.pageForRequest(requestId); if (!page) return;
+            page.pendingRequestId = -1;
             page.pageLoading     = false;
             page.pageLoadingMore = false;
 
             // 404: treat as empty result — show "no results" screen
             if (code === 404) {
-                if (mediaBrowser.searchMode) {
-                    searchNoResults = true;
-                } else {
-                    page.pageItems = [];
-                }
+                page.pageItems = [];
                 return;
             }
 
@@ -522,10 +570,10 @@ Popup {
                         page.requestedPage = 1;
                         page.pageItems = [];
                         page.pageHasMore = false;
-                        if (browseNav.depth <= 1) {
-                            entityObj.browseMedia("", "", page.pageLimit, 1);
+                        if (page === browseNav.get(0, StackView.ForceLoad)) {
+                            page.pendingRequestId = entityObj.browseMedia("", "", page.pageLimit, 1);
                         } else {
-                            entityObj.browseMedia(page.pageMediaId, page.pageMediaType, page.pageLimit, 1);
+                            page.pendingRequestId = entityObj.browseMedia(page.pageMediaId, page.pageMediaType, page.pageLimit, 1);
                         }
                     },
                     qsTr("Retry")
@@ -654,10 +702,10 @@ Popup {
                     verticalCenter: parent.verticalCenter
                 }
                 height: 56
-                inputField.onAccepted: {
-                    searchDebounce.stop();
-                    mediaBrowser.doSearch(inputField.text);
-                }
+                enterKeyAction: EnterKeyAction.Search
+                enterKeyLabel: qsTr("Search")
+                inputField.inputMethodHints: Qt.ImhNoPredictiveText | Qt.ImhNoAutoUppercase
+                inputField.onAccepted: mediaBrowser.submitSearch()
                 inputField.onTextChanged: {
                     if (inputField.text.trim()) searchDebounce.restart();
                     else searchDebounce.stop();
@@ -674,9 +722,16 @@ Popup {
                 Components.HapticMouseArea {
                     anchors.fill: parent
                     onClicked: {
-                        mediaBrowser.searchMode = !mediaBrowser.searchMode;
-                        if (mediaBrowser.searchMode) inlineSearch.focus();
-                        else { mediaBrowser.clearSearch(); mediaBrowser.loadRoot(); }
+                        // clearSearch() before hiding the field: it puts the keyboard away, and hiding a
+                        // focused input first would drop its focus while the keyboard is still up
+                        if (mediaBrowser.searchMode) {
+                            mediaBrowser.clearSearch();
+                            mediaBrowser.searchMode = false;
+                            mediaBrowser.loadRoot();
+                        } else {
+                            mediaBrowser.searchMode = true;
+                            inlineSearch.focusInput();
+                        }
                     }
                 }
             }
@@ -709,7 +764,7 @@ Popup {
                             height: chipRow.height
                             width: chipText.implicitWidth + 24
                             radius: height / 2
-                            color: active ? colors.primaryButton : colors.dark
+                            color: active ? colors.buttonPrimary : colors.dark
 
                             Text {
                                 id: chipText
@@ -727,13 +782,8 @@ Popup {
                                     if (idx >= 0) classes.splice(idx, 1);
                                     else classes.push(modelData);
                                     mediaBrowser.selectedMediaClasses = classes;
-                                    var q = inlineSearch.inputField.text.trim();
-                                    if (q) {
-                                        searchDebounce.stop();
-                                        mediaBrowser.searchLoading = true;
-                                        mediaBrowser.searchNoResults = false;
-                                        entityObj.searchMedia(q, "", "", classes, mediaBrowser.defaultPageLimit, 1);
-                                    }
+                                    searchDebounce.stop();
+                                    mediaBrowser.doSearch(inlineSearch.inputField.text);
                                 }
                             }
                         }
@@ -762,6 +812,24 @@ Popup {
             }
         }
 
+        /**
+          Tapping anywhere below the search field puts the keyboard away and uncovers the results,
+          without also activating whatever sits under the finger. Same idea as in EntityList.qml.
+          */
+        MouseArea {
+            anchors.fill: browseNav
+            enabled: keyboard.active
+            onClicked: keyboard.hide()
+        }
+
+        // inline search indicator: the global loading screen is not used while searching, see isLoading
+        BusyIndicator {
+            anchors { horizontalCenter: parent.horizontalCenter; top: filterRow.bottom; topMargin: 20 }
+            width: 60; height: 60
+            running: mediaBrowser.searchLoading
+            visible: running
+        }
+
         Components.PopupMenu { id: popupMenu }
     }
 
@@ -785,6 +853,8 @@ Popup {
             property int    pageLimit:        mediaBrowser.defaultPageLimit
             property bool   pageHasMore:      false
             property bool   pageLoadingMore:  false
+            // id of the browse request this page is waiting for, -1 when none
+            property int    pendingRequestId: -1
             readonly property bool isContainerView: pageContainer !== null &&
                 (pageContainer.media_class === "album" || pageContainer.media_class === "playlist")
 
@@ -934,7 +1004,7 @@ Popup {
                         Row {
                             anchors.horizontalCenter: parent.horizontalCenter; spacing: 40
                             Rectangle {
-                                width: 120; height: 70; radius: 35; color: colors.primaryButton
+                                width: 120; height: 70; radius: 35; color: colors.buttonPrimary
 
                                 Components.Icon { icon: "uc:play"; size: 60; color: colors.offwhite; anchors.centerIn: parent }
 
@@ -946,22 +1016,22 @@ Popup {
                                             var mediaId   = pageContainer.media_id;
                                             var mediaType = pageContainer.media_type;
                                             popupMenu.title     = pageContainer.title || "";
-                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, pageContainer.play_media_action, pageContainer.thumbnail);
+                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, pageContainer.play_media_action);
                                             popupMenu.open();
                                         } else {
-                                            mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, undefined, pageContainer.thumbnail);
+                                            mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type);
                                         }
                                     }
                                 }
                             }
                             Rectangle {
-                                width: 120; height: 70; radius: 35; color: colors.primaryButton
+                                width: 120; height: 70; radius: 35; color: colors.buttonPrimary
 
                                 Components.Icon { icon: "uc:shuffle"; size: 60; color: colors.offwhite; anchors.centerIn: parent }
 
                                 Components.HapticMouseArea {
                                     anchors.fill: parent
-                                    onClicked: { if (pageContainer) mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, "SHUFFLE", pageContainer.thumbnail) }
+                                    onClicked: { if (pageContainer) mediaBrowser.requestPlayMedia(pageContainer.media_id, pageContainer.media_type, "SHUFFLE") }
                                 }
                             }
                         }
@@ -979,13 +1049,14 @@ Popup {
                             if (modelData.can_browse)
                                 mediaBrowser.browseInto(modelData.media_id, modelData.media_type, modelData.title, modelData.thumbnail);
                             else if (modelData.can_play)
-                                mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail);
+                                mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type);
                         }
                     }
 
-                    Rectangle {
-                        anchors.fill: parent; color: colors.medium; radius: 10
-                        visible: itemDelegate.ListView.isCurrentItem
+                    Components.Selectable {
+                        id: rowSelection
+                        style: "fill"
+                        selected: itemDelegate.ListView.isCurrentItem
                     }
 
                     property bool playPending: mediaBrowser.pendingPlayMediaId !== "" &&
@@ -1004,7 +1075,7 @@ Popup {
                         id: thumb
                         width: 60; height: 60
                         url: (!isContainerView && modelData.thumbnail &&
-                              !modelData.thumbnail.startsWith("icon://")) ? modelData.thumbnail : ""
+                              !modelData.thumbnail.startsWith("icon://")) ? decodeURIComponent(modelData.thumbnail) : ""
                         aspectFit: true
                         anchors { left: parent.left; leftMargin: 16; verticalCenter: parent.verticalCenter }
                         visible: !isContainerView
@@ -1037,7 +1108,9 @@ Popup {
                             text: modelData.subtitle ||
                                   (isContainerView ? (modelData.artist || "")
                                                    : (modelData.artist || modelData.album || modelData.media_class || ""))
-                            color: colors.light; font: fonts.secondaryFontCapitalizedFirst(22)
+                            // on the selection fill everything is drawn in the primary text colour
+                            color: rowSelection.shown ? colors.textPrimary : colors.light
+                            font: fonts.secondaryFontCapitalizedFirst(22)
                             elide: Text.ElideRight; width: parent.width; visible: text !== ""
                         }
                     }
@@ -1055,7 +1128,8 @@ Popup {
                                 var s = modelData.duration || 0;
                                 return Math.floor(s / 60) + ":" + (s % 60 < 10 ? "0" : "") + (s % 60);
                             }
-                            color: colors.medium; font: fonts.secondaryFont(22)
+                            color: rowSelection.shown ? colors.textPrimary : colors.light
+                            font: fonts.secondaryFont(22)
                         }
 
                         // --- container view: simple play (feature not supported) ---
@@ -1068,7 +1142,7 @@ Popup {
 
                             Components.HapticMouseArea {
                                 anchors.fill: parent
-                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail)
+                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type)
                             }
                         }
 
@@ -1102,7 +1176,7 @@ Popup {
 
                             Components.HapticMouseArea {
                                 anchors.fill: parent
-                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type, undefined, modelData.thumbnail)
+                                onClicked: mediaBrowser.requestPlayMedia(modelData.media_id, modelData.media_type)
                             }
                         }
 
@@ -1200,11 +1274,14 @@ Popup {
 
                     onDraggingChanged: { if (!dragging) interactive = true; }
 
+                    // delayed: onCurrentIndexChanged above writes listView.currentIndex back, which feeds
+                    // straight into this value again — without it QML reports a binding loop on every move
                     Binding {
                         target: coverFlowView
                         property: "currentIndex"
                         value: listView.currentIndex + 1
                         when: !coverFlowView.moving
+                        delayed: true
                     }
 
                     // length-balanced path: L1=artSize (past, hidden), L2=0.4×artSize (first peek),
@@ -1256,7 +1333,7 @@ Popup {
                             id: cfArt
                             anchors.fill: parent
                             url: (modelData.thumbnail && !modelData.thumbnail.startsWith("icon://"))
-                                 ? modelData.thumbnail : ""
+                                 ? decodeURIComponent(modelData.thumbnail) : ""
                             aspectFit: false
                         }
 
@@ -1312,10 +1389,10 @@ Popup {
                                             var mediaId   = item.media_id;
                                             var mediaType = item.media_type;
                                             popupMenu.title     = item.title || "";
-                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, item.play_media_action, item.thumbnail);
+                                            popupMenu.menuItems = buildPlayMenu(mediaId, mediaType, item.play_media_action);
                                             popupMenu.open();
                                         } else {
-                                            mediaBrowser.requestPlayMedia(item.media_id, item.media_type, undefined, item.thumbnail);
+                                            mediaBrowser.requestPlayMedia(item.media_id, item.media_type);
                                         }
                                     }
                                 }

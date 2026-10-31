@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. Adds "Screen off animations" section (shared screensaver shutdown effect) + Active Session Keeper section.
+// Copyright (c) 2026 madalone. Phantom-wake suppressor (Mod 6), keep awake while watching (Mod 5), screen-off animations.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -9,14 +9,22 @@ import QtQuick.Layouts 1.15
 import HwInfo 1.0
 import Haptic 1.0
 import Config 1.0
-import ScreensaverConfig 1.0
 import Wifi 1.0
+import ScreensaverConfig 1.0
 
 import "qrc:/settings" as Settings
 import "qrc:/components" as Components
 
 Settings.Page {
     id: powerPageContent
+    scrollTarget: flickable
+    initialFocusItem: phantomWakeSwitch
+
+    // the wowlan switch is hidden on some models
+    readonly property bool wowlanShown: HwInfo.modelNumber == "UCR2" ? true : Wifi.wowlanEnabled
+    // madalone: the last visible row of the keep-awake section, where the keypad chain continues
+    readonly property Item sessionKeeperLast: Config.sessionKeeperEnabled ? sessionKeeperRequireAcSwitch
+                                                                          : sessionKeeperSwitch
 
     function secondsToTime(e){
         let m = Math.floor(e % 3600 / 60).toString();
@@ -38,16 +46,7 @@ Settings.Page {
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
-
-        onContentYChanged: {
-            if (contentY < 0) {
-                contentY = 0;
-            }
-            var maxY = contentHeight - height;
-            if (maxY > 0 && contentY > maxY) {
-                contentY = maxY;
-            }
-        }
+        boundsBehavior: Flickable.StopAtBounds
 
         Behavior on contentY {
             NumberAnimation { duration: 300 }
@@ -55,291 +54,190 @@ Settings.Page {
 
         ColumnLayout {
             id: content
-            spacing: 20
+            spacing: 0
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
 
-            /** PHANTOM-WAKE SUPPRESSOR (madalone, v1.4.20, Mod 6) **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            /** PHANTOM-WAKE SUPPRESSOR (madalone, Mod 6) **/
+            Components.SettingRow {
+                title: qsTr("Suppress phantom wake-ups")
+                help: qsTr("Forces the device back to standby if a wake event happens with no user input within %1 ms.").arg(Config.phantomWakeSuppressGraceMs)
+                showDivider: !Config.phantomWakeSuppressEnabled
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Suppress phantom wake-ups")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: phantomWakeSwitch
+                    icon: "uc:check"
+                    checked: Config.phantomWakeSuppressEnabled
+                    trigger: function() {
+                        Config.phantomWakeSuppressEnabled = !Config.phantomWakeSuppressEnabled;
                     }
 
-                    Components.Switch {
-                        id: phantomWakeSwitch
-                        icon: "uc:check"
-                        checked: Config.phantomWakeSuppressEnabled
-                        trigger: function() { Config.phantomWakeSuppressEnabled = !Config.phantomWakeSuppressEnabled; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.down: Config.phantomWakeSuppressEnabled ? phantomWakeGraceSlider : sessionKeeperSwitch
-                    }
-                }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Forces the device back to standby if a wake event happens with no user input within %1 ms.").arg(Config.phantomWakeSuppressGraceMs)
-                    font: fonts.secondaryFont(24)
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-                    visible: Config.phantomWakeSuppressEnabled
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.light
-                        text: qsTr("Grace window after wake: %1 ms").arg(Config.phantomWakeSuppressGraceMs)
-                        font: fonts.secondaryFont(24)
-                    }
-
-                    Components.Slider {
-                        id: phantomWakeGraceSlider
-                        height: 60
-                        Layout.fillWidth: true
-                        from: 100
-                        to: 5000
-                        stepSize: 100
-                        value: Config.phantomWakeSuppressGraceMs
-                        live: true
-                        onValueChanged: { Config.phantomWakeSuppressGraceMs = value; }
-                        onUserInteractionEnded: { Config.phantomWakeSuppressGraceMs = value; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: phantomWakeSwitch
-                        KeyNavigation.down: phantomWakeLookbackSlider
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.light
-                        text: Config.phantomWakeSuppressInputLookbackMs > 0
-                              ? qsTr("Recent-input lookback: %1 ms").arg(Config.phantomWakeSuppressInputLookbackMs)
-                              : qsTr("Recent-input lookback: disabled")
-                        font: fonts.secondaryFont(24)
-                    }
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.light
-                        text: qsTr("Skip the grace timer when a button-press arrived this recently before a wake.")
-                        font: fonts.secondaryFont(24)
-                    }
-
-                    Components.Slider {
-                        id: phantomWakeLookbackSlider
-                        height: 60
-                        Layout.fillWidth: true
-                        from: 0
-                        to: 2000
-                        stepSize: 50
-                        value: Config.phantomWakeSuppressInputLookbackMs
-                        live: true
-                        onValueChanged: { Config.phantomWakeSuppressInputLookbackMs = value; }
-                        onUserInteractionEnded: { Config.phantomWakeSuppressInputLookbackMs = value; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: phantomWakeGraceSlider
-                        KeyNavigation.down: sessionKeeperSwitch
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.down: Config.phantomWakeSuppressEnabled ? phantomWakeGraceSlider : sessionKeeperSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
+            Components.SettingRow {
+                visible: Config.phantomWakeSuppressEnabled
+                title: qsTr("Grace window after wake")
+                value: Config.phantomWakeSuppressGraceMs + " ms"
+                controlBelow: true
+                controlBottomSpace: 40
+                showDivider: false
+
+                Components.Slider {
+                    id: phantomWakeGraceSlider
+                    height: 60
+                    from: 100
+                    to: 5000
+                    stepSize: 100
+                    live: true
+                    showLiveValue: false
+                    value: Config.phantomWakeSuppressGraceMs
+                    lowValueText: from + " ms"
+                    highValueText: to + " ms"
+
+                    onValueChanged: { Config.phantomWakeSuppressGraceMs = value; }
+                    onUserInteractionEnded: { Config.phantomWakeSuppressGraceMs = value; }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: phantomWakeSwitch
+                    KeyNavigation.down: phantomWakeLookbackSlider
+                    highlight: activeFocus && ui.keyNavigationActive
+                }
             }
 
-            /** ACTIVE SESSION KEEPER (madalone) **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
+                visible: Config.phantomWakeSuppressEnabled
+                title: qsTr("Recent-input lookback")
+                value: Config.phantomWakeSuppressInputLookbackMs > 0 ? Config.phantomWakeSuppressInputLookbackMs + " ms"
+                                                                     : qsTr("Disabled")
+                help: qsTr("Skip the grace timer when a button-press arrived this recently before a wake.")
+                controlBelow: true
+                controlBottomSpace: 40
 
-                RowLayout {
-                    spacing: 10
+                Components.Slider {
+                    id: phantomWakeLookbackSlider
+                    height: 60
+                    from: 0
+                    to: 2000
+                    stepSize: 50
+                    live: true
+                    showLiveValue: false
+                    value: Config.phantomWakeSuppressInputLookbackMs
+                    lowValueText: qsTr("Disabled")
+                    highValueText: to + " ms"
 
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Keep awake while watching/listening")
-                        font: fonts.primaryFont(30)
-                    }
+                    onValueChanged: { Config.phantomWakeSuppressInputLookbackMs = value; }
+                    onUserInteractionEnded: { Config.phantomWakeSuppressInputLookbackMs = value; }
 
-                    Components.Switch {
-                        id: sessionKeeperSwitch
-                        icon: "uc:check"
-                        checked: Config.sessionKeeperEnabled
-                        trigger: function() { Config.sessionKeeperEnabled = !Config.sessionKeeperEnabled; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                        KeyNavigation.up: Config.phantomWakeSuppressEnabled ? phantomWakeLookbackSlider : phantomWakeSwitch
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: phantomWakeGraceSlider
+                    KeyNavigation.down: sessionKeeperSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Resets the device's sleep countdown every 4.5 min while media is playing or you've recently pressed a button.")
-                    font: fonts.secondaryFont(24)
-                }
-
-                ColumnLayout {
-                    Layout.fillWidth: true
-                    spacing: 10
-                    visible: Config.sessionKeeperEnabled
-
-                    Text {
-                        id: idleTimeoutLabel
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.light
-                        text: qsTr("Idle timeout after last button: %1 seconds").arg(Config.sessionKeeperIdleSec)
-                        font: fonts.secondaryFont(24)
-                    }
-
-                    Components.Slider {
-                        height: 60   // matches GeneralBehavior idleTimeoutSlider; no low/high labels (value shown in title above)
-                        Layout.fillWidth: true
-                        from: 30
-                        to: 300
-                        stepSize: 30
-                        value: Config.sessionKeeperIdleSec
-                        live: true
-                        onValueChanged: { Config.sessionKeeperIdleSec = value; }
-                        onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                    }
-                }
-
-                RowLayout {
-                    spacing: 10
-                    visible: Config.sessionKeeperEnabled
-
-                    Text {
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        text: qsTr("Only when on charger or dock")
-                        font: fonts.primaryFont(30)
-                    }
-
-                    Components.Switch {
-                        id: sessionKeeperRequireAcSwitch
-                        icon: "uc:check"
-                        checked: Config.sessionKeeperRequireAc
-                        trigger: function() { Config.sessionKeeperRequireAc = !Config.sessionKeeperRequireAc; }
-                        highlight: activeFocus && ui.keyNavigationEnabled
-                    }
-                }
-
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
+            /** KEEP AWAKE WHILE WATCHING (madalone, Mod 5) **/
+            Components.SettingRow {
+                title: qsTr("Keep awake while watching/listening")
+                help: qsTr("Keeps the remote from going to sleep while media is playing, and for the time below after you press a media button.")
+                showDivider: !Config.sessionKeeperEnabled
+
+                Components.Switch {
+                    id: sessionKeeperSwitch
+                    icon: "uc:check"
+                    checked: Config.sessionKeeperEnabled
+                    trigger: function() {
+                        Config.sessionKeeperEnabled = !Config.sessionKeeperEnabled;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: Config.phantomWakeSuppressEnabled ? phantomWakeLookbackSlider : phantomWakeSwitch
+                    KeyNavigation.down: Config.sessionKeeperEnabled ? sessionKeeperIdleSlider
+                                                                    : (powerPageContent.wowlanShown ? wowlanSwitch : resumeTimeoutValueSlider)
+                    highlight: activeFocus && ui.keyNavigationActive
+                }
+            }
+
+            Components.SettingRow {
+                visible: Config.sessionKeeperEnabled
+                title: qsTr("Idle timeout after last button")
+                value: Config.sessionKeeperIdleSec + "s"
+                controlBelow: true
+                controlBottomSpace: 40
+                showDivider: false
+
+                Components.Slider {
+                    id: sessionKeeperIdleSlider
+                    height: 60
+                    from: 30
+                    to: 300
+                    stepSize: 30
+                    live: true
+                    showLiveValue: false
+                    value: Config.sessionKeeperIdleSec
+                    lowValueText: qsTr("%1 seconds").arg(from)
+                    highValueText: qsTr("%1 minutes").arg(5)
+
+                    onValueChanged: { Config.sessionKeeperIdleSec = value; }
+                    onUserInteractionEnded: { Config.sessionKeeperIdleSec = value; }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: sessionKeeperSwitch
+                    KeyNavigation.down: sessionKeeperRequireAcSwitch
+                    highlight: activeFocus && ui.keyNavigationActive
+                }
+            }
+
+            Components.SettingRow {
+                visible: Config.sessionKeeperEnabled
+                title: qsTr("Only when on charger or dock")
+
+                Components.Switch {
+                    id: sessionKeeperRequireAcSwitch
+                    icon: "uc:check"
+                    checked: Config.sessionKeeperRequireAc
+                    trigger: function() {
+                        Config.sessionKeeperRequireAc = !Config.sessionKeeperRequireAc;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: sessionKeeperIdleSlider
+                    KeyNavigation.down: powerPageContent.wowlanShown ? wowlanSwitch : resumeTimeoutValueSlider
+                    highlight: activeFocus && ui.keyNavigationActive
+                }
             }
 
             //** WAKE ON WLAN **/
-            ColumnLayout {
-                Layout.alignment: Qt.AlignCenter
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                spacing: 10
+            Components.SettingRow {
                 visible: HwInfo.modelNumber == "UCR2" ? true : Wifi.wowlanEnabled
+                //: Title for indication of wifi always on functionality
+                title: qsTr("Keep WiFi connected in standby")
+                help: qsTr("Keeps WiFi always connected, even when the device is sleeping. Allows for faster reconnect after wakeup. Please note that enabling this feature slightly decreases battery life.")
 
-                RowLayout {
-                    spacing: 10
-
-                    Text {
-                        id: wowlanText
-                        Layout.fillWidth: true
-                        wrapMode: Text.WordWrap
-                        color: colors.offwhite
-                        //: Title for indication of wifi always on functionality
-                        text: qsTr("Keep WiFi connected in standby")
-                        font: fonts.primaryFont(30)
+                Components.Switch {
+                    id: wowlanSwitch
+                    icon: "uc:check"
+                    checked: Config.wowlanEnabled
+                    trigger: function() {
+                        Config.wowlanEnabled = !Config.wowlanEnabled;
                     }
 
-                    Components.Switch {
-                        id: wowlanSwitch
-                        icon: "uc:check"
-                        checked: Config.wowlanEnabled
-                        trigger: function() {
-                            Config.wowlanEnabled = !Config.wowlanEnabled;
-                        }
-
-                        /** KEYBOARD NAVIGATION **/
-                        KeyNavigation.down: resumeTimeoutValueSlider
-                        highlight: activeFocus && ui.keyNavigationEnabled
-
-                        Component.onCompleted: {
-                            if (Wifi.wowlanEnabled) {
-                                wowlanSwitch.forceActiveFocus();
-                            }
-                        }
-                    }
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: powerPageContent.sessionKeeperLast
+                    KeyNavigation.down: resumeTimeoutValueSlider
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-
-                Text {
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Faster reconnect after wake; minor battery cost.")
-                    font: fonts.secondaryFont(24)
-                }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** RESUME TIMEOUT WINDOW **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height + 40
-
-                Text {
-                    id: resumeTimeoutValueText
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Retry commands after wakeup")
-                    anchors { left: parent.left; top:parent.top }
-                    font: fonts.primaryFont(30)
-                }
-
-                Text {
-                    id: resumeTimeoutValueSmallText
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Retry commands within %1 second(s) after wakeup.").arg(Config.resumeTimeoutWindowSec)
-                    anchors { left: parent.left; top:resumeTimeoutValueText.bottom; topMargin: 5 }
-                    font: fonts.secondaryFont(24)
-                }
+            Components.SettingRow {
+                title: qsTr("Retry commands after wakeup")
+                help: qsTr("Retry commands within %1 second(s) after wakeup.").arg(Config.resumeTimeoutWindowSec)
+                controlBelow: true
+                controlBottomSpace: 40
 
                 Components.Slider {
                     id: resumeTimeoutValueSlider
@@ -348,10 +246,10 @@ Settings.Page {
                     to: 10
                     stepSize: 1
                     value: Config.resumeTimeoutWindowSec
+                    //: The feature is switched off. Not a person with a disability.
                     lowValueText: qsTr("Disabled")
                     highValueText: qsTr("%1 seconds").arg(to)
                     live: true
-                    anchors { top: resumeTimeoutValueSmallText.bottom; topMargin: 10 }
 
                     onValueChanged: {
                         Config.resumeTimeoutWindowSec = value;
@@ -362,45 +260,19 @@ Settings.Page {
                     }
 
                     /** KEYBOARD NAVIGATION **/
-                    KeyNavigation.up: (HwInfo.modelNumber == "UCR2" ? true : Wifi.wowlanEnabled) ? wowlanSwitch : undefined
+                    KeyNavigation.up: powerPageContent.wowlanShown ? wowlanSwitch : powerPageContent.sessionKeeperLast
                     KeyNavigation.down: wakeupSensitivitySlider
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-                visible: HwInfo.modelNumber == "UCR2" ? true : Wifi.wowlanEnabled
             }
 
             /** WAKEUP SENSITIVITY **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height + 40
-
-                Text {
-                    id: wakeupSensitivityText
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    //: Movement the remote reacts to wake up
-                    text: qsTr("Wakeup sensitivity")
-                    anchors { left: parent.left; top:parent.top }
-                    font: fonts.primaryFont(30)
-                }
-
-                Text {
-                    id: wakeupSensitivitySmallText
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Amount of movement needed to wake up the remote.")
-                    anchors { left: parent.left; top:wakeupSensitivityText.bottom; topMargin: 5 }
-                    font: fonts.secondaryFont(24)
-                }
+            Components.SettingRow {
+                //: Movement the remote reacts to wake up
+                title: qsTr("Wakeup sensitivity")
+                help: qsTr("Amount of movement needed to wake up the remote.")
+                controlBelow: true
+                controlBottomSpace: 40
 
                 Components.Slider {
                     id: wakeupSensitivitySlider
@@ -415,7 +287,6 @@ Settings.Page {
                     lowValueText: qsTr("Off")
                     //: More sensitive wakeup setting, as in the remote will be more sensitive to movement
                     highValueText: qsTr("Sensitivity")
-                    anchors { top: wakeupSensitivitySmallText.bottom; topMargin: 10 }
 
                     onUserInteractionEnded: {
                         Config.wakeupSensitivity = value;
@@ -424,45 +295,18 @@ Settings.Page {
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: resumeTimeoutValueSlider
                     KeyNavigation.down: displayoffTimeoutSlider
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
 
-                    Component.onCompleted: {
-                        if (HwInfo.modelNumber != "UCR3") {
-                            wakeupSensitivitySlider.forceActiveFocus();
-                        }
-                    }
                 }
-            }
-
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
             }
 
             /** DISPLAY TIMEOUT **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height + 40
-
-                Text {
-                    id: displayTimeoutText
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    //: How much time the display will turn off after
-                    text: qsTr("Display off timeout")
-                    anchors { left: parent.left; top:parent.top }
-                    font: fonts.primaryFont(30)
-                }
-
-                Text {
-                    color: colors.light
-                    text: Config.displayTimeout + "s"
-                    anchors { right: parent.right; baseline: displayTimeoutText.baseline }
-                    font: fonts.secondaryFont(24)
-                }
+            Components.SettingRow {
+                //: How much time the display will turn off after
+                title: qsTr("Display off timeout")
+                value: Config.displayTimeout + "s"
+                controlBelow: true
+                controlBottomSpace: 40
 
                 Components.Slider {
                     id: displayoffTimeoutSlider
@@ -474,7 +318,6 @@ Settings.Page {
                     value: Config.displayTimeout
                     lowValueText: qsTr("%1 seconds").arg(from)
                     highValueText: qsTr("%1 seconds").arg(to)
-                    anchors { top: displayTimeoutText.bottom; topMargin: 10 }
 
                     onValueChanged: {
                         valueDisplayText = value + "s"
@@ -487,164 +330,121 @@ Settings.Page {
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: wakeupSensitivitySlider
                     KeyNavigation.down: screenOffEnabledSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
+            /** SCREEN OFF ANIMATIONS (madalone, Mod 1) **/
+            Components.SettingRow {
+                title: qsTr("Screen off animations")
+                help: qsTr("Plays an animation on the screensaver just before the display turns off.")
+                showDivider: false
 
-            /** SCREEN OFF ANIMATIONS (madalone) **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                // Explicit height based on the last child's bottom. childrenRect
-                // doesn't reliably include a GridLayout's implicit height with
-                // anchor-based positioning, causing the style picker to overlap
-                // the next section when it has more than one row of buttons.
-                height: screenOffStyleRow.y + screenOffStyleRow.height + 20
-
-                Text {
-                    id: screenOffTitle
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Screen off animations")
-                    anchors { left: parent.left; top: parent.top }
-                    font: fonts.primaryFont(30)
-                }
-
-                /** MASTER ENABLE **/
-                Text {
-                    id: screenOffEnabledLabel
-                    color: colors.light
-                    text: qsTr("Enabled")
-                    anchors { left: parent.left; top: screenOffTitle.bottom; topMargin: 14 }
-                    font: fonts.secondaryFont(24)
-                }
                 Components.Switch {
                     id: screenOffEnabledSwitch
                     icon: "uc:check"
                     checked: ScreensaverConfig.screenOffEffectEnabled
-                    trigger: function() { ScreensaverConfig.screenOffEffectEnabled = !ScreensaverConfig.screenOffEffectEnabled; }
-                    anchors { right: parent.right; verticalCenter: screenOffEnabledLabel.verticalCenter }
+                    trigger: function() {
+                        ScreensaverConfig.screenOffEffectEnabled = !ScreensaverConfig.screenOffEffectEnabled;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: displayoffTimeoutSlider
                     KeyNavigation.down: screenOffUndockedSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
+            }
 
-                /** FIRE WHEN UNDOCKED **/
-                Text {
-                    id: screenOffUndockedLabel
-                    color: colors.light
-                    text: qsTr("Fire when undocked")
-                    anchors { left: parent.left; top: screenOffEnabledLabel.bottom; topMargin: 34 }
-                    font: fonts.secondaryFont(24)
-                    opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
-                }
+            Components.SettingRow {
+                title: qsTr("Fire when undocked")
+                showDivider: false
+
                 Components.Switch {
                     id: screenOffUndockedSwitch
                     icon: "uc:check"
                     checked: ScreensaverConfig.screenOffEffectUndocked
                     enabled: ScreensaverConfig.screenOffEffectEnabled
                     opacity: enabled ? 1.0 : 0.4
-                    trigger: function() { ScreensaverConfig.screenOffEffectUndocked = !ScreensaverConfig.screenOffEffectUndocked; }
-                    anchors { right: parent.right; verticalCenter: screenOffUndockedLabel.verticalCenter }
+                    trigger: function() {
+                        ScreensaverConfig.screenOffEffectUndocked = !ScreensaverConfig.screenOffEffectUndocked;
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: screenOffEnabledSwitch
                     KeyNavigation.down: screenOffStyleRow
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
+            }
 
-                /** STYLE PICKER (fade / flash / vignette / wipe / theme-native) **/
-                Text {
-                    id: screenOffStyleLabel
-                    color: colors.light
-                    text: qsTr("Style")
-                    anchors { left: parent.left; top: screenOffUndockedLabel.bottom; topMargin: 34 }
-                    font: fonts.secondaryFont(24)
-                    opacity: ScreensaverConfig.screenOffEffectEnabled ? 1.0 : 0.4
-                }
-                // v1.4.26: replaced GridLayout with Item + computed-position Repeater children.
-                // GridLayout ran Qt's constraint solver on every child added during instantiation
-                // (~30 ms × 9 = ~270 ms visible cascade on ARM). Explicit x/y math is O(1) per
-                // child — instantiation drops below one frame. Same visual output, no change to
-                // selection logic or KeyNavigation.
+            Components.SettingRow {
+                title: qsTr("Style")
+                controlBelow: true
+
+                // 9 chips in 3 columns. LEFT/RIGHT walk the styles, a tap picks one. Explicit x/y math instead of a
+                // GridLayout (v1.4.26: the layout solver cost ~270 ms on the device when the page opened).
                 Item {
                     id: screenOffStyleRow
-                    // 9 buttons in 3 cols × 3 rows × 44 px tall + 2 × 6 px spacing.
-                    height: 3 * 44 + 2 * 6
-                    focus: true
+                    width: parent.width
+                    height: 3 * cellHeight + 2 * cellSpacing
                     enabled: ScreensaverConfig.screenOffEffectEnabled
                     opacity: enabled ? 1.0 : 0.4
-                    anchors { left: parent.left; right: parent.right; top: screenOffStyleLabel.bottom; topMargin: 8 }
 
-                    readonly property real cellSpacing: 6
-                    readonly property real cellWidth:  (width - 2 * cellSpacing) / 3
-                    readonly property real cellHeight: 44
+                    readonly property real cellSpacing: 10
+                    readonly property real cellWidth: (width - 2 * cellSpacing) / 3
+                    readonly property real cellHeight: 60
+                    readonly property var styles: ["fade", "flash", "vignette", "wipe", "sleepwave", "genie",
+                                                   "pixelate", "dissolve", "theme-native"]
 
+                    function step(delta) {
+                        var i = styles.indexOf(ScreensaverConfig.screenOffEffectStyle);
+                        ScreensaverConfig.screenOffEffectStyle = styles[(Math.max(i, 0) + delta + styles.length) % styles.length];
+                        Haptic.play(Haptic.Click);
+                    }
+
+                    /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: screenOffUndockedSwitch
                     KeyNavigation.down: sleepTimeoutSlider
-                    Keys.onLeftPressed: {
-                        var styles = ["fade","flash","vignette","wipe","sleepwave","genie","pixelate","dissolve","theme-native"];
-                        var cur = ScreensaverConfig.screenOffEffectStyle;
-                        for (var i = 0; i < styles.length; i++) {
-                            if (styles[i] === cur) {
-                                var next = i > 0 ? i - 1 : styles.length - 1;
-                                ScreensaverConfig.screenOffEffectStyle = styles[next];
-                                Haptic.play(Haptic.Click);
-                                return;
-                            }
-                        }
+                    Keys.onLeftPressed: step(-1)
+                    Keys.onRightPressed: step(1)
+
+                    Components.Selectable {
+                        anchors.margins: -6
+                        selected: screenOffStyleRow.activeFocus
                     }
-                    Keys.onRightPressed: {
-                        var styles = ["fade","flash","vignette","wipe","sleepwave","genie","pixelate","dissolve","theme-native"];
-                        var cur = ScreensaverConfig.screenOffEffectStyle;
-                        for (var i = 0; i < styles.length; i++) {
-                            if (styles[i] === cur) {
-                                var next = (i + 1) % styles.length;
-                                ScreensaverConfig.screenOffEffectStyle = styles[next];
-                                Haptic.play(Haptic.Click);
-                                return;
-                            }
-                        }
-                    }
+
                     Repeater {
                         model: [
-                            { name: "fade",         label: "Fade" },
-                            { name: "flash",        label: "Flash" },
-                            { name: "vignette",     label: "Iris" },
-                            { name: "wipe",         label: "Wipe" },
-                            { name: "sleepwave",    label: "Wave" },
-                            { name: "genie",        label: "Genie" },
-                            { name: "pixelate",     label: "Pixels" },
-                            { name: "dissolve",     label: "Dissolve" },
-                            { name: "theme-native", label: "Theme" }
+                            { name: "fade",         label: qsTr("Fade") },
+                            { name: "flash",        label: qsTr("Flash") },
+                            { name: "vignette",     label: qsTr("Iris") },
+                            { name: "wipe",         label: qsTr("Wipe") },
+                            { name: "sleepwave",    label: qsTr("Wave") },
+                            { name: "genie",        label: qsTr("Genie") },
+                            { name: "pixelate",     label: qsTr("Pixels") },
+                            { name: "dissolve",     label: qsTr("Dissolve") },
+                            { name: "theme-native", label: qsTr("Theme") }
                         ]
+
                         Rectangle {
-                            // Explicit grid math — 3 cols, index → (col, row).
                             x: (index % 3) * (screenOffStyleRow.cellWidth + screenOffStyleRow.cellSpacing)
                             y: Math.floor(index / 3) * (screenOffStyleRow.cellHeight + screenOffStyleRow.cellSpacing)
                             width: screenOffStyleRow.cellWidth
                             height: screenOffStyleRow.cellHeight
-                            radius: 8
-                            // v1.4.26 polish: single shared binding for selected-state instead of
-                            // two parallel string-compares (color + text color). 50% fewer compares
-                            // when ScreensaverConfig.screenOffEffectStyle changes.
-                            readonly property bool selected: ScreensaverConfig.screenOffEffectStyle === modelData.name
-                            color: selected ? colors.offwhite : colors.dark
-                            border { color: colors.medium; width: 1 }
+                            radius: ui.cornerRadiusSmall
+                            readonly property bool chosen: ScreensaverConfig.screenOffEffectStyle === modelData.name
+                            color: chosen ? colors.textPrimary : colors.surface
+                            border { color: colors.divider; width: 2 }
+
                             Text {
                                 anchors.centerIn: parent
+                                width: parent.width - 12
                                 text: modelData.label
-                                color: parent.selected ? colors.black : colors.offwhite
-                                font: fonts.primaryFont(18)
+                                color: parent.chosen ? colors.bg : colors.textPrimary
+                                font: fonts.caption()
                                 elide: Text.ElideRight
-                                width: parent.width - 8
                                 horizontalAlignment: Text.AlignHCenter
                             }
+
                             MouseArea {
                                 anchors.fill: parent
                                 onClicked: {
@@ -657,35 +457,14 @@ Settings.Page {
                 }
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20; height: 2
-                color: colors.medium
-            }
-
             /** SLEEP TIMEOUT **/
-            Item {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height
-
-                Text {
-                    id: sleepTimeoutText
-                    width: parent.width - 80
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    //: How much time the remote will enter sleep mode after
-                    text: qsTr("Sleep timeout")
-                    anchors { left: parent.left; top:parent.top }
-                    font: fonts.primaryFont(30)
-                }
-
-                Text {
-                    color: colors.light
-                    text:  secondsToTime(Config.sleepTimeout)
-                    anchors { right: parent.right; baseline: sleepTimeoutText.baseline }
-                    font: fonts.secondaryFont(24)
-                }
+            Components.SettingRow {
+                showDivider: false
+                //: How much time the remote will enter sleep mode after
+                title: qsTr("Sleep timeout")
+                value: secondsToTime(Config.sleepTimeout)
+                controlBelow: true
+                controlBottomSpace: 40
 
                 Components.Slider {
                     id: sleepTimeoutSlider
@@ -697,7 +476,6 @@ Settings.Page {
                     value: Config.sleepTimeout
                     lowValueText: qsTr("%1 seconds").arg(from)
                     highValueText: qsTr("%1 minutes").arg(5)
-                    anchors { top: sleepTimeoutText.bottom; topMargin: 10 }
 
                     onValueChanged: {
                         valueDisplayText = secondsToTime(value);
@@ -709,11 +487,9 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: screenOffStyleRow
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
-
-            Item { Layout.preferredHeight: 40 }
         }
     }
 }

@@ -20,7 +20,14 @@ ListView {
     model: DockController.discoveredDocks
     delegate: dockItem
     header: headerItem
-    footer: ui.isOnboarding ? footerItem : null
+
+    // the list starts empty and the ListView does not select the first result on its own: without
+    // this the first OK after a discovery did nothing until DOWN was pressed, and nothing was outlined
+    onCountChanged: {
+        if (dockList.count > 0 && dockList.currentIndex < 0) {
+            dockList.currentIndex = 0;
+        }
+    }
 
     add: Transition {
         NumberAnimation { property: "opacity"; from: 0; to: 1.0; duration: 300; easing.type: Easing.OutExpo }
@@ -43,8 +50,82 @@ ListView {
     property alias startMessageContainer: startMessageContainer
     property alias buttonNavigation: buttonNavigation
 
+    /** KEYPAD SELECTION **/
+    // Driven by the page's button navigation (not the keyboard focus): the page moves the selection
+    // with moveSelection(), activates it with activateSelection() and sets keypadSelected while the
+    // selection is on this component. On the start screen the selection walks its controls, once
+    // discovery runs it walks the found docks.
+    property bool keypadSelected: false
+    property int startSelection: 0
+
+    function startControls() {
+        let controls = [];
+
+        if (bluetoothContainer.visible) {
+            controls.push(bluetoothSwitch);
+        }
+        controls.push(discoverButton);
+
+        return controls;
+    }
+
+    readonly property Item selectedStartControl: startMessageContainer.visible
+                                                 ? startControls()[startSelection] : null
+
+    // the start screen can be taller than the view: keep the selected control on screen
+    onSelectedStartControlChanged: buttonNavigation.ensureVisible(selectedStartControl)
+
+    // returns false when the selection would leave the component, so the page can move on
+    function moveSelection(delta) {
+        if (startMessageContainer.visible) {
+            const next = dockList.startSelection + delta;
+            if (next < 0 || next >= startControls().length) {
+                return false;
+            }
+
+            dockList.startSelection = next;
+            return true;
+        }
+
+        const nextIndex = dockList.currentIndex + delta;
+        if (dockList.count === 0 || nextIndex < 0 || nextIndex >= dockList.count) {
+            return false;
+        }
+
+        dockList.currentIndex = nextIndex;
+        return true;
+    }
+
+    function selectLast() {
+        if (startMessageContainer.visible) {
+            dockList.startSelection = startControls().length - 1;
+        } else if (dockList.count > 0) {
+            dockList.currentIndex = dockList.count - 1;
+        }
+    }
+
+    function activateSelection() {
+        if (startMessageContainer.visible) {
+            const control = selectedStartControl;
+            if (control) {
+                control.activate();
+            }
+            return;
+        }
+
+        if (dockList.currentItem && dockList.currentItem.dockId) {
+            dockList.selectDock(dockList.currentItem.dockId);
+        }
+    }
+
+    function selectDock(dockId) {
+        DockController.stopDiscovery();
+        DockController.selectDockToSetup(dockId);
+    }
+
     Components.ButtonNavigation {
         id: buttonNavigation
+        scrollTarget: startFlickable
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -66,14 +147,19 @@ ListView {
     Rectangle {
         id: startMessageContainer
         anchors.fill: parent
-        color: ui.isOnboarding ? colors.black : Qt.darker(colors.dark, 1.5)
+        color: colors.bg
+        visible: opacity > 0
         enabled: opacity === 1
+
+        // the start screen always opens on its first control
+        onVisibleChanged: dockList.startSelection = 0
 
         MouseArea {
             anchors.fill: parent
         }
 
         Flickable {
+            id: startFlickable
             anchors.fill: parent
             contentHeight: startMessageContainerContent.height
             clip: true
@@ -90,9 +176,11 @@ ListView {
                 id: startMessageContainerContent
                 width: parent.width - 40
                 anchors.horizontalCenter: parent.horizontalCenter
-                spacing: 40
+                // section spacing of the design system (docs/design-system.md, I-22)
+                spacing: 20
 
                 ColumnLayout {
+                    id: bluetoothContainer
                     Layout.fillWidth: true
                     spacing: 20
                     visible: !Config.bluetoothEnabled
@@ -103,7 +191,7 @@ ListView {
                         color: colors.red
                         text: qsTr("Bluetooth is disabled. Discovery limited to network only.")
                         wrapMode: Text.WordWrap
-                        font: fonts.secondaryFont(22)
+                        font: fonts.help()
                     }
 
                     RowLayout {
@@ -112,15 +200,18 @@ ListView {
                         Text {
                             Layout.fillWidth: true
 
-                            color: colors.offwhite
+                            color: colors.textPrimary
                             text: qsTr("Bluetooth")
                             wrapMode: Text.WordWrap
-                            font: fonts.primaryFont(30)
+                            font: fonts.label()
                         }
 
                         Components.Switch {
+                            id: bluetoothSwitch
                             icon: "uc:check"
                             checked: Config.bluetoothEnabled
+                            highlight: dockList.keypadSelected && dockList.selectedStartControl === bluetoothSwitch
+                                       && ui.keyNavigationActive
                             trigger: function() {
                                 Config.bluetoothEnabled = !Config.bluetoothEnabled;
                             }
@@ -131,11 +222,12 @@ ListView {
                 Text {
                     Layout.fillWidth: true
 
-                    color: colors.light
-                    text: qsTr("Tap discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.")
+                    color: colors.textSecondary
+                    //: Dock discovery start screen; "Discover" is the button below this text
+                    text: qsTr("Select Discover to search for docks on your network or via Bluetooth. If you would like to wirelessly setup a new dock, make sure it’s in close proximity to the remote.")
                     wrapMode: Text.WordWrap
                     horizontalAlignment: Text.AlignHCenter
-                    font: fonts.secondaryFont(22)
+                    font: fonts.help()
                 }
 
                 Item {
@@ -144,31 +236,25 @@ ListView {
                 }
 
                 Components.Button {
+                    id: discoverButton
                     Layout.fillWidth: true
                     Layout.preferredWidth: parent.width
                     Layout.bottomMargin: 20
 
                     text: qsTr("Discover")
+                    highlight: dockList.keypadSelected && dockList.selectedStartControl === discoverButton
+                               && ui.keyNavigationActive
                     trigger: function() {
                         startMessageContainer.opacity = 0;
                         DockController.startDiscovery();
                     }
                 }
-
-                Components.Button {
-                    Layout.fillWidth: true
-                    Layout.preferredWidth: parent.width
-                    Layout.topMargin: -40
-                    Layout.bottomMargin: 20
-
-                    text: qsTr("Skip")
-                    color: colors.secondaryButton
-                    trigger: function() {
-                        dockList.skip();
-                    }
-                    visible: ui.isOnboarding
-                }
             }
+        }
+
+        // a long translation pushes Discover below the fold: show that the start screen scrolls
+        Components.ScrollIndicator {
+            parentObj: startFlickable
         }
     }
 
@@ -191,13 +277,12 @@ ListView {
                 Text {
                     id: headerTitle
 
-                    color: colors.offwhite
-                    opacity: 0.6
+                    color: colors.textSecondary
                     //: Title for searching for integrations to setup
                     text: qsTr("Discovering")
                     verticalAlignment: Text.AlignVCenter
                     anchors { left: scanLoading.right; leftMargin: 20; verticalCenter: parent.verticalCenter }
-                    font: fonts.secondaryFont(24)
+                    font: fonts.help()
                 }
 
                 Image {
@@ -236,58 +321,46 @@ ListView {
     }
 
     Component {
-        id: footerItem
-
-        Item {
-            width: ListView.view.width
-            height: childrenRect.height + 20
-
-            Components.Button {
-                width: parent.width
-                anchors.bottom: parent.bottom
-                text: qsTr("Skip")
-                color: colors.secondaryButton
-                trigger: function() {
-                    dockList.skip();
-                }
-            }
-        }
-    }
-
-    Component {
         id: dockItem
 
         Rectangle {
             id: dockItemContainer
 
-            x: 10
-            width: ListView.view.width - 20
+            property string dockId: itemId
+            readonly property bool selected: ListView.isCurrentItem && dockList.keypadSelected
+                                             && !startMessageContainer.visible && ui.keyNavigationActive
+
+            // a selectable card spans 8 px to width - 8, its content keeps the 20 px gutter
+            x: 8
+            width: ListView.view.width - 16
             height: childrenRect.height
-            color: ListView.isCurrentItem ? colors.black : colors.transparent
+            color: colors.transparent
             radius: ui.cornerRadiusSmall
+            // the selection ring of Components.Selectable, drawn as the border: the card is sized by its children,
+            // and a child that fills it would be a binding loop
             border {
-                width: 1
-                color: colors.medium
+                width: dockItemContainer.selected ? 3 : 2
+                color: dockItemContainer.selected ? colors.focusRing : colors.divider
             }
 
             RowLayout {
-                width: parent.width - 60
+                width: parent.width - 24
                 anchors.horizontalCenter: parent.horizontalCenter
                 spacing: 20
 
                 Rectangle {
                     Layout.preferredWidth: 60
                     Layout.preferredHeight: 60
-                    Layout.topMargin: 30
-                    Layout.bottomMargin: 30
+                    Layout.topMargin: 20
+                    Layout.bottomMargin: 20
 
                     radius: 30
-                    color: colors.offwhite
+                    color: colors.textPrimary
 
                     Components.Icon {
                         icon: itemDiscoveryType === "NET" ? "uc:ethernet" : "uc:bluetooth"
                         size: 60
-                        color: colors.black
+                        color: colors.bg
                         anchors.centerIn: parent
                     }
                 }
@@ -300,7 +373,7 @@ ListView {
                     Text {
                         Layout.fillWidth: true
 
-                        color: colors.offwhite
+                        color: colors.textPrimary
                         text: itemDiscoveryType === "NET" ? itemFriendlyName : itemId
                         maximumLineCount: 1
                         elide: Text.ElideRight
@@ -310,11 +383,11 @@ ListView {
                     Text {
                         Layout.fillWidth: true
 
-                        color: colors.light
+                        color: colors.textPrimary
                         text: itemAddress
                         maximumLineCount: 1
                         elide: Text.ElideRight
-                        font: fonts.secondaryFont(22)
+                        font: fonts.value()
                     }
                 }
             }
@@ -323,8 +396,8 @@ ListView {
                 anchors.fill: parent
 
                 onClicked: {
-                    DockController.stopDiscovery();
-                    DockController.selectDockToSetup(itemId);
+                    dockList.currentIndex = index;
+                    dockList.selectDock(itemId);
                 }
             }
         }

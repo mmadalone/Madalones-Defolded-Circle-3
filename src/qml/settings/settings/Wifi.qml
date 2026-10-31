@@ -22,9 +22,11 @@ import "qrc:/components" as Components
 Settings.Page {
     id: wifiPageContent
     topNavigation.z: 400
+    scrollTarget: flickableContent
+    initialFocusItem: bluetoothSwitch
 
-    function loadList(title, list, showSearch = true, selectedItem = 0) {
-        popupListLoader.setSource("qrc:/components/PopupList.qml", { title: title, listModel: list, showSearch: showSearch, initialSelected: selectedItem, countryList: title.includes("country") });
+    function loadList(title, list, showSearch = true, selectedItem = 0, currentValue = undefined) {
+        popupListLoader.setSource("qrc:/components/PopupList.qml", { title: title, listModel: list, showSearch: showSearch, initialSelected: selectedItem, countryList: title.includes("country"), currentValue: currentValue });
     }
 
     ListModel {
@@ -44,21 +46,9 @@ Settings.Page {
         }
     }
 
-    Connections {
-        target: ui.inputController
-        ignoreUnknownSignals: true
-
-        function onActiveControllerChanged() {
-            if (ui.inputController.activeController !== wifiPageContent) {
-                Wifi.stopNetworkScan();
-                scanStartTimer.stop();
-                scanTimer.stop();
-                Wifi.clearNetworkList();
-            }
-        }
-    }
-
-    // madalone: halt scan polling while screen is off; resume on wake if still on this page.
+    // madalone (W10): halt scan polling while the display is off and resume it on wake. This Connections only
+    // exists while the page is loaded, so a wake always resumes the page's own scan cycle (the v1.4.12 condition
+    // checked ui.inputController.activeController, which doesn't exist, so the resume never ran).
     Connections {
         target: Power
         ignoreUnknownSignals: true
@@ -68,8 +58,8 @@ Settings.Page {
                 Wifi.stopNetworkScan();
                 scanStartTimer.stop();
                 scanTimer.stop();
-            } else if (toPowerMode === PowerModes.Normal
-                       && ui.inputController.activeController === wifiPageContent) {
+            } else if (toPowerMode === PowerModes.Normal && !scanTimer.running && !scanStartTimer.running) {
+                Wifi.getWifiStatus();
                 Wifi.startNetworkScan();
                 scanTimer.start();
             }
@@ -79,34 +69,27 @@ Settings.Page {
     Flickable {
         id: flickableContent
         width: parent.width
-        height: parent.height - topNavigation.height - 10
-        anchors { top: topNavigation.bottom; topMargin: 10 }
+        height: parent.height - topNavigation.height
+        anchors { top: topNavigation.bottom }
         contentWidth: content.width; contentHeight: content.height
+        clip: true
 
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
+        boundsBehavior: Flickable.StopAtBounds
+
+        Behavior on contentY {
+            NumberAnimation { duration: 300 }
+        }
 
         ColumnLayout {
             id: content
-            spacing: 20
+            spacing: 0
             width: parent.width
 
             /** BLUETOOTH **/
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-
-                Text {
-                    id: bluetoothText
-
-                    Layout.fillWidth: true
-
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Bluetooth")
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                title: qsTr("Bluetooth")
 
                 Components.Switch {
                     id: bluetoothSwitch
@@ -118,36 +101,13 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.down: wifiSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
-
-                    Component.onCompleted: {
-                        bluetoothSwitch.forceActiveFocus();
-                    }
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 2
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                color: colors.medium
             }
 
             /** WIFI **/
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-
-                Text {
-                    id: wifiText
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("WiFi")
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                title: qsTr("WiFi")
 
                 Components.Switch {
                     id: wifiSwitch
@@ -160,32 +120,15 @@ Settings.Page {
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: bluetoothSwitch
                     KeyNavigation.down: wifiScanIntervalSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
-            }
-
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 2
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                color: colors.medium
             }
 
             /** WIFI ACTIVE SCANNING**/
-            RowLayout {
-                Layout.fillWidth: true
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-
-                Text {
-                    id: wifiScanIntervalText
-                    Layout.fillWidth: true
-                    wrapMode: Text.WordWrap
-                    color: colors.offwhite
-                    text: qsTr("Active WiFi scanning")
-                    font: fonts.primaryFont(30)
-                }
+            Components.SettingRow {
+                title: qsTr("Active WiFi scanning")
+                // the interval below belongs to this setting
+                showDivider: !wifiScanIntervalSwitch.checked
 
                 Components.Switch {
                     id: wifiScanIntervalSwitch
@@ -201,25 +144,17 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: wifiSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    KeyNavigation.down: wifiScanIntervalValueSlider
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Item {
+            Components.SettingRow {
                 id: wifiScanIntervalValueContainer
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width - 20
-                height: childrenRect.height + 60
                 visible: wifiScanIntervalSwitch.checked
-
-                Text {
-                    id: wifiScanIntervalValueText
-                    width: parent.width
-                    wrapMode: Text.WordWrap
-                    color: colors.light
-                    text: qsTr("Actively scan for nearby WiFi networks in the configured interval: %1 seconds").arg(Config.scanIntervalSec)
-                    font: fonts.secondaryFont(24)
-                }
+                help: qsTr("Actively scan for nearby WiFi networks in the configured interval: %1 seconds").arg(Config.scanIntervalSec)
+                controlBelow: true
+                controlBottomSpace: 40
 
                 Components.Slider {
                     id: wifiScanIntervalValueSlider
@@ -231,7 +166,6 @@ Settings.Page {
                     lowValueText: qsTr("%1 seconds").arg(from)
                     highValueText: qsTr("%1 seconds").arg(to)
                     live: true
-                    anchors { top: wifiScanIntervalValueText.bottom; topMargin: 10 }
 
                     onValueChanged: {
                         Config.scanIntervalSec = value;
@@ -243,90 +177,96 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: wifiScanIntervalSwitch
-                    highlight: activeFocus && ui.keyNavigationEnabled
+                    KeyNavigation.down: bandSelector
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 2
-                Layout.leftMargin: 10
-                Layout.rightMargin: 10
-                color: colors.medium
-            }
-
-            Loader {
+            /** WIFI BAND **/
+            Components.MenuRow {
                 id: bandSelector
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width
-                height: 60
-                sourceComponent: selector
                 visible: HwInfo.modelNumber == "UCR3" || HwInfo.modelNumber == "DEV"
-                onLoaded: {
-                    if (HwInfo.modelNumber == "UCR2") {
-                        return;
-                    }
+                text: qsTr("WiFi band")
+                //: WiFi band: the remote chooses the band itself
+                value: Config.wifiBand == 'auto' ? qsTr('Auto') : Config.wifiBand == 'a' ? '5 GHz' : '2.4 GHz'
+                chevron: true
+                selected: activeFocus
 
-                    item.title = qsTr("WiFi band");
-                    item.value = Qt.binding( function() { return Config.wifiBand == 'auto' ? 'Auto' : Config.wifiBand == 'a' ? '5 GHz' : '2.4 GHz'; });
-                    if (focus) {
-                        item.highlight = true;
-                    }
-                    item.trigger = function() {
-                        listModel.clear();
+                function openList() {
+                    listModel.clear();
 
-                        wifiBandConnection.enabled = true;
+                    //: WiFi band: the remote chooses the band itself
+                    listModel.append({'name': qsTr("Auto"), 'value': "auto"})
+                    listModel.append({'name': "2.4 GHz", 'value': "b"})
+                    listModel.append({'name': "5 GHz", 'value': "a"})
 
-                        listModel.append({'name': "Auto", 'value': "auto"})
-                        listModel.append({'name': "2.4 GHz", 'value': "b"})
-                        listModel.append({'name': "5 GHz", 'value': "a"})
-
-                        loadList(qsTr("Select WiFi band"), listModel, false, Config.wifiBand);
-                    }
+                    loadList(qsTr("Select WiFi band"), listModel, false, 0, Config.wifiBand);
                 }
 
-                Connections {
-                    id: wifiBandConnection
-                    target: popupListLoader.item
-                    enabled: false
+                onClicked: openList()
 
-                    function onItemSelected(value) {
-                        Config.wifiBand = value;
-                        wifiBandConnection.enabled = false;
-                    }
+                /** KEYBOARD NAVIGATION **/
+                KeyNavigation.up: wifiScanIntervalValueSlider
+                // an empty known-networks list has nothing to select: skip it
+                KeyNavigation.down: knownNetworkList.count > 0 ? knownNetworkList : otherNetworkList
+
+                Keys.onReturnPressed: {
+                    bandSelector.openList();
+                    event.accepted = true;
                 }
             }
 
             Column {
                Layout.fillWidth: true
-               Layout.leftMargin: 10
-               Layout.rightMargin: 10
                visible: Config.wifiEnabled
 
                 WifiNetworkList {
+                    id: knownNetworkList
                     popupParent: wifiPageContent
                     model: Wifi.knownNetworkList
                     //: known WiFi networks
                     headerTitle: qsTr("Known Networks")
                     knownNetworks: true
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: bandSelector
+                    KeyNavigation.down: otherNetworkList
                 }
 
                 WifiNetworkList {
+                    id: otherNetworkList
                     popupParent: wifiPageContent
                     model: Wifi.networkList
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: knownNetworkList.count > 0 ? knownNetworkList : bandSelector
+                    KeyNavigation.down: deleteAllNetworksButton
                 }
             }
 
             Column {
                Layout.fillWidth: true
-               Layout.leftMargin: 10
-               Layout.rightMargin: 10
+               Layout.leftMargin: 20
+               Layout.rightMargin: 20
+               Layout.topMargin: 20
+               Layout.bottomMargin: 20
                visible: Config.wifiEnabled
 
                Components.Button {
+                   id: deleteAllNetworksButton
                    width: parent.width
                    text: qsTr("Delete all networks")
-                   color: colors.red
+                   variant: "destructive"
+
+                   /** KEYBOARD NAVIGATION **/
+                   // going up enters the list from its end (the "Join other" button or the last
+                   // network), not at whatever entry the list had selected before
+                   Keys.onUpPressed: {
+                       otherNetworkList.selectLast();
+                       otherNetworkList.forceActiveFocus();
+                       event.accepted = true;
+                   }
+
                    trigger: function() {
                        ui.createActionableWarningNotification(
                                    qsTr("Delete all networks"),
@@ -388,66 +328,23 @@ Settings.Page {
     Loader {
         id: popupListLoader
         anchors.fill: parent
+        // above the raised title bar of this page
+        z: 500
 
         Connections {
             target: popupListLoader.item
 
+            // the WiFi band list is the only popup list of this page. Should another one be added, do
+            // not arm a handler per row when its list opens: a list closed with BACK would leave the
+            // handler armed and the next selection in another list would fire it too (see
+            // Localisation.qml for the pattern with one handler per page)
+            function onItemSelected(value) {
+                Config.wifiBand = value;
+            }
+
             function onDone() {
+                // the page takes the focus back on its own, on the row the user came from
                 popupListLoader.source = "";
-                bandSelector.forceActiveFocus();
-            }
-
-        }
-    }
-
-    Component {
-        id: selector
-
-        Rectangle {
-            id: selectorBg
-            width: parent.width
-            height: 60
-            color: highlight && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            radius: ui.cornerRadiusSmall
-            border {
-                color: Qt.lighter(selectorBg.color, 1.3)
-                width: 1
-            }
-
-            property string title
-            property alias value: valueText.text
-            property alias mouseArea: mouseArea
-            property bool highlight: false
-            property var trigger
-
-            Text {
-                id: titleText
-                text: qsTr(title)
-                width: parent.width/2
-                wrapMode: Text.WordWrap
-                color: colors.offwhite
-                anchors { left: parent.left; leftMargin: 10; verticalCenter: parent.verticalCenter }
-                font: fonts.primaryFont(30)
-            }
-
-            Text {
-                id: valueText
-                width: parent.width/2
-                wrapMode: Text.WordWrap
-                horizontalAlignment: Text.AlignRight
-                color: colors.offwhite
-                anchors { right: parent.right; rightMargin: 10; baseline: titleText.baseline }
-                font: fonts.primaryFont(20, "Bold")
-            }
-
-            Components.HapticMouseArea {
-                id: mouseArea
-                enabled: valueText.text != ""
-                anchors.fill: parent
-                onClicked: {
-                    trigger();
-                }
-
             }
         }
     }

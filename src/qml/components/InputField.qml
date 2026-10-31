@@ -43,6 +43,16 @@ Rectangle {
     property string label: ""
     property bool moveInput: true
 
+    // Neighbours in a keypad focus chain. An attached property (KeyNavigation) can only be set on
+    // the item that declares it, so a form sets these instead of inputField.KeyNavigation.*.
+    // DPAD_MIDDLE on the field is its Return key and submits through inputField.onAccepted.
+    property Item navUp: null
+    property Item navDown: null
+
+    // bring the on-screen keyboard up whenever the field gains the focus (a form walked with the
+    // d-pad); Button / Switch / Checkbox hide it again when they take the focus
+    property bool keyboardFollowsFocus: false
+
     Component.onCompleted: {
         if (inputField.echoMode === TextInput.Password) {
             inputFieldContainer.password = true;
@@ -96,6 +106,11 @@ Rectangle {
         }
     }
 
+    Components.Selectable {
+        selected: inputField.activeFocus
+        radius: inputFieldContainer.radius
+    }
+
     TextField {
         id: inputField
         cursorVisible: false
@@ -111,10 +126,19 @@ Rectangle {
 
         passwordCharacter: "•"
 
+        KeyNavigation.up: inputFieldContainer.navUp
+        KeyNavigation.down: inputFieldContainer.navDown
+
         onFocusChanged: {
             inputFieldContainer.border.width = focus ? 1 : 0;
             if (focus && inputFieldContainer.moveInput){
                 keyboardInputField.show(inputFieldContainer, label);
+            }
+        }
+
+        onActiveFocusChanged: {
+            if (activeFocus && inputFieldContainer.keyboardFollowsFocus) {
+                keyboard.show();
             }
         }
     }
@@ -129,8 +153,7 @@ Rectangle {
         opacity: 0
         text: qsTr(errorMsg)
         anchors { left: parent.left; top: inputField.bottom; bottomMargin: 5 }
-        font: fonts.secondaryFont(18)
-        lineHeight: 0.8
+        font: fonts.caption()
 
         Behavior on opacity {
             NumberAnimation { duration: 300 }

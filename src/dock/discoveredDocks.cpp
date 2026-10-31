@@ -44,11 +44,18 @@ void DiscoveredDocks::setCount(int count) {
 }
 
 int DiscoveredDocks::rowCount(const QModelIndex &parent) const {
-    Q_UNUSED(parent)
+    // a flat list: no row has children
+    if (parent.isValid()) {
+        return 0;
+    }
     return m_data.size();
 }
 
 bool DiscoveredDocks::removeRows(int row, int count, const QModelIndex &parent) {
+    if (row < 0 || count <= 0 || (row + count) > m_data.size()) {
+        return false;
+    }
+
     beginRemoveRows(parent, row, row + count - 1);
     for (int i = row + count - 1; i >= row; i--) {
         m_data.at(i)->deleteLater();
@@ -107,16 +114,12 @@ QHash<int, QByteArray> DiscoveredDocks::roleNames() const {
 }
 
 void DiscoveredDocks::append(DiscoveredDock *o) {
-    //    int i = m_data.size();
-    emit layoutAboutToBeChanged();
-
-    beginInsertRows(QModelIndex(), 0, 0);
+    // the row is appended: the announced row has to be the last one, not the first
+    beginInsertRows(QModelIndex(), rowCount(), rowCount());
     m_data.append(o);
 
     emit countChanged(count());
     endInsertRows();
-
-    emit layoutChanged();
 }
 
 void DiscoveredDocks::clear() {
@@ -145,7 +148,7 @@ QModelIndex DiscoveredDocks::getModelIndexByKey(const QString &key) {
 
 bool DiscoveredDocks::contains(const QString &key) {
     for (int i = 0; i < m_data.count(); i++) {
-        if (m_data[i]->itemId().contains(key)) {
+        if (m_data[i]->itemId() == key) {
             return true;
         }
     }
@@ -153,9 +156,8 @@ bool DiscoveredDocks::contains(const QString &key) {
 }
 
 DiscoveredDock *DiscoveredDocks::get(const QString &key) {
-    //    return m_data[getModelIndexByKey(key).row()];
     for (int i = 0; i < m_data.count(); i++) {
-        if (m_data[i]->itemId().contains(key)) {
+        if (m_data[i]->itemId() == key) {
             return m_data[i];
         }
     }

@@ -33,7 +33,11 @@ Popup {
     closePolicy: Popup.CloseOnPressOutside
     padding: 0
 
+    // keypad selection: the action is preselected, LEFT moves to Cancel
+    property bool cancelSelected: false
+
     onOpened: {
+        actionableNotification.cancelSelected = false;
         buttonNavigation.takeControl();
     }
 
@@ -56,14 +60,21 @@ Popup {
         ignoreUnknownSignals: true
 
         function onActionableNotificationCreated(notificationObj) {
+            // the same message is not stacked twice, but two different problems are: the title alone
+            // is shared by every entity that fails to answer a command
             for (let i = 0; i < notificationList.depth; i++) {
-                if (notificationList.get(i).notificationObj.itemTitle() == notificationObj.itemTitle()) {
+                const shown = notificationList.get(i);
+                if (shown && shown.notificationObj.isDuplicateOf(notificationObj)) {
                     return;
                 }
             }
 
             actionableNotification.open();
             notificationList.push(notificationComponent.createObject(notificationList, {notificationObj: notificationObj}));
+
+            // a notification pushed on top of an open one is a new layer taking the input: it starts
+            // on the same control as a freshly opened one, not where the selection was left
+            actionableNotification.cancelSelected = false;
         }
     }
 
@@ -86,8 +97,27 @@ Popup {
             },
             "DPAD_MIDDLE": {
                 "pressed": function() {
+                    if (actionableNotification.cancelSelected) {
+                        notificationList.currentItem.close();
+                        return;
+                    }
+
                     notificationList.currentItem.notificationObj.action();
-                    actionableNotification.close();
+                    // close() the item, not just the popup: an item left on the stack keeps matching the
+                    // duplicate check above and silently swallows every later notification with that title
+                    notificationList.currentItem.close();
+                }
+            },
+            "DPAD_LEFT": {
+                "pressed": function() {
+                    if (notificationList.currentItem && notificationList.currentItem.hasCancel) {
+                        actionableNotification.cancelSelected = true;
+                    }
+                }
+            },
+            "DPAD_RIGHT": {
+                "pressed": function() {
+                    actionableNotification.cancelSelected = false;
                 }
             },
         }
@@ -118,7 +148,7 @@ Popup {
             width: parent.width - 20
             height: 4
             radius: ui.cornerRadiusSmall
-            color: notificationList.currentItem ? (notificationList.currentItem.notificationObj.itemWarning() ? colors.red : colors.highlight) : colors.highlight
+            color: notificationList.currentItem && notificationList.currentItem.notificationObj.itemWarning() ? colors.red : colors.textPrimary
             anchors { horizontalCenter: parent.horizontalCenter; bottom: parent.bottom }
         }
     }
@@ -143,6 +173,7 @@ Popup {
             id: notificationComponentContent
 
             property QtObject notificationObj
+            readonly property bool hasCancel: actionableNotificationAction.text !== ""
 
             Component.onDestruction: notificationComponentContent.notificationObj.destroy()
 
@@ -159,54 +190,42 @@ Popup {
             
             onClicked: notificationComponentContent.close()
 
-            Text {
+            // Cancel and the action are buttons, Cancel first (docs/design-system.md, I-09); a notification
+            // without an action label has neither and is dismissed with a tap
+            Components.Button {
                 id: actionableNotificationAction
                 text: notificationObj.itemActionLabel()
-                height: text === "" ? 0 : implicitHeight
-                verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignRight
-                color: colors.offwhite
-                font: fonts.secondaryFont(26, "Bold")
-                anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 30}
-
-                Components.HapticMouseArea {
-                    width: parent.width + 40
-                    height: parent.width + 40
-                    anchors.centerIn: parent
-                    onClicked: {
-                        notificationObj.action();
-                        notificationComponentContent.close()
-                    }
+                visible: text !== ""
+                width: (parent.width - 60) / 2
+                height: visible ? 80 : 0
+                anchors { right: parent.right; rightMargin: 20; bottom: parent.bottom; bottomMargin: 30 }
+                highlight: !actionableNotification.cancelSelected && ui.keyNavigationActive
+                trigger: function() {
+                    notificationObj.action();
+                    notificationComponentContent.close();
                 }
             }
 
-            Text {
+            Components.Button {
                 text: qsTr("Cancel")
-                height: actionableNotificationAction.text === "" ? 0 : implicitHeight
-                visible: height !== 0
-                verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignLeft
-                color: colors.offwhite
-                font: fonts.secondaryFont(26, "Bold")
-                anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 30}
-
-                Components.HapticMouseArea {
-                    width: parent.width + 40
-                    height: parent.width + 40
-                    anchors.centerIn: parent
-                    onClicked: {
-                        notificationComponentContent.close()
-                    }
+                variant: "secondary"
+                visible: actionableNotificationAction.visible
+                width: (parent.width - 60) / 2
+                anchors { left: parent.left; leftMargin: 20; bottom: parent.bottom; bottomMargin: 30 }
+                highlight: actionableNotification.cancelSelected && ui.keyNavigationActive
+                trigger: function() {
+                    notificationComponentContent.close();
                 }
             }
 
             Text {
                 id: actionableNotificationMessage
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
-                color: colors.offwhite
-                opacity: 0.7
+                color: colors.textPrimary
                 text: notificationObj.itemMessage()
                 anchors { left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20; bottom: actionableNotificationAction.top; bottomMargin: 40  }
-                font: fonts.secondaryFont(24)
-                lineHeight: 0.8
+                font: fonts.prose()
+                lineHeight: fonts.proseLineHeight
             }
 
             Text {

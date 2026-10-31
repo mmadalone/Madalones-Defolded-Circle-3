@@ -16,6 +16,7 @@ import "qrc:/settings" as Settings
 
 Settings.Page {
     id: aboutPage
+    scrollTarget: flickable
 
     function loadPage(page) {
         parentSwipeView.thirdPage.setSource(menu.model[page].page === ResourceTypes.Licenses ? "qrc:/settings/about/LicensePage.qml" : "qrc:/settings/about/AboutPage.qml", { parentSwipeView: profileRoot, topNavigationText: qsTr(menu.model[page].itemTitle), type: menu.model[page].page });
@@ -34,7 +35,7 @@ Settings.Page {
                                                  },
                                                  "DPAD_UP": {
                                                      "pressed": function() {
-                                                         menu.decrementCurrentIndex();
+                                                         aboutPage.selectPrevious();
                                                      }
                                                  },
                                                  "DPAD_MIDDLE": {
@@ -45,186 +46,139 @@ Settings.Page {
                                              });
     }
 
-    buttonNavigation.enabled: ui.showRegulatoryInfo
-
-    Flow {
+    Flickable {
+        id: flickable
         width: parent.width
+        height: parent.height - topNavigation.height
         anchors { top: topNavigation.bottom }
+        contentWidth: width; contentHeight: aboutColumn.implicitHeight
+        clip: true
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Model number");
-                item.value = HwInfo.modelNumber
+        maximumFlickVelocity: 6000
+        flickDeceleration: 1000
+        boundsBehavior: Flickable.StopAtBounds
+
+        Behavior on contentY {
+            NumberAnimation { duration: 300 }
+        }
+
+        Column {
+            id: aboutColumn
+            width: parent.width
+
+            Components.KeyValueRow {
+                key: qsTr("Model number")
+                value: HwInfo.modelNumber
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Serial number");
-                item.value = HwInfo.serialNumber
+            Components.KeyValueRow {
+                key: qsTr("Serial number")
+                value: HwInfo.serialNumber
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Revision");
-                item.value = HwInfo.revision
+            Components.KeyValueRow {
+                key: qsTr("Revision")
+                value: HwInfo.revision
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Wi-Fi address");
-                item.value = Wifi.macAddress
+            Components.KeyValueRow {
+                key: qsTr("Wi-Fi address")
+                value: Wifi.macAddress
+                // an address is read in full: under the key when it does not fit next to it
+                fullValue: true
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Bluetooth address");
-                item.value = Config.bluetoothMac;
+            Components.KeyValueRow {
+                key: qsTr("Bluetooth address")
+                value: Config.bluetoothMac
+                fullValue: true
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("UI version")
-                item.value = SoftwareUpdate.uiVersion
+            Components.KeyValueRow {
+                key: qsTr("UI version")
+                value: SoftwareUpdate.uiVersion
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("Core version")
-                item.value = SoftwareUpdate.coreVersion
+            Components.KeyValueRow {
+                key: qsTr("Core version")
+                value: SoftwareUpdate.coreVersion
             }
-        }
 
-        Loader {
-            sourceComponent: aboutInfo
-            onLoaded: {
-                item.title = qsTr("System version")
-                item.value = SoftwareUpdate.currentVersion
-                item.bottomLine.visible = false;
+            Components.KeyValueRow {
+                key: qsTr("System version")
+                value: SoftwareUpdate.currentVersion
+                showDivider: false
             }
-        }
 
-        Item {
-            width: ui.width
-            height: 40
-        }
-
-        ListView {
-            id: menu
-            width: parent.width; height: childrenRect.height
-
-            interactive: false
-            highlightMoveDuration: 200
-            pressDelay: 200
-
-            model: [
-                {
-                    itemTitle: qsTr("Regulatory"),
-                    page: ResourceTypes.Regulatory
-                },
-                {
-                    itemTitle: qsTr("Terms & conditions"),
-                    page: ResourceTypes.Terms
-                },
-                {
-                    itemTitle: qsTr("Warranty information"),
-                    page: ResourceTypes.Warranty
-                },
-                {
-                    itemTitle: qsTr("Licenses"),
-                    page: ResourceTypes.Licenses
-                }
-            ]
-
-            delegate: menuItem
-        }
-    }
-
-    Component {
-        id: aboutInfo
-
-        ColumnLayout {
-            width: ui.width - 20
-            spacing: 10
-            x: 10
-
-            property alias title: title.text
-            property alias value: value.text
-            property alias bottomLine: bottomLine
-
-            RowLayout {
-                Layout.topMargin: 10
+            Item {
                 width: parent.width
-                spacing: 20
-
-                Text {
-                    id: title
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignLeft
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideNone
-                    color: colors.offwhite
-                    font: fonts.primaryFont(20)
-                }
-
-                Text {
-                    id: value
-                    Layout.fillWidth: true
-                    Layout.alignment: Qt.AlignRight
-                    wrapMode: Text.NoWrap
-                    elide: Text.ElideRight
-                    horizontalAlignment: Text.AlignRight
-                    color: colors.offwhite
-                    opacity: 0.7
-                    font: fonts.secondaryFont(20)
-                }
+                height: 20
             }
 
-            Rectangle {
-                id: bottomLine
-                Layout.fillWidth: true
-                Layout.preferredHeight: 1
-                color: colors.medium
+            ListView {
+                id: menu
+                width: parent.width; height: contentHeight
+
+                interactive: false
+                highlightMoveDuration: 200
+                pressDelay: 200
+
+                // the list is laid out at full height inside the page Flickable, so it never scrolls
+                // itself - keep the keypad selection visible by scrolling the page instead
+                onCurrentIndexChanged: aboutPage.showSelection()
+
+                model: [
+                    {
+                        itemTitle: qsTr("Regulatory"),
+                        page: ResourceTypes.Regulatory
+                    },
+                    {
+                        itemTitle: qsTr("Terms & conditions"),
+                        page: ResourceTypes.Terms
+                    },
+                    {
+                        itemTitle: qsTr("Warranty information"),
+                        page: ResourceTypes.Warranty
+                    },
+                    {
+                        itemTitle: qsTr("Licenses"),
+                        page: ResourceTypes.Licenses
+                    }
+                ]
+
+                delegate: Components.MenuRow {
+                    width: ListView.view.width
+                    text: modelData.itemTitle
+                    chevron: true
+                    selectionStyle: "fill"
+                    selected: ListView.isCurrentItem
+
+                    onClicked: {
+                        menu.currentIndex = index;
+                        loadPage(index);
+                    }
+                }
             }
         }
     }
 
-    Component {
-        id: menuItem
+    // Keep the keypad selection on screen. The first entry also brings the information above the entries back
+    // into view, as far as the entry stays visible: DPAD_UP cannot move past it, and ensureVisible() alone only
+    // scrolls as far as the entry itself.
+    function showSelection() {
+        if (menu.currentIndex === 0 && menu.currentItem) {
+            const bottom = menu.currentItem.mapToItem(flickable.contentItem, 0, menu.currentItem.height).y;
+            flickable.contentY = Math.max(0, bottom - flickable.height);
+        } else {
+            aboutPage.ensureVisible(menu.currentItem);
+        }
+    }
 
-        Rectangle {
-            width: ui.width
-            height: 80
-            color: ListView.isCurrentItem && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            radius: ui.cornerRadiusSmall
-
-            Text {
-                id: menuItemText
-                color: colors.offwhite
-                text: modelData.itemTitle
-                anchors { left: parent.left; leftMargin: 10; right: parent.right; rightMargin: 10; verticalCenter: parent.verticalCenter; }
-                font: fonts.primaryFont(30)
-            }
-
-            Components.HapticMouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    menu.currentIndex = index;
-                    loadPage(index);
-                }
-            }
+    function selectPrevious() {
+        if (menu.currentIndex > 0) {
+            menu.decrementCurrentIndex();
+        } else {
+            showSelection();
         }
     }
 }

@@ -20,7 +20,7 @@
 
 #include "../../../src/core/core.h"
 #include "../../../src/hardware/phantomWakeSuppressor.h"
-#include "../../../src/hardware/power.h"
+#include "../../../src/system/power.h"
 #include "../mock_core_api.h"
 
 class PhantomWakeSuppressorTest : public QObject {

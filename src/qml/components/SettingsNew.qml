@@ -85,14 +85,28 @@ Item {
 
     Components.ButtonNavigation {
         id: buttonNavigation
+        // keeps the keyboard focus inside the settings overlay, so the screen behind it stays quiet
+        manageFocus: true
         defaultConfig: {
             "DPAD_DOWN": {
                 "pressed": function() {
+                    // the first press after a touch shows the selection where it is, on the first entry,
+                    // instead of moving past it
+                    if (ui.inputController.pressActivatedKeypad()) {
+                        return;
+                    }
+
                     menu.incrementCurrentIndex();
                 }
             },
             "DPAD_UP": {
                 "pressed": function() {
+                    // the first press after a touch shows the selection where it is, on the first entry,
+                    // instead of moving past it
+                    if (ui.inputController.pressActivatedKeypad()) {
+                        return;
+                    }
+
                     menu.decrementCurrentIndex();
                 }
             },
@@ -182,7 +196,7 @@ Item {
         text: ui.profile.name.substring(0,1)
         verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
         anchors.centerIn: iconBg
-        font: fonts.secondaryFont(18)
+        font: fonts.caption()
     }
 
     MouseArea {
@@ -209,45 +223,24 @@ Item {
         ColumnLayout {
             spacing: 0
 
-            Item {
-                Layout.fillWidth: true
-                Layout.preferredHeight: childrenRect.height
-
-                Text {
-                    text: qsTr("Settings")
-                    color: colors.offwhite
-                    verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-                    anchors { horizontalCenter: parent.horizontalCenter; verticalCenter: parent.verticalCenter }
-                    font: fonts.primaryFont(26)
-                }
-
-                Components.Icon {
-                    id: closeIcon
-
-                    color: colors.offwhite
-                    icon: "uc:arrow-left"
-                    size: 80
-
-                    anchors.left: parent.left
-
-                    Components.HapticMouseArea {
-                        width: 120; height: 120
-                        anchors.centerIn: parent
-                        onClicked: {
-                            closeAnimation.start();
-                        }
-                    }
+            Components.TitleBar {
+                text: qsTr("Settings")
+                goBack: function() {
+                    closeAnimation.start();
                 }
             }
 
             Rectangle {
                 Layout.fillWidth: true
                 Layout.preferredHeight: childrenRect.height
+                Layout.leftMargin: 20
+                Layout.rightMargin: 20
                 Layout.bottomMargin: 20
 
                 color: colors.transparent
-                border { color: colors.medium; width: 2 }
+                border { color: colors.divider; width: 2 }
                 radius: ui.cornerRadiusSmall
+                visible: ui.profile.restricted
 
                 ColumnLayout {
                     width: parent.width
@@ -264,19 +257,17 @@ Item {
                         Components.Icon {
                             id: lockIcon
                             icon: "uc:lock"
-                            color: colors.offwhite
-                            opacity: 0.6
+                            color: colors.textSecondary
                             anchors { left: parent.left }
                             size: 30
                         }
 
                         Text {
-                            color: colors.offwhite
-                            opacity: 0.6
+                            color: colors.textSecondary
                             //: Text explaining that the profile has restricted access
                             text: qsTr("Restricted")
                             anchors { left: lockIcon.right; leftMargin: 10; verticalCenter: lockIcon.verticalCenter }
-                            font: fonts.secondaryFont(24)
+                            font: fonts.help()
                         }
                     }
                 }
@@ -301,40 +292,9 @@ Item {
 
                 onCurrentIndexChanged: positionViewAtIndex(currentIndex, ListView.Contain)
 
-                Item {
-                    width: parent.width; height: 80
-                    anchors { top: parent.top }
-                    opacity: menu.atYBeginning ? 0 : 1
-
-                    Behavior on opacity { PropertyAnimation { duration: 300; easing.type: Easing.OutExpo } }
-
-                    LinearGradient {
-                        anchors.fill: parent
-                        start: Qt.point(0, 0)
-                        end: Qt.point(0, 50)
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: colors.black }
-                            GradientStop { position: 1.0; color: colors.transparent }
-                        }
-                    }
-                }
-
-                Item {
-                    width: parent.width; height: 80
-                    anchors { bottom: parent.bottom }
-                    opacity: menu.atYEnd ? 0 : 1
-
-                    Behavior on opacity { PropertyAnimation { duration: 300; easing.type: Easing.OutExpo } }
-
-                    LinearGradient {
-                        anchors.fill: parent
-                        start: Qt.point(0, 0)
-                        end: Qt.point(0, 50)
-                        gradient: Gradient {
-                            GradientStop { position: 0.0; color: colors.transparent }
-                            GradientStop { position: 1.0; color: colors.black }
-                        }
-                    }
+                Components.ScrollIndicator {
+                    parent: menu
+                    parentObj: menu
                 }
             }
         }
@@ -383,9 +343,9 @@ Item {
             wrapMode: Text.WordWrap
             maximumLineCount: 2
             horizontalAlignment: Text.AlignHCenter
-            color: colors.light
+            color: colors.textSecondary
             text: qsTr("Scan to open\nthe Web Configurator")
-            font: fonts.secondaryFont(22)
+            font: fonts.help()
             anchors { top: parent.top; topMargin: 20; horizontalCenter: parent.horizontalCenter }
         }
 
@@ -394,9 +354,10 @@ Item {
             wrapMode: Text.WordWrap
             maximumLineCount: 2
             horizontalAlignment: Text.AlignHCenter
-            color: colors.light
-            text: qsTr("Tap to close")
-            font: fonts.secondaryFont(22)
+            color: colors.textSecondary
+            //: Hint below the full-screen QR code of the web configurator
+            text: qsTr("Press BACK to close")
+            font: fonts.help()
             anchors { bottom: parent.bottom; bottomMargin: 20; horizontalCenter: parent.horizontalCenter }
         }
     }
@@ -408,97 +369,33 @@ Item {
     Component {
         id: menuItem
 
-        Rectangle {
+        Components.MenuRow {
             width: ListView.view.width
             height: visible ? 80 : 0
-            color: isCurrentItem && ui.keyNavigationEnabled ? colors.dark : colors.transparent
-            border {
-                color: isCurrentItem && ui.keyNavigationEnabled ? colors.medium : colors.transparent
-                width: 1
-            }
-            radius: ui.cornerRadiusSmall
-            visible: {
+            // a restricted profile only sees About
+            visible: pos === 6 || !ui.profile.restricted
+            text: qsTr(name)
+            chevron: true
+            selectionStyle: "fill"
+            selected: ListView.isCurrentItem
+            badgeAlert: pos === 0
+            badge: {
                 switch (pos) {
                 case 0:
-                case 1:
+                    return SoftwareUpdate.updateAvailable ? "1" : "";
                 case 2:
+                    return IntegrationController.integrationsModel.count > 0
+                            ? String(IntegrationController.integrationsModel.count) : "";
                 case 3:
-                case 4:
-                case 5:
-                    if (ui.profile.restricted) {
-                        return false;
-                    } else {
-                        return true;
-                    }
-                case 6:
-                    return true;
+                    return DockController.configuredDocks.count > 0 ? String(DockController.configuredDocks.count) : "";
+                default:
+                    return "";
                 }
             }
 
-            property bool isCurrentItem: ListView.isCurrentItem
-
-            Rectangle {
-                width: counterText.implicitWidth + 20
-                height: 30
-                radius: 15
-                color: pos == 0 ? colors.red : colors.medium
-                anchors { verticalCenter: parent.verticalCenter; left: menuItemText.right; leftMargin: 10 }
-                visible: {
-                    switch (pos) {
-                    case 0:
-                        return SoftwareUpdate.updateAvailable;
-                    case 2:
-                        return IntegrationController.integrationsModel.count > 0;
-                    case 3:
-                        return DockController.configuredDocks.count > 0;
-                    case 4:
-                        return false;
-                    case 5:
-                        return false;
-                    default:
-                        return false;
-                    }
-                }
-
-                Text {
-                    id: counterText
-                    text: {
-                        switch (pos) {
-                        case 0:
-                            return "1";
-                        case 2:
-                            return IntegrationController.integrationsModel.count;
-                        case 3:
-                            return DockController.configuredDocks.count;
-                        case 4:
-                            return qsTranslate("Abbreviation for not available", "N/A");
-                        case 5:
-                            return qsTranslate("Abbreviation for not available", "N/A");
-                        default:
-                            return "";
-                        }
-                    }
-                    color: colors.offwhite
-                    anchors.centerIn: parent
-                    font: fonts.secondaryFont(20)
-                }
-            }
-
-            Text {
-                id: menuItemText
-                color: colors.offwhite
-                text: qsTr(name)
-                horizontalAlignment: Text.AlignHCenter
-                anchors { left: parent.left; leftMargin: 20; verticalCenter: parent.verticalCenter; }
-                font: fonts.primaryFont(30)
-            }
-
-            Components.HapticMouseArea {
-                anchors.fill: parent
-                onClicked: {
-                    menu.currentIndex = index;
-                    loadPage(menu.currentIndex);
-                }
+            onClicked: {
+                menu.currentIndex = index;
+                loadPage(menu.currentIndex);
             }
         }
     }

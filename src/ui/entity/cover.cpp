@@ -5,6 +5,7 @@
 
 #include "../../logging.h"
 #include "../../util.h"
+#include "entityScreens.h"
 
 namespace uc {
 namespace ui {
@@ -38,19 +39,8 @@ Cover::Cover(const QString &id, QVariantMap nameI18n, const QString &language, c
         m_deviceClass = QVariant::fromValue(CoverDeviceClass::Blind).toString();
     }
 
-    // some device classes look the same from UI point of view
-    switch (deviceClassEnum) {
-        case CoverDeviceClass::Shade:
-            m_deviceClass = Util::convertEnumToString(CoverDeviceClass::Blind);
-            break;
-        case CoverDeviceClass::Door:
-        case CoverDeviceClass::Gate:
-        case CoverDeviceClass::Window:
-            m_deviceClass = Util::convertEnumToString(CoverDeviceClass::Window);
-            break;
-        default:
-            break;
-    }
+    // some device classes look the same from UI point of view: the screen registry knows which ones
+    m_deviceClass = EntityScreens::screenName(Type::Cover, m_deviceClass);
 }
 
 Cover::~Cover() {
@@ -133,14 +123,26 @@ bool Cover::updateAttribute(const QString &attribute, QVariant data) {
             break;
         }
         case CoverAttributes::Position: {
-            int newPos = data.toInt();
+            bool valid = false;
+            int  newPos = data.toInt(&valid);
 
-            if (m_position != newPos) {
+            if (!valid) {
+                qCWarning(lcCover()) << "Ignoring non-numeric position attribute of entity" << m_id;
+                break;
+            }
+
+            // the core API defines the position as a percentage, 0 = closed, 100 = open
+            newPos = qBound(0, newPos, 100);
+
+            if (!m_positionAvailable || m_position != newPos) {
                 m_position = newPos;
+                m_positionAvailable = true;
                 ok = true;
                 emit positionChanged();
 
                 m_stateInfo2 = QString::number(m_position) + "%";
+                // the tile shows the state and the position in one line: it only refreshes on stateInfoChanged
+                emit stateInfoChanged();
             }
             break;
         }
@@ -161,7 +163,7 @@ bool Cover::updateAttribute(const QString &attribute, QVariant data) {
 
 void Cover::onLanguageChangedTypeSpecific()
 {
-    QTimer::singleShot(500, [=]() {
+    QTimer::singleShot(500, this, [=]() {
         m_stateAsString = CoverStates::getTranslatedString(static_cast<CoverStates::Enum>(m_state));
         emit stateAsStringChanged();
 

@@ -18,6 +18,45 @@ Item {
 
     signal done()
     signal failed()
+    signal home()
+
+    /** KEYBOARD NAVIGATION **/
+    // Done / Try again hold the focus; BACK is their key equivalent. The step owns the input while
+    // it is the current step of the setup (deferred, see Configure).
+    readonly property bool isCurrentStep: SwipeView.isCurrentItem
+    onIsCurrentStepChanged: Qt.callLater(activate)
+
+    function activate() {
+        if (integrationSetupFinish.isCurrentStep) {
+            buttonNavigation.lastFocusItem = null;
+            buttonNavigation.takeControl();
+        } else {
+            buttonNavigation.releaseControl();
+        }
+    }
+
+    Components.ButtonNavigation {
+        id: buttonNavigation
+        manageFocus: true
+        initialFocusItem: integrationSetupFinish.success ? doneButton : tryAgainButton
+        defaultConfig: {
+            "BACK": {
+                "pressed": function() {
+                    if (integrationSetupFinish.success) {
+                        integrationSetupFinish.done();
+                    } else {
+                        integrationSetupFinish.failed();
+                    }
+                }
+            },
+            "HOME": {
+                "pressed": function() {
+                    integrationSetupFinish.done();
+                    integrationSetupFinish.home();
+                }
+            }
+        }
+    }
 
     ColumnLayout {
         visible: integrationSetupFinish.success
@@ -34,8 +73,8 @@ Item {
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
-            color: colors.offwhite
-            font: fonts.primaryFont(30)
+            color: colors.textPrimary
+            font: fonts.title()
         }
 
         Text {
@@ -46,9 +85,9 @@ Item {
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
-            color: colors.light
+            color: colors.textSecondary
             text: qsTr("The integration has been added successfully.")
-            font: fonts.secondaryFont(24)
+            font: fonts.help()
         }
 
         Item {
@@ -67,12 +106,12 @@ Item {
                 Layout.preferredHeight: 60
 
                 radius: 30
-                color: colors.offwhite
+                color: colors.textPrimary
 
                 Components.Icon {
                     icon: IntegrationController.integrationDriverTosetup.icon
                     size: 60
-                    color: colors.black
+                    color: colors.bg
                     anchors.centerIn: parent
                 }
             }
@@ -85,39 +124,34 @@ Item {
                 maximumLineCount: 1
                 elide: Text.ElideRight
                 verticalAlignment: Text.AlignVCenter
-                font: fonts.primaryFont(30)
+                font: fonts.label()
             }
         }
 
-        Components.AboutInfo {
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
+        Components.Divider {
+            Layout.topMargin: 14
+        }
 
+        Components.KeyValueRow {
             key: qsTr("Version")
             value: IntegrationController.integrationDriverTosetup.version
-            lineTop: true
         }
 
-        Components.AboutInfo {
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
-
+        Components.KeyValueRow {
             key: qsTr("Developer")
             value: IntegrationController.integrationDriverTosetup.developerName
-            multiline: true
-            lineBottom: IntegrationController.integrationDriverTosetup.homepage !== ""
+            stacked: true
+            showDivider: IntegrationController.integrationDriverTosetup.homepage !== ""
         }
 
-        Components.AboutInfo {
-            Layout.leftMargin: 20
-            Layout.rightMargin: 20
+        Components.KeyValueRow {
             Layout.bottomMargin: 20
 
             visible: IntegrationController.integrationDriverTosetup.homepage !== ""
             key: qsTr("Website")
             value: IntegrationController.integrationDriverTosetup.homepage
-            multiline: true
-            lineBottom: false
+            stacked: true
+            showDivider: false
         }
 
         Components.Button {
@@ -127,6 +161,7 @@ Item {
             Layout.bottomMargin: 20
             Layout.alignment: Qt.AlignBottom
 
+            id: doneButton
             text: qsTr("Done")
             trigger: function() {
                 integrationSetupFinish.done();
@@ -150,7 +185,7 @@ Item {
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
             color: colors.red
-            font: fonts.primaryFont(30)
+            font: fonts.title()
         }
 
         Text {
@@ -161,9 +196,9 @@ Item {
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
-            color: colors.light
+            color: colors.textSecondary
             text: qsTr("Something went wrong while setting up the integration.")
-            font: fonts.secondaryFont(24)
+            font: fonts.help()
         }
 
         Text {
@@ -175,9 +210,9 @@ Item {
             maximumLineCount: 2
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
-            color: colors.offwhite
+            color: colors.textSecondary
             text: qsTr("ERROR:")
-            font: fonts.secondaryFont(24)
+            font: fonts.help()
         }
 
         Text {
@@ -190,7 +225,7 @@ Item {
             wrapMode: Text.WordWrap
             elide: Text.ElideRight
             color: colors.red
-            font: fonts.secondaryFont(24)
+            font: fonts.help()
         }
 
         Item {
@@ -205,6 +240,7 @@ Item {
             Layout.bottomMargin: 20
             Layout.alignment: Qt.AlignBottom
 
+            id: tryAgainButton
             text: qsTr("Try again")
             trigger: function() {
                 integrationSetupFinish.failed()

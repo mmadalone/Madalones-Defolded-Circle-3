@@ -23,13 +23,25 @@ Item {
 
     Text {
         id: titleOpen
-        width: parent.width - 200
+        // up to the status row, which grows with the icons it shows
+        width: Math.min(parent.width - 200, statusCluster.x - x - 10)
         wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+        // three lines fill the 80 px bar; a longer name is cut off with an ellipsis instead of spilling out
+        maximumLineCount: 3
         elide: Text.ElideRight
         color: colors.offwhite
         opacity: iconOpen.opacity
         anchors { left: iconOpen.right; leftMargin: 10; verticalCenter: parent.verticalCenter; }
         font: fonts.primaryFont(24, "Medium")
         lineHeight: 0.8
+    }
+
+    // right-aligned status row: integration, wifi, battery, then the command-in-progress spinner; it
+    // ends 60 px from the edge, clear of the close icon of the screen
+    TitleStatus {
+        id: statusCluster
+        anchors { right: parent.right; rightMargin: 60; verticalCenter: parent.verticalCenter }
+        integrationDisconnected: titleBase.parent ? titleBase.parent.integrationDisconnected === true : false
+        commandInProgress: titleBase.parent && titleBase.parent.entityObj ? titleBase.parent.entityObj.commandInProgress : false
     }
 }

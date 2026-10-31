@@ -22,6 +22,79 @@ EntityComponents.BaseDetail {
     property QtObject mediaWidgetEntityObj
     property bool resumeWindow: false
     property bool powerOffPressed: false
+    // open the menu on the "Fix states" page once the screen is up, set by the error popup of the activity tile
+    property bool openFixStates: false
+
+    // Keypad selection in the activity menu (button navigation driven, see docs/key-navigation.md idiom b):
+    // 0 is the button at the top of the current menu page ("Fix states" / "Back"), 1..n the list items below it.
+    // The menu's ButtonNavigation owns the input while the menu is open, the popup on top of it takes over
+    // while it is shown, so exactly one layer reacts to a key.
+    property int menuSelected: 0
+
+    function menuList() {
+        return extraContent.currentIndex === 0 ? includedEntitiesList : fixedEntitiesList;
+    }
+
+    function showMenuPage(index) {
+        extraContent.currentIndex = index;
+        activityBase.menuSelected = 0;
+    }
+
+    function openMenu() {
+        showMenuPage(0);
+        activityMenu.open();
+    }
+
+    function closeMenu() {
+        activityMenu.close();
+        // reset the page once the menu has slid out of view
+        ui.setTimeOut(400, () => { showMenuPage(0); });
+    }
+
+    function menuMoveSelection(delta) {
+        const list = menuList();
+        const next = Math.max(0, Math.min(list.count, activityBase.menuSelected + delta));
+        activityBase.menuSelected = next;
+        if (next > 0) {
+            list.currentIndex = next - 1;
+        }
+    }
+
+    function menuActivateSelection() {
+        if (activityBase.menuSelected === 0) {
+            showMenuPage(extraContent.currentIndex === 0 ? 1 : 0);
+            return;
+        }
+
+        const item = menuList().currentItem;
+        if (item) {
+            item.activate();
+        }
+    }
+
+    function setupMenuNavigation() {
+        activityMenu.buttonNavigation.extendDefaultConfig({
+            "DPAD_UP": {
+                "pressed": function() { menuMoveSelection(-1); }
+            },
+            "DPAD_DOWN": {
+                "pressed": function() { menuMoveSelection(1); }
+            },
+            "DPAD_MIDDLE": {
+                "pressed": function() { menuActivateSelection(); }
+            },
+            "BACK": {
+                "pressed": function() {
+                    // the fix states page goes back to the menu, the menu closes
+                    if (extraContent.currentIndex > 0) {
+                        showMenuPage(0);
+                    } else {
+                        closeMenu();
+                    }
+                }
+            }
+        });
+    }
 
     function triggerCommand(entityId, cmdId, params) {
         let e = EntityController.get(entityId);
@@ -62,14 +135,7 @@ EntityComponents.BaseDetail {
                                            "text": item.text ? item.text : "",
                                            "trigger": function() {
                                                if (item.command.entity_id) {
-                                                   if (!EntityController.get(item.command.entity_id)) {
-                                                       EntityController.load(item.command.entity_id);
-                                                       connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                                                           activityBase.triggerCommand(item.command.entity_id, item.command.cmd_id, item.command.params);
-                                                       });
-                                                   } else {
-                                                       activityBase.triggerCommand(item.command.entity_id, item.command.cmd_id, item.command.params);
-                                                   }
+                                                   activityBase.triggerCommand(item.command.entity_id, item.command.cmd_id, item.command.params);
                                                }
                                            }
                                        });
@@ -136,128 +202,110 @@ EntityComponents.BaseDetail {
                                             }
 
                                             if (buttonMap.short_press) {
-                                                EntityController.load(buttonMap.short_press.entity_id);
+                                                // let's setup short press first
+                                                let e = EntityController.get(buttonMap.short_press.entity_id);
+
+                                                const cmdString = String(buttonMap.short_press.cmd_id);
+                                                const canRepeat = !cmdString.includes("remote.");
+
+                                                console.info(entityObj.name + " button mapping short press: " + buttonMap.button + " -> " + JSON.stringify(buttonMap.short_press));
+
+                                                overrideConfig[buttonMap.button]["pressed"] = function() {
+                                                    if (e) {
+                                                        switch (e.type) {
+                                                        case EntityTypes.Media_player:
+                                                            if (e.hasFeature(MediaPlayerFeatures.Volume_up_down)){
+                                                                if (buttonMap.button === "VOLUME_UP" || buttonMap.button === "VOLUME_DOWN") {
+                                                                    volume.start(e, buttonMap.button === "VOLUME_UP");
+                                                                }
+                                                            }
+                                                            activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
+                                                            break;
+                                                        case EntityTypes.Remote: {
+                                                            EntityController.onEntityCommand(
+                                                                        e.id,
+                                                                        buttonMap.short_press.cmd_id,
+                                                                        buttonMap.short_press.params ? buttonMap.short_press.params : {});
+                                                            break;
+                                                        }
+                                                        default:
+                                                            activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
+                                                overrideConfig[buttonMap.button]["pressed_repeat"] = function() {
+                                                    if (e) {
+                                                        switch (e.type) {
+                                                        case EntityTypes.Media_player:
+                                                            if (e.hasFeature(MediaPlayerFeatures.Volume_up_down)){
+                                                                if (buttonMap.button === "VOLUME_UP" || buttonMap.button === "VOLUME_DOWN") {
+                                                                    volume.start(e, buttonMap.button === "VOLUME_UP");
+                                                                }
+                                                            }
+                                                            activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
+                                                            break;
+                                                        case EntityTypes.Remote: {
+                                                            if (canRepeat) {
+                                                                EntityController.onEntityCommand(
+                                                                            e.id,
+                                                                            "remote.send",
+                                                                            {
+                                                                                "command": buttonMap.short_press.cmd_id,
+                                                                                "repeat": ui.inputController.repeatCount
+                                                                            });
+                                                            } else {
+                                                                EntityController.onEntityCommand(
+                                                                            e.id,
+                                                                            buttonMap.short_press.cmd_id,
+                                                                            buttonMap.short_press.params ? buttonMap.short_press.params : {});
+                                                            }
+                                                            break;
+                                                        }
+                                                        default:
+                                                            activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+
+                                                // for the remote entity we need to define a release event as well
+                                                overrideConfig[buttonMap.button]["released"] = function() {
+                                                    if (e) {
+                                                        if (e.type === EntityTypes.Remote && canRepeat) {
+                                                            EntityController.onEntityCommand(
+                                                                        e.id,
+                                                                        "remote.stop_send",
+                                                                        {});
+                                                        }
+                                                    }
+                                                }
                                             }
 
                                             if (buttonMap.long_press) {
-                                                EntityController.load(buttonMap.long_press.entity_id);
-                                            }
+                                                // now tackle the long press
+                                                let eL = EntityController.get(buttonMap.long_press.entity_id);
 
-                                            connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                                                if (success) {
-                                                    if (buttonMap.short_press) {
-                                                        // let's setup short press first
-                                                        let e = EntityController.get(buttonMap.short_press.entity_id);
+                                                console.info(entityObj.name + " button mapping long press: " + buttonMap.button + " -> " + JSON.stringify(buttonMap.long_press));
 
-                                                        const cmdString = String(buttonMap.short_press.cmd_id);
-                                                        const canRepeat = !cmdString.includes("remote.");
-
-                                                        console.info(entityObj.name + " button mapping short press: " + buttonMap.button + " -> " + JSON.stringify(buttonMap.short_press));
-
-                                                        overrideConfig[buttonMap.button]["pressed"] = function() {
-                                                            if (e) {
-                                                                switch (e.type) {
-                                                                case EntityTypes.Media_player:
-                                                                    if (e.hasFeature(MediaPlayerFeatures.Volume_up_down)){
-                                                                        if (buttonMap.button === "VOLUME_UP" || buttonMap.button === "VOLUME_DOWN") {
-                                                                            volume.start(e, buttonMap.button === "VOLUME_UP");
-                                                                        }
-                                                                    }
-                                                                    activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
-                                                                    break;
-                                                                case EntityTypes.Remote: {
-                                                                    EntityController.onEntityCommand(
-                                                                                e.id,
-                                                                                buttonMap.short_press.cmd_id,
-                                                                                buttonMap.short_press.params ? buttonMap.short_press.params : {});
-                                                                    break;
-                                                                }
-                                                                default:
-                                                                    activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
-                                                                    break;
-                                                                }
-                                                            } else {
-                                                                console.warn("Entity " + entityId + " is not loaded. Button mapping failed for press: " + buttonMap.button);
-                                                            }
-                                                        }
-
-                                                        overrideConfig[buttonMap.button]["pressed_repeat"] = function() {
-                                                            if (e) {
-                                                                switch (e.type) {
-                                                                case EntityTypes.Media_player:
-                                                                    if (e.hasFeature(MediaPlayerFeatures.Volume_up_down)){
-                                                                        if (buttonMap.button === "VOLUME_UP" || buttonMap.button === "VOLUME_DOWN") {
-                                                                            volume.start(e, buttonMap.button === "VOLUME_UP");
-                                                                        }
-                                                                    }
-                                                                    activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
-                                                                    break;
-                                                                case EntityTypes.Remote: {
-                                                                    if (canRepeat) {
-                                                                        EntityController.onEntityCommand(
-                                                                                    e.id,
-                                                                                    "remote.send",
-                                                                                    {
-                                                                                        "command": buttonMap.short_press.cmd_id,
-                                                                                        "repeat": ui.inputController.repeatCount
-                                                                                    });
-                                                                    } else {
-                                                                        EntityController.onEntityCommand(
-                                                                                    e.id,
-                                                                                    buttonMap.short_press.cmd_id,
-                                                                                    buttonMap.short_press.params ? buttonMap.short_press.params : {});
-                                                                    }
-                                                                    break;
-                                                                }
-                                                                default:
-                                                                    activityBase.triggerCommand(buttonMap.short_press.entity_id, buttonMap.short_press.cmd_id, buttonMap.short_press.params);
-                                                                    break;
-                                                                }
-                                                            }  else {
-                                                                console.warn("Entity " + entityId + " is not loaded. Button mapping failed for press repeat: " + buttonMap.button);
-                                                            }
-                                                        }
-
-                                                        // for the remote entity we need to define a release event as well
-                                                        overrideConfig[buttonMap.button]["released"] = function() {
-                                                            if (e) {
-                                                                if (e.type === EntityTypes.Remote && canRepeat) {
-                                                                    EntityController.onEntityCommand(
-                                                                                e.id,
-                                                                                "remote.stop_send",
-                                                                                {});
-                                                                }
-                                                            } else {
-                                                                console.warn("Entity " + entityId + " is not loaded. Button mapping failed for release: " + buttonMap.button);
-                                                            }
-                                                        }
+                                                overrideConfig[buttonMap.button]["long_press"] = function() {
+                                                    if (eL) {
+                                                        activityBase.triggerCommand(buttonMap.long_press.entity_id, buttonMap.long_press.cmd_id, buttonMap.long_press.params);
                                                     }
-
-                                                    if (buttonMap.long_press) {
-                                                        // now tackle the long press
-                                                        let eL = EntityController.get(buttonMap.long_press.entity_id);
-
-                                                        console.info(entityObj.name + " button mapping long press: " + buttonMap.button + " -> " + JSON.stringify(buttonMap.long_press));
-
-                                                        overrideConfig[buttonMap.button]["long_press"] = function() {
-                                                            if (eL) {
-                                                                activityBase.triggerCommand(buttonMap.long_press.entity_id, buttonMap.long_press.cmd_id, buttonMap.long_press.params);
-                                                            }  else {
-                                                                console.warn("Entity " + entityId + " is not loaded. Button mapping failed for long press: " + buttonMap.button);
-                                                            }
-                                                        }
-                                                    }
-                                                } else {
-                                                    console.warn("Entity " + entityId + " is not loaded. Button mapping failed.");
                                                 }
-                                            })
+                                            }
                                         });
 
-        buttonNavigation.overrideConfig = overrideConfig;
+        // assigned to the screen's own property, not to buttonNavigation: the base binds the
+        // navigation to it and drops it while the entity is unavailable
+        activityBase.overrideConfig = overrideConfig;
     }
 
     function updateSliderConfig() {
-        touchSlider.feature = entityObj.sliderConfig.entityFeature === "default" ? "volume" : entityObj.sliderConfig.entityFeature;
+        // "default" is passed through: TouchSlider resolves it to the feature that
+        // fits the target entity's type once the entity (and its type) is known
+        touchSlider.feature = entityObj.sliderConfig.entityFeature;
         touchSlider.entityObj = entityObj.sliderConfig.entityId === "default" ? activityBase.mediaWidgetEntityObj : EntityController.get(entityObj.sliderConfig.entityId);
         touchSlider.active = entityObj.sliderConfig.enabled;
     }
@@ -267,11 +315,6 @@ EntityComponents.BaseDetail {
             return;
         }
 
-        const e = EntityController.get(entityObj.voiceAssistantEntityId);
-
-        if (!e) {
-            EntityController.load(entityObj.voiceAssistantEntityId);
-        }
     }
 
     function powerOff() {
@@ -285,33 +328,40 @@ EntityComponents.BaseDetail {
     }
 
     function powerOffCommand() {
-        const res = checkActivityIncludedEntities(entityObj, false);
+        checkActivityReadiness(entityObj, false, function(activityObj) {
+            activityObj.turnOff();
 
-        if (EntityController.resumeWindow && !res.allIncludedEntitiesConnected) {
-            ui.setTimeOut(500, () => {
-                              activityBase.powerOffCommand();
-                          });
-            return;
-        } else if (!EntityController.resumeWindow && !res.allIncludedEntitiesConnected && entityObj.readyCheck) {
-                ui.createActionableNotification(qsTr("Some devices are not ready"), (res.notReadyEntityQty == 1 ? qsTr("%1 is not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities) : qsTr("%1 are not connected yet. Tap Proceed to continue anyway.").arg(res.notReadyEntities)), "uc:link-slash", () => { entityObj.turnOff(); }, qsTr("Proceed"));
-                return;
-        } else {
-            entityObj.turnOff();
-            activityBase.close();
-        }
+            // the page can be gone by the time the check is through: the wait and the prompt both take
+            // their time, and QML nulls a reference to a destroyed object
+            if (activityBase) {
+                activityBase.close();
+            }
+        });
     }
 
     Component.onCompleted: {
         updateButtonMapping();
         updateSliderConfig();
         updateVoiceAssistantConfig();
+        setupMenuNavigation();
         root.isActivityOpen = true;
+
+        if (activityBase.openFixStates) {
+            // once the screen has slid into view
+            ui.setTimeOut(500, () => {
+                              showMenuPage(1);
+                              activityMenu.open();
+                          });
+        }
     }
 
     Timer {
         id: powerOffPressTimeout
         running: false
-        interval: 2000
+        // how long a power press made on a sleeping remote stays armed while it waits for the wakeup to be
+        // reported. A wakeup that takes longer than the window configured under Power would otherwise drop
+        // the press, which is the very case the window is there for
+        interval: Math.max(2000, EntityController.resumeTimeout)
         repeat: false
         onTriggered: activityBase.powerOffPressed = false
     }
@@ -386,7 +436,9 @@ EntityComponents.BaseDetail {
         id: title
         width: parent.width
         height: 80
-        color: (entityObj.state === ActivityStates.Error && entityObj.state === ActivityStates.Timeout) ? colors.red : colors.transparent
+        // the header turns red when the run failed
+        readonly property bool alert: entityObj.state === ActivityStates.Error || entityObj.state === ActivityStates.Timeout
+        color: title.alert ? colors.red : colors.transparent
 
         Components.Icon {
             id: iconOpen
@@ -397,12 +449,15 @@ EntityComponents.BaseDetail {
         }
 
         Item {
-            width: parent.width - 200
+            // up to the status row, which grows with the icons it shows
+            width: Math.min(parent.width - 200, titleStatus.x - x - 10)
             height: childrenRect.height
             anchors { left: iconOpen.right; leftMargin: 10; verticalCenter: parent.verticalCenter; }
 
+            // both texts take the width of the container, otherwise they do not elide and run under the icons
             Text {
                 id: titleOpen
+                width: parent.width
                 text: entityObj.name
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 elide: Text.ElideRight
@@ -414,16 +469,18 @@ EntityComponents.BaseDetail {
 
             Text {
                 id: titleDesc
-                //: Tap to close menu or tap to see more
-                text: activityMenu.opened ? qsTr("Tap to close") : qsTr("Tap for more")
+                //: Tap to close menu, tap to see more or, after a failed run, tap to fix the state
+                text: activityMenu.opened ? qsTr("Tap to close") : (title.alert ? qsTr("Tap to fix") : qsTr("Tap for more"))
+                width: parent.width
                 height: visible ? implicitHeight : 0
                 wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                 elide: Text.ElideRight
                 maximumLineCount: 1
-                color: colors.light
+                // the dim grey is tuned for the black background and unreadable on the red bar
+                color: title.alert ? colors.offwhite : colors.light
                 opacity: iconOpen.opacity
                 anchors { left: parent.left; top: titleOpen.bottom; topMargin: -5 }
-                font: fonts.secondaryFont(20, "Medium")
+                font: fonts.caption()
             }
         }
 
@@ -431,15 +488,19 @@ EntityComponents.BaseDetail {
             anchors.fill: parent
             onClicked: {
                 if (activityMenu.opened) {
-                    activityMenu.close();
-                    extraContent.decrementCurrentIndex();
+                    closeMenu();
                 } else {
-
-                    activityMenu.open();
+                    openMenu();
                 }
             }
         }
 
+        // the status row of every entity screen title: integration, wifi and battery icons side by side
+        EntityComponents.TitleStatus {
+            id: titleStatus
+            anchors { right: parent.right; rightMargin: 60; verticalCenter: parent.verticalCenter }
+            integrationDisconnected: activityBase.integrationDisconnected
+        }
     }
 
     PathView {
@@ -504,7 +565,13 @@ EntityComponents.BaseDetail {
                     height: 100
 
                     onClicked: {
-                        extraContent.incrementCurrentIndex();
+                        showMenuPage(1);
+                    }
+
+                    Components.Selectable {
+                        style: "fill"
+                        selected: activityBase.menuSelected === 0
+                        anchors { leftMargin: 10; rightMargin: 10 }
                     }
 
                     Components.Icon {
@@ -566,7 +633,13 @@ EntityComponents.BaseDetail {
                     anchors.top: parent.top
 
                     onClicked: {
-                        extraContent.decrementCurrentIndex();
+                        showMenuPage(0);
+                    }
+
+                    Components.Selectable {
+                        style: "fill"
+                        selected: activityBase.menuSelected === 0
+                        anchors { leftMargin: 10; rightMargin: 10 }
                     }
 
                     Components.Icon {
@@ -598,8 +671,22 @@ EntityComponents.BaseDetail {
                     flickDeceleration: 1000
                     clip: true
 
-                    model: entityObj.includedEntities
+                    // the activity itself first, then only entities with an on/off state: sensors, buttons,
+                    // macros etc. are left out
+                    model: [entityObj.id].concat(entityObj.fixableEntities)
                     delegate: fixedEntityItem
+
+                    Text {
+                        //: Shown in the "Fix states" list if none of the activity's entities has an on/off state
+                        text: qsTr("None of the entities in this activity has an On/Off state that could be fixed")
+                        color: colors.light
+                        font: fonts.secondaryFont(24)
+                        width: parent.width - 40
+                        wrapMode: Text.WordWrap
+                        horizontalAlignment: Text.AlignHCenter
+                        anchors.centerIn: parent
+                        visible: fixedEntitiesList.count === 1
+                    }
                 }
             }
         }
@@ -647,26 +734,28 @@ EntityComponents.BaseDetail {
         id: includedEntityItem
 
         Components.HapticMouseArea {
+            id: includedEntityRoot
             width: includedEntitiesList.width
             height: 100
 
             Component.onCompleted: {
                 entity = EntityController.get(modelData)
-
-                if (!entity) {
-                    connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                        if (success) {
-                            entity = EntityController.get(entityId);
-                        }
-                    });
-                    EntityController.load(modelData);
-                }
             }
 
             property QtObject entity
 
+            function activate() {
+                loadThirdContainer(EntityController.screenUrl(entity), { "entityId": entity.id, "entityObj": entity });
+            }
+
             onClicked: {
-                loadThirdContainer("qrc:/components/entities/" + entity.getTypeAsString() + "/deviceclass/" + entity.getDeviceClass() + ".qml", { "entityId": entity.id, "entityObj": entity });
+                activate();
+            }
+
+            Components.Selectable {
+                style: "fill"
+                selected: includedEntityRoot.ListView.isCurrentItem && activityBase.menuSelected > 0
+                anchors { leftMargin: 10; rightMargin: 10 }
             }
 
             Components.Icon {
@@ -693,26 +782,42 @@ EntityComponents.BaseDetail {
         id: fixedEntityItem
 
         Components.HapticMouseArea {
+            id: fixedEntityRoot
             width: fixedEntitiesList.width
             height: fixedEntityItemIcon.size / 2 + fixedEntityItemData.height
 
             Component.onCompleted: {
                 entity = EntityController.get(modelData)
-
-                if (!entity) {
-                    connectSignalSlot(EntityController.entityLoaded, function(success, entityId) {
-                        if (success) {
-                            entity = EntityController.get(entityId);
-                        }
-                    });
-                    EntityController.load(modelData);
-                }
             }
 
             property QtObject entity
+            // the first row is the activity itself
+            readonly property bool isActivity: modelData === entityObj.id
+            readonly property bool alert: isActivity && entity && (entity.state === ActivityStates.Error || entity.state === ActivityStates.Timeout)
+
+            function activate() {
+                // state 0 is Unavailable for every entity type with an on/off state; the core refuses it
+                if (entity.state === 0) {
+                    ui.createNotification(qsTr("%1 is unavailable, its state cannot be changed").arg(entity.name), true);
+                    return;
+                }
+                // the core refuses to change the state while a sequence is still running
+                if (isActivity && entity.state === ActivityStates.Running) {
+                    ui.createNotification(qsTr("%1 is running, its state cannot be changed").arg(entity.name), true);
+                    return;
+                }
+                fixStatePopup.openFor(entity, isActivity);
+            }
 
             onClicked: {
-                ui.createNotification("Not yet implemented");
+                activate();
+            }
+
+            Components.Selectable {
+                id: fixedEntityRootSelection
+                style: "fill"
+                selected: fixedEntityRoot.ListView.isCurrentItem && activityBase.menuSelected > 0
+                anchors { leftMargin: 10; rightMargin: 10 }
             }
 
             Components.Icon {
@@ -747,10 +852,21 @@ EntityComponents.BaseDetail {
                     wrapMode: Text.WrapAtWordBoundaryOrAnywhere
                     elide: Text.ElideRight
                     maximumLineCount: 1
-                    color: colors.light
+                    // on the selection fill everything is drawn in the primary text colour
+                    color: fixedEntityRootSelection.shown ? colors.textPrimary
+                                                          : fixedEntityRoot.alert ? colors.red : colors.light
                     anchors { left: parent.left; top: fixedEntityItemName.bottom }
                     font: fonts.secondaryFont(22)
                 }
+            }
+
+            // separates the activity from its devices
+            Rectangle {
+                width: parent.width - 40
+                height: 1
+                color: colors.medium
+                anchors { bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
+                visible: fixedEntityRoot.isActivity
             }
         }
     }
@@ -758,5 +874,40 @@ EntityComponents.BaseDetail {
     Components.TouchSlider {
         id: touchSlider
         parent: Overlay.overlay
+    }
+
+    Components.PopupMenu {
+        id: fixStatePopup
+        parent: Overlay.overlay
+
+        function openFor(entity, isActivity) {
+            fixStatePopup.title = isActivity
+                    //: Popup title when fixing the state of an activity. %1 is the activity name
+                    ? qsTr("Set the state of %1. No command is sent to the devices.").arg(entity.name)
+                    //: Popup title when fixing the state of an entity. %1 is the entity name
+                    : qsTr("Set the state of %1. No command is sent to the device.").arg(entity.name);
+            const entityId = entity.id;
+            fixStatePopup.menuItems = [
+                {
+                    title: isActivity
+                           //: Button. Mark the activity as running without sending any command
+                           ? qsTr("Activity is on")
+                           //: Button. Mark the device as switched on without sending a command
+                           : qsTr("Device is on"),
+                    icon: "uc:power-on",
+                    callback: function() { EntityController.setEntityState(entityId, true); }
+                },
+                {
+                    title: isActivity
+                           //: Button. Mark the activity as stopped without sending any command
+                           ? qsTr("Activity is off")
+                           //: Button. Mark the device as switched off without sending a command
+                           : qsTr("Device is off"),
+                    icon: "uc:power-off",
+                    callback: function() { EntityController.setEntityState(entityId, false); }
+                }
+            ];
+            fixStatePopup.open();
+        }
     }
 }

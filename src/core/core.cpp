@@ -8,10 +8,7 @@
 #include <QJsonObject>
 #include <QNetworkReply>
 #include <QNetworkRequest>
-#include <QSettings>
-#include <memory>
 
-#include "../config/config.h"  // madalone (Phase 0): probeRestAuth uses generateNewWebConfigPin
 #include "../logging.h"
 #include "../ui/notification.h"
 #include "../util.h"
@@ -31,18 +28,12 @@ Api::Api(const QString& url, QObject* parent) : QObject(parent), m_url(url) {
                      this, &Api::onError);
     QObject::connect(&m_webSocket, &QWebSocket::stateChanged, this, &Api::onStateChanged);
 
-    // madalone (post-v1.4.19 audit fix): re-enable WS keepalive timer.
-    // Upstream shipped this dormant — handler at line ~1334 exists but was never wired up.
-    // Re-enabling prevents the WS connection from going stale during LOW_POWER standby
-    // (NAT idle timeout, kernel TCP suspension, Dock-side idle close), which was the
-    // root cause of 2-3 s wake-press lag observed even with WoWLAN on. Battery cost is
-    // ~3 KB/day of WS pings (well under 1 % daily impact). Fixed-up signal scope from
-    // upstream's `&core::*` (wrong) to `&Api::*` (correct).
-    m_keepAliveTimer = new QTimer(this);
-    m_keepAliveTimer->setInterval(m_keepAliveInterval);
-    QObject::connect(m_keepAliveTimer, &QTimer::timeout, this, &Api::onKeepAliveTimerTimeout);
-    QObject::connect(this, &Api::connected, this, &Api::startKeepAliveTimer);
-    QObject::connect(this, &Api::disconnected, this, &Api::stopKeepAliveTimer);
+    // setup keep alive timer
+    //    m_keepAliveTimer = new QTimer(this);
+    //    m_keepAliveTimer->setInterval(m_keepAliveInterval);
+    //    QObject::connect(m_keepAliveTimer, &QTimer::timeout, this, &core::onKeepAliveTimerTimeout);
+    //    QObject::connect(this, &core::connected, this, &core::startKeepAliveTimer);
+    //    QObject::connect(this, &core::disconnected, this, &core::stopKeepAliveTimer);
 
     // setup reconnect timer
     m_reconnectTimer = new QTimer(this);
@@ -119,6 +110,24 @@ int Api::switchProfile(const QString& profileId, const QString& pin) {
     return sendRequest(RequestTypes::switch_profile, msgData);
 }
 
+/**
+ * @brief Returns a copy of the map with values of sensitive keys masked, so requests can be logged
+ * without writing credentials (auth token, PINs, WiFi passwords) to the system log.
+ */
+static QVariantMap redactSensitiveFields(const QVariantMap& map) {
+    static const QStringList sensitiveKeys = {"token", "password", "pin", "admin_pin"};
+
+    QVariantMap redacted = map;
+    for (auto i = redacted.begin(); i != redacted.end(); ++i) {
+        if (sensitiveKeys.contains(i.key())) {
+            i.value() = QStringLiteral("<redacted>");
+        } else if (i.value().type() == QVariant::Map) {
+            i.value() = redactSensitiveFields(i.value().toMap());
+        }
+    }
+    return redacted;
+}
+
 int Api::sendRequest(RequestTypes::Enum type, const QVariantMap msgData) {
     if (!m_connected && type != RequestTypes::auth) {
         return -1;
@@ -138,7 +147,9 @@ int Api::sendRequest(RequestTypes::Enum type, const QVariantMap msgData) {
     QJsonDocument doc = QJsonDocument::fromVariant(map);
     QString       message = doc.toJson(QJsonDocument::JsonFormat::Compact);
 
-    qCDebug(lcCore()).noquote() << "Sending request:" << message;
+    qCDebug(lcCore()).noquote() << "Sending request:"
+                                << QJsonDocument::fromVariant(redactSensitiveFields(map))
+                                       .toJson(QJsonDocument::JsonFormat::Compact);
 
     if (sendMessage(message)) {
         setupTimerForRequest(id);
@@ -171,8 +182,7 @@ int Api::addProfile(const QString& name, bool restricted) {
     return sendRequest(RequestTypes::add_profile, msgData);
 }
 
-int Api::updateProfile(const QString& profileId, const QString& name, const QString& icon, int pin,
-                       const QStringList pages) {
+int Api::updateProfile(const QString& profileId, const QString& name, const QString& icon, const QStringList pages) {
     if (profileId.isEmpty()) {
         return -1;
     }
@@ -185,60 +195,45 @@ int Api::updateProfile(const QString& profileId, const QString& name, const QStr
     if (icon != "-1") {
         msgData.insert("icon", icon);
     }
-    if (pin != -1) {
-        msgData.insert("pin", pin);
-    }
     if ((pages.length() > 0 && pages[0] != "-1") || pages.isEmpty()) {
         msgData.insert("pages", pages);
     }
     return sendRequest(RequestTypes::update_profile, msgData);
 }
 
-int Api::deleteProfile(const QString& profileId, int pin) {
+int Api::deleteProfile(const QString& profileId) {
     if (profileId.isEmpty()) {
         return -1;
     }
 
     QVariantMap msgData;
     msgData.insert("profile_id", profileId);
-    if (pin != -1) {
-        msgData.insert("pin", pin);
-    }
     return sendRequest(RequestTypes::delete_profile, msgData);
 }
 
-int Api::getPages(const QString& profileId, int pin) {
+int Api::getPages(const QString& profileId) {
     QVariantMap msgData;
     msgData.insert("profile_id", profileId);
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
     return sendRequest(RequestTypes::get_pages, msgData);
 }
 
-int Api::getPage(const QString pageId, int pin) {
+int Api::getPage(const QString pageId) {
     if (pageId.isEmpty()) {
         return -1;
     }
 
     QVariantMap msgData;
     msgData.insert("page_id", pageId);
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
     return sendRequest(RequestTypes::get_page, msgData);
 }
 
-int Api::addPage(const QString& profileId, const QString& name, int pos, int pin) {
+int Api::addPage(const QString& profileId, const QString& name, int pos) {
     if (profileId.isEmpty() || name.isEmpty() || pos < 0) {
         return -1;
     }
 
     QVariantMap msgData;
     msgData.insert("profile_id", profileId);
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
     msgData.insert("name", name);
     msgData.insert("pos", pos);
 
@@ -246,7 +241,7 @@ int Api::addPage(const QString& profileId, const QString& name, int pos, int pin
 }
 
 int Api::updatePage(const QString& pageId, const QString& profileId, const QString& name, const QString& image, int pos,
-                    const QVariantList& items, int pin) {
+                    const QVariantList& items) {
     if (pageId.isEmpty() || profileId.isEmpty()) {
         return -1;
     }
@@ -261,9 +256,6 @@ int Api::updatePage(const QString& pageId, const QString& profileId, const QStri
     if (image != "-1") {
         msgData.insert("image", image);
     }
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
     if ((items.length() > 0 && items[0] != "-1") || items.isEmpty()) {
         msgData.insert("items", items);
     }
@@ -275,16 +267,13 @@ int Api::updatePage(const QString& pageId, const QString& profileId, const QStri
     return sendRequest(RequestTypes::update_page, msgData);
 }
 
-int Api::deletePage(const QString& pageId, int pin) {
+int Api::deletePage(const QString& pageId) {
     if (pageId.isEmpty()) {
         return -1;
     }
 
     QVariantMap msgData;
     msgData.insert("page_id", pageId);
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
 
     return sendRequest(RequestTypes::delete_page, msgData);
 }
@@ -408,6 +397,17 @@ int Api::deleteEntity(const QString& entityId) {
     return sendRequest(RequestTypes::delete_entity, msgData);
 }
 
+int Api::setEntityState(const QString& entityId, const QString& state) {
+    if (entityId.isEmpty() || state.isEmpty()) {
+        return -1;
+    }
+
+    QVariantMap msgData;
+    msgData.insert("entity_id", entityId);
+    msgData.insert("state", state);
+    return sendRequest(RequestTypes::set_entity_state, msgData);
+}
+
 int Api::deleteEntities(const QStringList& entityIds, const QString& integrationId) {
     QVariantMap msgData;
 
@@ -446,7 +446,7 @@ int Api::addGroup(const QString& profileId, const QString& name, const QString& 
 }
 
 int Api::updateGroup(const QString& groupId, const QString& profileId, const QString& name, const QString& icon,
-                     const QStringList& entities) {
+                     const QStringList& entities, bool setEntities) {
     if (groupId.isEmpty() || profileId.isEmpty()) {
         return -1;
     }
@@ -462,7 +462,7 @@ int Api::updateGroup(const QString& groupId, const QString& profileId, const QSt
         msgData.insert("icon", icon);
     }
 
-    if (entities.length() > 0) {
+    if (setEntities) {
         msgData.insert("entities", entities);
     }
 
@@ -479,17 +479,13 @@ int Api::deleteGroup(const QString& groupId) {
     return sendRequest(RequestTypes::delete_group, msgData);
 }
 
-int Api::getGroups(const QString& profileId, int pin) {
+int Api::getGroups(const QString& profileId) {
     if (profileId.isEmpty()) {
         return -1;
     }
 
     QVariantMap msgData;
     msgData.insert("profile_id", profileId);
-
-    if (pin != -1) {
-        msgData.insert("pin", QString::number(pin));
-    }
 
     return sendRequest(RequestTypes::get_groups, msgData);
 }
@@ -623,27 +619,37 @@ int Api::integrationGetDiscoveredDriverMetadata(const QString& driverId, const Q
     msgData.insert("driver_id", driverId);
     msgData.insert("timeout", timeOut);
 
-    QVariantMap connection;
+    // The core reads driver_url and token from the top level of msg_data (GetDiscoveredIntgDriverMetadataMsgData),
+    // not from a connection object as the Core-API document shows: a connection object is ignored.
     if (!driverUrl.isEmpty()) {
-        connection.insert("driver_url", driverUrl);
+        msgData.insert("driver_url", driverUrl);
     }
 
     if (!token.isEmpty()) {
-        connection.insert("token", token);
+        msgData.insert("token", token);
     }
-
-    msgData.insert("connection", connection);
 
     return sendRequest(RequestTypes::get_discovered_integration_driver_metadata, msgData);
 }
 
-int Api::integrationSetup(const QString& driverId, QVariantMap name, QVariantMap setupData) {
+int Api::integrationSetup(const QString& driverId, QVariantMap name, QVariantMap setupData, const QString& language) {
     QVariantMap msgData;
     msgData.insert("driver_id", driverId);
     msgData.insert("name", name);
     msgData.insert("setup_data", setupData);
+    // the driver may answer with page texts and error messages in this language only
+    if (!language.isEmpty()) {
+        msgData.insert("language", language);
+    }
 
     return sendRequest(RequestTypes::setup_integration, msgData);
+}
+
+int Api::integrationSetupKeepAlive(const QString& driverId) {
+    QVariantMap msgData;
+    msgData.insert("driver_id", driverId);
+
+    return sendRequest(RequestTypes::integration_setup_keepalive, msgData);
 }
 
 int Api::integrationStopSetup(const QString& driverId) {
@@ -679,13 +685,14 @@ int Api::integrationConfigureDiscoveredDriver(const QString& driverId, QVariantM
     msgData.insert("driver_id", driverId);
     msgData.insert("name", name);
 
-    QVariantMap connection;
+    // driver_url and token are top level fields of msg_data (Core-API ConfigureDiscoveredIntegrationDriverMsg, and
+    // the core's IntegrationDriverSetupParam), not a connection object
     if (!driverUrl.isEmpty()) {
-        connection.insert("driver_url", driverUrl);
+        msgData.insert("driver_url", driverUrl);
     }
 
     if (!token.isEmpty()) {
-        connection.insert("token", token);
+        msgData.insert("token", token);
     }
 
     return sendRequest(RequestTypes::configure_discovered_integration_driver, msgData);
@@ -919,12 +926,30 @@ int Api::wifiGetAllNetworks() {
     return sendRequest(RequestTypes::get_all_wifi_networks);
 }
 
-int Api::wifiAddNetwork(const QString& ssid, const QString& password) {
+int Api::wifiAddNetwork(const QString& ssid, const QString& ssidHex, const QString& password,
+                        WifiEnums::WifiSecurity security, bool hidden) {
     QVariantMap msgData;
-    msgData.insert("ssid", ssid);
+
+    // the friendly SSID name is a lossy conversion of the native SSID: only the hex representation of a scan
+    // result identifies the network unambiguously
+    if (ssidHex.isEmpty()) {
+        msgData.insert("ssid", ssid);
+    } else {
+        msgData.insert("ssid_hex", ssidHex);
+    }
 
     if (!password.isEmpty()) {
         msgData.insert("password", password);
+    }
+
+    // optional field: only send it for a hidden network
+    if (hidden) {
+        msgData.insert("hidden", true);
+    }
+
+    // optional field: omitting it lets the core choose the strongest supported security type
+    if (security != WifiEnums::WifiSecurity::AUTO) {
+        msgData.insert("security", Util::convertEnumToString(security));
     }
 
     return sendRequest(RequestTypes::add_wifi_network, msgData);
@@ -1331,8 +1356,9 @@ void Api::onStateChanged(QAbstractSocket::SocketState state) {
             //            emit connected();
             break;
         case QAbstractSocket::UnconnectedState:
-            emit disconnected();
+            // the flag first: a slot of disconnected() must see the connection as gone
             m_connected = false;
+            emit disconnected();
             m_reconnectTimer->start();
             break;
         default:
@@ -1421,6 +1447,26 @@ int Api::browseMedia(const QString& entityId, QVariantMap params) {
     }
 
     return sendRequest(RequestTypes::browse_media, msgData);
+}
+
+int Api::getSequenceReadiness(const QString& entityId, const QString& cmdId, const QString& lang,
+                              const QString& errorPolicy) {
+    if (entityId.isEmpty() || cmdId.isEmpty()) {
+        return -1;
+    }
+
+    QVariantMap msgData;
+    msgData.insert("entity_id", entityId);
+    msgData.insert("cmd_id", cmdId);
+
+    if (!lang.isEmpty()) {
+        msgData.insert("lang", lang);
+    }
+    if (!errorPolicy.isEmpty()) {
+        msgData.insert("error_policy", errorPolicy);
+    }
+
+    return sendRequest(RequestTypes::get_sequence_readiness, msgData);
 }
 
 int Api::searchMedia(const QString& entityId, QVariantMap params) {
@@ -1570,10 +1616,6 @@ void Api::processResponseMessage(QVariantMap map) {
             processAuthResult(reqId, code, msgData);
             break;
         }
-        case MsgResponse::pong: {
-            // TODO(marton): Implement me
-            break;
-        }
         case MsgResponse::result:
         case MsgResponse::button_cfg:
         case MsgResponse::display_cfg:
@@ -1607,24 +1649,12 @@ void Api::processResponseMessage(QVariantMap map) {
             processApiAccess(reqId, code, msgData);
             break;
         }
-        case MsgResponse::entity_types: {
-            // TODO(marton): Implement me
-            break;
-        }
         case MsgResponse::entities: {
             processResponseEntities(reqId, code, msgData);
             break;
         }
         case MsgResponse::available_entities: {
             processResponseAvailableEntities(reqId, code, msgData);
-            break;
-        }
-        case MsgResponse::entity_features: {
-            // TODO(marton): Implement me
-            break;
-        }
-        case MsgResponse::entity_commands: {
-            // TODO(marton): Implement me
             break;
         }
         case MsgResponse::entity: {
@@ -1660,10 +1690,6 @@ void Api::processResponseMessage(QVariantMap map) {
             processResponseIntegrationStatus(reqId, code, msgData);
             break;
         }
-        case MsgResponse::integration_driver_count: {
-            // TODO(marton): Implement me
-            break;
-        }
         case MsgResponse::integration_drivers: {
             processResponseIntegrationDrivers(reqId, code, msgData);
             break;
@@ -1672,16 +1698,8 @@ void Api::processResponseMessage(QVariantMap map) {
             processResponseIntegrationDriver(reqId, code, msgData);
             break;
         }
-        case MsgResponse::integration_count: {
-            // TODO(marton): Implement me
-            break;
-        }
         case MsgResponse::integrations: {
             processResponseIntegrations(reqId, code, msgData);
-            break;
-        }
-        case MsgResponse::integration: {
-            // TODO(marton): Implement me
             break;
         }
         case MsgResponse::integration_setup_info: {
@@ -1770,7 +1788,25 @@ void Api::processResponseMessage(QVariantMap map) {
             processResponseMediaSearch(reqId, code, msgData);
             break;
         }
+        case MsgResponse::sequence_readiness: {
+            processResponseSequenceReadiness(reqId, code, msgData);
+            break;
+        }
+        case MsgResponse::pong:
+        case MsgResponse::entity_types:
+        case MsgResponse::entity_features:
+        case MsgResponse::entity_commands:
+        case MsgResponse::integration_driver_count:
+        case MsgResponse::integration_count:
+        case MsgResponse::integration:
         default:
+            // A response the UI does not read, or one it does not know: a newer core may answer with a message
+            // this version has never heard of. The request is settled as a plain result all the same, its
+            // handlers would otherwise wait forever, since the request timeout was cancelled above.
+            if (resp == static_cast<MsgResponse::Enum>(-1)) {
+                qCWarning(lcCore()) << "Unknown response" << map.value("msg").toString() << "for request" << reqId;
+            }
+            emit respResult(reqId, code, QString());
             break;
     }
 }
@@ -1890,7 +1926,7 @@ void Api::processResponseProfiles(int reqId, int code, QVariant msgData) {
                 profile.description = map.value("description").toString();
             }
             if (map.contains("pages")) {
-                profile.pages = map.value("description").toStringList();
+                profile.pages = map.value("pages").toStringList();
             }
 
             list.append(profile);
@@ -1915,7 +1951,7 @@ void Api::processResponseProfile(int reqId, int code, QVariant msgData) {
         profile.description = map.value("description").toString();
     }
     if (map.contains("pages")) {
-        profile.pages = map.value("description").toStringList();
+        profile.pages = map.value("pages").toStringList();
     }
 
     emit respProfile(reqId, code, profile);
@@ -2026,6 +2062,7 @@ void Api::processResponseAvailableEntities(int reqId, int code, QVariant msgData
             entity.integrationId = map.value("integration_id").toString();
             if (map.contains("features")) {
                 entity.features = uc::Util::FirstToUpperList(map.value("features").toStringList());
+                entity.featuresProvided = true;
             }
             if (map.contains("area")) {
                 entity.area = map.value("area").toString();
@@ -2061,6 +2098,7 @@ void Api::processResponseEntity(int reqId, int code, QVariant msgData) {
     entity.integrationId = map.value("integration_id").toString();
     if (map.contains("features")) {
         entity.features = uc::Util::FirstToUpperList(map.value("features").toStringList());
+        entity.featuresProvided = true;
     }
     if (map.contains("area")) {
         entity.area = map.value("area").toString();
@@ -2102,6 +2140,7 @@ void Api::processResponseEntities(int reqId, int code, QVariant msgData) {
             entity.integrationId = map.value("integration_id").toString();
             if (map.contains("features")) {
                 entity.features = uc::Util::FirstToUpperList(map.value("features").toStringList());
+                entity.featuresProvided = true;
             }
             if (map.contains("area")) {
                 entity.area = map.value("area").toString();
@@ -2146,6 +2185,7 @@ void Api::processEntityChange(QVariant msgData) {
 
         if (newState.contains("features")) {
             entity.features = uc::Util::FirstToUpperList(newState.value("features").toStringList());
+            entity.featuresProvided = true;
         }
         if (newState.contains("area")) {
             entity.area = newState.value("area").toString();
@@ -2351,19 +2391,23 @@ void Api::processResponseIntegrationDriver(int reqId, int code, QVariant msgData
     emit respIntegrationDriver(reqId, code, integrationDriver);
 }
 
-void Api::processResponseIntegrationSetupInfo(int reqId, int code, QVariant msgData) {
-    QVariantMap                 msgDataMap = msgData.toMap();
+IntegrationSetupInfo Api::parseIntegrationSetupInfo(const QVariantMap& map) {
     struct IntegrationSetupInfo integrationSetupInfo;
 
-    integrationSetupInfo.id = msgDataMap.value("id").toString();
-    integrationSetupInfo.state =
-        Util::convertStringToEnum<IntegrationEnums::SetupState>(msgDataMap.value("state").toString());
-    integrationSetupInfo.error =
-        Util::convertStringToEnum<IntegrationEnums::SetupError>(msgDataMap.value("error").toString());
-    integrationSetupInfo.requireUserAction = msgDataMap.contains("require_user_action");
+    // the event carries the session id as driver_id, the responses as id
+    integrationSetupInfo.id = map.contains("id") ? map.value("id").toString() : map.value("driver_id").toString();
+    integrationSetupInfo.state = Util::convertStringToEnum<IntegrationEnums::SetupState>(map.value("state").toString());
+
+    QString error = map.value("error").toString();
+    integrationSetupInfo.error = error.isEmpty() ? IntegrationEnums::SetupError::NONE
+                                                 : Util::convertStringToEnum<IntegrationEnums::SetupError>(error);
+    integrationSetupInfo.errorMessage = map.value("error_message").toMap();
+
+    integrationSetupInfo.requireUserAction = map.contains("require_user_action");
 
     if (integrationSetupInfo.requireUserAction) {
-        QVariantMap reqUserAction = msgDataMap.value("require_user_action").toMap();
+        QVariantMap reqUserAction = map.value("require_user_action").toMap();
+        integrationSetupInfo.userAction = reqUserAction;
 
         if (reqUserAction.contains("input")) {
             struct SettingsPage settingsPage;
@@ -2380,7 +2424,23 @@ void Api::processResponseIntegrationSetupInfo(int reqId, int code, QVariant msgD
         }
     }
 
-    emit respIntegrationSetupInfo(reqId, code, integrationSetupInfo);
+    integrationSetupInfo.keepaliveTimeoutSec = map.value("keepalive_timeout_sec").toInt();
+
+    integrationSetupInfo.setupLimitActive = map.value("setup_limit_active").toBool();
+    if (integrationSetupInfo.setupLimitActive) {
+        integrationSetupInfo.setupExpiresInSec = map.value("setup_expires_in_sec").toInt();
+        integrationSetupInfo.setupLimitTotalSec = map.value("setup_limit_total_sec").toInt();
+        QString reason = map.value("setup_limit_reason").toString();
+        integrationSetupInfo.setupLimitReason =
+            reason.isEmpty() ? IntegrationEnums::SetupLimitReason::BATTERY
+                             : Util::convertStringToEnum<IntegrationEnums::SetupLimitReason>(reason);
+    }
+
+    return integrationSetupInfo;
+}
+
+void Api::processResponseIntegrationSetupInfo(int reqId, int code, QVariant msgData) {
+    emit respIntegrationSetupInfo(reqId, code, parseIntegrationSetupInfo(msgData.toMap()));
 }
 
 void Api::processResponseGroup(int reqId, int code, QVariant msgData) {
@@ -2531,7 +2591,7 @@ void Api::processResponseConfig(int reqId, int code, QVariant msgData) {
                 profile.id = map.value("id").toString();
                 profile.name = map.value("name").toString();
 
-                if (map.contains("langauge")) {
+                if (map.contains("language")) {
                     profile.language = map.value("language").toString();
                 }
 
@@ -2715,7 +2775,7 @@ void Api::processConfigChange(QVariant msgData) {
                     profile.id = map.value("id").toString();
                     profile.name = map.value("name").toString();
 
-                    if (map.contains("langauge")) {
+                    if (map.contains("language")) {
                         profile.language = map.value("language").toString();
                     }
 
@@ -2768,18 +2828,37 @@ void Api::processApiAccess(int reqId, int code, QVariant msgData) {
     emit respApiAccess(reqId, code, apiAcces);
 }
 
+Profile Api::parseProfileChange(const QVariantMap& msgData) {
+    struct Profile profile;
+    QVariantMap    newProfile = msgData.value("new_state").toMap().value("profile").toMap();
+
+    profile.id = msgData.value("profile_id").toString();
+    profile.name = newProfile.value("name").toString();
+    if (newProfile.contains("icon")) {
+        profile.icon = newProfile.value("icon").toString();
+    }
+    profile.restricted = newProfile.value("restricted").toBool();
+    if (newProfile.contains("description")) {
+        profile.description = newProfile.value("description").toString();
+    }
+    if (newProfile.contains("pages")) {
+        profile.pages = newProfile.value("pages").toStringList();
+    }
+
+    return profile;
+}
+
 void Api::processProfileChange(QVariant msgData) {
     QVariantMap msgDataMap = msgData.toMap();
     QVariantMap newState = msgDataMap.value("new_state").toMap();
 
     MsgEventTypes::Enum eventType =
         Util::convertStringToEnum<MsgEventTypes::Enum>(msgDataMap.value("event_type").toString());
-    QString        profileId = msgDataMap.value("profile_id").toString();
-    QString        pageId = msgDataMap.contains("page_id") ? msgDataMap.value("page_id").toString() : QString();
-    QString        groupId = msgDataMap.contains("group_id") ? msgDataMap.value("group_id").toString() : QString();
-    struct Page    page;
-    struct Group   group;
-    struct Profile profile;
+    QString      profileId = msgDataMap.value("profile_id").toString();
+    QString      pageId = msgDataMap.contains("page_id") ? msgDataMap.value("page_id").toString() : QString();
+    QString      groupId = msgDataMap.contains("group_id") ? msgDataMap.value("group_id").toString() : QString();
+    struct Page  page;
+    struct Group group;
 
     switch (eventType) {
         case MsgEventTypes::NEW:
@@ -2792,7 +2871,7 @@ void Api::processProfileChange(QVariant msgData) {
                 if (newPage.contains("image")) {
                     page.image = newPage.value("image").toString();
                 }
-                page.pos = newPage.value("post").toInt();
+                page.pos = newPage.value("pos").toInt();
 
                 emit pageAdded(profileId, page);
             } else if (!groupId.isEmpty()) {
@@ -2808,22 +2887,7 @@ void Api::processProfileChange(QVariant msgData) {
 
                 emit groupAdded(profileId, group);
             } else {
-                QVariantMap newProfile = newState.value("profile").toMap();
-
-                profile.id = profileId;
-                profile.name = newProfile.value("name").toString();
-                if (newProfile.contains("icon")) {
-                    profile.icon = newProfile.value("icon").toString();
-                }
-                profile.restricted = newState.value("restricted").toBool();
-                if (newProfile.contains("description")) {
-                    profile.description = newProfile.value("description").toString();
-                }
-                if (newProfile.contains("pages")) {
-                    profile.pages = newProfile.value("description").toStringList();
-                }
-
-                emit profileAdded(profileId, profile);
+                emit profileAdded(profileId, parseProfileChange(msgDataMap));
             }
             break;
         case MsgEventTypes::CHANGE:
@@ -2836,7 +2900,7 @@ void Api::processProfileChange(QVariant msgData) {
                 if (newPage.contains("image")) {
                     page.image = newPage.value("image").toString();
                 }
-                page.pos = newPage.value("post").toInt();
+                page.pos = newPage.value("pos").toInt();
 
                 QVariantList items = newPage.value("items").toList();
 
@@ -2872,24 +2936,11 @@ void Api::processProfileChange(QVariant msgData) {
                 group.entities = newGroup.value("entities").toStringList();
 
                 emit groupChanged(profileId, group);
-            } else {
-                QVariantMap newProfile = newState.value("profile").toMap();
-
-                profile.id = profileId;
-                profile.name = newProfile.value("name").toString();
-                if (newProfile.contains("icon")) {
-                    profile.icon = newProfile.value("icon").toString();
-                }
-                profile.restricted = newProfile.value("restricted").toBool();
-                if (newProfile.contains("description")) {
-                    profile.description = newProfile.value("description").toString();
-                }
-                if (newProfile.contains("pages")) {
-                    profile.pages = newProfile.value("description").toStringList();
-                }
-
-                emit profileChanged(profileId, profile);
+            } else if (newState.contains("profile")) {
+                emit profileChanged(profileId, parseProfileChange(msgDataMap));
             }
+            // a profile change event without a profile object carries no profile data to apply:
+            // the core sends it when only the pages of the profile changed
             break;
         case MsgEventTypes::DELETE:
             if (!pageId.isEmpty()) {
@@ -2913,10 +2964,11 @@ void Api::processWifiStatus(int reqId, int code, QVariant msgData) {
     wifiStatus.id = map.value("id").toInt();
     wifiStatus.bssid = map.value("bssid").toString();
     wifiStatus.ssid = map.value("ssid").toString();
+    wifiStatus.ssidHex = map.value("ssid_hex").toString();
     wifiStatus.freq = map.value("freq").toInt();
     wifiStatus.address = map.value("address").toString();
     wifiStatus.pairwiseCipher = map.value("pairwise_cipher").toString();
-    wifiStatus.groupCipher = map.value("group_chipher").toString();
+    wifiStatus.groupCipher = map.value("group_cipher").toString();
     wifiStatus.keyManagement = map.value("key_mgmt").toString();
     wifiStatus.ipAddress = map.value("ip_address").toString();
     wifiStatus.noise = map.value("noise").toInt();
@@ -2927,6 +2979,18 @@ void Api::processWifiStatus(int reqId, int code, QVariant msgData) {
     wifiStatus.linkSpeed = map.value("linkspeed").toInt();
 
     emit wifiStatusChanged(reqId, code, wifiStatus);
+}
+
+/**
+ * Read the optional `security` field of a scan result or a saved network.
+ *
+ * The field is omitted if the core could not classify the network security, which is mapped to AUTO.
+ */
+static WifiEnums::WifiSecurity readWifiSecurity(const QVariant& value) {
+    bool                    ok = false;
+    WifiEnums::WifiSecurity security = Util::convertStringToEnum<WifiEnums::WifiSecurity>(value.toString(), &ok);
+
+    return ok ? security : WifiEnums::WifiSecurity::AUTO;
 }
 
 void Api::processWifiScanStatus(int reqId, int code, QVariant msgData) {
@@ -2944,7 +3008,9 @@ void Api::processWifiScanStatus(int reqId, int code, QVariant msgData) {
             accessPointScan.frequency = listMap.value("frequency").toInt();
             accessPointScan.signalLevel = listMap.value("signal_level").toInt();
             accessPointScan.auth = listMap.value("auth").toString();
+            accessPointScan.security = readWifiSecurity(listMap.value("security"));
             accessPointScan.ssid = listMap.value("ssid").toString();
+            accessPointScan.ssidHex = listMap.value("ssid_hex").toString();
 
             resp.append(accessPointScan);
         }
@@ -2964,9 +3030,11 @@ void Api::processWifiNetworks(int reqId, int code, QVariant msgData) {
 
             savedNetwork.id = listMap.value("id").toInt();
             savedNetwork.ssid = listMap.value("ssid").toString();
+            savedNetwork.ssidHex = listMap.value("ssid_hex").toString();
             savedNetwork.state = Util::convertStringToEnum<WifiEnums::NetworkState>(listMap.value("state").toString());
             savedNetwork.secured = listMap.value("secured").toBool();
-            savedNetwork.signalLevel = listMap.value("signal_level").toBool();
+            savedNetwork.security = readWifiSecurity(listMap.value("security"));
+            savedNetwork.signalLevel = listMap.value("signal_level").toInt();
 
             networks.append(savedNetwork);
         }
@@ -2981,9 +3049,11 @@ void Api::processWifiNetwork(int reqId, int code, QVariant msgData) {
 
     savedNetwork.id = map.value("id").toInt();
     savedNetwork.ssid = map.value("ssid").toString();
+    savedNetwork.ssidHex = map.value("ssid_hex").toString();
     savedNetwork.state = Util::convertStringToEnum<WifiEnums::NetworkState>(map.value("state").toString());
     savedNetwork.secured = map.value("secured").toBool();
-    savedNetwork.signalLevel = map.value("signal_level").toBool();
+    savedNetwork.security = readWifiSecurity(map.value("security"));
+    savedNetwork.signalLevel = map.value("signal_level").toInt();
 
     emit wifiNetworkChanged(reqId, code, savedNetwork);
 }
@@ -3015,7 +3085,7 @@ void Api::processResponseDocks(int reqId, int code, QVariant msgData) {
             dock.version = map.value("version").toString();
             dock.state = Util::convertStringToEnum<DockEnums::DockState>(map.value("state").toString());
             dock.learningActive = map.value("learning_active").toBool();
-            dock.description = map.value("descriptions").toString();
+            dock.description = map.value("description").toString();
             if (map.contains("led_brightness")) {
                 dock.ledBrightness = map.value("led_brightness").toInt();
             }
@@ -3046,7 +3116,7 @@ void Api::processResponseDock(int reqId, int code, QVariant msgData) {
     dock.version = map.value("version").toString();
     dock.state = Util::convertStringToEnum<DockEnums::DockState>(map.value("state").toString());
     dock.learningActive = map.value("learning_active").toBool();
-    dock.description = map.value("descriptions").toString();
+    dock.description = map.value("description").toString();
     if (map.contains("led_brightness")) {
         dock.ledBrightness = map.value("led_brightness").toInt();
     }
@@ -3397,32 +3467,8 @@ void Api::processIntegrationSetupChange(QVariant msgData) {
         case MsgEventTypes::START:
         case MsgEventTypes::SETUP:
         case MsgEventTypes::STOP: {
-            struct IntegrationSetupInfo integrationSetupInfo;
-
+            struct IntegrationSetupInfo integrationSetupInfo = parseIntegrationSetupInfo(msgDataMap);
             integrationSetupInfo.id = driverId;
-            integrationSetupInfo.state =
-                Util::convertStringToEnum<IntegrationEnums::SetupState>(msgDataMap.value("state").toString());
-            integrationSetupInfo.error =
-                Util::convertStringToEnum<IntegrationEnums::SetupError>(msgDataMap.value("error").toString());
-            integrationSetupInfo.requireUserAction = msgDataMap.contains("require_user_action");
-
-            if (integrationSetupInfo.requireUserAction) {
-                QVariantMap reqUserAction = msgDataMap.value("require_user_action").toMap();
-
-                if (reqUserAction.contains("input")) {
-                    struct SettingsPage settingsPage;
-                    settingsPage.title = reqUserAction.value("input").toMap().value("title").toMap();
-                    settingsPage.settings = reqUserAction.value("input").toMap().value("settings").toList();
-                    integrationSetupInfo.settingsPage = settingsPage;
-                } else if (reqUserAction.contains("confirmation")) {
-                    struct ConfirmationPage confirmationPage;
-                    confirmationPage.title = reqUserAction.value("confirmation").toMap().value("title").toMap();
-                    confirmationPage.message1 = reqUserAction.value("confirmation").toMap().value("message1").toMap();
-                    confirmationPage.image = reqUserAction.value("confirmation").toMap().value("image").toString();
-                    confirmationPage.message2 = reqUserAction.value("confirmation").toMap().value("message2").toMap();
-                    integrationSetupInfo.confirmationPage = confirmationPage;
-                }
-            }
 
             emit integrationSetupChange(integrationSetupInfo);
             break;
@@ -3578,247 +3624,144 @@ void Api::processResponseMediaSearch(int reqId, int code, QVariant msgData) {
     emit respMediaSearch(reqId, code, items, pagination);
 }
 
-// ============================================================================
-// madalone (Phase 0, 2026-05-02): one-shot REST auth probe
-// ----------------------------------------------------------------------------
-// Sequentially fires GET /api/system/power against the local firmware in
-//   H3 (no-auth localhost) → H2 (Bearer via UC_TOKEN) → H4 (Basic w/ token-as-PIN)
-//   → H1 (Basic with regenerated PIN — DESTRUCTIVE, last resort).
-// Short-circuits on first 200 OK. H1 only fires if H3+H2+H4 all return non-200.
-// Each step logs at qCInfo(lcCore) with "[REST Auth Probe Hn]" prefix; the new
-// PIN value (only present after H1's rotation) logs at qCWarning so it's easy
-// to spot in Logdy. See docs/CORE_API_AUDIT_2026_05_02.md "Phase 0" + the memo
-// project_phase_0_auth_hypothesis_inverted.md for the why behind the ordering.
-// ============================================================================
-
-// madalone (Phase 0 diagnostic): persist a step marker to QSettings ("debug/probeLast*")
-// so probe progress can be observed even if Logdy/journal don't capture qCWarning. Read
-// back later via /api/system/backup/export → grep "debug/probe*" in the conf file.
-static void writeProbeMarker(const QString& key, const QString& value) {
-    QSettings s;
-    s.setValue(QStringLiteral("debug/") + key, value);
-    s.setValue(QStringLiteral("debug/probeLastSeenAt"),
-               QDateTime::currentDateTimeUtc().toString(Qt::ISODate));
-    s.sync();
+ReadinessReason Api::parseReadinessReason(const QVariantMap &map) {
+    ReadinessReason reason;
+    reason.code = map.value("code").toString();
+    reason.message = map.value("message").toString();
+    reason.groupId = map.value("group_id").toString();
+    reason.integrationId = map.value("integration_id").toString();
+    reason.integrationName = map.value("integration_name").toString();
+    reason.state = map.value("state").toString();
+    reason.emitterId = map.value("emitter_id").toString();
+    reason.portId = map.value("port_id").toString();
+    reason.emitterName = map.value("emitter_name").toString();
+    reason.deviceType = map.value("device_type").toString();
+    reason.dockId = map.value("dock_id").toString();
+    reason.dockName = map.value("dock_name").toString();
+    return reason;
 }
 
-void Api::probeRestAuth() {
-    if (m_probeRunning) {
-        qCWarning(lcCore()) << "[REST Auth Probe] already running, ignoring re-entry";
-        return;
-    }
-    m_probeRunning = true;
-    writeProbeMarker(QStringLiteral("probeLastStage"), QStringLiteral("entered"));
+ReadinessStep Api::parseReadinessStep(const QVariantMap &map) {
+    ReadinessStep step;
+    step.index = map.value("index", 0).toInt();
+    step.authoredIndex = map.value("authored_index", -1).toInt();
+    step.switchFromIndex = map.value("switch_from_index", -1).toInt();
+    step.nestedIndex = map.value("nested_index", -1).toInt();
+    step.part = map.value("part").toString();
+    step.type = map.value("type").toString();
+    step.entityId = map.value("entity_id").toString();
+    step.entityType = map.value("entity_type").toString();
+    step.name = map.value("name").toString();
+    step.cmdId = map.value("cmd_id").toString();
+    step.params = map.value("params").toMap();
+    step.delay = map.value("delay", 0).toInt();
+    step.ready = map.value("ready", false).toBool();
+    step.skipped = map.value("skipped", false).toBool();
+    step.abortsRun = map.value("aborts_run", false).toBool();
 
-    // Derive REST endpoint via shared helper (factored for M1 reuse — see restEndpoint()).
-    m_probeEndpoint = restEndpoint(QStringLiteral("/api/system/power"));
-
-    // Read UC_TOKEN via shared helper. Empty if UC_TOKEN_PATH unreadable; H2/H4 then skip.
-    m_probeToken = readUcToken();
-    if (m_probeToken.isEmpty()) {
-        qCWarning(lcCore()) << "[REST Auth Probe] UC_TOKEN_PATH unreadable — H2/H4 will be skipped";
-    }
-
-    qCWarning(lcCore()) << "[REST Auth Probe] starting; endpoint =" << m_probeEndpoint.toString()
-                     << "ws-url-source =" << m_url
-                     << "token-len =" << m_probeToken.length();
-
-    writeProbeMarker(QStringLiteral("probeEndpoint"), m_probeEndpoint.toString());
-    writeProbeMarker(QStringLiteral("probeTokenLen"), QString::number(m_probeToken.length()));
-
-    // v3 diagnostic: side-effect proves the probe ran. setDeviceName is observable
-    // via /api/cfg/device. If after deploy the device name flips to "PROBE-V3-RAN-<token-len>",
-    // probeRestAuth() was reached and Config singleton was accessible. This bypasses the
-    // upstream onResult/respApiAccess signal-mismatch bug (set_api_access response goes
-    // to respApiAccess but Config::generateNewWebConfigPin uses onResult on respResult,
-    // so its success callback never fires; that's why H1 PIN rotation fails silently).
-    ::uc::Config* cfgInstance = ::uc::Config::instance();
-    if (cfgInstance) {
-        const QString marker = QStringLiteral("PROBE-V3-RAN-tk%1").arg(m_probeToken.length());
-        cfgInstance->setDeviceName(marker);
-        qCWarning(lcCore()) << "[REST Auth Probe] DEVICE NAME → " << marker;
-        writeProbeMarker(QStringLiteral("probeDeviceNameSet"), marker);
+    const QVariantList parents = map.value("parents").toList();
+    for (const QVariant& parent : parents) {
+        QVariantMap        parentMap = parent.toMap();
+        ReadinessEntityRef ref;
+        ref.entityId = parentMap.value("entity_id").toString();
+        ref.name = parentMap.value("name").toString();
+        step.parents.append(ref);
     }
 
-    probeStep(3);  // H3 first (non-destructive, no auth header)
+    step.hasReason = map.contains("reason");
+    if (step.hasReason) {
+        step.reason = parseReadinessReason(map.value("reason").toMap());
+    }
+
+    return step;
 }
 
-void Api::probeStep(int hNum) {
-    QNetworkRequest req(m_probeEndpoint);
-    QString         authLabel;
+ReadinessOmittedStep Api::parseReadinessOmittedStep(const QVariantMap &map) {
+    ReadinessOmittedStep step;
+    step.authoredIndex = map.value("authored_index", 0).toInt();
+    step.type = map.value("type").toString();
+    step.entityId = map.value("entity_id").toString();
+    step.entityType = map.value("entity_type").toString();
+    step.name = map.value("name").toString();
+    step.cmdId = map.value("cmd_id").toString();
+    step.params = map.value("params").toMap();
+    step.delay = map.value("delay", 0).toInt();
+    step.reason = parseReadinessReason(map.value("reason").toMap());
+    return step;
+}
 
-    switch (hNum) {
-        case 3:
-            // H3: no Authorization header. Tests localhost-trust pattern.
-            authLabel = QStringLiteral("none");
-            break;
+SequenceReadiness Api::parseSequenceReadiness(const QVariantMap &map) {
+    SequenceReadiness report;
+    report.entityId = map.value("entity_id").toString();
+    report.entityType = map.value("entity_type").toString();
+    report.name = map.value("name").toString();
+    report.cmdId = map.value("cmd_id").toString();
+    report.lang = map.value("lang").toString();
+    report.errorPolicy = map.value("error_policy").toString();
+    report.timestamp = QDateTime::fromString(map.value("timestamp").toString(), Qt::ISODateWithMs);
+    report.ready = map.value("ready", false).toBool();
+    report.totalSteps = map.value("total_steps", 0).toInt();
+    report.transitionSteps = map.value("transition_steps", 0).toInt();
+    report.blockedSteps = map.value("blocked_steps", 0).toInt();
+    report.skippedSteps = map.value("skipped_steps", 0).toInt();
+    report.abortingSteps = map.value("aborting_steps", 0).toInt();
+    report.omittedSteps = map.value("omitted_steps", 0).toInt();
 
-        case 2:
-            // H2: Bearer via UC_TOKEN content.
-            if (m_probeToken.isEmpty()) {
-                qCWarning(lcCore()) << "[REST Auth Probe H2] no UC_TOKEN; skipping → H4";
-                probeStep(4);
-                return;
-            }
-            req.setRawHeader("Authorization", QByteArray("Bearer ") + m_probeToken.toUtf8());
-            authLabel = QStringLiteral("Bearer");
-            break;
+    QVariantMap dependsOnMap = map.value("depends_on").toMap();
+    report.dependsOn.integrationIds = dependsOnMap.value("integration_ids").toStringList();
+    report.dependsOn.emitterIds = dependsOnMap.value("emitter_ids").toStringList();
+    report.dependsOn.dockIds = dependsOnMap.value("dock_ids").toStringList();
+    report.dependsOn.bt = dependsOnMap.value("bt", false).toBool();
 
-        case 4:
-            // H4: Basic with web-configurator:UC_TOKEN. Eliminates "what if they're the same secret?"
-            if (m_probeToken.isEmpty()) {
-                qCWarning(lcCore()) << "[REST Auth Probe H4] no UC_TOKEN; skipping → H1";
-                probeStep(1);
-                return;
-            }
-            {
-                const QByteArray cred = (QStringLiteral("web-configurator:") + m_probeToken).toUtf8();
-                req.setRawHeader("Authorization", QByteArray("Basic ") + cred.toBase64());
-            }
-            authLabel = QStringLiteral("Basic (token-as-PIN)");
-            break;
+    report.hasActivityGroup = map.contains("activity_group");
+    if (report.hasActivityGroup) {
+        QVariantMap groupMap = map.value("activity_group").toMap();
+        report.activityGroup.groupId = groupMap.value("group_id").toString();
+        report.activityGroup.name = groupMap.value("name").toString();
+        report.activityGroup.turnOffUnusedEntities = groupMap.value("turn_off_unused_entities").toString();
 
-        case 1: {
-            // H1: DESTRUCTIVE — calls generateNewWebConfigPin() to rotate, then re-tests Basic with
-            // the new PIN. Never short-circuited from BEFORE this point — only fires if H3+H2+H4
-            // all returned non-200. Per the audit doc PIN-access answer, this is the only known
-            // way for the custom-ui to *learn* a usable PIN (the firmware doesn't expose a read
-            // path). Old PIN (e.g. user's empirical 6984) gets invalidated.
-            qCWarning(lcCore()) << "[REST Auth Probe H1] DESTRUCTIVE — calling generateNewWebConfigPin()";
-
-            // ::uc::Config (the QSettings-backed singleton) — fully qualified to skip past
-            // uc::core::Config (the DTO struct in structs.h:241) that name-lookup finds first.
-            ::uc::Config* cfg = ::uc::Config::instance();
-            if (!cfg) {
-                qCCritical(lcCore()) << "[REST Auth Probe H1] Config::instance() is null; aborting probe";
-                m_probeRunning = false;
-                return;
-            }
-
-            // Connect-once to webConfiguratorPinChanged: disconnect from inside the lambda after
-            // first emission. shared_ptr keeps the Connection alive across the lambda invocation.
-            auto conn = std::make_shared<QMetaObject::Connection>();
-            // Safety timeout: if generateNewWebConfigPin's underlying setApiAccess fails, the
-            // success signal never fires. Cap at 10 s so the probe doesn't hang forever in
-            // m_probeRunning=true state. Logdy capture window is short anyway.
-            auto* timeout = new QTimer(this);
-            timeout->setSingleShot(true);
-            timeout->setInterval(10000);
-
-            QObject::connect(timeout, &QTimer::timeout, this, [this, conn, timeout]() {
-                QObject::disconnect(*conn);
-                qCCritical(lcCore()) << "[REST Auth Probe H1] PIN rotation timed out — generateNewWebConfigPin()"
-                                        " never emitted webConfiguratorPinChanged. All hypotheses FAILED.";
-                ::uc::Config* cfgFail = ::uc::Config::instance();
-                if (cfgFail) cfgFail->setDeviceName(QStringLiteral("PROBE-FAIL-H1-TIMEOUT"));
-                m_probeRunning = false;
-                timeout->deleteLater();
-            });
-
-            *conn = QObject::connect(cfg, &::uc::Config::webConfiguratorPinChanged, this,
-                [this, conn, timeout](QString newPin) {
-                    QObject::disconnect(*conn);
-                    timeout->stop();
-                    timeout->deleteLater();
-
-                    // Log the new PIN at WARNING level so it's findable in Logdy.
-                    qCWarning(lcCore()) << "[REST Auth Probe H1] PIN ROTATED — new PIN =" << newPin;
-                    writeProbeMarker(QStringLiteral("probeNewPin"), newPin);
-                    writeProbeMarker(QStringLiteral("probeLastStage"),
-                                     QStringLiteral("H1_pin_rotated"));
-
-                    QNetworkRequest r(m_probeEndpoint);
-                    const QByteArray cred = (QStringLiteral("web-configurator:") + newPin).toUtf8();
-                    r.setRawHeader("Authorization", QByteArray("Basic ") + cred.toBase64());
-                    qCWarning(lcCore()) << "[REST Auth Probe H1] GET" << m_probeEndpoint.toString()
-                                     << "auth-type = Basic (regenerated PIN)";
-                    QNetworkReply* reply = m_probeNam.get(r);
-                    QObject::connect(reply, &QNetworkReply::finished, this, [this, reply]() {
-                        probeOnReplyFinished(1, reply, QStringLiteral("Basic (regenerated PIN)"));
-                    });
-                });
-
-            timeout->start();
-            cfg->generateNewWebConfigPin();
-            return;
+        const QVariantList members = groupMap.value("members").toList();
+        for (const QVariant& entry : members) {
+            QVariantMap          memberMap = entry.toMap();
+            ReadinessGroupMember member;
+            member.entityId = memberMap.value("entity_id").toString();
+            member.name = memberMap.value("name").toString();
+            member.state = memberMap.value("state").toString();
+            report.activityGroup.members.append(member);
         }
-
-        default:
-            qCCritical(lcCore()) << "[REST Auth Probe] unknown hypothesis number" << hNum;
-            m_probeRunning = false;
-            return;
     }
 
-    qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe H%1] GET").arg(hNum)
-                     << m_probeEndpoint.toString()
-                     << "auth-type =" << authLabel;
-    writeProbeMarker(QStringLiteral("probeLastStage"),
-                     QStringLiteral("H%1_sent_%2").arg(hNum).arg(authLabel));
-    QNetworkReply* reply = m_probeNam.get(req);
-    QObject::connect(reply, &QNetworkReply::finished, this, [this, hNum, authLabel, reply]() {
-        probeOnReplyFinished(hNum, reply, authLabel);
-    });
+    report.hasSwitchFrom = map.contains("switch_from");
+    if (report.hasSwitchFrom) {
+        QVariantMap switchFromMap = map.value("switch_from").toMap();
+        report.switchFrom.entityId = switchFromMap.value("entity_id").toString();
+        report.switchFrom.name = switchFromMap.value("name").toString();
+        report.switchFrom.state = switchFromMap.value("state").toString();
+    }
+
+    const QVariantList steps = map.value("steps").toList();
+    for (const QVariant& entry : steps) {
+        report.steps.append(parseReadinessStep(entry.toMap()));
+    }
+
+    const QVariantList omitted = map.value("omitted").toList();
+    for (const QVariant& entry : omitted) {
+        report.omitted.append(parseReadinessOmittedStep(entry.toMap()));
+    }
+
+    return report;
 }
 
-void Api::probeOnReplyFinished(int hNum, QNetworkReply* reply, const QString& authLabel) {
-    const int        status      = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
-    const QByteArray body        = reply->readAll();
-    QString          bodyPreview = QString::fromUtf8(body.left(100));
-    bodyPreview.replace('\n', QStringLiteral("\\n"));
-    bodyPreview.replace('\r', QStringLiteral(""));
-
-    qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe H%1] status =").arg(hNum) << status
-                     << "body =" << bodyPreview;
-    reply->deleteLater();
-    writeProbeMarker(QStringLiteral("probeLastStage"),
-                     QStringLiteral("H%1_status_%2").arg(hNum).arg(status));
-    writeProbeMarker(QStringLiteral("probeH%1Status").arg(hNum),
-                     QString::number(status));
-
-    if (status == 200) {
-        qCWarning(lcCore()) << QStringLiteral("[REST Auth Probe] WINNER: H%1 (%2)").arg(hNum).arg(authLabel);
-        writeProbeMarker(QStringLiteral("probeWinner"),
-                         QStringLiteral("H%1 (%2)").arg(hNum).arg(authLabel));
-        // v4 diagnostic: also flip device name to the winner so it's externally observable
-        // via /api/cfg/device — the only outside-the-process channel we have for results.
-        ::uc::Config* cfg = ::uc::Config::instance();
-        if (cfg) {
-            const QString winName = QStringLiteral("PROBE-WIN-H%1").arg(hNum);
-            cfg->setDeviceName(winName);
-            qCWarning(lcCore()) << "[REST Auth Probe] DEVICE NAME (winner) → " << winName;
-        }
-        m_probeRunning = false;
-        return;
-    }
-
-    // Non-200 → escalate per H3 → H2 → H4 → H1 chain.
-    int next = -1;
-    switch (hNum) {
-        case 3: next = 2; break;
-        case 2: next = 4; break;
-        case 4: next = 1; break;
-        case 1:
-            qCWarning(lcCore()) << "[REST Auth Probe] all hypotheses FAILED — final status =" << status;
-            {
-                ::uc::Config* cfg = ::uc::Config::instance();
-                if (cfg) cfg->setDeviceName(QStringLiteral("PROBE-FAIL-ALL"));
-            }
-            m_probeRunning = false;
-            return;
-        default:
-            qCCritical(lcCore()) << "[REST Auth Probe] reply for unknown hypothesis" << hNum;
-            m_probeRunning = false;
-            return;
-    }
-    probeStep(next);
+void Api::processResponseSequenceReadiness(int reqId, int code, QVariant msgData) {
+    emit respSequenceReadiness(reqId, code, parseSequenceReadiness(msgData.toMap()));
 }
 
 // ============================================================================
 // madalone (M1, 2026-05-03): shared REST helpers
 // ----------------------------------------------------------------------------
-// Factored from Phase 0 probe code so M1's standby_inhibitors and any future
-// REST consumer reuse the same UC_TOKEN read + URL derivation + Bearer header
-// construction. The probe uses these too (refactored at probeRestAuth()).
+// Shared by M1's standby_inhibitors and any future REST consumer: the same
+// UC_TOKEN read + URL derivation + Bearer header construction. (The Phase 0
+// auth probe they were factored from was removed in v1.6.0.)
 // ============================================================================
 
 QString Api::readUcToken() const {

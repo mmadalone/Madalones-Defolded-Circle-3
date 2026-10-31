@@ -1,18 +1,159 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. v1.4.4: hide_volume_overlay entity option.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "mediaPlayer.h"
 
+#include <QCoreApplication>
 #include <QSslConfiguration>
+#include <functional>
+#include <utility>
 
 #include "../../logging.h"
 #include "../../util.h"
+#include "../mediaImageProvider.h"
 
 namespace uc {
 namespace ui {
 namespace entity {
 
 static constexpr int IMAGE_REQUEST_TIMEOUT_MS = 15000;
+static constexpr int MAX_MEDIA_IMAGE_DIMENSION = 1024;
+
+namespace {
+
+struct ProcessedMediaImage {
+    QImage  mediaImage;
+    QColor  mediaImageColor;
+    bool    success = false;
+    bool    cancelled = false;
+};
+
+QImage normalizeMediaImage(QImage image) {
+    if (image.isNull()) {
+        return image;
+    }
+
+    const int maxDimension = qMax(image.width(), image.height());
+    if (maxDimension <= MAX_MEDIA_IMAGE_DIMENSION) {
+        return image;
+    }
+
+    return image.scaled(MAX_MEDIA_IMAGE_DIMENSION, MAX_MEDIA_IMAGE_DIMENSION, Qt::KeepAspectRatio,
+                        Qt::SmoothTransformation);
+}
+
+QColor computeAverageImageColorForImage(const QImage &image,
+                                        const std::function<bool()> &isRequestCurrent = std::function<bool()>()) {
+    if (image.isNull()) {
+        return QColor();
+    }
+
+    int    step = 20;
+    int    t = 0;
+    int    r = 0, g = 0, b = 0;
+    double brightness = 0.6;
+
+    for (int i = 0; i < image.width(); i += step) {
+        if (isRequestCurrent && !isRequestCurrent()) {
+            return QColor();
+        }
+
+        for (int j = 0; j < image.height(); j += step) {
+            if (image.valid(i, j)) {
+                t++;
+                QColor c = image.pixel(i, j);
+                r += c.red();
+                b += c.blue();
+                g += c.green();
+            }
+        }
+    }
+
+    if (t == 0) {
+        return QColor();
+    }
+
+    QColor color = QColor(static_cast<int>(brightness * r / t) > 255 ? 255 : static_cast<int>(brightness * r / t),
+                          static_cast<int>(brightness * g / t) > 255 ? 255 : static_cast<int>(brightness * g / t),
+                          static_cast<int>(brightness * b / t) > 255 ? 255 : static_cast<int>(brightness * b / t));
+
+    if (color.lightness() < 30) {
+        color.setHsl(color.hslHue(), color.hslSaturation(), 30);
+    }
+
+    return color;
+}
+
+ProcessedMediaImage processDownloadedMediaImage(const QByteArray &imageData,
+                                                const std::function<bool()> &isRequestCurrent) {
+    ProcessedMediaImage result;
+
+    QImage image;
+    if (!image.loadFromData(imageData)) {
+        return result;
+    }
+
+    image = normalizeMediaImage(std::move(image));
+
+    if (isRequestCurrent && !isRequestCurrent()) {
+        result.cancelled = true;
+        return result;
+    }
+
+    result.mediaImage = image;
+    result.mediaImageColor = computeAverageImageColorForImage(image, isRequestCurrent);
+
+    if (isRequestCurrent && !isRequestCurrent()) {
+        result.cancelled = true;
+        return result;
+    }
+
+    if (!result.mediaImageColor.isValid()) {
+        result.mediaImageColor = QColor("#171717");
+    }
+
+    result.success = true;
+    return result;
+}
+
+ProcessedMediaImage processEmbeddedMediaImage(const QString &dataUrl, const QColor &fallbackColor,
+                                              const std::function<bool()> &isRequestCurrent) {
+    ProcessedMediaImage result;
+    result.mediaImageColor = fallbackColor;
+
+    const QString base64Data = dataUrl.section(",", 1);
+    const QByteArray imageData = QByteArray::fromBase64(base64Data.toLatin1());
+
+    QImage image;
+    if (!image.loadFromData(imageData)) {
+        return result;
+    }
+
+    image = normalizeMediaImage(std::move(image));
+
+    if (isRequestCurrent && !isRequestCurrent()) {
+        result.cancelled = true;
+        return result;
+    }
+
+    result.mediaImage = image;
+    result.mediaImageColor = computeAverageImageColorForImage(image, isRequestCurrent);
+
+    if (isRequestCurrent && !isRequestCurrent()) {
+        result.cancelled = true;
+        return result;
+    }
+
+    if (!result.mediaImageColor.isValid()) {
+        result.mediaImageColor = fallbackColor;
+    }
+
+    result.success = true;
+    return result;
+}
+
+}  // namespace
 
 MediaPlayer::MediaPlayer(const QString &id, QVariantMap nameI18n, const QString &language, const QString &icon,
                          const QString &area, const QString &deviceClass, const QStringList &features, bool enabled,
@@ -75,6 +216,15 @@ MediaPlayer::MediaPlayer(const QString &id, QVariantMap nameI18n, const QString 
 }
 
 MediaPlayer::~MediaPlayer() {
+    // a worker that is still decoding artwork for this object stops at its next check
+    ++*m_mediaImageProcessingRequestId;
+
+    if (!m_mediaImageCacheKey.isEmpty()) {
+        if (auto *provider = MediaImageProvider::instance()) {
+            provider->removeImage(m_mediaImageCacheKey);
+        }
+    }
+
     qCDebug(lcMediaPlayer()) << "MediaPlayer entity destructor";
 }
 
@@ -159,7 +309,8 @@ void MediaPlayer::unmute() {
 }
 
 void MediaPlayer::repeat() {
-    MediaPlayerRepeatMode::Enum newRepeatMode;
+    // OFF also for a mode the switch does not know, so that no indeterminate value is ever sent
+    MediaPlayerRepeatMode::Enum newRepeatMode = MediaPlayerRepeatMode::Enum::OFF;
 
     switch (m_repeat) {
         case MediaPlayerRepeatMode::Enum::OFF:
@@ -169,6 +320,7 @@ void MediaPlayer::repeat() {
             newRepeatMode = MediaPlayerRepeatMode::Enum::ALL;
             break;
         case MediaPlayerRepeatMode::Enum::ALL:
+        default:
             newRepeatMode = MediaPlayerRepeatMode::Enum::OFF;
             break;
     }
@@ -365,7 +517,7 @@ void MediaPlayer::clearPlaylist() {
     sendCommand(MediaPlayerCommands::Clear_playlist);
 }
 
-void MediaPlayer::browseMedia(const QString &mediaId, const QString &mediaType, int limit, int page) {
+int MediaPlayer::browseMedia(const QString &mediaId, const QString &mediaType, int limit, int page) {
     QVariantMap params;
     if (!mediaId.isEmpty()) {
         params.insert("media_id", mediaId);
@@ -377,7 +529,9 @@ void MediaPlayer::browseMedia(const QString &mediaId, const QString &mediaType, 
     paging.insert("limit", limit);
     paging.insert("page", page);
     params.insert("paging", paging);
+    m_lastBrowseRequestId = -1;
     emit browseMediaRequested(m_id, params);
+    return m_lastBrowseRequestId;
 }
 
 void MediaPlayer::searchMedia(const QString &query, const QString &mediaId, const QString &mediaType,
@@ -402,11 +556,28 @@ void MediaPlayer::searchMedia(const QString &query, const QString &mediaId, cons
     emit searchMediaRequested(m_id, params);
 }
 
-void MediaPlayer::onBrowseMediaResult(const core::BrowseMediaItem &media, const core::Pagination &pagination) {
-    emit browseMediaResult(browseItemToVariant(media), paginationToVariant(pagination));
+void MediaPlayer::onBrowseMediaRequested(int requestId) {
+    m_lastBrowseRequestId = requestId;
 }
 
-void MediaPlayer::onSearchMediaResult(const QList<core::BrowseMediaItem> &items, const core::Pagination &pagination) {
+void MediaPlayer::onBrowseMediaResult(int requestId, const core::BrowseMediaItem &media,
+                                      const core::Pagination &pagination) {
+    emit browseMediaResult(requestId, browseItemToVariant(media), paginationToVariant(pagination));
+}
+
+void MediaPlayer::onSearchMediaRequested(int requestId) {
+    m_activeSearchRequestId = requestId;
+}
+
+void MediaPlayer::onSearchMediaResult(int requestId, const QList<core::BrowseMediaItem> &items,
+                                      const core::Pagination &pagination) {
+    if (requestId != m_activeSearchRequestId) {
+        qCDebug(lcMediaPlayer()) << "Dropping stale search result" << requestId << ", waiting for"
+                                 << m_activeSearchRequestId;
+        return;
+    }
+    m_activeSearchRequestId = -1;
+
     QVariantList list;
     for (const auto &item : items) {
         list.append(browseItemToVariant(item));
@@ -414,8 +585,19 @@ void MediaPlayer::onSearchMediaResult(const QList<core::BrowseMediaItem> &items,
     emit searchMediaResult(list, paginationToVariant(pagination));
 }
 
-void MediaPlayer::onMediaBrowseError(int code, const QString &message) {
-    emit mediaBrowseError(code, message);
+void MediaPlayer::onSearchMediaError(int requestId, int code, const QString &message) {
+    if (requestId != m_activeSearchRequestId) {
+        qCDebug(lcMediaPlayer()) << "Dropping stale search error" << requestId << ", waiting for"
+                                 << m_activeSearchRequestId;
+        return;
+    }
+    m_activeSearchRequestId = -1;
+
+    emit searchMediaError(code, message);
+}
+
+void MediaPlayer::onMediaBrowseError(int requestId, int code, const QString &message) {
+    emit mediaBrowseError(requestId, code, message);
 }
 
 QVariantMap MediaPlayer::browseItemToVariant(const core::BrowseMediaItem &item) {
@@ -451,14 +633,11 @@ QVariantMap MediaPlayer::paginationToVariant(const core::Pagination &p) {
     return map;
 }
 
-void MediaPlayer::getMediaImageColor(QString imageUrl, bool isPreview) {
+void MediaPlayer::getMediaImageColor(QString imageUrl, quint64 requestId) {
     if (imageUrl.isEmpty()) {
         clearMediaImageState();
         return;
     }
-
-    m_nam.clearAccessCache();
-    m_nam.clearConnectionCache();
 
     QNetworkRequest request(imageUrl);
     request.setAttribute(QNetworkRequest::RedirectPolicyAttribute, true);
@@ -475,13 +654,22 @@ void MediaPlayer::getMediaImageColor(QString imageUrl, bool isPreview) {
     qCInfo(lcMediaPlayer()) << "Starting image download with timeout:" << IMAGE_REQUEST_TIMEOUT_MS;
     QNetworkReply *reply = m_nam.get(request);
     reply->setProperty("mediaImageUrl", imageUrl);
-    reply->setProperty("isPreview", isPreview);
+    reply->setProperty("mediaImageRequestId", QVariant::fromValue<qulonglong>(requestId));
 
     connect(reply, QOverload<QNetworkReply::NetworkError>::of(&QNetworkReply::error),
             this, &MediaPlayer::onNetworkError);
 }
 
 void MediaPlayer::clearMediaImageState() {
+    ++*m_mediaImageProcessingRequestId;
+
+    if (!m_mediaImageCacheKey.isEmpty()) {
+        if (auto *provider = MediaImageProvider::instance()) {
+            provider->removeImage(m_mediaImageCacheKey);
+        }
+        m_mediaImageCacheKey.clear();
+    }
+
     if (!m_mediaImage.isEmpty()) {
         m_mediaImage.clear();
         emit mediaImageChanged();
@@ -492,127 +680,96 @@ void MediaPlayer::clearMediaImageState() {
         m_mediaImageColor = defaultColor;
         emit mediaImageColorChanged();
     }
-
-    m_mediaImageIsPreview = false;
 }
 
-bool MediaPlayer::isKodiDefaultPlaceholder(const QString &url) {
-    // Kodi skin-level fallback images returned by Player.GetItem when no real art
-    // exists. Substring match catches both plain ("DefaultVideo.png") and
-    // URL-encoded ("image%3A%2F%2FDefaultVideo.png%2F") forms.
-    static constexpr const char *defaults[] = {
-        "DefaultVideo.png",       "DefaultAudio.png",
-        "DefaultVideoCover.png",  "DefaultMovies.png",
-        "DefaultMovieTitle.png",  "DefaultTVShows.png",
-        "DefaultTVShowTitle.png", "DefaultPlaylist.png",
-        "DefaultFolder.png",      "DefaultFile.png",
-        "DefaultPicture.png",     "DefaultProgram.png",
-    };
-    for (auto d : defaults) {
-        if (url.contains(QLatin1String(d), Qt::CaseInsensitive)) {
-            return true;
+void MediaPlayer::processMediaImageAsync(const QString &imageUrl, const QByteArray &imageData, quint64 requestId,
+                                         const QString &dataUrl) {
+    const QColor fallbackColor = QColor("#171717");
+    // The worker runs on a pool thread while this object lives on the GUI thread and can be deleted at any time,
+    // e.g. when the entity is removed while its artwork is decoded. QPointer is not thread safe: the worker only
+    // holds the shared request counter, which outlives the object. The guard is dereferenced on the GUI thread.
+    const QSharedPointer<std::atomic<quint64>> currentRequestId = m_mediaImageProcessingRequestId;
+    const QPointer<MediaPlayer>                guard(this);
+
+    QThreadPool::globalInstance()->start([currentRequestId, guard, requestId, imageUrl, imageData, dataUrl,
+                                          fallbackColor]() {
+        const auto isRequestCurrent = [currentRequestId, requestId]() { return currentRequestId->load() == requestId; };
+
+        if (!isRequestCurrent()) {
+            return;
         }
-    }
-    return false;
+
+        ProcessedMediaImage result;
+        if (dataUrl.isEmpty()) {
+            result = processDownloadedMediaImage(imageData, isRequestCurrent);
+        } else {
+            result = processEmbeddedMediaImage(dataUrl, fallbackColor, isRequestCurrent);
+        }
+
+        if (result.cancelled || !isRequestCurrent()) {
+            return;
+        }
+
+        // Hand the result to the GUI thread through the application object, which is always there: whether
+        // the media player still exists is decided on that thread, where it is deleted.
+        QCoreApplication *app = QCoreApplication::instance();
+        if (!app) {
+            return;
+        }
+
+        QMetaObject::invokeMethod(
+            app,
+            [guard, imageUrl, requestId, result]() {
+                if (!guard) {
+                    return;
+                }
+
+                guard->applyProcessedMediaImage(imageUrl, requestId, result.mediaImage, result.mediaImageColor,
+                                                result.success);
+            },
+            Qt::QueuedConnection);
+    });
 }
 
-void MediaPlayer::applyMediaImageUrl(const QString &newImageUrl, bool isPreview) {
-    m_mediaImageUrl = newImageUrl;
-    emit mediaImageUrlChanged();
+void MediaPlayer::applyProcessedMediaImage(const QString &imageUrl, quint64 requestId, const QImage &mediaImage,
+                                           const QColor &mediaImageColor, bool success) {
+    if (requestId != m_mediaImageProcessingRequestId->load() || imageUrl != m_mediaImageUrl) {
+        qCDebug(lcMediaPlayer()) << "Ignoring stale processed image result";
+        return;
+    }
 
-    m_mediaImageDownloadTries = 0;
+    if (!success || mediaImage.isNull()) {
+        clearMediaImageState();
+        return;
+    }
 
-    const bool isBase64 = newImageUrl.startsWith("data:image/", Qt::CaseInsensitive)
-                          && newImageUrl.contains(";base64,");
-    if (!isBase64) {
-        // HTTP path — flag flip deferred until onNetworkRequestFinished success,
-        // threaded via reply property so a failed real-URL fetch can preserve an
-        // earlier preview (flag still reflects the currently-displayed image).
-        getMediaImageColor(m_mediaImageUrl, isPreview);
-    } else {
-        // Base64 data URI — m_mediaImage is written synchronously here, so the
-        // flag must flip synchronously too.
-        m_mediaImage          = newImageUrl;
-        m_mediaImageIsPreview = isPreview;
+    auto *provider = MediaImageProvider::instance();
+    if (!provider) {
+        qCWarning(lcMediaPlayer()) << "Media image provider is not available";
+        clearMediaImageState();
+        return;
+    }
+
+    const QString previousCacheKey = m_mediaImageCacheKey;
+    const QString nextCacheKey = provider->storeImage(m_id, requestId, mediaImage);
+    const QString nextMediaImage = MediaImageProvider::imageUrlForKey(nextCacheKey);
+
+    if (m_mediaImage != nextMediaImage) {
+        m_mediaImage = nextMediaImage;
         emit mediaImageChanged();
+    }
 
-        const QString    base64Data = newImageUrl.section(",", 1);
-        const QByteArray imageData  = QByteArray::fromBase64(base64Data.toLatin1());
-        QImage           img;
-        img.loadFromData(imageData);
-        m_mediaImageColor = computeAverageImageColor(img);
+    m_mediaImageCacheKey = nextCacheKey;
+
+    if (!previousCacheKey.isEmpty() && previousCacheKey != nextCacheKey) {
+        provider->removeImage(previousCacheKey);
+    }
+
+    if (m_mediaImageColor != mediaImageColor) {
+        m_mediaImageColor = mediaImageColor;
+        qCDebug(lcMediaPlayer()).noquote() << "Background image lightness" << m_mediaImageColor.lightness();
         emit mediaImageColorChanged();
     }
-}
-
-void MediaPlayer::setPreviewImage(const QString &thumbnailUrl) {
-    if (thumbnailUrl.isEmpty()) {
-        return;
-    }
-
-    // Only accept schemes QNetworkAccessManager can actually fetch: http(s) or
-    // base64 image data URI. UC3's internal "icon://" fallback (MediaBrowser
-    // shows it as an icon-name, not a URL) and Kodi's internal "image://" scheme
-    // both produce ProtocolUnknownError + 3-retry burn if passed through.
-    const bool isHttp = thumbnailUrl.startsWith("http://",  Qt::CaseInsensitive)
-                     || thumbnailUrl.startsWith("https://", Qt::CaseInsensitive);
-    const bool isBase64Image = thumbnailUrl.startsWith("data:image/", Qt::CaseInsensitive)
-                            && thumbnailUrl.contains(";base64,");
-    if (!isHttp && !isBase64Image) {
-        qCDebug(lcMediaPlayer()) << "setPreviewImage: skipping unfetchable scheme"
-                                 << thumbnailUrl.left(48);
-        return;
-    }
-
-    // Skip a placeholder thumbnail — it's no better than what the integration
-    // would later push, and would just mark m_mediaImageIsPreview unnecessarily.
-    if (isKodiDefaultPlaceholder(thumbnailUrl)) {
-        qCDebug(lcMediaPlayer()) << "setPreviewImage: skipping placeholder thumbnail";
-        return;
-    }
-
-    // Idempotent if same URL already loaded — still mark preview so a later
-    // placeholder swap is guarded.
-    if (m_mediaImageUrl == thumbnailUrl && !m_mediaImage.isEmpty()) {
-        m_mediaImageIsPreview = true;
-        return;
-    }
-
-    qCDebug(lcMediaPlayer()) << "setPreviewImage: applying browse thumbnail as preview";
-    applyMediaImageUrl(thumbnailUrl, /*isPreview=*/true);
-}
-
-QColor MediaPlayer::computeAverageImageColor(QImage image) {
-    if (image.isNull()) {
-        return QColor();
-    }
-
-    int    step = 20;
-    int    t = 0;
-    int    r = 0, g = 0, b = 0;
-    double brightness = 0.6;
-
-    for (int i = 0; i < image.width(); i += step) {
-        for (int j = 0; j < image.height(); j += step) {
-            if (image.valid(i, j)) {
-                t++;
-                QColor c = image.pixel(i, j);
-                r += c.red();
-                b += c.blue();
-                g += c.green();
-            }
-        }
-    }
-
-    QColor color = QColor(static_cast<int>(brightness * r / t) > 255 ? 255 : static_cast<int>(brightness * r / t),
-                  static_cast<int>(brightness * g / t) > 255 ? 255 : static_cast<int>(brightness * g / t),
-                  static_cast<int>(brightness * b / t) > 255 ? 255 : static_cast<int>(brightness * b / t));
-
-    if (color.lightness() < 30) {
-        color.setHsl(color.hslHue(), color.hslSaturation(), 30);
-    }
-
-    return color;
 }
 
 void MediaPlayer::sendCommand(MediaPlayerCommands::Enum cmd, QVariantMap params) {
@@ -657,16 +814,16 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
 
     switch (attributeEnum) {
         case MediaPlayerAttributes::State: {
-            ok = false;
-            int newState = Util::convertStringToEnum<MediaPlayerStates::Enum>(uc::Util::FirstToUpper(data.toString()), &ok);
-
-            if (!ok) {
-                m_state = MediaPlayerStates::Unknown;
-            } else {
-                m_state = newState;
-            }
+            bool stateOk = false;
+            int newState = Util::convertStringToEnum<MediaPlayerStates::Enum>(uc::Util::FirstToUpper(data.toString()), &stateOk);
+            const int nextState = stateOk ? newState : MediaPlayerStates::Unknown;
 
             ok = true;
+            if (m_state == nextState) {
+                break;
+            }
+
+            m_state = nextState;
             emit stateChanged(m_id, m_state);
 
             m_stateAsString = MediaPlayerStates::getTranslatedString(static_cast<MediaPlayerStates::Enum>(m_state));
@@ -681,6 +838,8 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
             }
 
             if (m_state == MediaPlayerStates::Off) {
+                ++*m_mediaImageProcessingRequestId;
+
                 m_mediaDuration = 0;
                 emit mediaDurationChanged();
 
@@ -689,11 +848,18 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
 
                 m_mediaImageUrl.clear();
                 emit mediaImageUrlChanged();
+
+                if (!m_mediaImageCacheKey.isEmpty()) {
+                    if (auto *provider = MediaImageProvider::instance()) {
+                        provider->removeImage(m_mediaImageCacheKey);
+                    }
+                    m_mediaImageCacheKey.clear();
+                }
+
                 m_mediaImage = QString();
                 emit mediaImageChanged();
                 m_mediaImageColor = QColor(255,255,255);
                 emit mediaImageColorChanged();
-                m_mediaImageIsPreview = false;
 
                         //                getMediaImageColor(m_mediaImageUrl);
 
@@ -763,21 +929,23 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
             break;
         }
         case MediaPlayerAttributes::Media_image_url: {
-            const QString newImageUrl = data.toString();
+            QString newImageUrl = data.toString();
 
-            // Preview-preserve guard: once a browse-time preview is set, swallow
-            // empty or Kodi-default-placeholder updates rather than blanking the
-            // thumbnail the user already saw in MediaBrowser.
-            if (m_mediaImageIsPreview && !m_mediaImage.isEmpty()
-                && (newImageUrl.isEmpty() || isKodiDefaultPlaceholder(newImageUrl))) {
-                qCDebug(lcMediaPlayer()) << "Media_image_url: preserving preview over placeholder";
-                break;
-            }
-
-            // Re-download if URL changed OR if we have a URL but the image data is missing
-            if (m_mediaImageUrl != newImageUrl || (!newImageUrl.isEmpty() && m_mediaImage.isEmpty())) {
-                applyMediaImageUrl(newImageUrl, /*isPreview=*/false);
+            if (m_mediaImageUrl != newImageUrl) {
+                m_mediaImageUrl = newImageUrl;
                 ok = true;
+                emit mediaImageUrlChanged();
+
+                m_mediaImageDownloadTries = 0;
+                const quint64 requestId = ++*m_mediaImageProcessingRequestId;
+
+                bool isBase64 = newImageUrl.startsWith("data:image/", Qt::CaseInsensitive) && newImageUrl.contains(";base64,");
+
+                if (!isBase64) {
+                    getMediaImageColor(m_mediaImageUrl, requestId);
+                } else {
+                    processMediaImageAsync(m_mediaImageUrl, QByteArray(), requestId, newImageUrl);
+                }
             }
             break;
         }
@@ -818,8 +986,14 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
             break;
         }
         case MediaPlayerAttributes::Repeat: {
+            bool                        repeatOk = false;
             MediaPlayerRepeatMode::Enum newRepeat =
-                Util::convertStringToEnum<MediaPlayerRepeatMode::Enum>(data.toString());
+                Util::convertStringToEnum<MediaPlayerRepeatMode::Enum>(data.toString().toUpper(), &repeatOk);
+            if (!repeatOk) {
+                // an unknown value converts to -1, which is no repeat mode: keep the current one
+                qCWarning(lcMediaPlayer()) << "Ignoring invalid repeat mode" << data << "of entity" << m_id;
+                break;
+            }
             if (m_repeat != newRepeat) {
                 m_repeat = newRepeat;
                 ok = true;
@@ -873,7 +1047,7 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
 
             for (const QString &mediaClass : incomingClasses) {
                 bool valid = false;
-                Util::convertStringToEnum<MediaClass::Enum>(mediaClass, &valid);
+                Util::convertStringToEnum<MediaClass::Enum>(uc::Util::FirstToUpper(mediaClass), &valid);
 
                 if (valid) {
                     newClasses.append(mediaClass);
@@ -896,17 +1070,20 @@ bool MediaPlayer::updateAttribute(const QString &attribute, QVariant data) {
 
 void MediaPlayer::onLanguageChangedTypeSpecific()
 {
-    QTimer::singleShot(500, [=]() {
+    QTimer::singleShot(500, this, [=]() {
         m_stateAsString = MediaPlayerStates::getTranslatedString(static_cast<MediaPlayerStates::Enum>(m_state));
         emit stateAsStringChanged();
     });
 }
 
 void MediaPlayer::onPositionTimerTimeout() {
-    m_mediaPosition++;
-    if (m_mediaPosition >= m_mediaDuration) {
-        m_mediaPosition = m_mediaDuration;
+    // The position is counted up to the duration. Without a duration (live content) and at the end of the media
+    // it stands still, which is not announced every second.
+    const int position = qMin(m_mediaPosition + 1, m_mediaDuration);
+    if (position == m_mediaPosition) {
+        return;
     }
+    m_mediaPosition = position;
     emit mediaPositionChanged();
 }
 
@@ -934,12 +1111,6 @@ void MediaPlayer::onNetworkError(QNetworkReply::NetworkError error) {
         return;
     }
 
-    // Cancels are routine supersession events (new artwork URL arrives before
-    // the previous fetch finishes), not failures — filter from logs.
-    if (error == QNetworkReply::OperationCanceledError) {
-        return;
-    }
-
     qCWarning(lcMediaPlayer()) << "Image download network error:"
                                << reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt()
                                << error << reply->errorString();
@@ -947,21 +1118,15 @@ void MediaPlayer::onNetworkError(QNetworkReply::NetworkError error) {
 
 void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
     const QString replyImageUrl = reply->property("mediaImageUrl").toString();
-    if (replyImageUrl != m_mediaImageUrl) {
+    const quint64 replyRequestId = reply->property("mediaImageRequestId").toULongLong();
+
+    if (replyImageUrl != m_mediaImageUrl || replyRequestId != m_mediaImageProcessingRequestId->load()) {
         qCDebug(lcMediaPlayer()) << "Ignoring stale image download response";
         reply->deleteLater();
         return;
     }
 
     if (reply->error()) {
-        // Cancels are supersession events, not failures — don't log, don't
-        // consume the retry budget (would cause spurious exhaustion on rapid
-        // entity re-subscribes post-boot).
-        if (reply->error() == QNetworkReply::OperationCanceledError) {
-            reply->deleteLater();
-            return;
-        }
-
         m_mediaImageDownloadTries++;
         qCWarning(lcMediaPlayer()).nospace() << "Image download failed "
                                              << m_mediaImageDownloadTries << "/3 ("
@@ -969,52 +1134,23 @@ void MediaPlayer::onNetworkRequestFinished(QNetworkReply *reply) {
                                              << m_mediaImageUrl;
 
         if (m_mediaImageDownloadTries >= 3) {
-            if (m_mediaImageIsPreview && !m_mediaImage.isEmpty()) {
-                qCDebug(lcMediaPlayer()) << "Real-URL fetch failed, preserving preview";
-            } else {
-                clearMediaImageState();
-            }
+            clearMediaImageState();
             reply->deleteLater();
             return;
         } else {
-            // Carry the preview-intent of this failed reply into the retry so
-            // a retried preview fetch stays flagged as a preview on success.
-            const bool retryIsPreview = reply->property("isPreview").toBool();
-            QTimer::singleShot(1000, this, [this, replyImageUrl, retryIsPreview] {
-                if (replyImageUrl == m_mediaImageUrl) {
-                    getMediaImageColor(replyImageUrl, retryIsPreview);
+            QTimer::singleShot(1000, this, [this, replyImageUrl, replyRequestId] {
+                if (replyImageUrl == m_mediaImageUrl && replyRequestId == m_mediaImageProcessingRequestId->load()) {
+                    getMediaImageColor(replyImageUrl, replyRequestId);
                 }
             });
         }
 
         reply->deleteLater();
     } else {
-        QPixmap p;
-        p.loadFromData(reply->readAll());
+        const QByteArray imageData = reply->readAll();
 
         qCInfo(lcMediaPlayer()) << "Image successfully downloaded";
-
-        QImage     image = p.toImage();
-        QByteArray byteArray;
-        QBuffer    buffer(&byteArray);
-        image.save(&buffer, "PNG");
-
-        if (!byteArray.isEmpty()) {
-            m_mediaImage = QString("data:image/png;base64,");
-            m_mediaImage.append(QString::fromLatin1(byteArray.toBase64().data()));
-            // Flag reflects the intent tagged on this reply at fetch time
-            // (see getMediaImageColor). Preserves correctness when a preview
-            // fetch and a real-URL fetch race — whichever completes last and
-            // matches m_mediaImageUrl wins, and its intent sticks.
-            m_mediaImageIsPreview = reply->property("isPreview").toBool();
-            emit mediaImageChanged();
-
-            m_mediaImageColor = computeAverageImageColor(image);
-
-            qCDebug(lcMediaPlayer()).noquote() << "Background image lightness" << m_mediaImageColor.lightness();
-
-            emit mediaImageColorChanged();
-        }
+        processMediaImageAsync(replyImageUrl, imageData, replyRequestId);
 
         reply->deleteLater();
     }

@@ -25,8 +25,13 @@ class GroupController : public QObject {
 
     Q_INVOKABLE int addGroup(const QString& profileId, const QString& name,
                              const QStringList& entities = QStringList());
-    Q_INVOKABLE int updateGroup(const QString& groupId, const QString& profileId, const QString& name = QString(),
-                                const QStringList& entities = QStringList());
+    /**
+     * @param name the new name, an empty name keeps the current one
+     * @param entities the new entity list, which replaces the current one: an empty list removes the last entity.
+     *                 Left out (an invalid QVariant), the entities are not touched, which is what a rename passes.
+     */
+    Q_INVOKABLE int updateGroup(const QString& groupId, const QString& profileId, const QString& name,
+                                const QVariant& entities = QVariant());
     Q_INVOKABLE int deleteGroup(const QString& groupId);
 
     void setProfileId(const QString& profileId);
@@ -37,7 +42,9 @@ class GroupController : public QObject {
     void groupAdded(QString groupId, bool success);
     void groupUpdated(QString groupId, bool success);
     void groupAlreadyExists();
-    void requestEntity(QString entityId);
+
+    // a group was loaded or added, or the entities of a group changed
+    void groupItemsChanged();
 
  public slots:
     void onEntityDeleted(QString entityId);
@@ -48,12 +55,13 @@ class GroupController : public QObject {
 
     QHash<QString, Group*> m_groups;
     QString                m_profileId;
+    // id of the newest group list request, answers to older ones are ignored
+    int m_groupsRequestId = -1;
 
  private slots:
     void onGroupAdded(QString profileId, core::Group group);
     void onGroupChanged(QString profileId, core::Group group);
     void onGroupDeleted(QString profileId, QString groupId);
-    void onEntityRequested(QString entityId);
 };
 
 }  // namespace ui

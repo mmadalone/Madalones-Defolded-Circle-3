@@ -11,14 +11,16 @@ import Battery 1.0
 import Wifi 1.0
 import Wifi.SignalStrength 1.0
 import SoftwareUpdate 1.0
+import Entity.Controller 1.0
 
 import "qrc:/components" as Components
 
 Item {
     width: parent.width; height: 40
 
-    property int contentY: containerMain.item.currentPage ? containerMain.item.currentPage.contentY : 0
-    property int atYBeginning: containerMain.item.currentPage ? containerMain.item.currentPage.atYBeginning : 0
+    // the main container is loaded asynchronously, also while the window is hidden at a start with the display off
+    property int contentY: containerMain.item && containerMain.item.currentPage ? containerMain.item.currentPage.contentY : 0
+    property int atYBeginning: containerMain.item && containerMain.item.currentPage ? containerMain.item.currentPage.atYBeginning : 0
     property int pageNameOffset: 100
     property int scrollDiff:0
     property bool movementStarted: false
@@ -32,7 +34,7 @@ Item {
     }
 
     Connections {
-        target: ui.pages.count > 0 ? containerMain.item.currentPage : null
+        target: ui.pages.count > 0 && containerMain.item ? containerMain.item.currentPage : null
         ignoreUnknownSignals: true
         enabled: !ui.editMode
 
@@ -143,6 +145,26 @@ Item {
 
         anchors { verticalCenter: parent.verticalCenter; right: parent.right; rightMargin: 5 }
         spacing: 5
+
+        // command-in-progress / background-retry indicator
+        Image {
+            id: commandLoadingIndicator
+
+            Layout.preferredWidth: 30
+            Layout.preferredHeight: 30
+            Layout.alignment: Qt.AlignVCenter
+
+            source: "qrc:/images/loader_small.png"
+            fillMode: Image.PreserveAspectFit
+            visible: EntityController.commandInProgress
+
+            RotationAnimation on rotation {
+                running: commandLoadingIndicator.visible
+                loops: Animation.Infinite
+                from: 0; to: 360
+                duration: 1200
+            }
+        }
 
         // loading indicator
         Item {
@@ -370,11 +392,11 @@ Item {
 
             Text {
                 color: colors.black
-                text: ui.profile.name.substring(0,1);
+                text: ui.profile.name.substring(0,1).toUpperCase();
                 verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
 
                 anchors.centerIn: parent
-                font: fonts.primaryFontCapitalized(18)
+                font: fonts.caption()
             }
         }
     }
@@ -389,7 +411,8 @@ Item {
         Text {
             id: pageNameText
             color: colors.offwhite
-            text: containerMain.item.currentPage ? containerMain.item.currentPage.title : ""
+            // the main container is loaded asynchronously and is replaced while the pages are reloaded: no item then
+            text: containerMain.item && containerMain.item.currentPage ? containerMain.item.currentPage.title : ""
             height: parent.height
             anchors { left: parent.left; verticalCenter: parent.verticalCenter; verticalCenterOffset: pageNameOffset }
             verticalAlignment: Text.AlignVCenter

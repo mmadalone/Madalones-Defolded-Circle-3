@@ -12,6 +12,40 @@ import "qrc:/keypad" as Keypad
 Settings.Page {
     id: adminPinContent
 
+    function currentKeypad() {
+        return keyPadSwipeView.currentIndex === 0 ? keypadOne : keypadTwo;
+    }
+
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 "DPAD_UP": {
+                                                     "pressed": function() {
+                                                         adminPinContent.currentKeypad().moveSelection(0, -1);
+                                                     }
+                                                 },
+                                                 "DPAD_DOWN": {
+                                                     "pressed": function() {
+                                                         adminPinContent.currentKeypad().moveSelection(0, 1);
+                                                     }
+                                                 },
+                                                 "DPAD_LEFT": {
+                                                     "pressed": function() {
+                                                         adminPinContent.currentKeypad().moveSelection(-1, 0);
+                                                     }
+                                                 },
+                                                 "DPAD_RIGHT": {
+                                                     "pressed": function() {
+                                                         adminPinContent.currentKeypad().moveSelection(1, 0);
+                                                     }
+                                                 },
+                                                 "DPAD_MIDDLE": {
+                                                     "pressed": function() {
+                                                         adminPinContent.currentKeypad().activateSelection();
+                                                     }
+                                                 }
+                                             });
+    }
+
     SwipeView {
         id: keyPadSwipeView
         interactive: false
@@ -32,6 +66,8 @@ Settings.Page {
         target: keypadOne
 
         function onPinEntered(pin) {
+            // a d-pad user keeps the outline on the confirmation keypad, a touch user has none
+            keypadTwo.selectedIndex = keypadOne.selectedIndex;
             keyPadSwipeView.incrementCurrentIndex();
         }
     }
@@ -43,10 +79,12 @@ Settings.Page {
             if (keypadOne.pinToCheck == keypadTwo.pinToCheck) {
                 Config.setAdminPin(keypadTwo.pinToCheck);
             } else {
+                keypadOne.selectedIndex = keypadTwo.selectedIndex;
                 keyPadSwipeView.decrementCurrentIndex();
                 keypadOne.pinToCheck = "";
                 keypadTwo.pinToCheck = "";
-                ui.createNotification("The pin doesn't match. Try again.", true);
+                //: Notification: the PIN entered a second time differs from the first one
+                ui.createNotification(qsTr("The PIN doesn't match. Try again."), true);
             }
         }
     }

@@ -1,5 +1,5 @@
 // Copyright (c) 2026 madalone. Mock SignalStrength Q_GADGET for QML tests.
-// Mirrors the enum at src/hardware/wifi.h:20-44 without pulling that header's
+// Mirrors the enum at src/system/wifi.h:20-44 without pulling that header's
 // transitive includes (core/core.h, etc.). Same uc::hw::SignalStrength namespace
 // + identical enum values so the WifiStatusChip QML's `case SignalStrength.WEAK:`
 // switches resolve correctly when this gadget is registered as Wifi.SignalStrength 1.0.

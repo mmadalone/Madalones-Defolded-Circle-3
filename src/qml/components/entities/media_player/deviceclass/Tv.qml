@@ -480,10 +480,11 @@ EntityComponents.BaseDetail {
 
                 Text {
                     id: mediaPositionText
+                    //: Source type: live TV.
                     text: entityObj.mediaDuration === 0 ? qsTr("Live") : mediaPlayerBase.formatTime(entityObj.mediaPosition)
                     color: colors.offwhite
                     horizontalAlignment: Text.AlignLeft
-                    font: fonts.secondaryFont(20)
+                    font: fonts.secondaryFont(22)
                     anchors { top: parent.top; left: entityObj.mediaDuration === 0 ? undefined : parent.left; horizontalCenter: entityObj.mediaDuration === 0 ? parent.horizontalCenter : undefined }
                 }
 
@@ -491,7 +492,7 @@ EntityComponents.BaseDetail {
                     text: "-" + mediaPlayerBase.formatTime(entityObj.mediaDuration-entityObj.mediaPosition)
                     color: colors.offwhite
                     horizontalAlignment: Text.AlignRight
-                    font: fonts.secondaryFont(20)
+                    font: fonts.secondaryFont(22)
                     anchors { top: parent.top; right: parent.right }
                     visible: entityObj.mediaDuration !== 0
                 }
@@ -611,14 +612,16 @@ EntityComponents.BaseDetail {
                             case MediaPlayerRepeatMode.OFF:
                                 return "";
                             case MediaPlayerRepeatMode.ALL:
+                                //: Media repeat mode: repeat all tracks.
                                 return qsTr("All");
                             case MediaPlayerRepeatMode.ONE:
+                                //: Media repeat mode: repeat the current track only.
                                 return qsTr("One");
                             }
                         }
                         horizontalAlignment: Text.AlignHCenter
                         verticalAlignment: Text.AlignVCenter
-                        font: fonts.secondaryFontCapitalized(16)
+                        font: fonts.caption()
                         anchors.centerIn: parent
                     }
                 }
@@ -638,7 +641,7 @@ EntityComponents.BaseDetail {
                 Layout.alignment: Qt.AlignVCenter
                 size: 80
                 color: colors.offwhite
-                icon: "uc:library"
+                icon: "uc:album-collection"
                 visible: entityObj.hasFeature(MediaPlayerFeatures.Browse_media) || entityObj.hasFeature(MediaPlayerFeatures.Search_media)
 
                 Components.HapticMouseArea {

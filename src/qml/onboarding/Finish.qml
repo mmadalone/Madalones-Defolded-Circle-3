@@ -2,272 +2,270 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Layouts 1.15
 
 import Onboarding 1.0
 import Config 1.0
 
 import "qrc:/components" as Components
+import "qrc:/onboarding" as OnboardingComponents
 
-Item {
-    Item {
+OnboardingComponents.Page {
+    id: finishStep
+
+    // the web configurator switch is only there for an unrestricted profile
+    initialFocusItem: webConfiguratorSwitch.visible ? webConfiguratorSwitch : doneButton
+    scrollTarget: flickable
+
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 // the setup can not be left at the last step
+                                                 "BACK": {
+                                                     "pressed": function() {}
+                                                 }
+                                             });
+    }
+
+    Components.TitleBar {
         id: title
-        width: parent.width
-        height: 60
+        // onboarding steps have no back target: BACK goes to the previous step
+        action: ""
+        text: qsTr("You're all set")
+    }
 
-        Text {
-            text: qsTr("You're all set")
-            width: parent.width
-            elide: Text.ElideRight
-            color: colors.offwhite
-            verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(24)
+    // translations of the description run well past the English text: the page scrolls, so the
+    // "Done" button stays reachable in every language
+    Flickable {
+        id: flickable
+        anchors { top: title.bottom; bottom: parent.bottom; left: parent.left; right: parent.right }
+        contentWidth: width
+        contentHeight: content.height + 20
+        clip: true
+        flickableDirection: Flickable.VerticalFlick
+        boundsBehavior: Flickable.StopAtBounds
+
+        // the content changes height while the pin row and the QR code come and go; a contentY
+        // beyond the new end would leave an empty screen behind
+        onContentHeightChanged: {
+            const maxContentY = Math.max(0, contentHeight - height);
+            if (contentY > maxContentY) {
+                contentY = maxContentY;
+            }
         }
-    }
 
-    Text {
-        id: description
-        width: parent.width - 40
-        wrapMode: Text.WordWrap
-        color: colors.light
-        horizontalAlignment: Text.AlignHCenter
-        text: qsTr("You can add integrations or change configuration via the Web configurator.")
-        anchors { top: title.bottom; topMargin: 20; horizontalCenter: parent.horizontalCenter }
-        font: fonts.secondaryFont(24)
-    }
+        // Plain positioners and anchors throughout: the box sizes itself from its content, and
+        // a QtQuick.Layouts layout inside a container sized from the layout's implicit height is
+        // reported as a binding loop.
+        Column {
+            id: content
+            width: flickable.width
+            spacing: 40
 
+            Text {
+                id: description
+                x: 20
+                width: parent.width - 40
 
-    Rectangle {
-        anchors { top: description.bottom; topMargin: 40; left: parent.left; leftMargin: 20; right: parent.right; rightMargin: 20 }
-        height: childrenRect.height
+                wrapMode: Text.WordWrap
+                color: colors.textPrimary
+                horizontalAlignment: Text.AlignHCenter
+                text: qsTr("You can add integrations or change configuration via the Web configurator.")
+                font: fonts.prose()
+                lineHeight: fonts.proseLineHeight
+            }
 
-        color: colors.transparent
-        border { color: colors.medium; width: 2 }
-        radius: ui.cornerRadiusSmall
+            Rectangle {
+                id: webConfiguratorBox
+                x: 20
+                width: parent.width - 40
+                height: webConfiguratorContent.height + 40
 
-        ColumnLayout {
-            width: parent.width
-            spacing: 0
-
-            ColumnLayout {
-                spacing: 0
-
-                Layout.alignment: Qt.AlignBottom
-                Layout.fillWidth: true
-                Layout.fillHeight: false
-                Layout.margins: 20
-
+                color: colors.transparent
+                border { color: colors.divider; width: 2 }
+                radius: ui.cornerRadiusSmall
                 visible: !ui.profile.restricted
 
-                // web configurator enable
-                ColumnLayout {
-                    Layout.alignment: Qt.AlignBottom
-                    Layout.fillHeight: false
-                    Layout.bottomMargin: Config.webConfiguratorEnabled ? 30 : 0
+                Column {
+                    id: webConfiguratorContent
+                    x: 20; y: 20
+                    width: parent.width - 40
+                    spacing: 0
 
-                    RowLayout {
+                    // web configurator enable
+                    Item {
+                        width: parent.width
+                        height: Math.max(webConfiguratorSwitch.height, webConfiguratorEnabledText.implicitHeight)
+
                         Text {
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                            id: webConfiguratorEnabledText
+                            anchors { left: parent.left; right: webConfiguratorSwitch.left; rightMargin: 10; verticalCenter: parent.verticalCenter }
 
                             wrapMode: Text.WordWrap
                             verticalAlignment: Text.AlignVCenter
-                            color: colors.light
+                            color: colors.textSecondary
                             text: Config.webConfiguratorEnabled ? qsTr("Web configurator enabled") : qsTr("Web configurator disabled")
-                            font: fonts.secondaryFont(22)
+                            font: fonts.help()
                         }
 
                         Components.Switch {
-                            Layout.alignment: Qt.AlignRight | Qt.AlignVCenter
+                            id: webConfiguratorSwitch
+                            anchors { right: parent.right; verticalCenter: parent.verticalCenter }
 
                             icon: "uc:check"
                             checked: Config.webConfiguratorEnabled
+                            KeyNavigation.down: webConfiguratorAddress.visible ? addressToggle
+                                                                               : (generateNewPin.visible ? generateNewPin : doneButton)
                             trigger: function() {
                                 Config.webConfiguratorEnabled = !Config.webConfiguratorEnabled
                             }
                         }
                     }
 
-                    RowLayout {
+                    Text {
+                        id: webConfiguratorAddress
+
+                        property bool showIp: false
+
+                        width: parent.width
+                        topPadding: 10
+
                         visible: Config.webConfiguratorEnabled && Config.webConfiguratorAddress != ""
+                        wrapMode: Text.WrapAtWordBoundaryOrAnywhere
+                        color: colors.textPrimary
+                        text: Config.webConfiguratorUrl(Wifi.ipAddress, webConfiguratorAddress.showIp)
+                        font: fonts.value()
 
-                        Text {
-                            id: webConfiguratorAddress
+                        // OK switches between the host name and the IP address, as a tap does
+                        Components.HapticMouseArea {
+                            id: addressToggle
+                            anchors.fill: parent
+                            keypadActivatable: true
 
-                            property bool showIp: false
+                            KeyNavigation.up: webConfiguratorSwitch
+                            KeyNavigation.down: generateNewPin.visible ? generateNewPin : doneButton
 
-                            Layout.fillWidth: true
-                            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+                            onClicked: {
+                                webConfiguratorAddress.showIp = !webConfiguratorAddress.showIp;
+                            }
 
-                            wrapMode: Text.WordWrap
-                            verticalAlignment: Text.AlignVCenter
-                            color: colors.light
-                            text: ("http://%1/configurator").arg(webConfiguratorAddress.showIp ? Wifi.ipAddress : Config.webConfiguratorAddress)
-                            font: fonts.secondaryFont(22)
+                            Components.Selectable {
+                                selected: addressToggle.activeFocus
+                                anchors { leftMargin: -10; rightMargin: -10 }
+                            }
+                        }
+                    }
 
-                            Components.HapticMouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    webConfiguratorAddress.showIp = !webConfiguratorAddress.showIp;
+                    // pin & new pin button
+                    Item {
+                        id: pinQrContainer
+                        width: parent.width
+                        height: visible ? pinContainer.containerHeight + 30 : 0
+                        visible: Config.webConfiguratorEnabled
+
+                        Row {
+                            id: pinContainer
+                            spacing: 10
+                            anchors { left: parent.left; bottom: parent.bottom }
+
+                            property string pin: Config.webConfiguratorPin
+                            property int containerWidth: 45
+                            property int containerHeight: 60
+
+                            Repeater {
+                                model: 4
+
+                                Rectangle {
+                                    width: pinContainer.containerWidth
+                                    height: pinContainer.containerHeight
+                                    color: colors.bg
+                                    border { color: colors.divider; width: 2 }
+                                    radius: ui.cornerRadiusSmall
+
+                                    Text {
+                                        text: pinContainer.pin[index] ? pinContainer.pin[index] : ""
+                                        color: colors.offwhite
+                                        verticalAlignment: Text.AlignVCenter
+                                        horizontalAlignment: Text.AlignHCenter
+                                        font: fonts.value()
+                                        anchors.centerIn: parent
+                                    }
                                 }
                             }
                         }
-                    }
-                }
 
-                // pin & qr code
-                RowLayout {
-                    id: pinQrContainer
-                    spacing: 10
-                    clip: true
-
-                    Layout.alignment: Qt.AlignBottom
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: Config.webConfiguratorEnabled ? 60 : 0
-
-                    Behavior on Layout.preferredHeight {
-                        NumberAnimation {
-                            duration: 300
-                            easing.type: Easing.OutExpo
-                        }
-                    }
-
-                    RowLayout {
-                        id: pinContainer
-                        spacing: 10
-                        width: childrenRect.width
-                        height: childrenRect.height
-
-                        property string pin: Config.webConfiguratorPin
-                        property int containerWidth: 45
-                        property int containerHeight: 60
-
-                        Rectangle {
-                            width: pinContainer.containerWidth
+                        Components.HapticMouseArea {
+                            id: generateNewPin
+                            width: pinContainer.containerHeight
                             height: pinContainer.containerHeight
-                            color: colors.black
-                            border { color: colors.medium; width: 2 }
-                            radius: ui.cornerRadiusSmall
+                            anchors { right: parent.right; bottom: parent.bottom }
 
-                            Text {
-                                text: pinContainer.pin[0]
-                                color: colors.offwhite
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                font: fonts.primaryFont(36, "Light")
-                                anchors.centerIn: parent
+                            KeyNavigation.up: webConfiguratorAddress.visible ? addressToggle : webConfiguratorSwitch
+                            KeyNavigation.down: doneButton
+
+                            function generate() {
+                                Config.generateNewWebConfigPin();
                             }
-                        }
 
-                        Rectangle {
-                            width: pinContainer.containerWidth
-                            height: pinContainer.containerHeight
-                            color: colors.black
-                            border { color: colors.medium; width: 2 }
-                            radius: ui.cornerRadiusSmall
+                            onClicked: generateNewPin.generate()
 
-                            Text {
-                                text: pinContainer.pin[1]
-                                color: colors.offwhite
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                font: fonts.primaryFont(36, "Light")
-                                anchors.centerIn: parent
+                            Keys.onReturnPressed: {
+                                generateNewPin.generate();
+                                event.accepted = true;
                             }
-                        }
 
-                        Rectangle {
-                            width: pinContainer.containerWidth
-                            height: pinContainer.containerHeight
-                            color: colors.black
-                            border { color: colors.medium; width: 2 }
-                            radius: ui.cornerRadiusSmall
+                            onPressed: generateQrCodeIcon.color = colors.textPrimary
+                            onReleased: generateQrCodeIcon.color = colors.textSecondary
 
-                            Text {
-                                text: pinContainer.pin[2]
-                                color: colors.offwhite
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                font: fonts.primaryFont(36, "Light")
+                            Components.Icon {
+                                id: generateQrCodeIcon
+                                icon: "uc:arrow-rotate-left"
+                                color: colors.textSecondary
+                                size: 60
                                 anchors.centerIn: parent
+
+                                Behavior on color {
+                                    ColorAnimation { duration: 200 }
+                                }
                             }
-                        }
 
-                        Rectangle {
-                            width: pinContainer.containerWidth
-                            height: pinContainer.containerHeight
-                            color: colors.black
-                            border { color: colors.medium; width: 2 }
-                            radius: ui.cornerRadiusSmall
-
-                            Text {
-                                text: pinContainer.pin[3]
-                                color: colors.offwhite
-                                verticalAlignment: Text.AlignVCenter
-                                horizontalAlignment: Text.AlignHCenter
-                                font: fonts.primaryFont(36, "Light")
-                                anchors.centerIn: parent
+                            Components.Selectable {
+                                selected: generateNewPin.activeFocus
                             }
                         }
                     }
 
-                    Components.HapticMouseArea {
-                        Layout.preferredWidth: pinContainer.height
-                        Layout.preferredHeight: pinContainer.height
-                        Layout.alignment: Qt.AlignVCenter
+                    Image {
+                        id: qrCode
+                        width: 220
+                        height: visible ? 260 : 0
+                        anchors.horizontalCenter: parent.horizontalCenter
 
-                        onClicked: {
-                            Config.generateNewWebConfigPin();
-                        }
-
-                        onPressed: generateQrCodeIcon.color = colors.highlight
-                        onReleased: generateQrCodeIcon.color = colors.light
-
-                        Components.Icon {
-                            id: generateQrCodeIcon
-                            icon: "uc:arrow-rotate-left"
-                            color: colors.light
-                            size: 60
-                            anchors.centerIn: parent
-
-                            Behavior on color {
-                                ColorAnimation { duration: 200 }
-                            }
-                        }
-                    }
-                }
-
-                Image {
-                    id: qrCode
-
-                    Layout.preferredWidth: 220
-                    Layout.preferredHeight: 220
-                    Layout.topMargin: 40
-
-                    fillMode: Image.PreserveAspectFit
-                    antialiasing: false
-                    source: "data:image/png;base64," + ui.createQrCode(("http://%1/configurator").arg(Config.webConfiguratorAddress))
-                    visible: Config.webConfiguratorAddress != "" && Config.webConfiguratorEnabled
-                }
-
-                Item {
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 20
-                }
-
-                Components.Button {
-                    id: skipButton
-                    text: qsTr("Done")
-                    Layout.fillWidth: true
-                    Layout.preferredHeight: 80
-                    trigger: function() {
-                        ui.setOnboarding(false);
-                        ui.inputController.activeController = containerMain;
-                        ui.showHelp = true;
+                        fillMode: Image.PreserveAspectFit
+                        verticalAlignment: Image.AlignBottom
+                        antialiasing: false
+                        source: "data:image/png;base64," + ui.createQrCode(Config.webConfiguratorUrl("", false))
+                        visible: Config.webConfiguratorAddress != "" && Config.webConfiguratorEnabled
                     }
                 }
             }
+
+            Components.Button {
+                id: doneButton
+                text: qsTr("Done")
+                x: 20
+                width: parent.width - 40
+                height: 80
+
+                KeyNavigation.up: generateNewPin.visible ? generateNewPin : webConfiguratorSwitch
+                trigger: function() {
+                    ui.setOnboarding(false);
+                    ui.showHelp = true;
+                }
+            }
         }
+    }
+
+    // with the web configurator on, Done is below the screen: show that the step scrolls
+    Components.ScrollIndicator {
+        parentObj: flickable
     }
 }

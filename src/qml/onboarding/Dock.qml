@@ -13,27 +13,61 @@ import Config 1.0
 
 import "qrc:/components" as Components
 import "qrc:/components/docks" as Docks
+import "qrc:/onboarding" as OnboardingComponents
 
-Item {
-    property bool currentItem: SwipeView.isCurrentItem
-    property bool dockSelected: false
+OnboardingComponents.Page {
+    id: dockStep
 
-    Item {
+    // The keypad selection walks the discovery component (start screen controls, then the found
+    // docks) and ends on the Skip button below it. It is driven through the button navigation
+    // only - no keyboard focus is involved, so one key press can not act on two controls.
+    property bool skipSelected: false
+
+    onStepEntered: dockStep.skipSelected = false
+
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 "DPAD_DOWN": {
+                                                     "pressed": function() {
+                                                         if (!dockStep.skipSelected && !dockDiscovery.moveSelection(1)) {
+                                                             dockStep.skipSelected = true;
+                                                         }
+                                                     }
+                                                 },
+                                                 "DPAD_UP": {
+                                                     "pressed": function() {
+                                                         if (dockStep.skipSelected) {
+                                                             dockStep.skipSelected = false;
+                                                             dockDiscovery.selectLast();
+                                                         } else {
+                                                             dockDiscovery.moveSelection(-1);
+                                                         }
+                                                     }
+                                                 },
+                                                 "DPAD_MIDDLE": {
+                                                     "pressed": function() {
+                                                         if (dockStep.skipSelected) {
+                                                             skipButton.activate();
+                                                         } else {
+                                                             dockDiscovery.activateSelection();
+                                                         }
+                                                     }
+                                                 },
+                                                 "BACK": {
+                                                     "pressed": function() {
+                                                         DockController.stopDiscovery();
+                                                         OnboardingController.previousStep();
+                                                     }
+                                                 }
+                                             });
+    }
+
+    Components.TitleBar {
         id: title
-        width: parent.width
-        height: 60
-
-        Text {
-            id: titleText
-            //: Smart charging dock
-            text: qsTr("Dock setup")
-            width: parent.width
-            elide: Text.ElideRight
-            color: colors.offwhite
-            verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
-            anchors.centerIn: parent
-            font: fonts.primaryFont(24)
-        }
+        // onboarding steps have no back target: BACK goes to the previous step
+        action: ""
+        //: Smart charging dock
+        text: qsTr("Dock setup")
     }
 
     Docks.Discovery {
@@ -41,12 +75,26 @@ Item {
         anchors {
             top: title.bottom
             topMargin: 20
-            bottom: parent.bottom
+            bottom: skipButton.top
+            bottomMargin: 20
             left: parent.left
             right: parent.right
         }
         anchors.fill: undefined
+        keypadSelected: !dockStep.skipSelected
         onSkip: OnboardingController.nextStep()
+    }
+
+    Components.Button {
+        id: skipButton
+        width: parent.width - 40
+        text: qsTr("Skip")
+        variant: "secondary"
+        anchors { bottom: parent.bottom; bottomMargin: 20; horizontalCenter: parent.horizontalCenter }
+        highlight: dockStep.skipSelected && ui.keyNavigationActive
+        trigger: function() {
+            OnboardingController.nextStep();
+        }
     }
 
     Popup {
@@ -56,6 +104,19 @@ Item {
         closePolicy: Popup.NoAutoClose
         padding: 0
         parent: Overlay.overlay
+
+        // the popup's own navigation is the fallback owner; the current setup step takes the input
+        // on top of it once the popup is visible
+        onOpened: {
+            dockSetupPopupButtonNavigation.takeControl();
+            if (dockSetupLoader.item) {
+                dockSetupLoader.item.activateCurrentStep();
+            }
+        }
+
+        onClosed: {
+            dockSetupPopupButtonNavigation.releaseControl();
+        }
 
         enter: Transition {
             NumberAnimation { property: "scale"; from: 0.7; to: 1.0; easing.type: Easing.OutExpo; duration: 300 }
@@ -84,9 +145,19 @@ Item {
                 NumberAnimation { easing.type: Easing.OutExpo; duration: 300 }
             }
 
+            onStatusChanged: {
+                if (status == Loader.Ready && dockSetupPopup.opened) {
+                    dockSetupLoader.item.activateCurrentStep();
+                }
+            }
+
             Connections {
                 target: dockSetupLoader.item
                 ignoreUnknownSignals: true
+
+                function onHome() {
+                    dockSetupPopup.close();
+                }
 
                 function onDone() {
                     dockSetupPopup.close();
@@ -109,6 +180,32 @@ Item {
                 if (dockId) {
                     dockSetupLoader.active = true;
                     dockSetupPopup.open();
+                }
+            }
+        }
+
+        // leaving the popup cancels the setup that is running in it; the popup closes on the
+        // setup's done / failed signal
+        function cancelSetup() {
+            if (dockSetupLoader.item) {
+                dockSetupLoader.item.cancel();
+            } else {
+                dockSetupPopup.close();
+            }
+        }
+
+        Components.ButtonNavigation {
+            id: dockSetupPopupButtonNavigation
+            defaultConfig: {
+                "HOME": {
+                    "pressed": function() {
+                        dockSetupPopup.cancelSetup();
+                    }
+                },
+                "BACK": {
+                    "pressed": function() {
+                        dockSetupPopup.cancelSetup();
+                    }
                 }
             }
         }

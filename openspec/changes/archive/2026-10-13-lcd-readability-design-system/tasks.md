@@ -1,0 +1,216 @@
+Each numbered group from 1 to 6 is one pull request on top of the design-system pull request, in this
+order; each depends on the one before it. Group 0 is the design-system pull request itself. Archive
+this change after the migration is merged to `main`, not in a phase pull request.
+
+## 0. Design and specification (the design-system pull request)
+
+- [x] 0.1 `docs/design-system.md`, `docs/design-system/audit.md`, `docs/design-system/mockups/`
+- [x] 0.2 Proposal, spec deltas (`platform-constraints`, `key-navigation`), design, ADR review manifest
+- [x] 0.3 ADRs 0019 and 0020 with their `docs/adr/README.md` index entries
+- [x] 0.4 The maintainer approves the `platform-constraints` "Legibility" change (design, Q-6; approved 2026-10-07)
+- [x] 0.5 `openspec validate lcd-readability-design-system --strict` passes
+
+## 1. Tokens
+
+- [x] 1.1 `src/ui/colors.cpp`: generate `dark` `#1E1E1E`, `medium` `#2C2C2C`, `light` `#A0A0A0`,
+      `highlight` `#D0D0D0` and `inactive` `#7A7A7A` for the default base colour
+- [x] 1.2 `src/ui/colors.{h,cpp}`: add `bg`, `textPrimary`, `textSecondary`, `textDisabled`, `textOnButton`,
+      `surface`, `surfaceRaised`, `surfaceSelected` (`#595959`), `divider`, `focusRing`, `buttonPrimary`
+      and `redPressed`; an old colour under a new name reads the same member
+- [x] 1.3 Unit test `test/ui/test_design_tokens.cpp`: the token values and the contrast pairs of the
+      design system (text on black, on the surfaces, on the selection fill, pressed content), registered
+      in `test/ui/CMakeLists.txt` with the sources and headers it compiles
+- [x] 1.4 `CHANGELOG.md`: secondary text, dividers and surfaces are easier to read, above all on the
+      Remote 3
+- [x] 1.5 Verify on the desktop simulator, then on a Remote Two and a Remote 3 in a lit room
+
+## 2. Selection
+
+- [x] 2.1 `src/qml/components/Selectable.qml` with the `fill` and `ring` styles, registered in
+      `resources/qrc/main.qrc`
+- [x] 2.2 Main UI in fill style: entity and group tiles (`entities/Base.qml`, `group/Base.qml`),
+      `PopupMenu`, `PageSelector`, `ProfileSwitch`; secondary text on the fill in `textPrimary`
+- [x] 2.3 Settings in ring style: `Settings.qml`, `SettingsNew.qml`, `About.qml`, `Profile.qml`,
+      `PopupList`, the localisation and Wi-Fi selectors, `EntityList`, the dock and integration lists
+- [x] 2.4 Controls in ring style: `Button`, `Switch`, `Checkbox`, `Slider`, `InputField`,
+      `SearchField`, `Dropdown`; replace `RowHighlight` and remove it once unused
+- [x] 2.5 Bind the always-on selections (tiles, group tiles, `SourceList`, `MediaBrowser`) and
+      `Activity.qml`'s own flag to `ui.keyNavigationActive`
+- [x] 2.6 Q-3: `#595959` stays for now, decided by the maintainer and recorded in the design system;
+      the checks of 2.10 may still adjust it there
+- [x] 2.7 `docs/key-navigation.md` section 5: the selection component and the two styles
+- [x] 2.8 `CHANGELOG.md`: the d-pad selection is visible on every screen
+- [x] 2.9 Keypad walk on the desktop (`UC_MODEL=DEV`), opened by touch and by key: main page tiles,
+      open and closed group, page menu, page selector, profile switcher, activity menu, add-entities
+      list, settings and profile menus, software update, display, Wi-Fi, localisation with its
+      language picker, integrations, docks, about. Not reached on the desktop: `SourceList` and
+      `MediaBrowser` (no media player in the simulator), the integration and dock set-up forms
+- [x] 2.10 The same walk on both remotes, together with 2.6
+- [x] 2.11 `activities` spec delta: the activity menu draws the fill and follows the keypad-active
+      state
+
+## 3. Type roles
+
+- [x] 3.1 `src/ui/fonts.h`: `title()`, `heading()`, `label()`, `menuRow()`, `prose()`, `help()`, `caption()`,
+      `value()`, `button()`, `display(size)`
+- [x] 3.2 Unit test: every type role is at least 22 px; registered in `test/ui/CMakeLists.txt`
+- [x] 3.3 Help texts, prose (release notes, legal texts, driver instructions), captions, values and
+      button labels move to their roles; the 64 calls below 22 px are gone. Titles, row labels and
+      menu rows keep their pixel sizes until the phase 4 components; the entity detail screens only
+      get the 22 px floor (D-7); the Colors page, typed input text and the slider value bubble stay
+- [x] 3.4 `CHANGELOG.md`: help texts, release notes and legal texts are easier to read
+- [x] 3.5 German and French on the desktop at 800 px height (`UC_MODEL=DEV`): main page, group,
+      profile menu, software update, display, user interface, touch slider, voice, power, Wi-Fi,
+      localisation, reset, integrations and integration details, docks and the add-dock sheet, about,
+      add-entities list, activity header and menu. Not reachable in the simulator: onboarding,
+      release notes, legal texts (empty), driver set-up forms
+- [ ] 3.6 The same check on both remotes
+
+## 4. Structure
+
+- [x] 4.1 `TitleBar`, `SettingRow`, `MenuRow`, `KeyValueRow`, `FormDialog`, `Sheet`, `Prose`, each
+      registered in `resources/qrc/main.qrc`; `Button` gains `variant`. Also `Divider`, `Dim`, and
+      `ScrollIndicator` redrawn as the one track-and-thumb indicator
+- [x] 4.2 Settings pages on the shared components, 20 px gutter, row heights, dividers, radii, icons.
+      Pickers mark the current value with a check mark. The Colors page stays as it is
+- [x] 4.3 Onboarding on the shared components
+- [x] 4.4 Docks on the shared components
+- [x] 4.5 Integrations on the shared components. Every bottom sheet is black with a divider edge (Q-4):
+      page menu, activity menu, Wi-Fi info and join, delete drawers, entity filter
+- [x] 4.6 Remove the copies the components replace: `AboutInfo.qml`, `settings/TopNavigation.qml`
+- [x] 4.7 `CHANGELOG.md`: consistent layout of settings, onboarding, docks and integrations
+- [x] 4.8 Keypad walk per screen family on the desktop and both remotes. Desktop done at 800 px in
+      English and German (`UC_MODEL=DEV`): profile and settings menus, every settings page and
+      picker, software update, about, page menu, page selector with edit and held states, page add
+      dialog, profile switcher, notification, power off, activity menu, integrations list, info,
+      delete drawer, manage entities and filter sheet, docks, onboarding steps, Wi-Fi join and
+      security steps. Done on both remotes as well; the points looked at there: with Bluetooth off
+      the dock start screen scrolls at 800 px before Discover is fully visible (it now shows a
+      scroll indicator); in German the terms QR code shrinks to about 110 px to stay clear of the
+      text; with the keyboard up the Wi-Fi join buttons show their labels but their lower edge stays
+      under the keyboard at 800 px
+- [x] 4.9 The 2 px `colors.highlight` outlines phase 2 left in place move to `Selectable` with the
+      screens that own them: onboarding, keypad keys, the on-screen keyboard style, notifications,
+      bottom sheet, dock and integration info and configure pages, readiness check, web
+      configurator, icon selector, Wi-Fi network list, software update, the profile header (PIN
+      and QR code rows), the entity list filter, `ButtonAdd`. The held states of `Page.qml`,
+      `GroupEdit.qml` and `PageSelector.qml` show the ring on top of the fill (Q-5)
+- [x] 4.10 After a review of phases 2 and 4: the picker lists (`PopupList`: language, country,
+      timezone, Wi-Fi country and band, integration dropdowns, in settings and onboarding) and the
+      menus of the profile page (`Profile.qml`, `SettingsNew.qml`), Settings and About take the
+      fill. The page selector's rows are 150 px with the page name centred in `fonts.display(56)`,
+      up to two lines, in both modes, inset by 8 px; its current page keeps the fill after a touch
+      (`Selectable.shownAfterTouch`). Desktop at 800 px (`UC_MODEL=DEV`): the three menus and the
+      language and timezone pickers of the settings by key, the page selector opened by touch, by
+      key, in the edit mode and with a held page
+- [x] 4.11 The onboarding Finish step gets the scroll indicator of every scrolling page (I-17): with
+      the web configurator on, its Done button is below the screen. Desktop at 800 px
+      (`UC_MODEL=DEV`) in the onboarding: the indicator shows with the web configurator on and
+      hides with it off
+- [x] 4.12 After a review: a picker list (`PopupList`) fills the row of its current value while the
+      keypad is not active, next to its check mark; with the keypad the fill follows the selection,
+      so one row is filled at a time. Desktop at 850 px (`UC_MODEL=DEV`): the onboarding language
+      list and the settings' timezone picker, opened by touch and by key
+
+## 5. Reachability
+
+- [x] 5.1 Make the controls of audit finding N-01 reachable, each in the idiom of its screen: the page
+      menu (HOME long press) opens the profile page, also for a restricted profile; the no-page
+      screen takes OK and a HOME long press; the web configurator screen walks its rows; the
+      onboarding Finish address joins the chain; the entity filter sheet's Clear and Done, the
+      Manage entities tabs; the connection status list scrolls. BACK is the recorded equivalent of
+      the close icons and the PIN Cancel. `NotificationDrawer.qml` was unused and is removed;
+      `NoProfile.qml` was already gone. Touch only by design: typing in text and search fields (the
+      keypad does not operate the on-screen keyboard) and links inside legal texts. The entity detail
+      screens (activity menu opener, media browse, sources, shuffle, repeat) follow with them (D-7)
+- [x] 5.2 Give the reachable controls without a visible selection (N-02) the ring: the help overlay's
+      Close, a scrolling driver text, the tabs; empty docks, integrations, Wi-Fi and entity lists
+      select their only target instead of nothing. Already fixed before this phase: the activity
+      loading screen and the power-off Cancel
+- [x] 5.3 Reword touch-only hints (N-04) in the code and `en_US.ts`; hide the unimplemented dock row
+      (N-09). The activity header hints ("Tap for more") stay with the entity detail screens
+- [x] 5.4 Spec deltas for the capabilities whose screens change: pages, profiles, docks,
+      integrations, entity-management, groups, notifications, help-overlay, onboarding,
+      settings-menu, core-connection. The `notifications` delta also records the presentation
+      phases 3 and 4 gave the actionable notification (buttons, prose message, bar colour)
+- [x] 5.5 `CHANGELOG.md`: every screen works with the d-pad
+- [x] 5.6 Verify each newly reachable control on a device. Desktop done at 800 px
+      (`UC_MODEL=DEV`): page menu and profile page, web configurator, no-page screen with its menu
+      and dialog, tips, Wi-Fi with empty lists, docks and integrations lists, Manage entities tabs and
+      filter header, onboarding Start, Terms and Finish. Not reachable in the simulator: a restricted
+      profile, the first-profile dialog, the connection status list, a dock's details. Also on a
+      device: the About page shows Regulatory in full below its information and scrolls back to the
+      top when the selection returns to Regulatory
+- [x] 5.7 Addresses in full (phase 4, found on the device): `KeyValueRow` takes `fullValue` for a
+      value that has to be read in full, on the line of its key while both fit, otherwise under it,
+      measured with the fonts of the two roles; the About page's Wi-Fi and Bluetooth addresses and the
+      WiFi details' MAC and IP addresses use it, and the WiFi details call the key "MAC". `wifi` and
+      `settings-menu` spec deltas, `docs/design-system.md` section 5. Verified with a render of the
+      rows at 480 px with Poppins and Space Mono: the addresses are shown in full, "MAC" stays on one
+      line, a German key moves the address under it, and the QML log has no binding loop
+- [x] 5.8 The About page scrolls back to its information (phase 5, found on the device): the first
+      entry, reached with the keypad or pressed with DPAD_UP, scrolls the page up as far as the entry
+      stays visible. `settings-menu` spec delta; the device check is part of 5.6
+- [x] 5.9 The About page shows its first entry (phase 4, found on the device): a key/value row takes
+      8 px vertical padding instead of 14, so the About page's information and Regulatory fit on the
+      Remote 3 together. `settings-menu` spec delta, `docs/design-system.md` section 5. Verified with
+      a render at 480 x 800 with Poppins and Space Mono: the information ends at 562 of 720 px below
+      the title bar, Regulatory at 662, and part of the next entry shows; the device check is part
+      of 5.6
+- [x] 5.10 American English: "Localisation" and "Inverted button behaviour" become "Localization" and
+      "Inverted button behavior", with translator comments; no other text on screen has a British
+      spelling (every source text of `en_US.ts` and every string literal in `src` checked). The
+      requirements that quote the two texts follow.
+- [x] 5.11 The first d-pad press after a touch on the profile page (found while testing the stack):
+      `InputController.pressActivatedKeypad()` tells the handlers of a key press whether it made the
+      keypad active, with a unit test; the profile page and `SettingsNew.qml` show the selection on
+      that press instead of moving it. `profiles` spec delta. Desktop at 850 px (`UC_MODEL=DEV`): the
+      profile page opened by touch shows Software update on the first DOWN and Settings on the
+      second; after a touch, UP shows the current entry
+
+## 6. Guardrails
+
+- [x] 6.1 A check next to `cpplint.sh` that fails on pixel font sizes below 22, literal colours and
+      `Qt.lighter` / `Qt.darker` in `src/qml`, with an allow-list for the entity detail screens:
+      `./design-check.sh` runs `tools/design-check.py` (standard library only); the allow-list
+      `tools/design-check-allow.txt` names the entity detail screens, the Colors page and the
+      debugging outline, each with its reason. The literals it found outside the allow-list moved to
+      tokens, and the keyboard's language list went from 20 to 26 px
+- [x] 6.2 Run the check from the code-guidelines workflow (Q-7, workflow change approved
+      2026-10-07), with its self-test first and the QML sources and the check in the path filters
+- [x] 6.3 `docs/key-navigation.md` section 9 and `docs/design-system.md` section 8: the checklist
+      names the check; so do `docs/code_guidelines.md`, `docs/workflow.md`, `CONTRIBUTING.md` and
+      `AGENTS.md`
+- [x] 6.4 Remove the old token names that no screen uses any more: `secondaryButton`, and
+      `inactiveText` and `primaryButton` after their last uses moved to `textDisabled` and
+      `buttonPrimary`. The other old names still have uses and stay as aliases
+- [x] 6.5 Verify: the check fails on a seeded violation and passes on the tree. `--self-test` seeds
+      every rule; a copy of `MenuRow.qml` with three violations fails with three findings; a path
+      without QML fails; the tree passes
+- [x] 6.6 The spec deltas follow the `specs` instruction of the workflow schema: behaviour that is
+      new goes into its own ADDED requirement instead of lengthening a MODIFIED one (`key-navigation`
+      selection styles, `platform-constraints` legibility floors, `entity-management` filter sheet
+      and empty list, `pages` no-page screen keypad and menu). Verified with
+      `openspec validate lcd-readability-design-system --strict`
+- [x] 6.7 The spec deltas record what phases 3 and 4 changed on the legal pages and in the tips: the
+      prose role and half-page key steps of the legal pages (`ui-resources` "Legal documents" and
+      "Licenses document", `settings-menu` "About page", the example in `key-navigation` "Scroll the
+      focused control into view") and the tip text in the help role (`help-overlay` "Overlay
+      presentation")
+- [x] 6.8 The spec deltas follow the review of task 4.10: `key-navigation` "Selection fill on the
+      main UI" adds the menus of the profile page, Settings and About and the picker lists, with a
+      picker list as a second example, "Selection ring in settings and on buttons" leaves them out
+      and takes a row of the Localization page as its example, and "Keypad-active state and
+      selection rendering" names the page selector's exception, which the new `pages` requirement
+      "Current page in the page selector" describes
+- [x] 6.9 The `onboarding` delta adds "Finish step taller than the screen" for the scroll indicator
+      of task 4.11
+- [x] 6.10 The current value of a picker list keeps the fill after a touch (task 4.12): the new
+      `key-navigation` requirement "Current choice after a touch" names both exceptions,
+      "Keypad-active state and selection rendering" points at it, and the `pages` requirement
+      "Current page in the page selector" refers to it
+- [x] 6.11 The selection styles by kind of screen (ADR 0020 restated in the design PR): the
+      `key-navigation` requirements become "Selection fill in menu lists" and "Selection ring on
+      setting screens and buttons", "One selection style per element" and "Selection of a new
+      screen" follow the kind of screen, and `docs/key-navigation.md` says the same. Q-8 is decided
+      as implemented

@@ -26,8 +26,10 @@ ColumnLayout {
                 case CoverStates.Unknown:
                     return qsTr("Unknown");
                 case CoverStates.Open:
+                    //: State: the cover, window or door is open. An adjective, not the action "to open".
                     return qsTr("Open");
                 case CoverStates.Closed:
+                    //: State: the cover, window or door is closed.
                     return qsTr("Closed");
                 default:
                     return qsTr("Unknown");
@@ -44,7 +46,7 @@ ColumnLayout {
         Layout.fillHeight: true
 
         text: qsTr("Close")
-        color: colors.medium
+        variant: "secondary"
         trigger: function() {
             entityObj.close();
         }
@@ -57,7 +59,7 @@ ColumnLayout {
         Layout.fillHeight: true
 
         text: qsTr("Open")
-        color: colors.medium
+        variant: "secondary"
         trigger: function() {
             entityObj.open();
         }

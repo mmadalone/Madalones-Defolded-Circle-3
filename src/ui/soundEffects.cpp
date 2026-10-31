@@ -5,6 +5,7 @@
 
 #include "soundEffects.h"
 
+#include <QDir>
 #include <QFileInfo>
 
 #include "../logging.h"
@@ -38,6 +39,16 @@ SoundEffects::~SoundEffects() {
 }
 
 void SoundEffects::initialize() {
+    if (m_effectsDir.isEmpty()) {
+        qCInfo(lcUi()) << "UC_SOUND_EFFECTS_PATH not set: sound effects are disabled";
+        return;
+    }
+
+    if (!QDir(m_effectsDir).exists()) {
+        qCWarning(lcUi()) << "Sound effects directory not found, sound effects are disabled:" << m_effectsDir;
+        return;
+    }
+
     QAudioDeviceInfo deviceInfo = QAudioDeviceInfo::defaultOutputDevice();
     createEffects(deviceInfo);
 
@@ -61,7 +72,7 @@ void SoundEffects::setEnabled(bool value) {
 }
 
 void SoundEffects::play(SoundEffects::SoundEffect effect) {
-    if (!m_enabled) {
+    if (!m_enabled || !isAvailable()) {
         return;
     }
 

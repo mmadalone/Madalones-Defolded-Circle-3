@@ -21,19 +21,20 @@ Item {
 
     property string icon
     property string suffix
-    property string _icon: resource.getIcon(icon, suffix.toLowerCase())
+    property string _icon: icon ? resource.getIcon(icon, suffix.toLowerCase()) : ""
     property int size: 5
+    property bool useLayer: false
     property alias color: iconText.color
 
-    layer.enabled: true
-    layer.smooth: true
+    layer.enabled: useLayer
+    layer.smooth: useLayer
 
     Image {
         id: image
         fillMode: Image.PreserveAspectFit
         antialiasing: true
         asynchronous: true
-        cache: false
+        cache: source.toString().indexOf("data:") !== 0
         width: parent.width
         height: parent.height
         sourceSize.width: width
@@ -49,7 +50,7 @@ Item {
         verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
         anchors.centerIn: parent
         color: colors.offwhite
-        font { family: "Font Awesome 6 Pro"; pixelSize: Math.round(size / 2); }
+        font { family: fonts.iconFamily; pixelSize: Math.round(size / 2); }
         visible: image.source == ""
         renderType: Text.NativeRendering
     }

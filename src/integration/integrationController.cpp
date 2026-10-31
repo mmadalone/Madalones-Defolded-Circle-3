@@ -4,6 +4,7 @@
 #include "integrationController.h"
 
 #include "../logging.h"
+#include "../util.h"
 
 namespace uc {
 namespace integration {
@@ -31,6 +32,16 @@ IntegrationController::IntegrationController(core::Api *core, const QString &lan
 
     QObject::connect(m_core, &core::Api::integrationSetupChange, this,
                      &IntegrationController::onIntegrationSetupChange);
+    // a setup session must be kept alive by the client. Renew it immediately after a standby or a reconnect: a
+    // suspended timer may have missed a renewal
+    QObject::connect(m_core, &core::Api::powerModeChanged, this, &IntegrationController::onPowerModeChanged);
+    QObject::connect(m_core, &core::Api::connected, this, [this]() {
+        if (m_setupKeepAliveTimer.isActive()) {
+            sendSetupKeepAlive();
+        }
+    });
+    m_setupKeepAliveTimer.setTimerType(Qt::VeryCoarseTimer);
+    QObject::connect(&m_setupKeepAliveTimer, &QTimer::timeout, this, &IntegrationController::sendSetupKeepAlive);
 
     QObject::connect(m_core, &core::Api::integrationDriverAdded, this, &IntegrationController::onDriverAdded);
     QObject::connect(m_core, &core::Api::integrationDriverChanged, this, &IntegrationController::onDriverChanged);
@@ -42,8 +53,6 @@ IntegrationController::IntegrationController(core::Api *core, const QString &lan
 
     QObject::connect(this, &IntegrationController::integrationStatusLoaded, this,
                      &IntegrationController::onIntegrationStatusLoaded);
-    QObject::connect(this, &IntegrationController::integrationDriverLoaded, this,
-                     &IntegrationController::onIntegrationDriverLoaded);
     QObject::connect(this, &IntegrationController::integrationDriversLoaded, this,
                      &IntegrationController::onIntegrationDriversLoaded);
     QObject::connect(this, &IntegrationController::integrationsLoaded, this,
@@ -67,12 +76,24 @@ IntegrationController::~IntegrationController() {
 }
 
 void IntegrationController::getAllIntegrationStatus() {
+    // start over like the two models do in clear(): the page count of an earlier load may no longer be right
+    m_integrationStatusLimit = 0;
+    m_integrationStatusTotalItems = 0;
+    m_integrationStatusTotalPages = 0;
+    m_integrationStatusLastPageLoaded = 0;
     getIntegrationStatus();
 }
 
 void IntegrationController::getAllIntegrationDrivers() {
     m_integrationDrivers.clear();
-    m_integrationDriversLoaded = 0;
+    // the list of drivers in error is built again from the status load and the state events that follow
+    if (!m_integrationDriversError.isEmpty()) {
+        m_integrationDriversError.clear();
+        emit driversErrorChanged();
+    }
+    // answers of a load that is still on its way belong to the list that was just dropped
+    ++m_driverLoadGeneration;
+    m_integrationDriversPending = 0;
     getIntegrationDrivers();
 }
 
@@ -88,7 +109,8 @@ void IntegrationController::getIntegrationStatus(int limit, int page) {
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrationStatus,
-        [=](QList<core::IntegrationStatus> integrationStatus, int count, int limit, int page) {
+        [=](QList<core::IntegrationStatus> integrationStatus, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
             // success
 
             qCDebug(lcIntegrationController())
@@ -98,7 +120,7 @@ void IntegrationController::getIntegrationStatus(int limit, int page) {
                 m_integrationStatusTotalItems = count;
                 if (m_integrationStatusLimit == 0) {
                     m_integrationStatusLimit = limit;
-                    m_integrationStatusTotalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
+                    m_integrationStatusTotalPages = Util::pageCount(count, limit);
                 }
                 m_integrationStatusLastPageLoaded = page;
 
@@ -118,6 +140,8 @@ void IntegrationController::getIntegrationStatus(int limit, int page) {
 
                             if (driver) {
                                 m_integrationDrivers.setState(driver->getId(), i->driverState.toLower());
+                                // the list of drivers in error follows the loaded state as well as the events
+                                updateDriversError(driver->getId(), i->driverState);
                             }
                         }
                     }
@@ -132,37 +156,58 @@ void IntegrationController::getIntegrationStatus(int limit, int page) {
 }
 
 void IntegrationController::getIntegrationDrivers(int limit, int page) {
-    int id = m_core->getIntegrationDrivers(limit, page);
+    const quint64 generation = m_driverLoadGeneration;
+    int           id = m_core->getIntegrationDrivers(limit, page);
 
     qCDebug(lcIntegrationController()) << "Call get integration drivers";
 
+    // The load always ends with integrationDriversLoaded, whatever happens: the status load and a pending
+    // discovery start wait for it. A request that could not be sent never gets an answer.
+    if (id < 0) {
+        emit integrationDriversLoaded();
+        return;
+    }
+
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrationDrivers,
-        [=](QList<core::IntegrationDriver> integrationDrivers, int count, int limit, int page) {
+        [=](QList<core::IntegrationDriver> integrationDrivers, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
             // success
+            if (generation != m_driverLoadGeneration) {
+                qCDebug(lcIntegrationController()) << "Ignoring stale integration driver page:" << page;
+                return;
+            }
 
             qCDebug(lcIntegrationController()) << "Integrations:" << count << "page:" << page << "limit:" << limit;
 
-            if (count > 0) {
-                m_integrationDrivers.totalItems = count;
-                if (m_integrationDrivers.limit == 0) {
-                    m_integrationDrivers.limit = limit;
-                    m_integrationDrivers.totalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
-                }
-                m_integrationDrivers.lastPageLoaded = page;
+            m_integrationDrivers.totalItems = count;
+            if (m_integrationDrivers.limit == 0) {
+                m_integrationDrivers.limit = limit;
+                m_integrationDrivers.totalPages = Util::pageCount(count, limit);
+            }
+            m_integrationDrivers.lastPageLoaded = page;
 
-                if (integrationDrivers.size() > 0) {
-                    for (QList<core::IntegrationDriver>::iterator i = integrationDrivers.begin();
-                         i != integrationDrivers.end(); i++) {
-                        // get detailed driver info
-                        getIntegrationDriver(i->id);
-                    }
-                }
+            // no driver at all, or a page past the end because drivers were removed meanwhile
+            if (integrationDrivers.isEmpty()) {
+                emit integrationDriversLoaded();
+                return;
+            }
+
+            // every driver of the page is fetched with a request of its own: the page is done when all of them
+            // are settled, with or without success
+            m_integrationDriversPending = integrationDrivers.size();
+            for (QList<core::IntegrationDriver>::iterator i = integrationDrivers.begin(); i != integrationDrivers.end();
+                 i++) {
+                // get detailed driver info
+                getIntegrationDriver(i->id, generation);
             }
         },
         [=](int code, QString message) {
             // fail
             qCWarning(lcIntegrationController()) << "Cannot get integration drivers" << code << message;
+            if (generation == m_driverLoadGeneration) {
+                emit integrationDriversLoaded();
+            }
         });
 }
 
@@ -173,7 +218,8 @@ void IntegrationController::getIntegrations(int limit, int page) {
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrations,
-        [=](QList<core::Integration> integrations, int count, int limit, int page) {
+        [=](QList<core::Integration> integrations, int count, int responseLimit, int page) {
+            Q_UNUSED(responseLimit)  // number of items in this page, not the page size
             // success
             qCDebug(lcIntegrationController()) << "Integrations:" << count << "page:" << page << "limit:" << limit;
 
@@ -181,7 +227,7 @@ void IntegrationController::getIntegrations(int limit, int page) {
                 m_integrations.totalItems = count;
                 if (m_integrations.limit == 0) {
                     m_integrations.limit = limit;
-                    m_integrations.totalPages = qCeil(static_cast<float>(count) / static_cast<float>(limit));
+                    m_integrations.totalPages = Util::pageCount(count, limit);
                 }
                 m_integrations.lastPageLoaded = page;
 
@@ -247,10 +293,18 @@ void IntegrationController::deleteIntegrationDriver(const QString &driverId) {
 
 void IntegrationController::startDriverDiscovery() {
     qCDebug(lcIntegrationController()) << "START DISCOVERY";
+    // the driver selected for setup is an item of the list that is deleted now
+    if (m_integrationDriverToSetup) {
+        m_integrationDriverToSetup = nullptr;
+        emit integrationDriverToSetupChanged();
+    }
     m_discoveredIntegrationDrivers.clear();
 
     // first we get all the integration drivers again
+    // a start that is still waiting for an earlier driver load is replaced, not added to
+    delete m_discoveryStartScope;
     QObject *scope = new QObject(this);
+    m_discoveryStartScope = scope;
     QObject::connect(this, &IntegrationController::integrationDriversLoaded, scope, [=]() {
         scope->deleteLater();
         int id = m_core->integrationStartDiscovery();
@@ -307,12 +361,25 @@ void IntegrationController::getDiscoveredDriverMetadata(const QString &driverId,
 }
 
 void IntegrationController::getIntegrationDriver(const QString &driverId) {
+    getIntegrationDriver(driverId, 0);
+}
+
+void IntegrationController::getIntegrationDriver(const QString &driverId, quint64 generation) {
     int id = m_core->getIntegrationDriver(driverId);
+
+    // a request that could not be sent never gets an answer
+    if (id < 0) {
+        onIntegrationDriverSettled(generation);
+        return;
+    }
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrationDriver,
         [=](core::IntegrationDriver integrationDriver) {
             // success
+            if (generation != 0 && generation != m_driverLoadGeneration) {
+                return;
+            }
 
             qCDebug(lcIntegrationController()) << "Integration driver" << integrationDriver.id;
             if (!m_integrationDrivers.contains(integrationDriver.id)) {
@@ -327,11 +394,14 @@ void IntegrationController::getIntegrationDriver(const QString &driverId) {
             }
 
             emit integrationDriverLoaded(driverId);
+            onIntegrationDriverSettled(generation);
         },
         [=](int code, QString message) {
             // fail
             qCWarning(lcIntegrationController()) << "Error getting integration driver" << code << message;
             ui::Notification::createNotification(tr("Error getting integration driver"), true);
+            // a driver that cannot be loaded must not hold up the rest of the load
+            onIntegrationDriverSettled(generation);
         });
 }
 
@@ -408,8 +478,10 @@ void IntegrationController::selectIntegrationToSetup(const QString &integrationD
 
         SetupSchema *schema = qobject_cast<SetupSchema *>(obj->getSetupSchema());
 
-        if (!schema->getTitle().isEmpty()) {
-            m_configPages.append(obj->getSetupSchema());
+        if (schema && !schema->getTitle().isEmpty()) {
+            // the setup pages are owned by this controller and deleted when the setup ends: a copy, the driver
+            // keeps its own schema
+            m_configPages.append(schema->clone(this));
             emit configPagesChanged();
         }
 
@@ -428,19 +500,29 @@ void IntegrationController::setupIntegration(const QString &integrationDriverId,
         return;
     }
 
-    int id = m_core->integrationSetup(integrationDriverId, obj->getNameI18n(), setupData);
+    // the events of the new session are processed from now on: the START event may arrive before the response
+    m_integrationDriverSetupId = integrationDriverId;
+    m_setupStopRequested = false;
+    m_lastUserAction.clear();
+    emit setupSessionActiveChanged();
+
+    int id = m_core->integrationSetup(integrationDriverId, obj->getNameI18n(), setupData, m_language);
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrationSetupInfo,
         [=](core::IntegrationSetupInfo integrationSetupInfo) {
             // success
             qCDebug(lcIntegrationController())
-                << "Integration setup info" << integrationSetupInfo.id << integrationSetupInfo.state;
+                << "Integration setup info" << integrationSetupInfo.id << integrationSetupInfo.state
+                << "keep-alive:" << integrationSetupInfo.keepaliveTimeoutSec;
 
             if (integrationSetupInfo.state == core::IntegrationEnums::SetupState::ERROR) {
                 ui::Notification::createNotification(tr("Integration setup error. Aborting setup"), true);
                 stopIntegrationSetup(integrationDriverId);
+                return;
             }
+
+            applySetupSession(integrationSetupInfo);
         },
         [=](int code, QString message) {
             // fail
@@ -496,6 +578,7 @@ void IntegrationController::setupIntegration(const QString &integrationDriverId,
                     break;
             }
 
+            setupSessionEnded();
             emit integrationSetupStopped();
             qCWarning(lcIntegrationController()) << code << message;
         });
@@ -520,6 +603,10 @@ void IntegrationController::configureDiscoveredIntegrationDriver(const QString &
                                                           setupData.value("driver_url").toString(),
                                                           setupData.value("token").toString());
 
+    // the discovered drivers are deleted when a discovery is started again, which can happen while the request
+    // is on its way
+    const QPointer<IntegrationDriver> driver(obj);
+
     m_core->onResponseWithErrorResult(
         id, &core::Api::respIntegrationDriver,
         [=](core::IntegrationDriver integrationDriver) {
@@ -527,10 +614,13 @@ void IntegrationController::configureDiscoveredIntegrationDriver(const QString &
 
             qCDebug(lcIntegrationController()) << "Integration setup info" << integrationDriver.id;
 
-            obj->setSetupScehma(new SetupSchema(integrationDriver.settingsPage.title,
-                                                integrationDriver.settingsPage.settings, m_language));
+            auto schema = new SetupSchema(integrationDriver.settingsPage.title, integrationDriver.settingsPage.settings,
+                                          m_language, this);
+            if (driver) {
+                driver->setSetupScehma(schema->clone());
+            }
 
-            m_configPages.append(obj->getSetupSchema());
+            m_configPages.append(schema);
             emit configPagesChanged();
         },
         [=](int code, QString message) {
@@ -542,6 +632,11 @@ void IntegrationController::configureDiscoveredIntegrationDriver(const QString &
 }
 
 void IntegrationController::stopIntegrationSetup(const QString &integrationDriverId) {
+    if (integrationDriverId == m_integrationDriverSetupId) {
+        m_setupStopRequested = true;
+        stopSetupKeepAlive();
+    }
+
     int id = m_core->integrationStopSetup(integrationDriverId);
 
     m_core->onResult(
@@ -549,6 +644,9 @@ void IntegrationController::stopIntegrationSetup(const QString &integrationDrive
         [=]() {
             // success
             qCDebug(lcIntegrationController()) << "Integration setup stopped successfully" << integrationDriverId;
+            if (integrationDriverId == m_integrationDriverSetupId) {
+                setupSessionEnded();
+            }
             emit integrationSetupStopped();
         },
         [=](int code, QString message) {
@@ -559,6 +657,7 @@ void IntegrationController::stopIntegrationSetup(const QString &integrationDrive
 }
 
 void IntegrationController::integrationSetUserDataSettings(const QString &integrationDriverId, QVariantMap setupData) {
+    m_inputErrorShown = false;
     int id = m_core->integrationSetUserDataSettings(integrationDriverId, setupData);
 
     m_core->onResponseWithErrorResult(
@@ -571,7 +670,10 @@ void IntegrationController::integrationSetUserDataSettings(const QString &integr
             if (integrationSetupInfo.state == core::IntegrationEnums::SetupState::ERROR) {
                 ui::Notification::createNotification(tr("Integration setup error. Aborting setup"), true);
                 stopIntegrationSetup(integrationDriverId);
+                return;
             }
+
+            applySetupSession(integrationSetupInfo);
         },
         [=](int code, QString message) {
             // fail
@@ -592,7 +694,7 @@ void IntegrationController::integrationSetUserDataSettings(const QString &integr
                     if (list.length() > 0) {
                         qCDebug(lcIntegrationController()) << "Error in:" << list[0];
                         emit integrationUserDataError(list[0], message);
-                    } else {
+                    } else if (!m_inputErrorShown) {
                         ui::Notification::createNotification(tr("Invalid data"), true);
                     }
                     break;
@@ -645,7 +747,10 @@ void IntegrationController::integrationSetUserDataConfirm(const QString &integra
             if (integrationSetupInfo.state == core::IntegrationEnums::SetupState::ERROR) {
                 ui::Notification::createNotification(tr("Integration setup error. Aborting setup"), true);
                 stopIntegrationSetup(integrationDriverId);
+                return;
             }
+
+            applySetupSession(integrationSetupInfo);
         },
         [=](int code, QString message) {
             // fail
@@ -690,8 +795,21 @@ void IntegrationController::integrationSetUserDataConfirm(const QString &integra
 }
 
 void IntegrationController::clearConfigPages() {
+    if (m_configPages.isEmpty()) {
+        return;
+    }
+
+    // The pages are owned by this controller, they used to be kept until the app exited. Deleted after the
+    // views have let go of them: the setup screen only copies their content when it builds a page.
+    const QList<QObject *> pages = m_configPages;
     m_configPages.clear();
     emit configPagesChanged();
+
+    for (QObject *page : pages) {
+        if (page && page->parent() == this) {
+            page->deleteLater();
+        }
+    }
 }
 
 QObject *IntegrationController::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
@@ -724,82 +842,220 @@ void IntegrationController::onLanguageChanged(QString language) {
 
 void IntegrationController::onIntegrationSetupChange(core::IntegrationSetupInfo integrationSetupInfo) {
     qCDebug(lcIntegrationController()) << "INTEGRATION SETUP CHANGE" << integrationSetupInfo.id
-                                       << integrationSetupInfo.state << integrationSetupInfo.requireUserAction;
+                                       << integrationSetupInfo.state << integrationSetupInfo.error
+                                       << integrationSetupInfo.requireUserAction;
+
+    // every client gets the events of every setup session, e.g. of a setup running in the web-configurator
+    if (integrationSetupInfo.id != m_integrationDriverSetupId) {
+        qCDebug(lcIntegrationController()) << "Ignoring setup change of a session not started by this UI";
+        return;
+    }
+
+    applySetupSession(integrationSetupInfo);
+
+    // an event may repeat the current page: a rejected input shows it again with an error text, a battery change
+    // only carries new limit fields. Such a page must not be appended a second time.
+    bool repeatedPage = integrationSetupInfo.requireUserAction && integrationSetupInfo.userAction == m_lastUserAction;
+    // the driver rejected the user data: the setup continues on the same page
+    QString inputError = integrationSetupInfo.error == core::IntegrationEnums::SetupError::INVALID_INPUT
+                             ? setupErrorText(integrationSetupInfo)
+                             : QString();
+    if (!inputError.isEmpty() && integrationSetupInfo.state != core::IntegrationEnums::SetupState::ERROR) {
+        m_inputErrorShown = true;
+    }
 
     switch (integrationSetupInfo.state) {
+        case core::IntegrationEnums::SetupState::NEW:
         case core::IntegrationEnums::SetupState::SETUP:
-            if (!integrationSetupInfo.settingsPage.settings.isEmpty()) {
+            if (!integrationSetupInfo.settingsPage.settings.isEmpty() && !repeatedPage) {
                 m_configPages.append(new SetupSchema(integrationSetupInfo.settingsPage.title,
                                                      integrationSetupInfo.settingsPage.settings, m_language, this));
+                m_lastUserAction = integrationSetupInfo.userAction;
                 emit configPagesChanged();
             }
 
-            emit integrationSetupChange(integrationSetupInfo.id, SetupState::Setup, QString(),
-                                        integrationSetupInfo.requireUserAction);
+            emit integrationSetupChange(integrationSetupInfo.id, SetupState::Setup, inputError,
+                                        integrationSetupInfo.requireUserAction && !repeatedPage);
             break;
         case core::IntegrationEnums::SetupState::WAIT_USER_ACTION:
-
-            if (!integrationSetupInfo.settingsPage.settings.isEmpty()) {
+            if (repeatedPage) {
+                if (inputError.isEmpty()) {
+                    qCDebug(lcIntegrationController()) << "Setup change repeats the current page";
+                    break;
+                }
+                emit integrationSetupChange(integrationSetupInfo.id, SetupState::Wait_user_action, inputError, false);
+            } else if (!integrationSetupInfo.settingsPage.settings.isEmpty()) {
                 m_configPages.append(new SetupSchema(integrationSetupInfo.settingsPage.title,
                                                      integrationSetupInfo.settingsPage.settings, m_language, this));
+                m_lastUserAction = integrationSetupInfo.userAction;
                 emit configPagesChanged();
 
-                emit integrationSetupChange(integrationSetupInfo.id, SetupState::Setup, QString(),
+                emit integrationSetupChange(integrationSetupInfo.id, SetupState::Setup, inputError,
                                             integrationSetupInfo.requireUserAction);
             } else if (!integrationSetupInfo.confirmationPage.title.isEmpty()) {
                 m_configPages.append(new ConfirmationPage(
                     integrationSetupInfo.confirmationPage.title, integrationSetupInfo.confirmationPage.message1,
                     integrationSetupInfo.confirmationPage.image, integrationSetupInfo.confirmationPage.message2,
                     m_language, this));
+                m_lastUserAction = integrationSetupInfo.userAction;
                 emit configPagesChanged();
 
-                emit integrationSetupChange(integrationSetupInfo.id, SetupState::Wait_user_action, QString(),
+                emit integrationSetupChange(integrationSetupInfo.id, SetupState::Wait_user_action, inputError,
                                             integrationSetupInfo.requireUserAction);
             }
             break;
         case core::IntegrationEnums::SetupState::OK:
+            setupSessionEnded();
             clearConfigPages();
             emit integrationSetupChange(integrationSetupInfo.id, SetupState::Ok, QString(),
                                         integrationSetupInfo.requireUserAction);
             break;
-        case core::IntegrationEnums::SetupState::ERROR:
+        case core::IntegrationEnums::SetupState::ERROR: {
+            bool aborted =
+                m_setupStopRequested && integrationSetupInfo.error == core::IntegrationEnums::SetupError::ABORTED;
+            setupSessionEnded();
             clearConfigPages();
-            QString errorString;
 
-            switch (integrationSetupInfo.error) {
-                case core::IntegrationEnums::SetupError::AUTHORIZATION_ERROR:
-                    errorString = tr("Authorization error");
-                    break;
-                case core::IntegrationEnums::SetupError::CONNECTION_REFUSED:
-                    errorString = tr("Connection refused");
-                    break;
-                case core::IntegrationEnums::SetupError::NONE:
-                    errorString = tr("Unknown error");
-                    break;
-                case core::IntegrationEnums::SetupError::NOT_FOUND:
-                    errorString = tr("Not found");
-                    break;
-                case core::IntegrationEnums::SetupError::OTHER:
-                    errorString = tr("Unknown error");
-                    break;
-                case core::IntegrationEnums::SetupError::TIMEOUT:
-                    errorString = tr("Timeout");
-                    break;
+            if (aborted) {
+                // the session ended because this UI stopped it
+                qCDebug(lcIntegrationController()) << "Setup session aborted as requested";
+                break;
             }
 
-            emit integrationSetupChange(integrationSetupInfo.id, SetupState::Error, errorString,
-                                        integrationSetupInfo.requireUserAction);
+            emit integrationSetupChange(integrationSetupInfo.id, SetupState::Error,
+                                        setupErrorText(integrationSetupInfo), integrationSetupInfo.requireUserAction);
+            break;
+        }
+    }
+}
+
+void IntegrationController::onPowerModeChanged(core::PowerEnums::PowerMode powerMode) {
+    if (powerMode == core::PowerEnums::PowerMode::NORMAL && m_setupKeepAliveTimer.isActive()) {
+        sendSetupKeepAlive();
+    }
+}
+
+void IntegrationController::applySetupSession(const core::IntegrationSetupInfo& integrationSetupInfo) {
+    // a late response of an already ended session must not restart the keep-alive
+    if (integrationSetupInfo.id != m_integrationDriverSetupId) {
+        qCDebug(lcIntegrationController()) << "Ignoring setup session information of" << integrationSetupInfo.id;
+        return;
+    }
+
+    if (integrationSetupInfo.keepaliveTimeoutSec > 0) {
+        startSetupKeepAlive(integrationSetupInfo.keepaliveTimeoutSec);
+    }
+
+    if (m_setupLimitActive != integrationSetupInfo.setupLimitActive ||
+        m_setupExpiresInSec != integrationSetupInfo.setupExpiresInSec ||
+        m_setupLimitReason != integrationSetupInfo.setupLimitReason) {
+        m_setupLimitActive = integrationSetupInfo.setupLimitActive;
+        m_setupExpiresInSec = integrationSetupInfo.setupExpiresInSec;
+        m_setupLimitReason = integrationSetupInfo.setupLimitReason;
+        qCDebug(lcIntegrationController()) << "Setup limit active:" << m_setupLimitActive
+                                           << "expires in:" << m_setupExpiresInSec << "reason:" << m_setupLimitReason;
+        emit setupLimitChanged();
+    }
+}
+
+void IntegrationController::startSetupKeepAlive(int keepaliveTimeoutSec) {
+    // renew at most every third of the lease, and at least once per second for absurdly short leases
+    int interval = qMax(1000, keepaliveTimeoutSec * 1000 / 3);
+
+    if (m_setupKeepAliveTimer.isActive() && m_setupKeepAliveTimer.interval() == interval) {
+        return;
+    }
+
+    qCDebug(lcIntegrationController()) << "Starting setup keep-alive, lease:" << keepaliveTimeoutSec
+                                       << "s, interval:" << interval << "ms";
+    m_setupKeepAliveTimer.start(interval);
+}
+
+void IntegrationController::stopSetupKeepAlive() {
+    if (m_setupKeepAliveTimer.isActive()) {
+        qCDebug(lcIntegrationController()) << "Stopping setup keep-alive";
+        m_setupKeepAliveTimer.stop();
+    }
+}
+
+void IntegrationController::sendSetupKeepAlive() {
+    if (m_integrationDriverSetupId.isEmpty()) {
+        stopSetupKeepAlive();
+        return;
+    }
+
+    int id = m_core->integrationSetupKeepAlive(m_integrationDriverSetupId);
+
+    m_core->onResponseWithErrorResult(
+        id, &core::Api::respIntegrationSetupInfo,
+        [=](core::IntegrationSetupInfo integrationSetupInfo) {
+            // success
+            qCDebug(lcIntegrationController()) << "Setup session renewed" << integrationSetupInfo.id;
+            applySetupSession(integrationSetupInfo);
+        },
+        [=](int code, QString message) {
+            // fail: 404 means the session is gone. Its STOP event ends the setup, nothing to renew anymore
+            qCWarning(lcIntegrationController()) << "Cannot renew the setup session" << code << message;
+            if (code == 404) {
+                stopSetupKeepAlive();
+            }
+        });
+}
+
+void IntegrationController::setupSessionEnded() {
+    stopSetupKeepAlive();
+    m_lastUserAction.clear();
+    if (!m_integrationDriverSetupId.isEmpty()) {
+        m_integrationDriverSetupId.clear();
+        emit setupSessionActiveChanged();
+    }
+
+    if (m_setupLimitActive) {
+        m_setupLimitActive = false;
+        m_setupExpiresInSec = 0;
+        m_setupLimitReason = core::IntegrationEnums::SetupLimitReason::NO_LIMIT;
+        emit setupLimitChanged();
+    }
+}
+
+QString IntegrationController::setupErrorText(const core::IntegrationSetupInfo& integrationSetupInfo) {
+    // the driver's own description in the UI language, with the English text and any entry as fallback
+    QString message = Util::getLanguageString(integrationSetupInfo.errorMessage, m_language);
+    if (!message.isEmpty()) {
+        return message;
+    }
+
+    switch (integrationSetupInfo.error) {
+        case core::IntegrationEnums::SetupError::AUTHORIZATION_ERROR:
+            return tr("Authorization error");
+        case core::IntegrationEnums::SetupError::CONNECTION_REFUSED:
+            return tr("Connection refused");
+        case core::IntegrationEnums::SetupError::NOT_FOUND:
+            return tr("Not found");
+        case core::IntegrationEnums::SetupError::TIMEOUT:
+            return tr("Timeout");
+        case core::IntegrationEnums::SetupError::DRIVER_UNAVAILABLE:
+            return tr("The integration driver is not available");
+        case core::IntegrationEnums::SetupError::INVALID_INPUT:
+            return tr("Invalid input");
+        case core::IntegrationEnums::SetupError::ABORTED:
+            return tr("The setup has been aborted");
+        case core::IntegrationEnums::SetupError::ALREADY_CONFIGURED:
+            return tr("The integration is already configured");
+        case core::IntegrationEnums::SetupError::NOT_SUPPORTED:
+            return tr("Not supported by the integration driver");
+        case core::IntegrationEnums::SetupError::NONE:
+        case core::IntegrationEnums::SetupError::OTHER:
             break;
     }
+
+    return tr("Unknown error");
 }
 
 bool IntegrationController::checkConnections() {
     bool connecting = false;
 
     for (int i = 0; i < m_integrationDrivers.count(); i++) {
-        qCDebug(lcIntegrationController())
-            << m_integrationDrivers.get(i)->getId() << m_integrationDrivers.get(i)->getState();
-
         if (m_integrationDrivers.get(i)->getState().contains("connecting")) {
             connecting = true;
         }
@@ -818,24 +1074,28 @@ void IntegrationController::onIntegrationStatusLoaded() {
     }
 }
 
-void IntegrationController::onIntegrationDriverLoaded(QString driverId) {
-    Q_UNUSED(driverId)
+void IntegrationController::onIntegrationDriverSettled(quint64 generation) {
+    // 0: a single driver request that is not part of a list load
+    if (generation == 0 || generation != m_driverLoadGeneration) {
+        return;
+    }
 
-    m_integrationDriversLoaded++;
-    if (m_integrationDriversLoaded == m_integrationDrivers.totalItems) {
+    if (--m_integrationDriversPending > 0) {
+        return;
+    }
+
+    if (m_integrationDrivers.lastPageLoaded < m_integrationDrivers.totalPages) {
+        qCDebug(lcIntegrationController())
+            << "More integration drivers to load" << m_integrationDrivers.lastPageLoaded + 1;
+        getIntegrationDrivers(m_integrationDrivers.limit, m_integrationDrivers.lastPageLoaded + 1);
+    } else {
         emit integrationDriversLoaded();
     }
 }
 
 void IntegrationController::onIntegrationDriversLoaded() {
-    if (m_integrationDrivers.totalPages != m_integrationDrivers.lastPageLoaded) {
-        qCDebug(lcIntegrationController())
-            << "More integration drivers to load" << m_integrationDrivers.lastPageLoaded + 1;
-        getIntegrationDrivers(100, m_integrationDrivers.lastPageLoaded + 1);
-    } else {
-        qCDebug(lcIntegrationController()) << "Integration drivers all loaded";
-        getAllIntegrationStatus();
-    }
+    qCDebug(lcIntegrationController()) << "Integration drivers all loaded";
+    getAllIntegrationStatus();
 }
 
 void IntegrationController::onIntegrationsLoaded() {
@@ -865,8 +1125,10 @@ void IntegrationController::onDriverDiscoveryStarted() {
                     driver->getId(), driver->getNameI18n(), driver->getDriverUrl(), driver->getVersion(),
                     driver->getIcon(), false, QString(), driver->getDescription(), driver->getDeveloperName(),
                     driver->getHomePage(), driver->getReleaseDate(),
-                    qobject_cast<SetupSchema *>(driver->getSetupSchema()), false, driver->getInstanceCount(),
-                    m_language, false, driver->getExternal(), this));
+                    // a copy: the discovered driver owns its schema, and the configured one is deleted with the
+                    // next driver list reload
+                    driver->getSetupSchema() ? qobject_cast<SetupSchema *>(driver->getSetupSchema())->clone() : nullptr,
+                    false, driver->getInstanceCount(), m_language, false, driver->getExternal(), this));
             }
         }
     }
@@ -905,31 +1167,43 @@ void IntegrationController::onDriverAdded(QString driverId, core::IntegrationDri
 }
 
 void IntegrationController::onDriverChanged(QString driverId, core::IntegrationDriver integrationDriver) {
-    if (!m_integrationDrivers.contains(integrationDriver.id)) {
-        auto obj = m_integrationDrivers.get(driverId);
-
-        if (obj) {
-            obj->setNameI18n(integrationDriver.name);
-            obj->setDriverUrl(integrationDriver.driverUrl);
-            obj->setVersion(integrationDriver.version);
-            obj->setIcon(integrationDriver.icon);
-            obj->setEnabled(integrationDriver.enabled);
-            obj->setState(Util::convertEnumToString(integrationDriver.state));
-            obj->setDescription(integrationDriver.description);
-            obj->setDeveloperName(integrationDriver.developer.name);
-            obj->setHomePage(integrationDriver.homePage);
-            obj->setReleaseDate(integrationDriver.releaseDate);
-            obj->setDiscovered(integrationDriver.deviceDiscovery);
-            obj->setSetupScehma(new SetupSchema(integrationDriver.settingsPage.title,
-                                                integrationDriver.settingsPage.settings, m_language));
-            obj->setInstanceCount(integrationDriver.instanceCount);
-            obj->updateLanguage(m_language);
-        }
-        qCDebug(lcIntegrationController()) << "Changed integration driver:" << driverId;
+    auto obj = m_integrationDrivers.get(driverId);
+    if (!obj) {
+        return;
     }
+
+    obj->setNameI18n(integrationDriver.name);
+    obj->setDriverUrl(integrationDriver.driverUrl);
+    obj->setVersion(integrationDriver.version);
+    obj->setIcon(integrationDriver.icon);
+    obj->setEnabled(integrationDriver.enabled);
+    obj->setDescription(integrationDriver.description);
+    obj->setDeveloperName(integrationDriver.developer.name);
+    obj->setHomePage(integrationDriver.homePage);
+    obj->setReleaseDate(integrationDriver.releaseDate);
+    // replaces and deletes the previous schema; a setup in progress shows a copy of it
+    obj->setSetupScehma(
+        new SetupSchema(integrationDriver.settingsPage.title, integrationDriver.settingsPage.settings, m_language));
+    obj->setInstanceCount(integrationDriver.instanceCount);
+    obj->updateLanguage(m_language);
+
+    // the list views read the driver through the model roles
+    const QModelIndex modelIndex = m_integrationDrivers.getModelIndexByKey(driverId);
+    emit              m_integrationDrivers.dataChanged(modelIndex, modelIndex);
+
+    // The state goes through the state handler, which keeps the lower case form the UI compares against and the
+    // list of drivers in error. A change event without a known driver state leaves the state alone.
+    if (static_cast<int>(integrationDriver.state) >= 0) {
+        onIntegrationDriverStateChanged(driverId, Util::convertEnumToString(integrationDriver.state));
+    }
+
+    qCDebug(lcIntegrationController()) << "Changed integration driver:" << driverId;
 }
 
 void IntegrationController::onDriverDeleted(QString driverId) {
+    // a deleted driver is no longer in error, ConnectionStatus.qml would look it up and find nothing
+    updateDriversError(driverId, QString());
+
     if (m_integrationDrivers.contains(driverId)) {
         m_integrationDrivers.get(driverId)->deleteLater();
         m_integrationDrivers.removeItem(driverId);
@@ -962,9 +1236,14 @@ void IntegrationController::onIntegrationChanged(QString integrationId, core::In
             obj->setNameI18n(integration.name);
             obj->setIcon(integration.icon);
             obj->setEnabled(integration.enabled);
-            obj->setState(Util::convertEnumToString(integration.deviceState));
+            // The state is not part of a change event (Core-API: IntegrationUpdate), it arrives with the
+            // integration state events and the status load. It must not be touched here.
             obj->setSetupData(integration.setupData);
             obj->updateLanguage(m_language);
+
+            // the list views read the integration through the model roles
+            const QModelIndex modelIndex = m_integrations.getModelIndexByKey(integrationId);
+            emit              m_integrations.dataChanged(modelIndex, modelIndex);
         }
 
         qCDebug(lcIntegrationController()) << "Changed integration:" << integrationId;
@@ -987,27 +1266,42 @@ void IntegrationController::onIntegrationDriverStateChanged(QString driverId, QS
         return;
     }
 
-    if (!m_integrationDrivers.get(driverId)->getState().contains(state.toLower())) {
+    // The driver state is optional in an integration state event: an empty one is no state to apply. The states
+    // are compared as a whole, "reconnecting" contains "connecting".
+    const QString newState = state.toLower();
+    if (!newState.isEmpty() && m_integrationDrivers.get(driverId)->getState() != newState) {
         qCDebug(lcIntegrationController()) << "Integration driver state changed" << driverId << state;
 
-        m_integrationDrivers.setState(driverId, state.toLower());
+        m_integrationDrivers.setState(driverId, newState);
 
         if (state.contains("error", Qt::CaseInsensitive)) {
             emit integrationError(m_integrationDrivers.get(driverId)->getName(),
                                   m_integrationDrivers.get(driverId)->getId());
         }
 
-        if (!state.contains("active", Qt::CaseInsensitive)) {
-            if (!m_integrationDriversError.contains(driverId)) {
-                m_integrationDriversError.append(driverId);
-            }
-        } else {
-            m_integrationDriversError.removeOne(driverId);
-        }
-        emit driversErrorChanged();
+        updateDriversError(driverId, state);
     }
 
     emit integrationIsConnecting(checkConnections());
+}
+
+void IntegrationController::updateDriversError(const QString &driverId, const QString &state) {
+    // a driver that is not active is listed on the connection status page; an empty state (deleted driver,
+    // state unknown) takes it off the list
+    const bool inError = !state.isEmpty() && !state.contains("active", Qt::CaseInsensitive);
+    bool       changed = false;
+
+    if (inError && !m_integrationDriversError.contains(driverId)) {
+        m_integrationDriversError.append(driverId);
+        changed = true;
+    } else if (!inError && m_integrationDriversError.removeOne(driverId)) {
+        changed = true;
+    }
+
+    if (changed) {
+        qCDebug(lcIntegrationController()) << "Drivers in error:" << m_integrationDriversError;
+        emit driversErrorChanged();
+    }
 }
 
 }  // namespace integration

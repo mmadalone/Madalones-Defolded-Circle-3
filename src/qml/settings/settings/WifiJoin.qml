@@ -40,16 +40,28 @@ Popup {
 
     function start(wifiNetwork, savedNetwork = false) {
         wifiJoin.savedNetwork = savedNetwork;
-        wifiJoin.wifiNetwork = wifiNetwork;
+        // copy the values instead of holding the WifiNetwork object: a background scan
+        // deletes and recreates the scan-result objects, which would otherwise leave this
+        // reference dangling before the user confirms the join
+        wifiJoin.wifiNetwork.id = wifiNetwork.id;
+        wifiJoin.wifiNetwork.ssid = wifiNetwork.ssid;
+        wifiJoin.wifiNetwork.ssidHex = wifiNetwork.ssidHex;
+        wifiJoin.wifiNetwork.signalStrength = wifiNetwork.signalStrength;
+        wifiJoin.wifiNetwork.security = wifiNetwork.security;
         wifiJoin.open();
     }
 
     property QtObject wifiNetwork: QtObject {
+        property var id
         property string ssid
+        property string ssidHex
         property int signalStrength
         property int security
     }
     property bool savedNetwork: false
+
+    // let the popup take the keyboard focus so the buttons below can be reached with the d-pad
+    focus: true
 
     onOpened: {
         buttonNavigation.takeControl();
@@ -61,6 +73,8 @@ Popup {
 
     Components.ButtonNavigation {
         id: buttonNavigation
+        manageFocus: true
+        initialFocusItem: joinButton
         defaultConfig: {
             "BACK": {
                 "pressed": function() {
@@ -75,46 +89,25 @@ Popup {
         }
     }
 
-    background: Item {
-        Rectangle {
-            id: bg
-            width: parent.width
-            height: infoContainer.height + 40
-            color: colors.black
-            anchors.bottom: parent.bottom
-        }
-
-        Item {
-            id: gradient
-            width: parent.width; height: parent.height - bg.height
-            anchors { bottom: bg.top; horizontalCenter: parent.horizontalCenter }
-
-            LinearGradient {
-                anchors.fill: parent
-                start: Qt.point(0, 0)
-                end: Qt.point(0, parent.height)
-                gradient: Gradient {
-                    GradientStop { position: 0.0; color: colors.transparent }
-                    GradientStop { position: 1.0; color: colors.black }
-                }
-            }
-        }
-    }
+    background: Components.Dim {}
 
     MouseArea {
         anchors { top: parent.top; bottom: infoContainer.top; left: parent.left; right: parent.right }
         onClicked: wifiJoin.close();
     }
 
-    Rectangle {
+    Item {
         id: infoContainer
         width: ui.width
-        height: childrenRect.height
-        color: colors.dark
-        radius: ui.cornerRadiusSmall
+        height: joinColumn.height
         anchors.bottom: parent.bottom
 
+        Components.Sheet {
+            anchors.fill: parent
+        }
+
         ColumnLayout {
+            id: joinColumn
             spacing: 20
             width: parent.width - 40
             anchors.horizontalCenter: parent.horizontalCenter
@@ -128,15 +121,13 @@ Popup {
                 width: parent.width
                 maximumLineCount: 1
                 elide: Text.ElideRight
-                color: colors.offwhite
+                color: colors.textPrimary
                 text: qsTr("Join WiFi network?")
-                font: fonts.primaryFont(30)
+                font: fonts.title()
             }
 
-            Rectangle {
-                Layout.alignment: Qt.AlignCenter
-                width: parent.width; height: 2
-                color: colors.medium
+            Components.Divider {
+                inset: 0
             }
 
             Item {
@@ -153,7 +144,7 @@ Popup {
                     width: parent.width - 80
                     maximumLineCount: 1
                     elide: Text.ElideRight
-                    color: colors.offwhite
+                    color: colors.textPrimary
                     text: wifiJoin.wifiNetwork.ssid
                     anchors { left: parent.left; verticalCenter: currentNetworkStrenght.verticalCenter; right: currentNetworkStrenght.left }
                     font: fonts.primaryFont(30)
@@ -161,7 +152,8 @@ Popup {
 
                 Components.Icon {
                     icon: "uc:wifi"
-                    opacity: 1
+                    color: colors.divider
+                    size: 60
                     anchors { right: parent.right; verticalCenter: currentNetworkSSID.verticalCenter }
                 }
 
@@ -203,6 +195,11 @@ Popup {
                     text: qsTr("Join")
                     width: parent.width / 2 - 10
                     anchors { right: parent.right; bottom: parent.bottom }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.left: cancelButton
+                    KeyNavigation.down: cancelButton
+
                     trigger: function() {
                         if (wifiJoin.savedNetwork) {
                             Wifi.connectSavedNetwork(wifiJoin.wifiNetwork.id);
@@ -211,17 +208,25 @@ Popup {
                                 loading.start();
                             }
 
-                            Wifi.connect(wifiJoin.wifiNetwork.ssid, "", wifiJoin.wifiNetwork.security);
+                            // an open network from a scan result requires the OPEN classification,
+                            // otherwise the connection fails
+                            Wifi.connect(wifiJoin.wifiNetwork.ssid, wifiJoin.wifiNetwork.ssidHex, "", Security.OPEN);
                         }
                         wifiJoin.close();
                     }
                 }
 
                 Components.Button {
+                    id: cancelButton
                     text: qsTr("Cancel")
                     width: parent.width / 2 - 10
-                    color: colors.secondaryButton
+                    variant: "secondary"
                     anchors { left: parent.left; bottom: parent.bottom }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.right: joinButton
+                    KeyNavigation.up: joinButton
+
                     trigger: function() {
                         wifiJoin.close();
                     }

@@ -16,11 +16,9 @@ import Power.Modes 1.0
 import SoundEffects 1.0
 import SoftwareUpdate 1.0
 import Entity.Controller 1.0
-import Integration.Controller 1.0
 import TouchSlider 1.0
 
 import "qrc:/components" as Components
-import "qrc:/components/overlays" as Overlays
 import "qrc:/settings/softwareupdate" as Softwareupdate
 import "qrc:/components/entities/activity" as ActivityComponents
 import ScreensaverConfig 1.0
@@ -35,8 +33,8 @@ ApplicationWindow {
     // Global flag: true when the screensaver is covering the UI.
     // Used by TouchSlider components to suppress volume/seek during screensaver.
     property bool screensaverActive: chargingScreenLoader.active
-    // DEV-only dock fake: F12 → InputController::eventFilter toggles Battery.powerSupply
-    // (handled in C++ so it works even under modal focus capture).
+    // DEV-only dock fake: F12 toggles Battery.powerSupply (src/ui/devDockToggle.cpp, an application
+    // event filter, so it works even under modal focus capture).
 
     minimumWidth: ui.width * ui.ratio
     maximumWidth: minimumWidth
@@ -49,6 +47,10 @@ ApplicationWindow {
         visible: !ui.showRegulatoryInfo
         title: "Button simulator"
         color: colors.black
+        // Without this the simulator window takes the window manager focus, the main window never
+        // gets an active focus item, and every key-navigated settings page appears dead on the
+        // desktop simulator even though it works on the device (which has no second window).
+        flags: Qt.Window | Qt.WindowDoesNotAcceptFocus
         minimumWidth: ui.width * ui.ratio
         maximumWidth: minimumWidth
         minimumHeight: ui.width * ui.ratio * 0.95
@@ -64,6 +66,11 @@ ApplicationWindow {
     }
 
     function loadSecondContainer(source, parameters = {}, openAfterLoad = true) {
+        // an entity without a detail screen: EntityController.screenUrl() returns an empty URL
+        if (String(source) === "") {
+            return;
+        }
+
         if (!containerSecond.loader.active) {
             console.debug("Loading second container", source);
             containerSecond.loader.openAfterLoad = openAfterLoad;
@@ -74,13 +81,51 @@ ApplicationWindow {
 
     function loadActivityToSecondContainer(entityObj) {
         ui.setTimeOut(1000, () => {
-                          loadSecondContainer("qrc:/components/entities/" + entityObj.getTypeAsString() + "/deviceclass/" + entityObj.getDeviceClass() + ".qml", { "entityId": entityObj.id, "entityObj": entityObj });
+                          loadSecondContainer(EntityController.screenUrl(entityObj), { "entityId": entityObj.id, "entityObj": entityObj });
                       });
     }
 
     property bool isSecondContainerLoaded: containerSecond.loader.source != ""
 
+    /**
+      Drops whatever the second and third containers are showing, without playing their close
+      animations. Used when a screen has to be replaced by something else right away.
+      */
+    function unloadSecondAndThirdContainer() {
+        if (containerThird.loaderThird.active) {
+            containerThird.close();
+            containerThird.loaderThird.source = "";
+            containerThird.loaderThird.active = false;
+        }
+
+        if (containerSecond.loader.active) {
+            containerSecond.close();
+            containerSecond.loader.source = "";
+            containerSecond.loader.active = false;
+            root.isActivityOpen = false;
+        }
+    }
+
+    /**
+      Brings up an activity screen on top of everything else, replacing the currently open screens.
+      */
+    function openActivity(entityObj) {
+        // already showing this activity and nothing on top of it: leave it alone
+        if (containerSecond.loader.item && containerSecond.loader.item.entityId === entityObj.id
+                && !containerThird.loaderThird.active) {
+            return;
+        }
+
+        unloadSecondAndThirdContainer();
+        loadSecondContainer(EntityController.screenUrl(entityObj), { "entityId": entityObj.id, "entityObj": entityObj });
+    }
+
     function loadThirdContainer(source, parameters = {}, openAfterLoad = true) {
+        // an entity without a detail screen: EntityController.screenUrl() returns an empty URL
+        if (String(source) === "") {
+            return;
+        }
+
         if (!containerThird.loaderThird.active) {
             console.debug("Loading third container", source);
             containerThird.loaderThird.openAfterLoad = openAfterLoad;
@@ -97,63 +142,154 @@ ApplicationWindow {
         sig.connect(slotConn)
     }
 
-    function checkActivityIncludedEntities(activityObj, onSequence = true) {
-        // check if all entities in the activity has a connected integraiton
-        let entityListToCheck = onSequence ? activityObj.onSequenceEntities : activityObj.offSequenceEntities;
-        let allIncludedEntitiesConnected = true;
-        let notReadyEntities = "";
-        let notReadyEntityQty = 0;
+    // Runs the readiness check of a sequence command in the core and calls callback(summary).
+    //
+    // summary is null when the check could not be made at all - no connection to the core, a core that does not
+    // know the request, an error or an answer that takes too long: the check tells the user what is wrong, it
+    // never decides whether the command may run.
+    function requestSequenceReadiness(entityId, cmdId, callback) {
+        const checkId = EntityController.checkSequenceReadiness(entityId, cmdId);
 
-        if (entityListToCheck.length === 0) {
-            return {
-                allIncludedEntitiesConnected: true,
-                notReadyEntities: notReadyEntities,
-                notReadyEntityQty: notReadyEntityQty
-            }
+        if (checkId < 0) {
+            callback(null);
+            return;
         }
 
-        for (let i = 0; i < entityListToCheck.length; i++) {
-            const includedEntityObj = EntityController.get(entityListToCheck[i]);
+        function handler(id, result) {
+            // several checks can be in flight at once, e.g. when turning off every activity at once
+            if (id !== checkId) {
+                return;
+            }
 
-            if (includedEntityObj) {
-                const includedEntityIntegrationObj = IntegrationController.getModelItem(includedEntityObj.integrationId);
-                if (includedEntityIntegrationObj) {
-                    if (includedEntityIntegrationObj.state !== "connected") {
-                        allIncludedEntitiesConnected = false;
-                        notReadyEntities += includedEntityObj.name + ",  ";
-                        notReadyEntityQty++;
-                    } else if (includedEntityIntegrationObj.state === "connected") {
-                        if (!includedEntityObj.enabled) {
-                            allIncludedEntitiesConnected = false;
-                            notReadyEntities += includedEntityObj.name + ",  ";
-                            notReadyEntityQty++;
-                        }
-                    }
+            EntityController.sequenceReadinessResult.disconnect(handler);
+            callback(result.supported ? result : null);
+        }
+
+        EntityController.sequenceReadinessResult.connect(handler);
+    }
+
+    // keyed by activity id and direction: the readiness check of a sequence that is already waiting
+    property var activityReadinessWaits: ({})
+
+    // Runs the readiness check of an activity and calls proceed(activityObj) once its sequence may run.
+    //
+    // A wakeup brings the integrations back one by one and the core reports it only once it is through, so
+    // an activity started by the very button press that woke the remote regularly finds all of its devices
+    // still disconnected. The sequence waits for them for as long as the resume window configured under
+    // Power lasts - the same budget EntityController gives a single entity command - and only asks the user
+    // whether to proceed anyway once that budget is spent.
+    function checkActivityReadiness(activityObj, onSequence, proceed) {
+        if (!activityObj) {
+            return;
+        }
+
+        const activityId = activityObj.id;
+        const cmdId = onSequence ? "activity.on" : "activity.off";
+        const key = activityId + (onSequence ? ".on" : ".off");
+
+        // a second press while the first one is still waiting would wait on its own and run the sequence
+        // one more time once the devices are back
+        if (applicationWindow.activityReadinessWaits[key]) {
+            return;
+        }
+
+        // Eligibility is sampled once, when the sequence is requested: the wait exists for the devices that
+        // a wakeup took away, not for the ones that are down for good.
+        const waitForDevices = EntityController.resumePending;
+        // provisional as long as the remote is still waking up, extended below once the window opens
+        let deadline = Date.now() + EntityController.resumeTimeout;
+        let windowSeen = EntityController.resumeWindow;
+
+        function step() {
+            const obj = EntityController.get(activityId);
+
+            if (!obj) {
+                // the activity is gone, there is nothing left to start
+                delete applicationWindow.activityReadinessWaits[key];
+                return;
+            }
+
+            // nothing is waking up and the user turned the check off for this activity: don't spend a request
+            // on a report that would not be shown
+            if (!obj.readyCheck && !waitForDevices) {
+                delete applicationWindow.activityReadinessWaits[key];
+                proceed(obj);
+                return;
+            }
+
+            requestSequenceReadiness(activityId, cmdId, function(summary) {
+                const current = EntityController.get(activityId);
+
+                if (!current) {
+                    delete applicationWindow.activityReadinessWaits[key];
+                    return;
                 }
-            }
+
+                if (summary && summary.verdict === "ready") {
+                    delete applicationWindow.activityReadinessWaits[key];
+                    proceed(current);
+                    return;
+                }
+
+                // the wakeup is reported after the fact, so the window opens while we are already waiting: give
+                // the sequence the full window from that point, the way EntityController extends its commands
+                if (!windowSeen && EntityController.resumeWindow) {
+                    windowSeen = true;
+                    deadline = Math.max(deadline, Date.now() + EntityController.resumeTimeout);
+                }
+
+                // Not ready, or the check itself failed - right after a wakeup that usually means the connection
+                // to the core is still coming back. Both are worth waiting out, for as long as the resume budget
+                // lasts: waiting past a lost connection is pointless, nothing can be sent over it and the devices
+                // cannot come back before it does.
+                if (waitForDevices && EntityController.resumePending && ui.coreConnected && Date.now() < deadline) {
+                    applicationWindow.activityReadinessWaits[key] = true;
+                    ui.setTimeOut(1000, step);
+                    return;
+                }
+
+                delete applicationWindow.activityReadinessWaits[key];
+
+                // no report to show, or the user turned the check off: the check never holds the sequence back
+                if (!summary || !current.readyCheck) {
+                    proceed(current);
+                    return;
+                }
+
+                readinessCheck.show(summary, function() {
+                    // the activity may be gone by the time the user answers
+                    const target = EntityController.get(activityId);
+
+                    if (target) {
+                        proceed(target);
+                    }
+                });
+            });
         }
 
-        // chop the last comma
-        notReadyEntities = notReadyEntities.slice(0, -3);
+        step();
+    }
 
-        return {
-            allIncludedEntitiesConnected: allIncludedEntitiesConnected,
-            notReadyEntities: notReadyEntities,
-            notReadyEntityQty: notReadyEntityQty
+    Connections {
+        target: ui.inputController
+        ignoreUnknownSignals: true
+
+        function onGlobalPowerLongPressed() {
+            if (!SoftwareUpdate.updateInProgress) {
+                powerOffLoader.active = true;
+            }
         }
     }
 
+    // madalone: the remote woke up (power mode back to Normal) = user activity, so the idle screensaver
+    // countdown starts again. The window's visibility follows Power.windowShown (upstream 42f9888).
     Connections {
         target: Power
         ignoreUnknownSignals: true
 
         function onPowerModeChanged(fromPowerMode, toPowerMode) {
-            // the window's visibility follows Power.windowShown (v1.5.3, upstream 42f9888)
-            if (toPowerMode == PowerModes.Normal) {
-                // Reset idle screensaver timer on ANY activity (power mode to Normal = user interacted)
-                if (idleScreensaverTimer.running) {
-                    idleScreensaverTimer.restart();
-                }
+            if (toPowerMode == PowerModes.Normal && idleScreensaverTimer.running) {
+                idleScreensaverTimer.restart();
             }
         }
     }
@@ -161,18 +297,6 @@ ApplicationWindow {
     Components.ButtonNavigation {
         overrideActive: true
         defaultConfig: {
-            "POWER": {
-                "pressed": function() {
-                    if (!SoftwareUpdate.updateInProgress) {
-                        powerOffButtonTimer.start();
-                    }
-                },
-                "released": function() {
-                    if (!SoftwareUpdate.updateInProgress) {
-                        powerOffButtonTimer.stop();
-                    }
-                }
-            },
             "VOICE": {
                 "long_press": function() {
                     if (!isSecondContainerLoaded || (isSecondContainerLoaded && !root.isActivityOpen)) {
@@ -188,23 +312,11 @@ ApplicationWindow {
         }
     }
 
-    Timer {
-        id: powerOffButtonTimer
-        running: false
-        repeat: false
-        interval: 3000
-        onTriggered: {
-            powerOffLoader.active = true;
-        }
-    }
-
-
     Item {
         id: root
         objectName: "root"
         width: ui.width
         height: ui.height
-        layer.enabled: true
 
         anchors { verticalCenter: parent.verticalCenter; horizontalCenter: parent.horizontalCenter }
         transformOrigin: Item.Center
@@ -255,7 +367,7 @@ ApplicationWindow {
             }
 
             function onIsNoProfileChanged() {
-                if (ui.isNoProfile && !ui.isOnboarding) {
+                if (!ui.isOnboarding) {
                     loadingFirst.stop();
 
                     containerSecond.close();
@@ -266,13 +378,29 @@ ApplicationWindow {
                     } else {
                         containerMain.setSource("qrc:/components/ProfileSwitch.qml", { state: "visible", noProfile: true })
                     }
-                }  else if (!ui.isNoProfile && !ui.isOnboarding) {
-                    if (ui.pages.count === 0) {
-                        containerMain.source = "qrc:/NoPage.qml";
-                    } else {
-                        containerMain.source = "qrc:/MainContainer.qml";
-                    }
                 }
+            }
+        }
+
+        Connections {
+            target: EntityController
+            ignoreUnknownSignals: true
+
+            // an activity turned on without being started here, e.g. through the API: optionally
+            // bring its screen up, replacing whatever is currently open
+            function onActivityStartedExternally(entityId) {
+                if (!Config.openActivityOnApiStart || ui.isOnboarding) {
+                    return;
+                }
+
+                const entityObj = EntityController.get(entityId);
+
+                if (!entityObj) {
+                    return;
+                }
+
+                console.debug("Opening activity started via the API:", entityId);
+                openActivity(entityObj);
             }
         }
 
@@ -351,8 +479,8 @@ ApplicationWindow {
                         // Nothing was loaded, so there is no item that could ever emit closed() - the only
                         // thing that releases the container again. Without this the container stays active
                         // and open, and loadSecondContainer() refuses every screen from then on.
-                        // An entity type or device class the UI does not implement gets here: the screen is
-                        // addressed by qrc:/components/entities/<type>/deviceclass/<device class>.qml.
+                        // Entity screens come from EntityController.screenUrl(), which only returns screens the
+                        // testEntityScreens unit test found in the qrc: this is the safety net if one is missing.
                         console.warn("Second container failed to load:", loader.source);
                         loader.source = "";
                         loader.active = false;
@@ -454,10 +582,6 @@ ApplicationWindow {
                     containerSecondShowAnimation.start();
                 }
             }
-        }
-
-        NoProfile {
-            visible: ui.profile.id === "" && !ui.isOnboarding
         }
 
         ActivityComponents.LoadingScreen {
@@ -828,14 +952,8 @@ ApplicationWindow {
 
         Components.Notification {}
         Components.ActionableNotification {}
-
-        // madalone (v1.4.19, W2): visible "Reconnecting…" banner during the post-wake retry window.
-        // Visibility driven by EntityController.resumeWindow Q_PROPERTY (already exposed at
-        // entityController.h:56). Non-modal; user button presses fall through and get queued
-        // by m_pendingCommands' existing 500 ms retry loop while the window is open.
-        Overlays.ReconnectingHUD {
-            anchors { top: parent.top; left: parent.left; right: parent.right }
-            z: 9998   // one below the screensaver MouseArea at line 475 (z: 9999)
+        Components.ReadinessCheck {
+            id: readinessCheck
         }
 
         Loader {
@@ -1079,14 +1197,16 @@ ApplicationWindow {
         layer.enabled: true
         z: 4000
 
+        // not an OpacityAnimator: an animator runs on the render thread and cannot finish while the window is hidden
+        // with the display off, and until it does Qt wakes the main thread at the display refresh rate. The brightness
+        // is set at start-up, also when the UI starts with the display off.
         Behavior on opacity {
-            OpacityAnimator { duration: 300 }
+            NumberAnimation { duration: 300 }
         }
     }
 
     Component.onCompleted: {
         ui.inputController.setSource(applicationWindow);
-        ui.inputController.activeController = containerMain;
         VirtualKeyboardSettings.locale = Qt.binding(function() { return Config.language })
 
         if (ui.isOnboarding) {

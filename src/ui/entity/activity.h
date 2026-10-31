@@ -13,7 +13,9 @@ namespace entity {
 class ActivityFeatures : public QObject {
     Q_GADGET
  public:
-    enum Enum { Send, On_Off };
+    // Core-API ActivityFeature: on_off when the activity has an off sequence, otherwise only start; the core
+    // sends stop as well
+    enum Enum { On_off, Start, Stop };
     Q_ENUM(Enum)
 };
 
@@ -37,10 +39,13 @@ class ActivityStates : public QObject {
             case Enum::Unknown:
                 return QCoreApplication::translate("Activity state", "Unknown");
             case Enum::On:
+                //: Device state: switched on. Not the preposition "on".
                 return QCoreApplication::translate("Activity state", "On");
             case Enum::Off:
+                //: Device state: switched off.
                 return QCoreApplication::translate("Activity state", "Off");
             case Enum::Running:
+                //: Activity state: the activity is executing.
                 return QCoreApplication::translate("Activity state", "Running");
             case Enum::Error:
                 return QCoreApplication::translate("Activity state", "Error");
@@ -109,6 +114,8 @@ class Activity : public Base {
     Q_PROPERTY(QVariantList buttonMapping READ getButtonMapping NOTIFY buttonMappingChanged)
     Q_PROPERTY(QVariantMap ui READ getUiConfig NOTIFY uiConfigChanged)
     Q_PROPERTY(QStringList includedEntities READ getIncludedEntities NOTIFY includedEntitiesChanged)
+    // included entities whose power state can be corrected ("fix states"), see Base::supportsPowerStateFix()
+    Q_PROPERTY(QStringList fixableEntities READ getFixableEntities NOTIFY includedEntitiesChanged)
     Q_PROPERTY(QStringList onSequenceEntities READ getOnSequenceEntities NOTIFY onSequenceEntitiesChanged)
     Q_PROPERTY(QStringList offSequenceEntities READ getOffSequenceEntities NOTIFY offSequenceEntitiesChanged)
 
@@ -137,6 +144,7 @@ class Activity : public Base {
     QString getVoiceAssistantProfileId() { return m_voiceAssistantProfileId; }
 
     QStringList  getIncludedEntities();
+    QStringList  getFixableEntities();
     QStringList  getOnSequenceEntities() { return m_onSequenceEntities; }
     QStringList  getOffSequenceEntities() { return m_offSequenceEntities; }
 
@@ -164,6 +172,12 @@ class Activity : public Base {
 
     bool getReadyCheck() { return m_readyCheck; }
 
+    /**
+     * @brief Marks the activity as started from this remote, so that the next transition to the On
+     *        state is not reported as an external start via startedExternally().
+     */
+    void markStartedFromRemote() { m_startedFromRemote = true; }
+
  signals:
     void totalStepsChanged();
     void currentStepChanged();
@@ -179,7 +193,11 @@ class Activity : public Base {
     void voiceAssistantProfileIdChanged();
     void addToActivities(QString entityId);
     void removeFromActivities(QString entityId);
-    void startedRunning(QString entityId);
+    // cmdId is the command the run was started with ("activity.on" or "activity.off"), so that a failed run can
+    // be repeated in the same direction
+    void startedRunning(QString entityId, QString cmdId);
+    // the activity turned on without being started from this remote, e.g. through the API
+    void startedExternally(QString entityId);
     void sendCommandToEntity(QString entityId, QString command, QVariantMap params = QVariantMap());
 
  private:
@@ -200,6 +218,15 @@ class Activity : public Base {
     ActivitySliderConfig m_sliderConfig;
 
     bool m_readyCheck = true;
+
+    // set when a start command was sent from this remote, cleared when the activity settles again
+    bool m_startedFromRemote = false;
+    // the last state the core reported that says whether the activity is running: not Unavailable or Unknown,
+    // and not the Unavailable every entity is set to while the core is disconnected
+    int m_lastReportedState = -1;
+
+    // set while a sequence started from this remote has not reported its outcome yet
+    bool m_sequencePending = false;
 
     void updateSliderConfig(QVariantMap data);
     void updateVoiceAssistantConfig(QVariantMap data);

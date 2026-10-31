@@ -18,6 +18,29 @@ Item {
     property var settings
     property var inputObjects: []
 
+    /** KEYBOARD NAVIGATION **/
+    // The created fields are chained through their navUp / navDown; the last one leads to the
+    // control the hosting form passes as navExit (its Next button).
+    property alias flickable: contentFlickable
+    property Item firstFocusItem: null
+    property Item lastFocusItem: null
+    property Item navExit: null
+
+    function chainFields() {
+        const chain = inputObjects.filter(function(obj) { return obj.focusItem; });
+
+        for (let i = 0; i < chain.length; i++) {
+            chain[i].navUp = i > 0 ? chain[i - 1].focusItem : null;
+            chain[i].navDown = i < chain.length - 1 ? chain[i + 1].focusItem : null;
+        }
+
+        if (chain.length > 0) {
+            root.firstFocusItem = chain[0].focusItem;
+            root.lastFocusItem = chain[chain.length - 1].focusItem;
+            chain[chain.length - 1].navDown = Qt.binding(function() { return root.navExit; });
+        }
+    }
+
     function getData() {
         let data = {};
 
@@ -88,6 +111,7 @@ Item {
                                                                   labelId: item.id,
                                                                   labelText: item.label,
                                                                   value: item.value,
+                                                                  initialValue: item.value,
                                                                   model: item.model
                                                               });
                                  inputObjects.push(obj);
@@ -103,6 +127,8 @@ Item {
                                  break;
                              }
                          });
+
+        root.chainFields();
     }
 
     Text {
@@ -110,11 +136,11 @@ Item {
 
         width: parent.width - 40
         height: visible ? undefined : 0
-        color: colors.offwhite
+        color: colors.textPrimary
         maximumLineCount: 2
         wrapMode: Text.WordWrap
         elide: Text.ElideRight
-        font: fonts.primaryFont(30)
+        font: fonts.title()
         anchors { top: parent.top; topMargin: title.visible ? 20 : 0; horizontalCenter: parent.horizontalCenter }
         visible: title.text !== ""
     }
@@ -128,17 +154,23 @@ Item {
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
         anchors { top: title.bottom; topMargin: 20; bottom: parent.bottom; horizontalCenter: parent.horizontalCenter }
-
-        ScrollBar.vertical: ScrollBar {
-            opacity: 0.5
-        }
+        // the on-screen keyboard covers the lower part of the screen: keep the focused field above
+        // it (computed from the page's own bottom edge, the flickable's height depends on this)
+        anchors.bottomMargin: keyboard.active
+                              ? Math.max(0, root.mapToItem(null, 0, root.height).y - keyboard.visibleY)
+                              : 0
 
         ColumnLayout {
             id: content
-            spacing: 60
+            // room for the error line a field draws under itself
+            spacing: 40
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
         }
+    }
+
+    Components.ScrollIndicator {
+        parentObj: contentFlickable
     }
 
     Connections {
@@ -149,6 +181,10 @@ Item {
             inputObjects.forEach((obj) => {
                                      if (obj.labelId === labelId) {
                                          obj.showError(error);
+                                         // the keypad user lands on the field to correct
+                                         if (obj.focusItem) {
+                                             Qt.callLater(function() { obj.focusItem.forceActiveFocus(); });
+                                         }
                                      }
                                  });
         }

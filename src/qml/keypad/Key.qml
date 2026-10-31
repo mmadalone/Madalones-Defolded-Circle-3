@@ -5,23 +5,31 @@ import QtQuick 2.15
 
 import Haptic 1.0
 
+import "qrc:/components" as Components
+
 Rectangle {
     id: keypadKey
     width: _width; height: _height
-    color: colors.black
+    color: colors.bg
     radius: width/2
 
     property int _width: parent.width/3
     property int _height: 140
     property string value
     property alias mouseArea: mouseArea
+    property bool highlight: false
+
+    Components.Selectable {
+        selected: keypadKey.highlight
+        radius: keypadKey.radius
+    }
 
     states: State {
         name: "pressed"
         when: mouseArea.pressed
         PropertyChanges {
             target: keypadKey
-            color: colors.offwhite
+            color: colors.textPrimary
         }
     }
 
@@ -32,8 +40,9 @@ Rectangle {
                 properties: "color"; duration: 300 }
         }]
 
+    // pressed inverts the key: the number turns black on the light fill
     Text {
-        color: colors.offwhite
+        color: mouseArea.pressed ? colors.bg : colors.textPrimary
         text: value
         verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
         anchors.centerIn: parent

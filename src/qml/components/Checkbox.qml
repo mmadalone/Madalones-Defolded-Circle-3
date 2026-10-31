@@ -18,6 +18,8 @@ import QtQuick.Controls 2.15
 
 import Haptic 1.0
 
+import "qrc:/components" as Components
+
 CheckBox {
     id: control
     checked: false
@@ -26,6 +28,27 @@ CheckBox {
     property int textSize: 26
     property color primaryColor: colors.offwhite
     property color backgroundColor: colors.medium
+    property bool highlight: activeFocus && ui.keyNavigationActive
+
+    // a control reached with the d-pad while the on-screen keyboard is up would sit under it
+    onActiveFocusChanged: {
+        if (activeFocus && typeof keyboard !== "undefined" && keyboard.active) {
+            keyboard.hide();
+        }
+    }
+
+    // QtQuick's AbstractButton only activates on Key_Space; DPAD_MIDDLE maps to Key_Return.
+    Keys.onReturnPressed: {
+        control.toggle();
+        control.toggled();
+        event.accepted = true;
+    }
+
+    Keys.onEnterPressed: {
+        control.toggle();
+        control.toggled();
+        event.accepted = true;
+    }
 
     indicator: Rectangle {
         implicitWidth: size
@@ -34,6 +57,11 @@ CheckBox {
         y: parent.height / 2 - height / 2
         radius: size / 2
         color: backgroundColor
+
+        Components.Selectable {
+            selected: control.highlight
+            radius: parent.radius
+        }
 
         Rectangle {
             width: size * 0.6

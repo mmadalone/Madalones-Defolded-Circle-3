@@ -6,7 +6,8 @@
 #include <QQmlApplicationEngine>
 #include <QScreen>
 #include <QQuickWindow>
-#include <QSettings>
+
+#include <memory>
 
 #include "config/config.h"
 #include "core/core.h"
@@ -18,6 +19,7 @@
 #include "logging.h"
 #include "softwareupdate/softwareUpdate.h"
 #include "translation/translation.h"
+#include "ui/devDockToggle.h"  // madalone: DEV F12 fake dock
 #include "ui/entity/entityController.h"  // madalone: keeper wiring
 #include "ui/uiController.h"
 #include "ui/matrixrain.h"
@@ -47,20 +49,6 @@ void sigHandler(int s) {
 }
 #endif
 
-// One-shot QSettings migration for the v1.3.0 -> v1.4.0 upgrade path.
-// Mod 3 shipped showBatteryOnDetailPages (default true). Upstream v0.72.0
-// introduced showBatteryEveryWhere (default false) which replaces it.
-// Carry the legacy value forward so users who accepted the old default
-// don't silently lose the battery chip on upgrade.
-static void migrateLegacySettings() {
-    QSettings settings;
-    if (!settings.contains("ui/batteryEveryWhere")) {
-        bool legacyValue = settings.value("ui/batteryOnDetailPages", true).toBool();
-        settings.setValue("ui/batteryEveryWhere", legacyValue);
-    }
-    settings.remove("ui/batteryOnDetailPages");
-}
-
 int main(int argc, char *argv[]) {
     bool ok;
     int  width, height;
@@ -82,7 +70,18 @@ int main(int argc, char *argv[]) {
         QCoreApplication::setAttribute(Qt::AA_EnableHighDpiScaling);
         QCoreApplication::setAttribute(Qt::AA_UseHighDpiPixmaps);
 
-        double ratio = qgetenv("UC_DISPLAY_SCALE").toDouble() != 0.0 ? qgetenv("UC_DISPLAY_SCALE").toDouble() : 0.5;
+        // Scale factor of the simulator window. Default 0.5 on macOS, where the desktop is a 2x Retina display and
+        // the 480x850 panel is rendered at half size, and 1 on Linux and Windows (regular 1x displays; the desktop
+        // scaling is handled by the platform). UC_DISPLAY_SCALE overrides it.
+#ifdef Q_OS_MACOS
+        const double defaultScale = 0.5;
+#else
+        const double defaultScale = 1.0;
+#endif
+        double ratio = qgetenv("UC_DISPLAY_SCALE").toDouble();
+        if (ratio <= 0.0) {
+            ratio = defaultScale;
+        }
         qputenv("QT_SCALE_FACTOR", QString::number(ratio).toLocal8Bit());
     }
 
@@ -90,8 +89,9 @@ int main(int argc, char *argv[]) {
     qputenv("QT_VIRTUALKEYBOARD_LAYOUT_PATH", "qrc:/keyboard/layouts");
     qputenv("QT_VIRTUALKEYBOARD_STYLE", "remotestyle");
 
-    QGuiApplication       app(argc, argv);
-    QQmlApplicationEngine engine;
+    QGuiApplication app(argc, argv);
+    // Heap allocated to control the destruction order: the engine must go before the controllers, see the end of main().
+    auto engine = std::make_unique<QQmlApplicationEngine>();
 
 #ifdef Q_OS_UNIX
     // At least SIGTERM is required to run on the device for proper systemd integration,
@@ -112,7 +112,7 @@ int main(int argc, char *argv[]) {
     std::signal(SIGTERM, sigHandler);
 #endif
 
-    engine.addImportPath("qrc:/keyboard");
+    engine->addImportPath("qrc:/keyboard");
 
     qmlRegisterType<MatrixRainItem>("MatrixRain", 1, 0, "MatrixRain");
     qmlRegisterSingletonType(QUrl(QStringLiteral("qrc:/components/themes/Palettes.qml")),
@@ -121,8 +121,6 @@ int main(int argc, char *argv[]) {
     QCoreApplication::setOrganizationName("Unfolded Circle");
     QCoreApplication::setOrganizationDomain("uc.io");
     QCoreApplication::setApplicationName("remote-ui");
-
-    migrateLegacySettings();
 
     QScreen *screen = QGuiApplication::primaryScreen();
     qCDebug(lcApp()) << "Screen Width" << screen->geometry().width();
@@ -150,16 +148,20 @@ int main(int argc, char *argv[]) {
     uc::Config                             config(&core, &app);
     uc::SoftwareUpdate                     softwareUpdate(&core, &app);
     uc::hw::Controller                     hwController(model, &core, &config, &app);
+    // madalone: DEV-only F12 fake-dock toggle, on the application so it sees F12 before popups do.
+    if (model == uc::hw::HardwareModel::DEV) {
+        app.installEventFilter(new uc::ui::DevDockToggle(uc::hw::Battery::instance(), &app));
+    }
     // ScreensaverConfig MUST be constructed AFTER hwController so hw::Battery::instance()
     // is non-null when ScreensaverConfig's ctor wires its showBatteryChanged signal to
     // Battery::powerSupplyChanged / isChargingChanged. Pre-2026-05-02 this lived above
     // hwController and used a QTimer::singleShot(500, ...) retry to paper over the gap;
     // C1 cleanup eliminated the brittleness by reordering construction.
     uc::ScreensaverConfig                  screensaverConfig(&app);
-    uc::ui::Controller                     uiController(model, width, height, &engine, &config, &core, &app);
+    uc::ui::Controller                     uiController(model, width, height, engine.get(), &config, &core, &app);
     uc::integration::IntegrationController integrationController(&core, config.getLanguage(), &app);
     uc::dock::DockController               dockController(&core, &app);
-    uc::ui::Translation                    translation(&engine, &core, &app);
+    uc::ui::Translation                    translation(engine.get(), &core, &app);
     uc::Voice                              voice(&core, &app);
 
     QObject::connect(&integrationController, &uc::integration::IntegrationController::integrationIsConnecting,
@@ -239,32 +241,10 @@ int main(int argc, char *argv[]) {
     suppressor->setInputLookbackMs(config.getPhantomWakeSuppressInputLookbackMs());
     suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
 
-    // ========================================================================
-    // madalone (Phase 0, 2026-05-02): one-shot REST auth probe trigger.
-    // ------------------------------------------------------------------------
-    // PHASE 0 RESOLVED — Bearer via UC_TOKEN content (H2) wins. See
-    // .claude-memory/project_uc3_rest_auth_mechanism.md for the empirical
-    // outcome. The Q_INVOKABLE method + QSettings markers + setDeviceName
-    // side-effects in core.cpp stay in tree for future re-runs.
-    //
-    // Auto-fire is gated on Config::probeRestAuth — set the QSettings key
-    // "debug/probeRestAuth" to true on the device to re-run.
-    // ========================================================================
-    if (config.getProbeRestAuth()) {
-        auto* probeConn = new QMetaObject::Connection;
-        *probeConn = QObject::connect(&core, &uc::core::Api::connected, &core,
-            [&core, probeConn]() {
-                QObject::disconnect(*probeConn);
-                delete probeConn;
-                qCWarning(lcApp()) << "[REST Auth Probe] WS connected; firing probe (Config::probeRestAuth=true)";
-                core.probeRestAuth();
-            });
-    }
-
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 
     QObject::connect(
-        &engine, &QQmlApplicationEngine::objectCreated, &app,
+        engine.get(), &QQmlApplicationEngine::objectCreated, &app,
         [url](QObject *obj, const QUrl &objUrl) {
             if (!obj && url == objUrl) {
                 QCoreApplication::exit(-1);
@@ -272,9 +252,19 @@ int main(int argc, char *argv[]) {
         },
         Qt::QueuedConnection);
 
-    engine.load(url);
+    engine->load(url);
 
     uiController.init();
 
-    return app.exec();
+    const int ret = app.exec();
+
+    // Tear down the QML scene while the C++ side is still complete. The controllers above are destroyed in reverse
+    // order of declaration, i.e. before an engine declared next to the application would be. They own the objects
+    // behind the `ui`, `colors`, `fonts` and `resource` context properties and the QML singletons (Battery, Power,
+    // Wifi, ...): destroying those first turns every reference in the still existing QML items into null and
+    // re-evaluates hundreds of bindings, which floods the log with "TypeError: Cannot read property ... of null"
+    // on every shutdown.
+    engine.reset();
+
+    return ret;
 }

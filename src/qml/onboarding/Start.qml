@@ -8,10 +8,25 @@ import Haptic 1.0
 import Wifi 1.0
 
 import "qrc:/components" as Components
+import "qrc:/onboarding" as OnboardingComponents
 
-Item {
+OnboardingComponents.Page {
     property var greetings: ["Hallo", "Hoi", "Szia", "Hej", "Hei", "Hello"]
     property int count: 0
+
+    Component.onCompleted: {
+        buttonNavigation.extendDefaultConfig({
+                                                 "DPAD_MIDDLE": {
+                                                     "pressed": function() {
+                                                         OnboardingController.nextStep();
+                                                     }
+                                                 },
+                                                 // there is no step before the first one
+                                                 "BACK": {
+                                                     "pressed": function() {}
+                                                 }
+                                             });
+    }
 
     Timer {
         repeat: true
@@ -50,13 +65,14 @@ Item {
     }
 
     Text {
-        color: colors.light
-        text: qsTr("Tap the screen to begin")
+        color: colors.textSecondary
+        //: Hint on the first onboarding screen; OK is the middle button of the d-pad
+        text: qsTr("Press OK or touch the screen to begin")
         width: parent.width
         wrapMode: Text.WordWrap
         verticalAlignment: Text.AlignVCenter; horizontalAlignment: Text.AlignHCenter
         anchors { horizontalCenter: parent.horizontalCenter; top: greetText.bottom }
-        font: fonts.secondaryFont(28)
+        font: fonts.help()
     }
 
     Components.HapticMouseArea {

@@ -47,16 +47,21 @@ int GroupController::addGroup(const QString &profileId, const QString &name, con
 }
 
 int GroupController::updateGroup(const QString &groupId, const QString &profileId, const QString &name,
-                                 const QStringList &entities) {
-    int id = m_core->updateGroup(groupId, profileId, name, QString(), entities);
+                                 const QVariant &entities) {
+    // a QStringList from C++, a JS array of ids from QML; nothing at all for a rename
+    const bool setEntities = entities.isValid();
+    int        id = m_core->updateGroup(groupId, profileId, name, QString(), entities.toStringList(), setEntities);
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respGroup,
         [=](core::Group group) {
             // success
             qCDebug(lcGroupController()) << "Group updated successfully" << group.id << group.name;
-            m_groups.value(group.id)->setItemName(group.name);
-            m_groups.value(group.id)->setItemIcon(group.icon);
+            // the groups are dropped while a profile is (re)loaded: the group may be gone by now
+            if (auto groupObj = m_groups.value(group.id)) {
+                groupObj->setItemName(group.name);
+                groupObj->setItemIcon(group.icon);
+            }
             emit groupUpdated(group.id, true);
         },
         [=](int code, QString message) {
@@ -104,14 +109,21 @@ void GroupController::setProfileId(const QString &profileId) {
     m_profileId = profileId;
 
     int id = m_core->getGroups(m_profileId);
+    // only the newest request counts: a late answer for a profile that is no longer the current one is dropped
+    m_groupsRequestId = id;
 
     m_core->onResponseWithErrorResult(
         id, &core::Api::respGroups,
         [=](QList<core::Group> groups) {
             // success
+            if (id != m_groupsRequestId) {
+                qCDebug(lcGroupController()) << "Ignoring stale groups response of profile" << profileId;
+                return;
+            }
+
             if (groups.size() > 0) {
                 for (QList<core::Group>::iterator i = groups.begin(); i != groups.end(); i++) {
-                    onGroupAdded(m_profileId, *i);
+                    onGroupAdded(profileId, *i);
                 }
             }
         },
@@ -130,24 +142,35 @@ Group *GroupController::getGroup(const QString &groupId) {
 }
 
 void GroupController::onGroupAdded(QString profileId, core::Group group) {
-    if (!m_profileId.contains(profileId)) {
+    if (m_profileId != profileId) {
         return;
     }
 
+    // a group announced by an event while the groups are loading arrives a second time with the answer
+    if (auto existing = m_groups.take(group.id)) {
+        existing->deleteLater();
+    }
+
     Group *obj = new Group(group.id, group.profileId, group.name, group.icon, this);
-    QObject::connect(obj, &Group::requestEntity, this, &GroupController::onEntityRequested);
     obj->init(group.entities);
     m_groups.insert(group.id, obj);
 
     qCDebug(lcGroupController()) << "Group added" << group.id;
+    emit groupItemsChanged();
 }
 
 void GroupController::onGroupChanged(QString profileId, core::Group group) {
-    if (!m_profileId.contains(profileId)) {
+    if (m_profileId != profileId) {
         return;
     }
 
+    // QHash::value() hands out a null pointer for a group that is not loaded: the groups are dropped while a
+    // profile is (re)loaded, and the group load that follows delivers the changed group anyway
     auto groupObj = m_groups.value(group.id);
+    if (!groupObj) {
+        qCWarning(lcGroupController()) << "Ignoring change of a group that is not loaded:" << group.id;
+        return;
+    }
 
     if (!group.name.isEmpty()) {
         groupObj->setItemName(group.name);
@@ -159,24 +182,30 @@ void GroupController::onGroupChanged(QString profileId, core::Group group) {
 
     groupObj->clearEntities();
     groupObj->addEntities(group.entities);
+    emit groupItemsChanged();
 }
 
 void GroupController::onGroupDeleted(QString profileId, QString groupId) {
-    if (!m_profileId.contains(profileId)) {
+    if (m_profileId != profileId) {
         return;
     }
 
-    m_groups.value(groupId)->deleteLater();
-    m_groups.remove(groupId);
-}
-
-void GroupController::onEntityRequested(QString entityId) {
-    emit requestEntity(entityId);
+    // take() returns a null pointer for a group that is not loaded, e.g. while a profile is (re)loaded
+    if (auto groupObj = m_groups.take(groupId)) {
+        groupObj->deleteLater();
+    }
 }
 
 void GroupController::onEntityDeleted(QString entityId) {
+    bool removed = false;
     for (QHash<QString, Group *>::iterator i = m_groups.begin(); i != m_groups.end(); ++i) {
-        i.value()->removeEntity(entityId);
+        if (i.value()->m_items->contains(entityId)) {
+            i.value()->removeEntity(entityId);
+            removed = true;
+        }
+    }
+    if (removed) {
+        emit groupItemsChanged();
     }
 }
 

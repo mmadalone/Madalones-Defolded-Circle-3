@@ -1,5 +1,5 @@
 // Copyright (c) 2026 madalone. Compact WiFi signal-strength chip for entity detail pages
-// (v1.4.21, sibling to BatteryStatusChip). Renders the same icon family as the home-screen
+// (v1.4.21; shown by TitleStatus.qml on entity screens). Renders the same icon family as the home-screen
 // StatusBar's always-visible WiFi indicator (Mod 4 W3) so detail pages get parity. When
 // enabled, replaces the existing BaseDetail.qml WiFi-warning icon (which only surfaces on
 // sub-optimal signal) — chip carries the full info including disconnected red-X state.
