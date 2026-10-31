@@ -337,7 +337,7 @@ Popup {
                 Components.Button {
                     Layout.fillWidth: true
                     text: qsTr("Reset counters")
-                    color: colors.secondaryButton
+                    variant: "secondary"
                     trigger: function() {
                         ui.createActionableWarningNotification(
                             qsTr("Reset diagnostic counters?"),
