@@ -145,6 +145,49 @@ jobs:
       - name: Run drift check
         run: python3 tools/check_setPowerMode_drift.py
 
+  upstream-unit-tests:
+    name: "Upstream unit tests (CMake)"
+    runs-on: ubuntu-24.04
+    # Unfolded Circle's own unit tests (test/CMakeLists.txt, merged with upstream v0.84.0). They cover the entity
+    # layer, the artwork pipeline, the input controller, power, Wi-Fi and the models that our mods change, plus our
+    # browse-preview cases in test/ui/test_entity_controller.cpp. Upstream's build.yml runs five of the programs;
+    # this job runs every one that is built. The Qt installation is upstream's (build.yml, unit-tests job).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install Qt ${{ env.QT_VERSION }}
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
+        with:
+          version: ${{ env.QT_VERSION }}
+          modules: 'qtvirtualkeyboard'
+          archives: 'qtbase qtdeclarative qtmultimedia qtquickcontrols2 qtsvg qttools qtwebsockets'
+          cache: true
+          cache-key-prefix: ${{ env.QT_VERSION }}-upstream-unit-tests
+
+      - name: Build upstream unit tests
+        run: |
+          mkdir test/build
+          cd test/build
+          cmake -D CMAKE_PREFIX_PATH="$QT_ROOT_DIR" ..
+          cmake --build . -j$(nproc)
+
+      - name: Run upstream unit tests
+        working-directory: test/build
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          failed=0
+          for t in $(find . -maxdepth 2 -type f -executable -name 'test*' | sort); do
+            echo "::group::$t"
+            (cd "$(dirname "$t")" && "./$(basename "$t")") || { failed=1; echo "::error::$t failed"; }
+            echo "::endgroup::"
+          done
+          exit $failed
+
   hardware-tests:
     name: "Hardware tests (Mod 5 + Mod 6 + EntityController)"
     runs-on: ubuntu-latest
