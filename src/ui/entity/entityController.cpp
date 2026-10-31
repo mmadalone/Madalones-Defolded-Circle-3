@@ -550,15 +550,8 @@ void EntityController::addEntityObject(core::Entity entity) {
                 QObject::connect(mediaPlayer, &entity::MediaPlayer::removeFromActivities, this,
                                  &EntityController::onRemoveFromActivities);
 
-                // madalone (Mod 5): forward state changes to ActivitySessionKeeper (wired in main.cpp). Eager on
-                // purpose, not in connectLazySignals(): the keeper must see players the UI never shows.
-                QObject::connect(mediaPlayer, &entity::Base::stateChanged, this,
-                                 [this](QString id, int newState) { emit mediaPlayerStateChanged(id, newState); });
-
                 if (mediaPlayer->getState() == entity::MediaPlayerStates::Playing) {
                     onAddToActivities(entity.id);
-                    // madalone: bootstrap keeper if entity loads already-Playing.
-                    emit mediaPlayerStateChanged(entity.id, entity::MediaPlayerStates::Playing);
                 }
             }
         }
@@ -661,6 +654,15 @@ void EntityController::connectLazySignals(entity::Base* obj) {
                             }
                         });
                 });
+
+            // madalone (Mod 5): ActivitySessionKeeper (wired in main.cpp) only follows players a screen has asked
+            // for: page tiles, groups, activities and their media widgets. Since 0.74 every configured player is
+            // loaded at start-up, and a speaker on none of the owner's pages must not keep the remote awake.
+            QObject::connect(mediaPlayer, &entity::Base::stateChanged, this,
+                             [this](QString id, int newState) { emit mediaPlayerStateChanged(id, newState); });
+            if (mediaPlayer->getState() == entity::MediaPlayerStates::Playing) {
+                emit mediaPlayerStateChanged(mediaPlayer->getId(), entity::MediaPlayerStates::Playing);
+            }
         }
     }
 

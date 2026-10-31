@@ -32,6 +32,7 @@
 #include "../../../src/core/enums.h"
 #include "../../../src/config/config.h"
 #include "../../../src/ui/entity/entityController.h"
+#include "../../../src/ui/entity/mediaPlayer.h"
 #include "../mock_core_api.h"
 
 class EntityControllerTest : public QObject {
@@ -147,6 +148,53 @@ class EntityControllerTest : public QObject {
     void test_setIconOfUnloadedEntity_doesNotCrash() {
         m_controller->setEntityIcon(QStringLiteral("hass.main.number.not_loaded"), QStringLiteral("uc:lightbulb"));
         QVERIFY(m_controller->get(QStringLiteral("hass.main.number.not_loaded")) == nullptr);
+    }
+    // ------------------------------------------------------------------------------------------------------------
+    // v1.6.0 (owner's choice): keep-awake (Mod 5) only follows players a screen has asked for. Every configured player
+    // is loaded at start-up since upstream 0.74; mediaPlayerStateChanged starts with the first get().
+    // ------------------------------------------------------------------------------------------------------------
+    static uc::core::Entity mediaPlayerEntity(const QString& id, const QString& state) {
+        uc::core::Entity e;
+        e.id = id;
+        e.type = QStringLiteral("Media_player");  // as core::Api parses it (FirstToUpper of entity_type)
+        e.name = {{QStringLiteral("en"), id}};
+        e.attributes = {{QStringLiteral("state"), state}};
+        return e;
+    }
+
+    void test_keeperHook_waitsForFirstGet() {
+        QSignalSpy spy(m_controller, &uc::ui::EntityController::mediaPlayerStateChanged);
+        m_controller->onEntityAdded(mediaPlayerEntity(QStringLiteral("media_player.speaker"), QStringLiteral("PLAYING")));
+        QCOMPARE(spy.count(), 0);  // loaded, but no screen has asked for it
+
+        QVERIFY(m_controller->get(QStringLiteral("media_player.speaker")) != nullptr);
+        QCOMPARE(spy.count(), 1);  // first get(): already playing, so the keeper hears about it once
+        QCOMPARE(spy.at(0).at(0).toString(), QStringLiteral("media_player.speaker"));
+        QCOMPARE(spy.at(0).at(1).toInt(), static_cast<int>(uc::ui::entity::MediaPlayerStates::Playing));
+
+        m_controller->get(QStringLiteral("media_player.speaker"));
+        QCOMPARE(spy.count(), 1);  // no second report on later get()s
+    }
+
+    void test_keeperHook_ignoresPlayersNoScreenAskedFor() {
+        QSignalSpy spy(m_controller, &uc::ui::EntityController::mediaPlayerStateChanged);
+        m_controller->onEntityAdded(mediaPlayerEntity(QStringLiteral("media_player.kitchen"), QStringLiteral("OFF")));
+
+        const auto playing = mediaPlayerEntity(QStringLiteral("media_player.kitchen"), QStringLiteral("PLAYING"));
+        m_controller->onEntityChanged(playing.id, playing);
+        QCOMPARE(spy.count(), 0);
+    }
+
+    void test_keeperHook_followsStateChangesAfterGet() {
+        QSignalSpy spy(m_controller, &uc::ui::EntityController::mediaPlayerStateChanged);
+        m_controller->onEntityAdded(mediaPlayerEntity(QStringLiteral("media_player.tv"), QStringLiteral("OFF")));
+        m_controller->get(QStringLiteral("media_player.tv"));
+        QCOMPARE(spy.count(), 0);  // not playing: nothing to report yet
+
+        const auto playing = mediaPlayerEntity(QStringLiteral("media_player.tv"), QStringLiteral("PLAYING"));
+        m_controller->onEntityChanged(playing.id, playing);
+        QCOMPARE(spy.count(), 1);
+        QCOMPARE(spy.at(0).at(1).toInt(), static_cast<int>(uc::ui::entity::MediaPlayerStates::Playing));
     }
 };
 
