@@ -33,7 +33,7 @@ ColumnLayout {
         value: ScreensaverConfig.starfieldSpeed; live: true
         onMoved: ScreensaverConfig.starfieldSpeed = value
         onUserInteractionEnded: ScreensaverConfig.starfieldSpeed = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: root.navUpTarget
         KeyNavigation.down: starfieldDensitySlider
@@ -50,7 +50,7 @@ ColumnLayout {
         value: ScreensaverConfig.starfieldDensity; live: true
         onMoved: ScreensaverConfig.starfieldDensity = value
         onUserInteractionEnded: ScreensaverConfig.starfieldDensity = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: starfieldSpeedSlider
         KeyNavigation.down: starfieldStarSizeSlider
@@ -64,7 +64,7 @@ ColumnLayout {
         value: ScreensaverConfig.starfieldStarSize; live: true
         onMoved: ScreensaverConfig.starfieldStarSize = value
         onUserInteractionEnded: ScreensaverConfig.starfieldStarSize = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: starfieldDensitySlider; KeyNavigation.down: starfieldTrailSlider
     }
@@ -77,7 +77,7 @@ ColumnLayout {
         value: ScreensaverConfig.starfieldTrailLength; live: true
         onMoved: ScreensaverConfig.starfieldTrailLength = value
         onUserInteractionEnded: ScreensaverConfig.starfieldTrailLength = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: starfieldStarSizeSlider; KeyNavigation.down: starfieldColorSolidRow
     }

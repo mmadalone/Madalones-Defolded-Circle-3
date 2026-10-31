@@ -46,7 +46,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapEnabled
                 trigger: function() { ScreensaverConfig.tapEnabled = !ScreensaverConfig.tapEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Enable tap effects"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: ScreensaverConfig.tapEnabled ? tapBurstSwitch : root.navDownTarget
@@ -65,7 +65,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapBurst
                 trigger: function() { ScreensaverConfig.tapBurst = !ScreensaverConfig.tapBurst; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Scatter burst"
                 KeyNavigation.up: tapEnabledSwitch
                 KeyNavigation.down: ScreensaverConfig.tapBurst ? tapBurstCountSlider : tapFlashSwitch
@@ -88,7 +88,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapBurstCount
             onMoved: ScreensaverConfig.tapBurstCount = value
             onUserInteractionEnded: ScreensaverConfig.tapBurstCount = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail count " + value
             KeyNavigation.up: tapBurstSwitch; KeyNavigation.down: tapBurstLengthSlider
         }
@@ -109,7 +109,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapBurstLength
             onMoved: ScreensaverConfig.tapBurstLength = value
             onUserInteractionEnded: ScreensaverConfig.tapBurstLength = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail length " + value
             KeyNavigation.up: tapBurstCountSlider; KeyNavigation.down: tapFlashSwitch
         }
@@ -131,7 +131,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapFlash
                 trigger: function() { ScreensaverConfig.tapFlash = !ScreensaverConfig.tapFlash; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Flash shockwave"
                 KeyNavigation.up: ScreensaverConfig.tapBurst ? tapBurstLengthSlider : tapBurstSwitch
                 KeyNavigation.down: tapScrambleSwitch
@@ -149,7 +149,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapScramble
                 trigger: function() { ScreensaverConfig.tapScramble = !ScreensaverConfig.tapScramble; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Character scramble"
                 KeyNavigation.up: tapFlashSwitch; KeyNavigation.down: tapSpawnSwitch
             }
@@ -166,7 +166,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapSpawn
                 trigger: function() { ScreensaverConfig.tapSpawn = !ScreensaverConfig.tapSpawn; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Stream spawn"
                 KeyNavigation.up: tapScrambleSwitch
                 KeyNavigation.down: ScreensaverConfig.tapSpawn ? tapSpawnCountSlider : tapMessageSwitch
@@ -189,7 +189,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapSpawnCount
             onMoved: ScreensaverConfig.tapSpawnCount = value
             onUserInteractionEnded: ScreensaverConfig.tapSpawnCount = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Spawn count " + value
             KeyNavigation.up: tapSpawnSwitch; KeyNavigation.down: tapSpawnLengthSlider
         }
@@ -210,7 +210,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapSpawnLength
             onMoved: ScreensaverConfig.tapSpawnLength = value
             onUserInteractionEnded: ScreensaverConfig.tapSpawnLength = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Spawn length " + value
             KeyNavigation.up: tapSpawnCountSlider; KeyNavigation.down: tapMessageSwitch
         }
@@ -232,7 +232,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapMessage
                 trigger: function() { ScreensaverConfig.tapMessage = !ScreensaverConfig.tapMessage; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Show message"
                 KeyNavigation.up: ScreensaverConfig.tapSpawn ? tapSpawnLengthSlider : tapSpawnSwitch
                 KeyNavigation.down: tapSquareBurstSwitch
@@ -250,7 +250,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapSquareBurst
                 trigger: function() { ScreensaverConfig.tapSquareBurst = !ScreensaverConfig.tapSquareBurst; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Square burst"
                 KeyNavigation.up: tapMessageSwitch
                 KeyNavigation.down: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapRippleSwitch
@@ -274,7 +274,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapSquareBurstSize
             onMoved: ScreensaverConfig.tapSquareBurstSize = value
             onUserInteractionEnded: ScreensaverConfig.tapSquareBurstSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Square size " + value
             KeyNavigation.up: tapSquareBurstSwitch; KeyNavigation.down: tapRippleSwitch
         }
@@ -296,7 +296,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapRipple
                 trigger: function() { ScreensaverConfig.tapRipple = !ScreensaverConfig.tapRipple; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Ripple"
                 KeyNavigation.up: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapSquareBurstSwitch
                 KeyNavigation.down: tapWipeSwitch
@@ -314,7 +314,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapWipe
                 trigger: function() { ScreensaverConfig.tapWipe = !ScreensaverConfig.tapWipe; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Screen wipe"
                 KeyNavigation.up: tapRippleSwitch; KeyNavigation.down: tapRandomizeSwitch
             }
@@ -337,7 +337,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapRandomize
                 trigger: function() { ScreensaverConfig.tapRandomize = !ScreensaverConfig.tapRandomize; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Randomize"
                 KeyNavigation.up: tapWipeSwitch
                 KeyNavigation.down: ScreensaverConfig.tapRandomize ? tapRandomizeChanceSlider : root.navDownTarget
@@ -361,7 +361,7 @@ ColumnLayout {
             value: ScreensaverConfig.tapRandomizeChance
             onMoved: ScreensaverConfig.tapRandomizeChance = value
             onUserInteractionEnded: ScreensaverConfig.tapRandomizeChance = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Chance " + value + "%"
             KeyNavigation.up: tapRandomizeSwitch; KeyNavigation.down: root.navDownTarget
         }

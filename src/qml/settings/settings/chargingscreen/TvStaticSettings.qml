@@ -36,7 +36,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticIntensity; live: true
         onMoved: ScreensaverConfig.tvStaticIntensity = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticIntensity = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: root.navUpTarget
         KeyNavigation.down: snowSizeSlider
@@ -54,7 +54,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticSnowSize; live: true
         onMoved: ScreensaverConfig.tvStaticSnowSize = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticSnowSize = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: intensitySlider
         KeyNavigation.down: scanlineStrengthSlider
@@ -72,7 +72,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticScanlineStrength; live: true
         onMoved: ScreensaverConfig.tvStaticScanlineStrength = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticScanlineStrength = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: snowSizeSlider
         KeyNavigation.down: scanlineSpeedSlider
@@ -90,7 +90,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticScanlineSpeed; live: true
         onMoved: ScreensaverConfig.tvStaticScanlineSpeed = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticScanlineSpeed = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: scanlineStrengthSlider
         KeyNavigation.down: chromaSlider
@@ -108,7 +108,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticChromaAmount; live: true
         onMoved: ScreensaverConfig.tvStaticChromaAmount = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticChromaAmount = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: scanlineSpeedSlider
         KeyNavigation.down: trackingEnableSwitch
@@ -127,7 +127,7 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             checked: ScreensaverConfig.tvStaticTrackingEnable
             trigger: function() { ScreensaverConfig.tvStaticTrackingEnable = !ScreensaverConfig.tvStaticTrackingEnable; }
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             KeyNavigation.up: chromaSlider
             KeyNavigation.down: trackingSpeedSlider
         }
@@ -147,7 +147,7 @@ ColumnLayout {
         opacity: enabled ? 1.0 : 0.4
         onMoved: ScreensaverConfig.tvStaticTrackingSpeed = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticTrackingSpeed = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: trackingEnableSwitch
         KeyNavigation.down: tintColorRow
@@ -197,7 +197,7 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             checked: ScreensaverConfig.tvStaticFlashOnTap
             trigger: function() { ScreensaverConfig.tvStaticFlashOnTap = !ScreensaverConfig.tvStaticFlashOnTap; }
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             KeyNavigation.up: tintColorRow
             KeyNavigation.down: channelFlashAutoSwitch
         }
@@ -216,7 +216,7 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             checked: ScreensaverConfig.tvStaticChannelFlashAuto
             trigger: function() { ScreensaverConfig.tvStaticChannelFlashAuto = !ScreensaverConfig.tvStaticChannelFlashAuto; }
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             KeyNavigation.up: flashOnTapSwitch
             KeyNavigation.down: flashIntervalSlider
         }
@@ -236,7 +236,7 @@ ColumnLayout {
         opacity: enabled ? 1.0 : 0.4
         onMoved: ScreensaverConfig.tvStaticFlashInterval = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticFlashInterval = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: channelFlashAutoSwitch
         KeyNavigation.down: flashDurationSlider
@@ -254,7 +254,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticFlashDuration; live: true
         onMoved: ScreensaverConfig.tvStaticFlashDuration = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticFlashDuration = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: flashIntervalSlider
         KeyNavigation.down: flashBrightnessSlider
@@ -272,7 +272,7 @@ ColumnLayout {
         value: ScreensaverConfig.tvStaticFlashBrightness; live: true
         onMoved: ScreensaverConfig.tvStaticFlashBrightness = value
         onUserInteractionEnded: ScreensaverConfig.tvStaticFlashBrightness = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: flashDurationSlider
         KeyNavigation.down: root.navDownTarget

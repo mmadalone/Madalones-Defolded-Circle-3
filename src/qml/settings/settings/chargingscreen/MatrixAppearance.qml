@@ -190,7 +190,7 @@ ColumnLayout {
             value: ScreensaverConfig.fontSize; live: true; showLiveValue: true
             onMoved: ScreensaverConfig.fontSize = value
             onUserInteractionEnded: ScreensaverConfig.fontSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Font size " + value
             KeyNavigation.up: charsetRow; KeyNavigation.down: speedSlider
         }
@@ -217,7 +217,7 @@ ColumnLayout {
             value: ScreensaverConfig.matrixSpeed; live: true
             onMoved: ScreensaverConfig.matrixSpeed = value
             onUserInteractionEnded: ScreensaverConfig.matrixSpeed = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Animation speed " + value
             KeyNavigation.up: fontSizeSlider; KeyNavigation.down: densitySlider
         }
@@ -244,7 +244,7 @@ ColumnLayout {
             value: ScreensaverConfig.matrixDensity; live: true
             onMoved: ScreensaverConfig.matrixDensity = value
             onUserInteractionEnded: ScreensaverConfig.matrixDensity = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Column density " + value
             KeyNavigation.up: speedSlider; KeyNavigation.down: trailSlider
         }
@@ -271,7 +271,7 @@ ColumnLayout {
             value: ScreensaverConfig.matrixTrail; live: true
             onMoved: ScreensaverConfig.matrixTrail = value
             onUserInteractionEnded: ScreensaverConfig.matrixTrail = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail length " + value
             KeyNavigation.up: densitySlider; KeyNavigation.down: fadeSlider
         }
@@ -298,7 +298,7 @@ ColumnLayout {
             value: ScreensaverConfig.matrixFade; live: true
             onMoved: ScreensaverConfig.matrixFade = value
             onUserInteractionEnded: ScreensaverConfig.matrixFade = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail fade " + value
             KeyNavigation.up: trailSlider; KeyNavigation.down: dirCardinalRow
         }
@@ -324,7 +324,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.gravityMode
                 trigger: function() { ScreensaverConfig.gravityMode = !ScreensaverConfig.gravityMode; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Auto-rotate"
                 KeyNavigation.up: fadeSlider
                 KeyNavigation.down: ScreensaverConfig.gravityMode ? autoRotateSpeedSlider : dirCardinalRow
@@ -353,7 +353,7 @@ ColumnLayout {
             value: ScreensaverConfig.autoRotateSpeed; live: true
             onMoved: ScreensaverConfig.autoRotateSpeed = value
             onUserInteractionEnded: ScreensaverConfig.autoRotateSpeed = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Rotation speed " + value
             KeyNavigation.up: gravitySwitch; KeyNavigation.down: autoRotateSmoothnessSlider
         }
@@ -380,7 +380,7 @@ ColumnLayout {
             value: ScreensaverConfig.autoRotateBend; live: true
             onMoved: ScreensaverConfig.autoRotateBend = value
             onUserInteractionEnded: ScreensaverConfig.autoRotateBend = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail bend " + value
             KeyNavigation.up: autoRotateSpeedSlider; KeyNavigation.down: dirCardinalRow
         }

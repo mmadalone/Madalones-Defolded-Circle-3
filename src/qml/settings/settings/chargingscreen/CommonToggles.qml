@@ -44,9 +44,8 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.showClock
                 trigger: function() { ScreensaverConfig.showClock = !ScreensaverConfig.showClock; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Show clock"
-                Component.onCompleted: if (visible) showClockSwitch.forceActiveFocus()
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: ScreensaverConfig.showClock ? clockDockedSwitch : showBatterySwitch
             }
@@ -68,7 +67,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.clockDockedOnly
                 trigger: function() { ScreensaverConfig.clockDockedOnly = !ScreensaverConfig.clockDockedOnly; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Clock charging only"
                 KeyNavigation.up: showClockSwitch; KeyNavigation.down: clockFontRow
             }
@@ -241,7 +240,7 @@ ColumnLayout {
             value: ScreensaverConfig.clockSize; live: true
             onMoved: ScreensaverConfig.clockSize = value
             onUserInteractionEnded: ScreensaverConfig.clockSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: clockGradientRow; KeyNavigation.down: clock24hSwitch
         }
@@ -262,7 +261,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.clockClock24h
                 trigger: function() { ScreensaverConfig.clockClock24h = !ScreensaverConfig.clockClock24h; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 KeyNavigation.up: clockSizeSlider; KeyNavigation.down: clockShowDateSwitch
             }
         }
@@ -283,7 +282,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.clockShowDate
                 trigger: function() { ScreensaverConfig.clockShowDate = !ScreensaverConfig.clockShowDate; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 KeyNavigation.up: clock24hSwitch
                 KeyNavigation.down: ScreensaverConfig.clockShowDate ? clockDateSizeSlider : showBatterySwitch
             }
@@ -304,7 +303,7 @@ ColumnLayout {
             value: ScreensaverConfig.clockDateSize; live: true
             onMoved: ScreensaverConfig.clockDateSize = value
             onUserInteractionEnded: ScreensaverConfig.clockDateSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: clockDateColorRow
         }
@@ -484,7 +483,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.showBatteryEnabled
                 trigger: function() { ScreensaverConfig.showBatteryEnabled = !ScreensaverConfig.showBatteryEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Show battery"
                 KeyNavigation.up: (ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog")
                     ? (ScreensaverConfig.showClock ? clockPositionRow : showClockSwitch)
@@ -513,7 +512,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.batteryDockedOnly
                 trigger: function() { ScreensaverConfig.batteryDockedOnly = !ScreensaverConfig.batteryDockedOnly; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Charging only"
                 KeyNavigation.up: showBatterySwitch
                 KeyNavigation.down: batteryTextSizeSlider
@@ -535,7 +534,7 @@ ColumnLayout {
             value: ScreensaverConfig.batteryTextSize; live: true
             onMoved: ScreensaverConfig.batteryTextSize = value
             onUserInteractionEnded: ScreensaverConfig.batteryTextSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             KeyNavigation.up: batteryDockedSwitch; KeyNavigation.down: root.navDownTarget
         }

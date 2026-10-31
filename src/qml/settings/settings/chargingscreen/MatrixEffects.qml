@@ -44,7 +44,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.invertTrail
                 trigger: function() { ScreensaverConfig.invertTrail = !ScreensaverConfig.invertTrail; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Invert trail"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: glowSwitch
@@ -72,7 +72,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glow
                 trigger: function() { ScreensaverConfig.glow = !ScreensaverConfig.glow; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Head glow"
                 KeyNavigation.up: invertTrailSwitch; KeyNavigation.down: glowFadeSlider
             }
@@ -97,7 +97,7 @@ ColumnLayout {
             value: ScreensaverConfig.glowFade; live: true
             onMoved: ScreensaverConfig.glowFade = value
             onUserInteractionEnded: ScreensaverConfig.glowFade = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Glow fade " + value
             KeyNavigation.up: glowSwitch; KeyNavigation.down: depthGlowSwitch
         }
@@ -121,7 +121,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.depthGlow
                 trigger: function() { ScreensaverConfig.depthGlow = !ScreensaverConfig.depthGlow; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Depth glow"
                 KeyNavigation.up: glowFadeSlider; KeyNavigation.down: depthGlowMinSlider
             }
@@ -147,7 +147,7 @@ ColumnLayout {
             value: ScreensaverConfig.depthGlowMin; live: true
             onMoved: ScreensaverConfig.depthGlowMin = value
             onUserInteractionEnded: ScreensaverConfig.depthGlowMin = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Minimum glow size " + value + "%"
             KeyNavigation.up: depthGlowSwitch; KeyNavigation.down: layersEnabledSwitch
         }
@@ -173,7 +173,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.layersEnabled
                 trigger: function() { ScreensaverConfig.layersEnabled = !ScreensaverConfig.layersEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Rain layers"
                 KeyNavigation.up: ScreensaverConfig.depthGlow ? depthGlowMinSlider : depthGlowSwitch
                 KeyNavigation.down: depthEnabledSwitch
@@ -201,7 +201,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.depthEnabled
                 trigger: function() { ScreensaverConfig.depthEnabled = !ScreensaverConfig.depthEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Color layers"
                 KeyNavigation.up: layersEnabledSwitch; KeyNavigation.down: depthIntensitySlider
             }
@@ -227,7 +227,7 @@ ColumnLayout {
             value: ScreensaverConfig.depthIntensity; live: true
             onMoved: ScreensaverConfig.depthIntensity = value
             onUserInteractionEnded: ScreensaverConfig.depthIntensity = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Depth intensity " + value
             KeyNavigation.up: depthEnabledSwitch; KeyNavigation.down: depthOverlaySwitch
         }
@@ -249,7 +249,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.depthOverlay
                 trigger: function() { ScreensaverConfig.depthOverlay = !ScreensaverConfig.depthOverlay; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Depth overlay mode"
                 KeyNavigation.up: depthIntensitySlider; KeyNavigation.down: glitchSwitch
             }
@@ -276,7 +276,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitch
                 trigger: function() { ScreensaverConfig.glitch = !ScreensaverConfig.glitch; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Glitch effect"
                 KeyNavigation.up: depthOverlaySwitch; KeyNavigation.down: glitchRateSlider
             }
@@ -303,7 +303,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchRate; live: true
             onMoved: ScreensaverConfig.glitchRate = value
             onUserInteractionEnded: ScreensaverConfig.glitchRate = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Glitch intensity " + value
             KeyNavigation.up: glitchSwitch; KeyNavigation.down: glitchFlashSwitch
         }
@@ -325,7 +325,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchFlash
                 trigger: function() { ScreensaverConfig.glitchFlash = !ScreensaverConfig.glitchFlash; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Column flash"
                 KeyNavigation.up: glitchRateSlider; KeyNavigation.down: glitchStutterSwitch
             }
@@ -348,7 +348,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchStutter
                 trigger: function() { ScreensaverConfig.glitchStutter = !ScreensaverConfig.glitchStutter; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Column stutter"
                 KeyNavigation.up: glitchFlashSwitch; KeyNavigation.down: glitchReverseSwitch
             }
@@ -371,7 +371,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchReverse
                 trigger: function() { ScreensaverConfig.glitchReverse = !ScreensaverConfig.glitchReverse; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Reverse glow"
                 KeyNavigation.up: glitchStutterSwitch; KeyNavigation.down: directionGlitchSection.firstFocusItem
             }

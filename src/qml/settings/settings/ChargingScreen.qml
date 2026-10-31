@@ -29,16 +29,13 @@ Settings.Page {
         }
     }
 
-    // Scroll to focused item when navigating with DPAD
-    function ensureVisible(item) {
-        if (!item) return;
-        var yy = item.mapToItem(content, 0, 0).y;
-        if (yy < flickable.contentY) {
-            flickable.contentY = yy - 20;
-        } else if (yy + item.height > flickable.contentY + flickable.height) {
-            flickable.contentY = yy + item.height - flickable.height + 20;
-        }
-    }
+    // UC's settings-page contract (settings/Page.qml): the page claims the focus for this control once it
+    // owns the input, instead of a control calling forceActiveFocus() from Component.onCompleted. The
+    // previous page is destroyed asynchronously and took the focus away again (d-pad dead after re-opening
+    // this page, 4 of 7 tries in the desktop simulator). scrollTarget lets UC's button navigation keep the
+    // focused control on screen (sections call settingsPage.ensureVisible(), now the base page's).
+    initialFocusItem: commonToggles.firstFocusItem
+    scrollTarget: flickable
 
     // --- Theme sub-page Components (instantiated on-demand by the Loaders
     // below). Using `sourceComponent:` + inline Component instead of `source:`

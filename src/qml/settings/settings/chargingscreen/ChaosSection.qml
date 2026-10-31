@@ -40,7 +40,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaos
                 trigger: function() { ScreensaverConfig.glitchChaos = !ScreensaverConfig.glitchChaos; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Chaos events"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: chaosFrequencySlider
             }
@@ -63,7 +63,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchChaosFrequency
             onMoved: ScreensaverConfig.glitchChaosFrequency = value
             onUserInteractionEnded: ScreensaverConfig.glitchChaosFrequency = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchChaosSwitch; KeyNavigation.down: chaosIntensitySlider
         }
@@ -85,7 +85,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchChaosIntensity
             onMoved: ScreensaverConfig.glitchChaosIntensity = value
             onUserInteractionEnded: ScreensaverConfig.glitchChaosIntensity = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Intensity " + value
             KeyNavigation.up: chaosFrequencySlider; KeyNavigation.down: chaosSurgeSwitch
         }
@@ -107,7 +107,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosSurge
                 trigger: function() { ScreensaverConfig.glitchChaosSurge = !ScreensaverConfig.glitchChaosSurge; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Surge (flash)"
                 KeyNavigation.up: chaosIntensitySlider; KeyNavigation.down: chaosScrambleSwitch
             }
@@ -122,7 +122,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosScramble
                 trigger: function() { ScreensaverConfig.glitchChaosScramble = !ScreensaverConfig.glitchChaosScramble; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Scramble (mutate)"
                 KeyNavigation.up: chaosSurgeSwitch; KeyNavigation.down: chaosFreezeSwitch
             }
@@ -137,7 +137,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosFreeze
                 trigger: function() { ScreensaverConfig.glitchChaosFreeze = !ScreensaverConfig.glitchChaosFreeze; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Freeze (stutter)"
                 KeyNavigation.up: chaosScrambleSwitch; KeyNavigation.down: chaosSquareBurstSwitch
             }
@@ -153,7 +153,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosSquareBurst
                 trigger: function() { ScreensaverConfig.glitchChaosSquareBurst = !ScreensaverConfig.glitchChaosSquareBurst; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Square burst"
                 KeyNavigation.up: chaosFreezeSwitch
                 KeyNavigation.down: ScreensaverConfig.glitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosRippleSwitch
@@ -177,7 +177,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchChaosSquareBurstSize
             onMoved: ScreensaverConfig.glitchChaosSquareBurstSize = value
             onUserInteractionEnded: ScreensaverConfig.glitchChaosSquareBurstSize = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Square size " + value
             KeyNavigation.up: chaosSquareBurstSwitch; KeyNavigation.down: chaosRippleSwitch
         }
@@ -199,7 +199,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosRipple
                 trigger: function() { ScreensaverConfig.glitchChaosRipple = !ScreensaverConfig.glitchChaosRipple; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Ripple"
                 KeyNavigation.up: ScreensaverConfig.glitchChaosSquareBurst ? chaosSquareBurstSizeSlider : chaosSquareBurstSwitch
                 KeyNavigation.down: chaosWipeSwitch
@@ -223,7 +223,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosWipe
                 trigger: function() { ScreensaverConfig.glitchChaosWipe = !ScreensaverConfig.glitchChaosWipe; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Screen wipe"
                 KeyNavigation.up: chaosRippleSwitch; KeyNavigation.down: chaosScatterSwitch
             }
@@ -246,7 +246,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchChaosScatter
                 trigger: function() { ScreensaverConfig.glitchChaosScatter = !ScreensaverConfig.glitchChaosScatter; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Scatter (burst)"
                 KeyNavigation.up: chaosWipeSwitch
                 KeyNavigation.down: ScreensaverConfig.glitchChaosScatter ? chaosScatterRateSlider : root.navDownTarget
@@ -270,7 +270,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchChaosScatterRate
             onMoved: ScreensaverConfig.glitchChaosScatterRate = value
             onUserInteractionEnded: ScreensaverConfig.glitchChaosScatterRate = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Scatter frequency " + value
             KeyNavigation.up: chaosScatterSwitch; KeyNavigation.down: chaosScatterLengthSlider
         }
@@ -292,7 +292,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchChaosScatterLength
             onMoved: ScreensaverConfig.glitchChaosScatterLength = value
             onUserInteractionEnded: ScreensaverConfig.glitchChaosScatterLength = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Scatter trail length " + value
             KeyNavigation.up: chaosScatterRateSlider; KeyNavigation.down: root.navDownTarget
         }

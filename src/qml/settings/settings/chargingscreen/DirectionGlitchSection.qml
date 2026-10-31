@@ -46,7 +46,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchDirection
                 trigger: function() { ScreensaverConfig.glitchDirection = !ScreensaverConfig.glitchDirection; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Direction change"
                 KeyNavigation.up: root.navUpTarget; KeyNavigation.down: glitchDirRateSlider
             }
@@ -73,7 +73,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchDirRate; live: true
             onMoved: ScreensaverConfig.glitchDirRate = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirRate = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Frequency " + value
             KeyNavigation.up: glitchDirectionSwitch; KeyNavigation.down: glitchDirLengthSlider
         }
@@ -95,7 +95,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchDirLength
             onMoved: ScreensaverConfig.glitchDirLength = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirLength = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail length " + value
             KeyNavigation.up: glitchDirRateSlider; KeyNavigation.down: glitchDirCardinalRow
         }
@@ -193,7 +193,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchDirFade
             onMoved: ScreensaverConfig.glitchDirFade = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirFade = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail fade " + value
             KeyNavigation.up: glitchDirDiagRow; KeyNavigation.down: glitchDirSpeedSlider
         }
@@ -215,7 +215,7 @@ ColumnLayout {
             value: ScreensaverConfig.glitchDirSpeed
             onMoved: ScreensaverConfig.glitchDirSpeed = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirSpeed = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail speed " + value
             KeyNavigation.up: glitchDirFadeSlider; KeyNavigation.down: glitchRandomColorSwitch
         }
@@ -237,7 +237,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.glitchRandomColor
                 trigger: function() { ScreensaverConfig.glitchRandomColor = !ScreensaverConfig.glitchRandomColor; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Random color"
                 KeyNavigation.up: glitchDirSpeedSlider; KeyNavigation.down: root.navDownTarget
             }

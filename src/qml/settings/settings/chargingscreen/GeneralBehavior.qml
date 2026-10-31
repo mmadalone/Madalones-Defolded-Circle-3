@@ -43,7 +43,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapToClose
                 trigger: function() { ScreensaverConfig.tapToClose = !ScreensaverConfig.tapToClose; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Double-tap to close"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: motionToCloseSwitch
@@ -78,7 +78,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.motionToClose
                 trigger: function() { ScreensaverConfig.motionToClose = !ScreensaverConfig.motionToClose; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Close on wake"
                 KeyNavigation.up: tapToCloseSwitch
                 KeyNavigation.down: ScreensaverConfig.theme === "matrix" ? dpadEnabledSwitch : idleEnabledSwitch
@@ -107,7 +107,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.dpadEnabled
                 trigger: function() { ScreensaverConfig.dpadEnabled = !ScreensaverConfig.dpadEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "DPAD interactive"
                 KeyNavigation.up: motionToCloseSwitch
                 KeyNavigation.down: ScreensaverConfig.dpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
@@ -134,7 +134,7 @@ ColumnLayout {
                     ScreensaverConfig.dpadPersist = !ScreensaverConfig.dpadPersist;
                     if (!ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = "";
                 }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Remember direction"
                 KeyNavigation.up: dpadEnabledSwitch; KeyNavigation.down: touchbarSpeedSwitch
             }
@@ -157,7 +157,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.dpadTouchbarSpeed
                 trigger: function() { ScreensaverConfig.dpadTouchbarSpeed = !ScreensaverConfig.dpadTouchbarSpeed; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Touchbar speed control"
                 KeyNavigation.up: dpadPersistSwitch; KeyNavigation.down: tapDirectionSwitch
             }
@@ -185,7 +185,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapDirection
                 trigger: function() { ScreensaverConfig.tapDirection = !ScreensaverConfig.tapDirection; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Touch directions"
                 KeyNavigation.up: ScreensaverConfig.dpadEnabled ? touchbarSpeedSwitch : dpadEnabledSwitch
                 KeyNavigation.down: ScreensaverConfig.tapDirection ? tapDirPersistSwitch : idleEnabledSwitch
@@ -219,7 +219,7 @@ ColumnLayout {
                     ScreensaverConfig.dpadPersist = !ScreensaverConfig.dpadPersist;
                     if (!ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = "";
                 }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Remember direction"
                 KeyNavigation.up: tapDirectionSwitch; KeyNavigation.down: swipeSpeedSwitch
             }
@@ -242,7 +242,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapSwipeSpeed
                 trigger: function() { ScreensaverConfig.tapSwipeSpeed = !ScreensaverConfig.tapSwipeSpeed; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Swipe to adjust speed"
                 KeyNavigation.up: tapDirPersistSwitch; KeyNavigation.down: idleEnabledSwitch
             }
@@ -269,7 +269,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.idleEnabled
                 trigger: function() { ScreensaverConfig.idleEnabled = !ScreensaverConfig.idleEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Idle screensaver"
                 KeyNavigation.up: ScreensaverConfig.theme === "matrix"
                     ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
@@ -300,7 +300,7 @@ ColumnLayout {
             value: ScreensaverConfig.idleTimeout; live: true
             onMoved: ScreensaverConfig.idleTimeout = value
             onUserInteractionEnded: ScreensaverConfig.idleTimeout = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Idle timeout " + value
             KeyNavigation.up: idleEnabledSwitch
             KeyNavigation.down: dockedRearmSlider
@@ -335,7 +335,7 @@ ColumnLayout {
             value: ScreensaverConfig.reopenWhileDockedSec; live: true
             onMoved: ScreensaverConfig.reopenWhileDockedSec = value
             onUserInteractionEnded: ScreensaverConfig.reopenWhileDockedSec = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Docked rearm timeout " + value
             KeyNavigation.up: idleTimeoutSlider
             KeyNavigation.down: debugOverlaySwitch
@@ -365,7 +365,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.debugAtlasOverlay
                 trigger: function() { ScreensaverConfig.debugAtlasOverlay = !ScreensaverConfig.debugAtlasOverlay; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Atlas profiling overlay"
                 KeyNavigation.up: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : idleEnabledSwitch
                 KeyNavigation.down: root.navDownTarget

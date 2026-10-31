@@ -34,7 +34,7 @@ ColumnLayout {
             onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
             checked: ScreensaverConfig.minimalClock24h
             trigger: function() { ScreensaverConfig.minimalClock24h = !ScreensaverConfig.minimalClock24h; }
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             KeyNavigation.up: root.navUpTarget
             KeyNavigation.down: minimalFontRow
         }
@@ -175,7 +175,7 @@ ColumnLayout {
         value: ScreensaverConfig.minimalClockSize; live: true
         onMoved: ScreensaverConfig.minimalClockSize = value
         onUserInteractionEnded: ScreensaverConfig.minimalClockSize = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: minimalDateGradientRow
         KeyNavigation.down: minimalDateSlider
@@ -192,7 +192,7 @@ ColumnLayout {
         value: ScreensaverConfig.minimalDateSize; live: true
         onMoved: ScreensaverConfig.minimalDateSize = value
         onUserInteractionEnded: ScreensaverConfig.minimalDateSize = value
-        highlight: activeFocus && ui.keyNavigationEnabled
+        highlight: activeFocus && ui.keyNavigationActive
         onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
         KeyNavigation.up: minimalClockSlider
         KeyNavigation.down: root.navDownTarget

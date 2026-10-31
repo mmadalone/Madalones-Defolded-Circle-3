@@ -43,7 +43,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.subliminal
                 trigger: function() { ScreensaverConfig.subliminal = !ScreensaverConfig.subliminal; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Subliminal messages"
                 KeyNavigation.up: root.navUpTarget
                 KeyNavigation.down: ScreensaverConfig.subliminal ? subliminalStreamSwitch : messagesInput
@@ -67,7 +67,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.subliminalStream
                 trigger: function() { ScreensaverConfig.subliminalStream = !ScreensaverConfig.subliminalStream; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "In-stream injection"
                 KeyNavigation.up: subliminalSwitch; KeyNavigation.down: subliminalOverlaySwitch
             }
@@ -90,7 +90,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.subliminalOverlay
                 trigger: function() { ScreensaverConfig.subliminalOverlay = !ScreensaverConfig.subliminalOverlay; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Overlay spanning"
                 KeyNavigation.up: subliminalStreamSwitch; KeyNavigation.down: subliminalFlashSwitch
             }
@@ -113,7 +113,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.subliminalFlash
                 trigger: function() { ScreensaverConfig.subliminalFlash = !ScreensaverConfig.subliminalFlash; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Flash mode"
                 KeyNavigation.up: subliminalOverlaySwitch; KeyNavigation.down: subliminalIntervalSlider
             }
@@ -136,7 +136,7 @@ ColumnLayout {
             value: ScreensaverConfig.subliminalInterval
             onMoved: ScreensaverConfig.subliminalInterval = value
             onUserInteractionEnded: ScreensaverConfig.subliminalInterval = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Interval " + value + "s"
             KeyNavigation.up: subliminalFlashSwitch; KeyNavigation.down: subliminalDurationSlider
         }
@@ -158,7 +158,7 @@ ColumnLayout {
             value: ScreensaverConfig.subliminalDuration
             onMoved: ScreensaverConfig.subliminalDuration = value
             onUserInteractionEnded: ScreensaverConfig.subliminalDuration = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Duration " + value
             KeyNavigation.up: subliminalIntervalSlider; KeyNavigation.down: messagesInput
         }
@@ -188,7 +188,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.messagesEnabled
                 trigger: function() { ScreensaverConfig.messagesEnabled = !ScreensaverConfig.messagesEnabled; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Hidden messages"
                 KeyNavigation.up: (ScreensaverConfig.messages !== "" && ScreensaverConfig.subliminal) ? subliminalDurationSlider : subliminalSwitch
                 KeyNavigation.down: ScreensaverConfig.messagesEnabled ? messagesInput : root.navDownTarget
@@ -239,7 +239,7 @@ ColumnLayout {
             value: ScreensaverConfig.messageInterval; live: true
             onMoved: ScreensaverConfig.messageInterval = value
             onUserInteractionEnded: ScreensaverConfig.messageInterval = value
-            highlight: activeFocus && ui.keyNavigationEnabled
+            highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Message interval " + value + "s"
             KeyNavigation.up: messagesInput; KeyNavigation.down: messageRandomSwitch
         }
@@ -264,7 +264,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.messageRandom
                 trigger: function() { ScreensaverConfig.messageRandom = !ScreensaverConfig.messageRandom; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Random order"
                 KeyNavigation.up: messageIntervalSlider; KeyNavigation.down: messageDirRow
             }
@@ -334,7 +334,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.messageFlash
                 trigger: function() { ScreensaverConfig.messageFlash = !ScreensaverConfig.messageFlash; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Surrounding flash"
                 KeyNavigation.up: messageDirRow; KeyNavigation.down: messagePulseSwitch
             }
@@ -357,7 +357,7 @@ ColumnLayout {
                 onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.messagePulse
                 trigger: function() { ScreensaverConfig.messagePulse = !ScreensaverConfig.messagePulse; }
-                highlight: activeFocus && ui.keyNavigationEnabled
+                highlight: activeFocus && ui.keyNavigationActive
                 Accessible.name: "Brightness pulse"
                 KeyNavigation.up: messageFlashSwitch
                 KeyNavigation.down: root.navDownTarget
