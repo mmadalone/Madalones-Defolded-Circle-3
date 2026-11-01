@@ -998,7 +998,7 @@ Logdy is the WebSocket log stream baked into the firmware:
 - Battery capacity changes (use `GET /api/system/power/battery`)
 - Routine power-mode transitions for every transition (use `GET /api/system/power`)
 - Most internal state-machine ticks
-- **The custom `remote-ui` process's logs.** Logdy `/log/ws` is filtered to the `core` service. Our `qCDebug` / `qCInfo` / `qCWarning` output does **not** stream regardless of level; log-level promotion has no effect here. For custom-UI debugging, capture wire frames manually (the §13.6 probe table) or instrument via REST endpoints. Memory: `feedback_uc3_systemlogs_core_only.md`.
+- **The custom `remote-ui` process's logs.** Logdy `/log/ws` is filtered to the `core` service. Our `qCDebug` / `qCInfo` / `qCWarning` output does **not** stream regardless of level; log-level promotion has no effect here. For custom-UI debugging, capture wire frames manually (the §13.6 probe table) or instrument via REST endpoints. Since firmware 2.10.1 the journal endpoint returns them: `GET /api/system/logs?s=custom-ui` gives the warnings, and with `&p=7` (firmware 2.12.0+) the info lines too. Debug lines are not stored on the device (upstream ADR 0013), so a diagnostic that a field report needs goes at info, and only something that went wrong goes at warning. Memory: `feedback_uc3_systemlogs_core_only.md`.
 
 **Empirical evidence:** a 60 s capture during idle on 2026-05-02 yielded 62 frames, almost all dock-reconnect retries. Zero battery events.
 

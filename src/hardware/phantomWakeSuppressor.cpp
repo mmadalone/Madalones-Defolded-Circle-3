@@ -91,20 +91,19 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
         // ordering and skip arming entirely. m_inputLookbackMs == 0 disables the skip.
         if (m_inputLookbackMs > 0 && m_lastInputTimer.isValid()
                 && m_lastInputTimer.elapsed() < m_inputLookbackMs) {
-            qCWarning(lcHw()) << "PhantomWakeSuppressor: skipping grace (input"
-                              << m_lastInputTimer.elapsed() << "ms ago, lookback"
-                              << m_inputLookbackMs << "ms)";
+            qCInfo(lcHw()) << "PhantomWakeSuppressor: skipping grace (input"
+                           << m_lastInputTimer.elapsed() << "ms ago, lookback"
+                           << m_inputLookbackMs << "ms)";
             return;
         }
         // Wake event detected — arm the grace window. If the user presses something
         // within m_graceMs, onUserInput() cancels it. Otherwise forceLowPower() fires.
         m_graceTimer.start(m_graceMs);
         emit armedChanged();
-        // v1.4.22: promoted from qCDebug → qCWarning so this surfaces in
-        // /api/system/logs (NOTICE+ filter) and is prominent in Logdy captures.
-        // Diagnostic event, not a real warning — semantic stretch is intentional
-        // because Qt 5.15 has no qCNotice and qCInfo is filtered out.
-        qCWarning(lcHw()) << "PhantomWakeSuppressor armed:" << m_graceMs << "ms";
+        // Diagnostic event, not a fault, so info. The armed / cancelled / forced lines were
+        // warnings from v1.4.22 to v1.6.0, when the device log did not show info lines;
+        // firmware 2.12.0 keeps them (/api/system/logs?s=custom-ui&p=7).
+        qCInfo(lcHw()) << "PhantomWakeSuppressor armed:" << m_graceMs << "ms";
     } else if (toPowerMode != Power::PowerMode::Normal && m_graceTimer.isActive()) {
         // Defensive: firmware itself transitioned away from NORMAL during our grace.
         // Don't double-fire force-back; let the firmware's own transition stand.
@@ -150,15 +149,15 @@ void PhantomWakeSuppressor::onCoreDisconnected() {
 void PhantomWakeSuppressor::cancelGrace(const char* reason) {
     m_graceTimer.stop();
     emit armedChanged();
-    // v1.4.22: promoted to qCWarning. The cancel reason is the load-bearing
-    // diagnostic — distinguishes "real user input fired during grace" (Mod 6
-    // working as designed) from "ghost touch defeated Mod 6" (mitigation needed).
-    qCWarning(lcHw()) << "PhantomWakeSuppressor cancelled:" << reason;
+    // The cancel reason is the load-bearing diagnostic — distinguishes "real user
+    // input fired during grace" (Mod 6 working as designed) from "ghost touch
+    // defeated Mod 6" (mitigation needed). Info, like the armed line.
+    qCInfo(lcHw()) << "PhantomWakeSuppressor cancelled:" << reason;
 }
 
 void PhantomWakeSuppressor::forceLowPower() {
-    // v1.4.22: was qCInfo, promoted to qCWarning to match cancelGrace and onPowerModeChanged.
-    qCWarning(lcHw()) << "PhantomWakeSuppressor: phantom wake -> forced LOW_POWER";
+    // Info, like the armed and cancelled lines; only a failed force-back is a warning.
+    qCInfo(lcHw()) << "PhantomWakeSuppressor: phantom wake -> forced LOW_POWER";
     int id = m_core->setPowerMode(core::PowerEnums::PowerMode::LOW_POWER);
     m_core->onResult(
         id,

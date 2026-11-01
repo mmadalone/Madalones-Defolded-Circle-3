@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. Reroute SoundEffects diagnostic logs to qCWarning(lcCore) — bare uc.ui and
-// new uc.ui.sound are silenced before journald in firmware 2.9.x; uc.core also drops INFO; only WARN+ surfaces.
+// Copyright (c) 2026 madalone. Path/file guards and dock-chime variants. Logs on uc.ui: the audio device,
+// volume and chime changes at info (firmware 2.12.0+ keeps info: /api/system/logs?s=custom-ui&p=7), a missing
+// file at warning.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "soundEffects.h"
@@ -52,13 +53,13 @@ void SoundEffects::initialize() {
     QAudioDeviceInfo deviceInfo = QAudioDeviceInfo::defaultOutputDevice();
     createEffects(deviceInfo);
 
-    qCWarning(lcCore()) << "Default audio output device:" << deviceInfo.deviceName();
+    qCInfo(lcUi()) << "Default audio output device:" << deviceInfo.deviceName();
 }
 
 void SoundEffects::setVolume(int volume) {
     if (m_volume != volume) {
         m_volume = volume;
-        qCWarning(lcCore()) << "Sound effects volume changed to:" << m_volume;
+        qCInfo(lcUi()) << "Sound effects volume changed to:" << m_volume;
         emit volumeChanged();
     }
 }
@@ -66,7 +67,7 @@ void SoundEffects::setVolume(int volume) {
 void SoundEffects::setEnabled(bool value) {
     if (m_enabled != value) {
         m_enabled = value;
-        qCWarning(lcCore()) << "Sound effects enabled changed to:" << m_enabled;
+        qCInfo(lcUi()) << "Sound effects enabled changed to:" << m_enabled;
         emit enabledChanged();
     }
 }
@@ -124,14 +125,14 @@ void SoundEffects::createEffects(const QAudioDeviceInfo &deviceInfo) {
     // when UC_SOUND_EFFECTS_PATH isn't in the environment (dev env, or
     // a partially-configured firmware). play() null-checks each pointer.
     if (m_effectsDir.isEmpty()) {
-        qCWarning(lcCore()) << "UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup";
+        qCWarning(lcUi()) << "UC_SOUND_EFFECTS_PATH is empty, skipping sound effect setup";
         return;
     }
 
     auto makeEffect = [&](const QString &filename) -> QSoundEffect * {
         const QString path = m_effectsDir + QStringLiteral("/") + filename;
         if (!QFileInfo::exists(path)) {
-            qCWarning(lcCore()) << "Sound effect file missing, skipping:" << path;
+            qCWarning(lcUi()) << "Sound effect file missing, skipping:" << path;
             return nullptr;
         }
         auto *effect = new QSoundEffect(deviceInfo, this);
@@ -183,14 +184,14 @@ void SoundEffects::setDockChimeVariant(int variant) {
     }
 
     if (m_effectsDir.isEmpty()) {
-        qCWarning(lcCore()) << "Cannot reload dock chime: UC_SOUND_EFFECTS_PATH (or fallback) is empty";
+        qCWarning(lcUi()) << "Cannot reload dock chime: UC_SOUND_EFFECTS_PATH (or fallback) is empty";
         return;
     }
 
     const QString filename = chimeFileName(m_dockChimeVariant);
     const QString path     = m_effectsDir + QStringLiteral("/") + filename;
     if (!QFileInfo::exists(path)) {
-        qCWarning(lcCore()) << "Dock chime variant" << m_dockChimeVariant << "missing file:" << path;
+        qCWarning(lcUi()) << "Dock chime variant" << m_dockChimeVariant << "missing file:" << path;
         return;
     }
 
@@ -198,7 +199,7 @@ void SoundEffects::setDockChimeVariant(int variant) {
     auto *effect                = new QSoundEffect(deviceInfo, this);
     effect->setSource(QUrl::fromLocalFile(path));
     m_effectBatteryCharge = effect;
-    qCWarning(lcCore()) << "Dock chime variant changed to:" << m_dockChimeVariant << filename;
+    qCInfo(lcUi()) << "Dock chime variant changed to:" << m_dockChimeVariant << filename;
 
     // Preview the new chime so the user hears the change immediately. play() respects
     // m_enabled and m_volume already.

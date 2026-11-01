@@ -18,6 +18,12 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 - **Built with Unfolded Circle's Qt 5.15.19 toolchain**, the one UC builds its own UI with (was Qt 5.15.8, from a 2023
   image). Same compiler and Qt features, and the remote needs exactly the same system libraries as before. The image
   is still pinned by digest (`BUILD.md`, `.github/workflows/build.yml`).
+- **Diagnostic log lines are info instead of warning**: keep-awake's REST requests (`[M1 REST]`), the phantom-wake
+  suppressor's armed / cancelled / forced / skipped lines, the orphan clean-up count, and the sound lines (audio
+  device, volume, dock chime change). Firmware 2.12.0 keeps info lines in the remote's log: read them with
+  `/api/system/logs?s=custom-ui&p=7`, because the default query (`p=5`) no longer returns them. Failures (a REST
+  error, a missing sound file, a failed return to standby) are still warnings. The sound lines are back in UC's
+  `uc.ui` category.
 
 ## v1.6.0 — 2026-11-01 — caught up with Unfolded Circle's UI v0.84.0 (firmware 2.12.0)
 

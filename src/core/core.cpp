@@ -3813,9 +3813,10 @@ QByteArray Api::bearerHeader() const {
 //   DELETE /api/system/power/standby_inhibitors/{id}
 //         Response 200:  {"code":"OK","message":"Inhibitor removed"}
 //
-// Auth: Bearer <UC_TOKEN content> (Phase 0 H2 winner). The first call after
-// deploy logs the body + status at qCWarning so a regression is visible in
-// logs without a debug build (§1.12 step 4).
+// Auth: Bearer <UC_TOKEN content> (Phase 0 H2 winner). Every call logs the
+// request and its result at info, and a failure at warning, so a regression is
+// visible in the device log without a debug build (§1.12 step 4). Firmware
+// 2.12.0+ keeps info lines: /api/system/logs?s=custom-ui&p=7.
 // ============================================================================
 
 int Api::createStandbyInhibitor(const QString& who, const QString& why, int delaySec) {
@@ -3841,7 +3842,7 @@ int Api::createStandbyInhibitor(const QString& who, const QString& why, int dela
         qCWarning(lcCore()) << "[M1 REST] createStandbyInhibitor: UC_TOKEN unreadable, request will likely 401";
     }
 
-    qCWarning(lcCore()) << "[M1 REST] POST" << req.url().toString() << "body =" << bodyBytes;
+    qCInfo(lcCore()) << "[M1 REST] POST" << req.url().toString() << "body =" << bodyBytes;
     QNetworkReply* reply = m_restNam.post(req, bodyBytes);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply]() {
         const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -3853,7 +3854,7 @@ int Api::createStandbyInhibitor(const QString& who, const QString& why, int dela
         if (httpCode == 201) {
             const QJsonDocument doc = QJsonDocument::fromJson(respBody);
             id = doc.object().value(QStringLiteral("id")).toString();
-            qCWarning(lcCore()) << "[M1 REST] POST 201 id =" << id;
+            qCInfo(lcCore()) << "[M1 REST] POST 201 id =" << id;
         } else {
             errorMessage = QString::fromUtf8(respBody.left(200));
             qCWarning(lcCore()) << "[M1 REST] POST" << httpCode << "body =" << errorMessage;
@@ -3873,7 +3874,7 @@ int Api::deleteStandbyInhibitor(const QString& id) {
         req.setRawHeader("Authorization", auth);
     }
 
-    qCWarning(lcCore()) << "[M1 REST] DELETE" << req.url().toString();
+    qCInfo(lcCore()) << "[M1 REST] DELETE" << req.url().toString();
     QNetworkReply* reply = m_restNam.deleteResource(req);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply, id]() {
         const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -3882,7 +3883,7 @@ int Api::deleteStandbyInhibitor(const QString& id) {
 
         QString errorMessage;
         if (httpCode == 200 || httpCode == 204) {
-            qCWarning(lcCore()) << "[M1 REST] DELETE" << httpCode << "id =" << id;
+            qCInfo(lcCore()) << "[M1 REST] DELETE" << httpCode << "id =" << id;
         } else {
             errorMessage = QString::fromUtf8(respBody.left(200));
             qCWarning(lcCore()) << "[M1 REST] DELETE" << httpCode << "id =" << id << "body =" << errorMessage;
@@ -3901,7 +3902,7 @@ int Api::listStandbyInhibitors() {
         req.setRawHeader("Authorization", auth);
     }
 
-    qCWarning(lcCore()) << "[M1 REST] GET" << req.url().toString();
+    qCInfo(lcCore()) << "[M1 REST] GET" << req.url().toString();
     QNetworkReply* reply = m_restNam.get(req);
     QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply]() {
         const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
@@ -3923,7 +3924,7 @@ int Api::listStandbyInhibitors() {
                 inh.elapsed = obj.value(QStringLiteral("elapsed")).toInt(0);
                 result.append(inh);
             }
-            qCWarning(lcCore()) << "[M1 REST] GET 200 inhibitors =" << result.size();
+            qCInfo(lcCore()) << "[M1 REST] GET 200 inhibitors =" << result.size();
         } else {
             errorMessage = QString::fromUtf8(respBody.left(200));
             qCWarning(lcCore()) << "[M1 REST] GET" << httpCode << "body =" << errorMessage;

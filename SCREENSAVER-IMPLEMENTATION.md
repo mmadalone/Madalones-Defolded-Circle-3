@@ -270,8 +270,8 @@ curl --request PUT "http://${UC3_HOST}/api/system/logs/web" \
 # List available log services
 curl "http://${UC3_HOST}/api/system/logs/services" -u "web-configurator:${UC3_PIN}"
 
-# Query logs
-curl "http://${UC3_HOST}/api/system/logs?..." -u "web-configurator:${UC3_PIN}"
+# Query the custom UI's log: without s= only the core service is returned; p=7 adds info lines (firmware 2.12.0+)
+curl "http://${UC3_HOST}/api/system/logs?s=custom-ui&p=7&limit=200" -u "web-configurator:${UC3_PIN}"
 ```
 
 Log files also downloadable from the web configurator: **Settings → Development → Logs**.

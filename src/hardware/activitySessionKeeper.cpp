@@ -146,7 +146,7 @@ void ActivitySessionKeeper::onCoreConnected() {
                 }
             }
             if (orphans > 0) {
-                qCWarning(lcHw()) << "ActivitySessionKeeper orphan cleanup deleted" << orphans << "inhibitor(s)";
+                qCInfo(lcHw()) << "ActivitySessionKeeper orphan cleanup deleted" << orphans << "inhibitor(s)";
             }
             // If active but no current id (lost tracking across disconnect, no events refired yet),
             // create fresh. activateInhibitor() early-returns if we already have one or have a POST in flight.
