@@ -13,3 +13,13 @@ src/qml/settings/settings/Color.qml
 
 # A pink outline for debugging layouts, put around an item while working on it; never in a screen.
 src/qml/BorderCheck.qml
+
+# The screensaver is artwork: its themes, the Palettes singleton (in themes/) with the gradients and the
+# swatch colours the Screensaver settings offer, the overlays it draws over the picture (clock, gradient text,
+# screen-off animation) and the popup that shows it. Their colours are the picture or a colour the user
+# picked, data like the entity gradients above, not UI chrome. The Screensaver settings pages are checked.
+src/qml/components/themes/*
+src/qml/components/overlays/ClockOverlay.qml
+src/qml/components/overlays/GradientText.qml
+src/qml/components/overlays/ScreenOffOverlay.qml
+src/qml/components/ChargingScreen.qml
