@@ -91,75 +91,34 @@ Settings.Page {
                 help: qsTr("Plays when you place the remote on the dock. Choosing a variant plays it as a preview.")
                 controlBelow: true
 
-                // 12 chips in 3 columns, explicit x/y math (a GridLayout costs ~30 ms per child on the device).
-                Item {
+                // 12 chips in 3 columns; LEFT/RIGHT walk round the variants, a tap picks one.
+                // Config.dockChimeVariant previews the chime when it changes (SoundEffects::setDockChimeVariant),
+                // so the steps play no click of their own.
+                Components.ChipPicker {
                     id: dockChimePicker
-                    width: parent.width
-                    height: 4 * cellHeight + 3 * cellSpacing
-
-                    readonly property real cellSpacing: 10
-                    readonly property real cellWidth: (width - 2 * cellSpacing) / 3
-                    readonly property real cellHeight: 60
-                    readonly property int variantCount: 12
-
-                    // Config.dockChimeVariant previews the chime when it changes (SoundEffects::setDockChimeVariant)
-                    function step(delta) {
-                        Config.dockChimeVariant = ((Config.dockChimeVariant - 1 + delta + variantCount) % variantCount) + 1;
-                    }
+                    columns: 3
+                    wrap: true
+                    stepHaptic: false
+                    model: [
+                        { value: 1,  label: qsTr("Warp") },
+                        { value: 2,  label: qsTr("Ascend") },
+                        { value: 3,  label: qsTr("Bell") },
+                        { value: 4,  label: qsTr("Chord") },
+                        { value: 5,  label: qsTr("Pulse") },
+                        { value: 6,  label: qsTr("Zap") },
+                        { value: 7,  label: qsTr("Pwr Down") },
+                        { value: 8,  label: qsTr("Pwr Hold") },
+                        { value: 9,  label: qsTr("Pwr Up 1") },
+                        { value: 10, label: qsTr("Pwr Up 2") },
+                        { value: 11, label: qsTr("TOS") },
+                        { value: 12, label: qsTr("TOS Long") }
+                    ]
+                    currentValue: Config.dockChimeVariant
+                    onPicked: Config.dockChimeVariant = value
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: soundEffectsVolumeSlider
                     KeyNavigation.down: dockChimeAfterSwitch
-                    Keys.onLeftPressed: step(-1)
-                    Keys.onRightPressed: step(1)
-
-                    Components.Selectable {
-                        anchors.margins: -6
-                        selected: dockChimePicker.activeFocus
-                    }
-
-                    Repeater {
-                        model: [
-                            { variant: 1,  label: qsTr("Warp") },
-                            { variant: 2,  label: qsTr("Ascend") },
-                            { variant: 3,  label: qsTr("Bell") },
-                            { variant: 4,  label: qsTr("Chord") },
-                            { variant: 5,  label: qsTr("Pulse") },
-                            { variant: 6,  label: qsTr("Zap") },
-                            { variant: 7,  label: qsTr("Pwr Down") },
-                            { variant: 8,  label: qsTr("Pwr Hold") },
-                            { variant: 9,  label: qsTr("Pwr Up 1") },
-                            { variant: 10, label: qsTr("Pwr Up 2") },
-                            { variant: 11, label: qsTr("TOS") },
-                            { variant: 12, label: qsTr("TOS Long") }
-                        ]
-
-                        Rectangle {
-                            x: (index % 3) * (dockChimePicker.cellWidth + dockChimePicker.cellSpacing)
-                            y: Math.floor(index / 3) * (dockChimePicker.cellHeight + dockChimePicker.cellSpacing)
-                            width: dockChimePicker.cellWidth
-                            height: dockChimePicker.cellHeight
-                            radius: ui.cornerRadiusSmall
-                            readonly property bool chosen: Config.dockChimeVariant === modelData.variant
-                            color: chosen ? colors.textPrimary : colors.surface
-                            border { color: colors.divider; width: 2 }
-
-                            Text {
-                                anchors.centerIn: parent
-                                width: parent.width - 12
-                                text: modelData.label
-                                color: parent.chosen ? colors.bg : colors.textPrimary
-                                font: fonts.caption()
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            Components.HapticMouseArea {
-                                anchors.fill: parent
-                                onClicked: Config.dockChimeVariant = modelData.variant
-                            }
-                        }
-                    }
                 }
             }
 
