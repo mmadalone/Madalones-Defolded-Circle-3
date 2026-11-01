@@ -2,40 +2,45 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-
-import Haptic 1.0
+import QtQuick.Window 2.15
 
 import "qrc:/settings" as Settings
-import "qrc:/components" as Components
 import "qrc:/settings/settings/chargingscreen" as ChargingScreenComponents
 import ScreensaverConfig 1.0
 
 Settings.Page {
     id: chargingScreenPage
 
-    // Cycle a selector's value left/right via DPAD
-    function cycleOption(options, current, setter, delta) {
-        for (var i = 0; i < options.length; i++) {
-            if (current === options[i]) {
-                var next = i + delta;
-                if (next >= 0 && next < options.length) {
-                    setter(options[next]);
-                    Haptic.play(Haptic.Click);
-                }
+    // UC's settings-page contract (settings/Page.qml): the page claims the focus for this control once it
+    // owns the input, instead of a control calling forceActiveFocus() from Component.onCompleted. The
+    // previous page is destroyed asynchronously and took the focus away again (d-pad dead after re-opening
+    // this page, 4 of 7 tries in the desktop simulator). The theme picker is the first control of the page
+    // (docs/design-system.md section 6). scrollTarget lets UC's button navigation keep the focused control on
+    // screen.
+    initialFocusItem: themeSelector.firstFocusItem
+    scrollTarget: flickable
+
+    // While the keypad is in use, show the whole setting row of the focused control - its title, help text and
+    // control - not only the control. UC's ensureVisible() reveals the direct child of the page layout around the
+    // control; here that is a whole section of the page, taller than the screen, so it reveals the control alone and
+    // the title above a slider or a chip grid stays cut off when walking up. Each section marks its root with
+    // `settingsSection`, and the row is the child of that root on the way up from the focused control. Touch is left
+    // alone: scrolling to a title would move a slider under the finger.
+    readonly property Item keypadFocusItem: Window.activeFocusItem
+
+    onKeypadFocusItemChanged: {
+        if (!ui.keyNavigationActive) {
+            return;
+        }
+
+        for (let item = keypadFocusItem; item && item.parent; item = item.parent) {
+            if (item.parent.settingsSection === true) {
+                ensureVisible(item);
                 return;
             }
         }
     }
-
-    // UC's settings-page contract (settings/Page.qml): the page claims the focus for this control once it
-    // owns the input, instead of a control calling forceActiveFocus() from Component.onCompleted. The
-    // previous page is destroyed asynchronously and took the focus away again (d-pad dead after re-opening
-    // this page, 4 of 7 tries in the desktop simulator). scrollTarget lets UC's button navigation keep the
-    // focused control on screen (sections call settingsPage.ensureVisible(), now the base page's).
-    initialFocusItem: commonToggles.firstFocusItem
-    scrollTarget: flickable
 
     // --- Theme sub-page Components (instantiated on-demand by the Loaders
     // below). Using `sourceComponent:` + inline Component instead of `source:`
@@ -120,9 +125,11 @@ Settings.Page {
         maximumFlickVelocity: 6000
         flickDeceleration: 1000
 
+        // the sections are the children of this layout, each a column of setting rows (Components.SettingRow) that
+        // bring their own padding and dividers
         ColumnLayout {
             id: content
-            spacing: 20
+            spacing: 0
             width: parent.width
             anchors.horizontalCenter: parent.horizontalCenter
 
@@ -150,10 +157,8 @@ Settings.Page {
             // Each Loader instantiates its sub-page only when the corresponding
             // theme is active. `asynchronous: true` spreads the build across
             // multiple frames on theme switch so there's no hard stall.
-            // `visible: status === Loader.Ready` both hides the item during
-            // async load (Qt 5.15 best practice) AND excludes inactive Loaders
-            // from the parent ColumnLayout's `spacing: 20` so there are no
-            // dead gaps between siblings.
+            // `visible: status === Loader.Ready` hides the item during async
+            // load (Qt 5.15 best practice).
 
             Loader {
                 id: matrixAppearanceLoader
