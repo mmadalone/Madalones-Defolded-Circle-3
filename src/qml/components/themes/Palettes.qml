@@ -1,4 +1,4 @@
-// Copyright (c) 2026 madalone. Shared QML palettes — gradient stops + battery-level color tiers.
+// Copyright (c) 2026 madalone. Shared QML palettes — gradient stops, settings swatches + battery-level color tiers.
 //
 // QML singleton (registered via qmlRegisterSingletonType in main.cpp at startup).
 // Consumers: `import Palettes 1.0` then read `Palettes.rainbow` / `Palettes.batteryColor(level)`.
@@ -7,6 +7,8 @@
 //   - Matrix theme color-mode gradients (rainbow / rainbowPlus / neon) — previously
 //     duplicated inline across GradientText.qml and the MatrixAppearance settings page
 //     color-mode picker.
+//   - The colour swatches of the Settings -> Screensaver pickers — previously inline
+//     in every settings section that picks a colour.
 //   - Battery overlay color tiers — previously hardcoded inline in BatteryOverlay.qml.
 //
 // Adding a new gradient: drop a new `readonly property Gradient` block here, then
@@ -71,6 +73,40 @@ QtObject {
         GradientStop { position: 0.8; color: "#d080ff" }
         GradientStop { position: 0.9; color: "#ff80ff" }
         GradientStop { position: 1.0; color: "#ff8080" }
+    }
+
+    // --- Colour swatches of the Settings -> Screensaver pickers -----------
+    // In the Components.ChipPicker model shape: { value, color } or { value, gradient }. The
+    // settings store the value and the pickers compare it as a string, so keep every value
+    // exactly as it is (lower-case hex included) or a stored colour stops matching its swatch.
+
+    // Text and star colours (clock, date, Minimal time, stars, TV static tint): the value is
+    // the colour itself.
+    readonly property var textSwatches: colorSwatches(["#ffffff", "#00ff41", "#00b4d8", "#ff0040",
+                                                       "#ffbf00", "#bf00ff", "#d0d0d0"])
+    // The Minimal theme's date: the same, with a dim grey as the last one.
+    readonly property var minimalDateSwatches: colorSwatches(["#ffffff", "#00ff41", "#00b4d8", "#ff0040",
+                                                              "#ffbf00", "#bf00ff", "#666666"])
+
+    // The Matrix rain's solid colour modes: the value is the mode name.
+    readonly property var matrixSwatches: [
+        { value: "green",  color: "#00ff41" },
+        { value: "blue",   color: "#00b4d8" },
+        { value: "red",    color: "#ff0040" },
+        { value: "amber",  color: "#ffbf00" },
+        { value: "white",  color: "#ffffff" },
+        { value: "purple", color: "#bf00ff" }
+    ]
+
+    // The gradient modes, for the rain and for the texts: the value is the mode name.
+    readonly property var gradientSwatches: [
+        { value: "rainbow",          gradient: rainbow },
+        { value: "rainbow_gradient", gradient: rainbowPlus },
+        { value: "neon",             gradient: neon }
+    ]
+
+    function colorSwatches(values) {
+        return values.map(function(value) { return { value: value, color: value }; });
     }
 
     // --- Battery overlay color tiers --------------------------------------
