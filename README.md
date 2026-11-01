@@ -78,7 +78,7 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 
 > ### ⚠ Read this before installing on a UC3 that isn't yours
 >
-> **Tested only on the maintainer's UC Remote 3, currently on firmware 2.12.0** (earlier releases soak-tested across 2.9.1 → 2.11.0). **v1.6.0 needs firmware 2.12.0 or newer**: it is Unfolded Circle's 2.12.0 UI with our mods, and `release.json` declares the minimum (`requirements.firmware_version`), so the remote refuses the install on older firmware; stay on v1.5.5 there. Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
+> **Tested only on the maintainer's UC Remote 3, currently on firmware 2.12.0** (earlier releases soak-tested across 2.9.1 → 2.11.0). **v1.6.0 needs firmware 2.12.0 or newer**: it is Unfolded Circle's 2.12.0 UI with our mods, and `release.json` declares the minimum (`requirements.firmware_version`), so the remote refuses the install on older firmware. **Check your firmware first:** a refused attempt also switches the remote to the stock UI until you install v1.5.5 again. Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
 >
 > ```bash
 > curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" \
