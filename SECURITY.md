@@ -1,5 +1,16 @@
 # Security Policy
 
+> **This repository is a fork:** Madalone's Defolded Circle 3, a custom user interface for the Remote 3 built on
+> Unfolded Circle's `remote-ui`. Unfolded Circle's policy below treats custom UI builds as out of its scope, so:
+>
+> - A problem that only exists in this fork (the screensaver, the power and WiFi mods, the settings they add, the
+>   release bundle) goes to this repository: open an issue on
+>   [mmadalone/Madalones-Defolded-Circle-3](https://github.com/mmadalone/Madalones-Defolded-Circle-3/issues). If the
+>   details should not be public, open an issue that only asks for a private contact, without the details.
+> - A problem that also occurs on the stock user interface of the remote goes to Unfolded Circle, as described below.
+>
+> The rest of this file is Unfolded Circle's policy, unchanged.
+
 Unfolded Circle ApS takes the security of our products seriously. This policy describes how
 to report vulnerabilities in our products and services, and what you can expect from us.
 It serves as our coordinated vulnerability disclosure (CVD) policy.

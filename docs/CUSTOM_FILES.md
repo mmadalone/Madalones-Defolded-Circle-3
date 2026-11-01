@@ -2,8 +2,8 @@
 
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
-**Upstream base:** `v0.73.4` (merged 2026-05-14, commit `3582f92`; previously `v0.71.1` → `v0.72.0` at v1.4.0).  
-**Last updated:** 2026-10-31 (v1.5.4 — release bundle + verify script; v1.5.3 — five backports from upstream v0.83.0 / v0.84.0; base is still v0.73.5 from v1.5.2)
+**Upstream base:** `v0.84.0` (merged 2026-10-31 in v1.6.0, merge commit `94c4006`, upstream commit `781882a`; before: `v0.73.5` at v1.5.2, `v0.73.4` at v1.5.0, `v0.72.0` at v1.4.0, `v0.71.1`).  
+**Last updated:** 2026-11-01 (v1.6.0 — upstream v0.84.0 merge; our screens on UC's design system)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -188,6 +188,69 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## v1.6.0: upstream v0.84.0 merge — the fork on UC's current UI
+
+Merge commit `94c4006`. Upstream rewrote its history at v0.74.5; the merge used a temporary graft (see
+[UPSTREAM_MERGE.md](UPSTREAM_MERGE.md)). The exact list of upstream files we modify is
+`git diff --name-status refs/upstream-public/v0.84.0 HEAD`: 62 modified, 3 removed. UPSTREAM_MERGE.md groups them by
+area. This section supersedes the rows above that point at `src/hardware/{power,wifi,battery}`, the F12 filter in
+`inputController.cpp`, `ImageLoader.qml`, `BaseDetail.qml` / `BaseTitle.qml` / `Activity.qml`, `BatteryStatusChip.qml`,
+`ReconnectingHUD.qml` and the media-image re-download fix.
+
+### New custom files
+
+| File | Purpose |
+|------|---------|
+| `src/qml/components/ChipPicker.qml` | Shared chip grid, text chips or colour swatches: LEFT/RIGHT step the value, a tap picks, the ring sits on the grid; `multiple` mode for toggles. Used by the Screensaver settings, Sound (dock chime) and Power (screen-off style). |
+| `src/ui/devDockToggle.{h,cpp}` | DEV only: application event filter, F12 toggles `Battery::setPowerSupply` (fake dock). Replaces the F12 filter we had in `inputController.cpp`. |
+| `test/qml/tst_chip_picker.qml` | 10 cases for `ChipPicker`. |
+| `test/qml/tst_wifi_diagnostics.qml` | 18 cases for the WiFi diagnostics sheet. |
+
+### Moved with upstream (`src/hardware/` → `src/system/`)
+
+| File | Our delta now |
+|------|---------------|
+| `src/system/power.{h,cpp}` | None: upstream's own code. Our v1.5.3 port of `42f9888` is upstream's, and upstream's early return for an unchanged power mode is adopted. |
+| `src/system/wifi.{h,cpp}` | W1 (WoWLAN toggle shown), W2 link fields, W4 `reassociate()`, W6 30 s poll, W13 diagnostics, re-applied on upstream's rewritten file. W5 and W9 dropped: upstream fixed both causes. |
+| `src/system/battery.h` | `instance()` accessor only. |
+
+### Removed custom files
+
+| File | Why |
+|------|-----|
+| `src/qml/components/overlays/BatteryStatusChip.qml`, `test/qml/tst_battery_status_chip.qml` | UC's `TitleStatus.qml` draws the battery on entity screens ("Show battery indicator everywhere"). |
+| `src/qml/components/overlays/ReconnectingHUD.qml`, `test/qml/tst_reconnecting_hud.qml` | Wake-replay HUD dropped (owner's choice): UC's own retry indicators. |
+| `test/qml/tst_cycle_option.qml` | Tested a copy of `cycleOption()`, which `ChipPicker` replaced. |
+
+### Upstream files back to upstream's version
+
+| File | Dropped delta |
+|------|---------------|
+| `src/qml/MainContainer.qml` | Our 500 ms "retry takeControl" timer: it took the buttons from a screensaver that had opened first. |
+| `src/qml/components/entities/BaseDetail.qml`, `BaseTitle.qml`, `activity/deviceclass/Activity.qml` | Mod 3 title row: lives in upstream's `entities/TitleStatus.qml` now (our three status mirrors and the WiFi chip). |
+| `src/qml/components/entities/media_player/ImageLoader.qml`, `TouchSlider.qml`, `VoiceOverlay.qml` | Taken verbatim. |
+
+### Reshaped deltas
+
+| File | v1.6.0 delta |
+|------|--------------|
+| `src/ui/entity/entityController.{h,cpp}` | Mod 5 hook in `connectLazySignals()`: only players a screen asked for (since 0.74 every configured entity is loaded at start-up). `entityCommandIssued` emitted before the pending-command path. `LOW_POWER` in upstream's wake flag. |
+| `src/ui/entity/mediaPlayer.{h,cpp}` | `hide_volume_overlay` kept. Browse-thumbnail preview (v1.4.9) re-implemented on the 0.74 artwork pipeline: `setPreviewImage()`, preview request id, placeholder guard. The v1.4.6 cancel filters and the re-download fix are dropped. |
+| `src/qml/components/entities/media_player/MediaBrowser.qml` | Upstream plus our null guard, inline spinner, volume guard, MUTE / STOP / NEXT / PREV / CHANNEL keys (with upstream's keyboard guard) and the thumbnail hand-over after `playMedia`. |
+| `src/qml/components/ChargingScreen.qml`, `src/qml/main.qml` | `hostContainer` input guard (help-overlay pattern), bound in `main.qml`; the HUD is gone from `main.qml`. |
+| `src/core/core.{h,cpp}`, `src/config/config.{h,cpp}`, `src/main.cpp` | REST helpers and inhibitor calls kept. The Phase-0 auth probe (it logged the PIN), our WebSocket keep-alive and `migrateLegacySettings()` removed. `DevDockToggle` installed in DEV. |
+| `src/ui/inputController.{h,cpp}` | `touchDetected` only. |
+| `src/qml/settings/settings/{Power,Sound,Ui}.qml` | Our settings as `Components.SettingRow`s on UC's design system; chip grids via `ChipPicker`; `initialFocusItem` / `scrollTarget`. |
+| `src/qml/settings/settings/ChargingScreen.qml`, `chargingscreen/*.qml` | Restyled: setting rows, type roles, colour tokens, `ChipPicker`; opens on the theme picker; `settingsSection` row reveal for the keypad. |
+| `src/qml/settings/settings/WifiInfo.qml`, `WifiDiagnostics.qml` | Upstream's sheet plus Reconnect / Diagnostics; Diagnostics restyled as a sheet holding the W2 link rows. |
+| `src/qml/components/themes/Palettes.qml` | Swatch lists of the screensaver settings. |
+| `tools/design-check-allow.txt` | The screensaver artwork (themes, Palettes, clock / gradient / screen-off overlays, the screensaver popup). |
+| `test/qml/tst_qml_main.cpp`, `MockScreensaverConfig.h`, `MockWifi.h` | Mocks for UC's colour tokens, type roles, input controller and keyboard; W2 / W13 WiFi properties. |
+| `test/ui/test_entity_controller.cpp` (upstream test) | 4 browse-preview cases. |
+| `.github/workflows/test.yml` | Job "Upstream unit tests (CMake)". |
 
 ---
 

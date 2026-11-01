@@ -15,25 +15,31 @@ Verify with `git remote -v` — you should see both `origin` (this fork) and `up
 
 ## Upstream files we've modified (conflict surface)
 
-These files are touched by our custom code and will likely conflict on any upstream merge. Each one has custom changes that **must be preserved** during conflict resolution.
+These upstream files carry our changes and will conflict, or need a look, on every upstream merge. The exact list
+for the current tree is one command away (`M` = upstream file we modify, `A` = our file, `D` = upstream file we removed):
 
-| File | What we added | Conflict risk |
-|---|---|---|
-| `src/main.cpp` | `qmlRegisterType<MatrixRainItem>`, `qmlRegisterUncreatableType<GravityDirection>`, `ScreensaverConfig` singleton instantiation, any custom registrations | High |
-| `src/config/config.h` / `.cpp` | Screensaver properties removed (migrated to `ScreensaverConfig`). Redirect-comment stub remains in `config.h`. | High |
-| `remote-ui.pro` | Added custom `HEADERS`/`SOURCES` (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas); custom `VERSION` line kept in sync with `deploy/release.json`; `QMAKE_CXXFLAGS_WARN_ON` additions (`-Wall -Wextra -Werror=format`, plus the `-Wold-style-cast` family) | High |
-| `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages | High |
-| `src/qml/main.qml` | `screensaverActive` property; idle timer DEV mode bypass; `ScreensaverConfig` import; `_nextOpenViaIdleTimer` one-shot flag; custom `Battery`/`Power` handlers for `motionToClose`, `_shouldOpenOnIdle`, Loader `onStatusChanged` flag propagation | Very High |
-| `src/qml/components/ChargingScreen.qml` | Full replacement — theme Loader system, `ButtonNavigation`, screen-off countdown poller, `cancelScreenOffEffect(isWakeFromOff)`, Battery `Connections` for undock baseline reset, belt-and-suspenders scene-graph `update()` on wake, `_openedViaIdleTimer` flag, `postAnimationSafetyTimer` | Very High |
-| `src/qml/settings/settings/ChargingScreen.qml` | Full replacement — screensaver theme selector + sub-pages (GeneralBehavior, MatrixAppearance, MatrixEffects, Chaos, Tap, DirectionGlitch, Message, Starfield, Minimal, TvStatic, Analog, Common toggles) | Very High |
-| `src/qml/settings/Settings.qml` | Added "Screensaver" menu entry | Medium |
-| `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle | Low |
-| `src/qml/components/TouchSliderVolume.qml` / `Seek.qml` / `Brightness.qml` / `Position.qml` | Added `applicationWindow.screensaverActive` guard (suppress touchbar during screensaver) | Low |
-| `src/qml/components/overlays/BatteryOverlay.qml` | Color-coded battery levels, fully translatable text via `qsTr`/`%1` placeholders | Medium (if upstream renames) |
-| `src/ui/entity/entityController.{cpp,h}` | Mod 5 signals (`mediaPlayerStateChanged` / `entityCommandIssued`) + v1.4.10 `onEntityAdded` slot; v1.4.19 wake-trigger in `onPowerModeChanged` broadened to `SUSPEND \|\| LOW_POWER` (the `m_wasSuspended` flag-set after the 0.73.5 refactor) | **High — has conflicted on both upstream merges so far (v1.5.0/0.73.4 and v1.5.2/0.73.5). Upstream actively reworks this file's wake/standby logic; resolve by keeping our `\|\| LOW_POWER` and Mod 5 signals.** |
-| `.github/workflows/build.yml` | Added `version-sync-check` job with VERSION + CHANGELOG gating; added `needs: version-sync-check` to `build-embedded` and `build-desktop` | Medium |
-| `.gitignore` | Added custom entries (build artifacts, `.env.local`, `CLAUDE.md`) | Low |
-| `deploy/release.json` | Custom `name`, `description`, `developer`, `version` | Low |
+```shell
+git fetch upstream refs/tags/vX.Y.Z:refs/upstream-public/vX.Y.Z   # the upstream release we are on
+git diff --name-status refs/upstream-public/vX.Y.Z HEAD
+```
+
+As of v1.6.0 (upstream v0.84.0): 62 upstream files modified, 3 removed (`.github/dependabot.yml`,
+`.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours.
+
+| Area | Upstream files | What we keep | Conflict risk |
+|---|---|---|---|
+| Build | `remote-ui.pro`, `resources/qrc/main.qrc`, `.gitignore` | Our sources and QML in HEADERS / SOURCES / qrc; `VERSION` in sync with `deploy/release.json`; extra warning flags; ignore entries (incl. `CLAUDE.md`) | High |
+| CI | `.github/workflows/build.yml` | Version-sync + CHANGELOG gates, UCR3 install-bundle staging (every file of `deploy/config/`, no sub-dirs), GPG signing, digest-pinned 5.15.8 toolchain | Medium |
+| Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `DevDockToggle` in DEV | High |
+| Settings store | `src/config/config.{h,cpp}` | Our Q_PROPERTYs: phantom wake, keep awake, dock chime, media buttons (v1.4.8), volume overlay, WiFi chip, ... | High |
+| Core API | `src/core/core.{h,cpp}`, `src/core/structs.h` | `setPowerMode` (Mod 6, body field `mode`), REST helpers + standby-inhibitor calls (Mod 5), `Inhibitor` struct. Keep our declarations above upstream's `private:` | High |
+| Hardware | `src/hardware/hardwareController.{h,cpp}`, `src/system/battery.h`, `src/system/wifi.{h,cpp}` | Keeper / suppressor construction and wiring; `Battery::instance()`; WiFi W1 (WoWLAN shown), W2 link fields, W4 reassociate, W6 30 s poll, W13 diagnostics | High: upstream reworks Wi-Fi often |
+| Entities | `src/ui/entity/entityController.{h,cpp}`, `src/ui/entity/mediaPlayer.{h,cpp}` | Mod 5 hook in `connectLazySignals` (only players a screen asked for), `entityCommandIssued`, `LOW_POWER` in the wake flag; `hide_volume_overlay`; browse-thumbnail preview on the artwork pipeline | **High: conflicted on every merge so far.** Upstream keeps reworking wake/standby and artwork |
+| Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; `lcScreensaver` | Medium |
+| Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | Screensaver loader flags, boot grace, dock chime, docked rearm, `hostContainer` binding; the screensaver popup is a full replacement | Very high |
+| Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons | High: upstream restyles settings |
+| Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-bar guards, title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium |
+| Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
 
 For the authoritative custom-file manifest (purely custom, not modified upstream), see [CUSTOM_FILES.md](CUSTOM_FILES.md).
 
@@ -64,23 +70,50 @@ Still inspect it — upstream may have touched nearby code that subtly breaks ou
 
 Pass through cleanly — no action needed.
 
+### When upstream has rewritten its history
+
+Upstream rewrote its history at v0.74.5: none of its commits after that point descend from the commit our previous
+merge used (v0.73.5, `3b46959`), so `git merge-base` falls back to v0.38.4 and a merge reports thousands of conflicts.
+What worked for v0.84.0 (v1.6.0):
+
+```shell
+# 1. Find upstream's rewritten counterpart of our previous base: the same release subject in the new history.
+#    For v0.84.0: 4077183 "v0.73.5 changes" (parent bc72137, the rewritten v0.73.4); our previous base is the
+#    old 3b46959 "v0.73.5 changes". The trees differ: the rewrite changed files as well.
+git log --format="%h %p %s" refs/upstream-public/v0.84.0 | grep "v0.73.5 changes"
+# 2. Graft our previous base onto it as an extra parent, so the merge base becomes our previous base
+git replace --graft 4077183 bc72137 3b46959     # <counterpart> <its own parent> <our previous base>
+git merge-base HEAD refs/upstream-public/v0.84.0  # must print 3b46959 (without the graft: f06f0f0, v0.38.4)
+#    Upstream's changes between its v0.73.5 and the new release then arrive as one ordinary merge; differences the
+#    rewrite made inside v0.73.5 itself show up as changes too, so review the conflicts with that in mind.
+# 3. Merge, resolve, commit
+git merge refs/upstream-public/v0.84.0
+# 4. Delete the graft right after the merge commit; it must not stay in the repository
+git replace -d 4077183
+```
+
+After the merge commit the merge base with upstream is upstream's own commit (`781882a` for v0.84.0), so the next
+merge needs no graft, unless upstream rewrites its history again.
+
 ## Validation checklist
 
 After the merge, before merging the rehearsal branch back into `main`:
 
-- [ ] **Build (macOS dev):** `qmake && make` clean, no new warnings
-- [ ] **Build (ARM64 cross-compile):** `docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest` clean, binary produced
-- [ ] **Docker VNC preview** renders all 5 themes (Matrix, Starfield, Minimal, Analog, TvStatic) without crashes
-- [ ] **Deploy to test UC3** via `curl` using `.env.local` credentials
-- [ ] **Bug 1 regression:** "Close on wake" toggle OFF → undock → screensaver stays open
-- [ ] **Bug 1 regression:** "Close on wake" toggle ON → undock → screensaver closes
-- [ ] **Bug 2 regression:** dock → wait full `displayTimeout` + screen-off anim + blank → wake → Matrix rain re-renders instantly (no stuck black)
-- [ ] **Bug 2b regression:** undock with toggle OFF → animation fires at ≈ `displayTimeout` after undock, not earlier; blackout-to-display-off gap < 2s
-- [ ] **Bug 3 regression:** "Idle screensaver" OFF → wait past `idleTimeout` undocked → screensaver stays closed
-- [ ] **DPAD/touch direction regression:** rain bends smoothly via gravity lerp, no full respawn
-- [ ] **Thermal regression:** 10+ min sustained dock with Matrix theme, device does not warm noticeably
-- [ ] **Tests:** `cd test/matrixrain && qmake && make && ./test_matrixrain.app/Contents/MacOS/test_matrixrain` passes
-- [ ] **Settings round-trip:** every screensaver settings slider/toggle persists across popup recreation (dock/undock cycle)
+- [ ] **ARM64 build** with the digest-pinned toolchain (`BUILD.md`): 0 errors; the QML compiler runs on every file
+      (delete the `qrc` caches of an incremental build first)
+- [ ] **Tests**, all in a Qt 5.15 container (`test.yml` has the commands): `test/hardware` (keeper, suppressor,
+      entity controller, power), `test/matrixrain`, `test/integration`, `test/qml`, and upstream's CMake suite in `test/`
+- [ ] **Code guidelines** as CI runs them: `python3 tools/design-check.py --self-test && python3 tools/design-check.py`,
+      `python3 tools/icon-font.py check --require-free`, `python3 tools/icon-font.py check-mapping`, cpplint
+      (filters in `code_guidelines.yml`); the docs link check (`docs-links.yml`)
+- [ ] **Desktop simulator** (`UC_MODEL=DEV`, `docs/static-compile.md`): every settings page walked with the keys,
+      top to bottom and back; QML log free of binding loops and TypeErrors from our files
+- [ ] **On the remote** via `scripts/deploy-canary.sh` (auto-revert on failure):
+  - screensaver: dock + chime, BACK/HOME/tap close it, also when the UI starts on the dock; all five themes render
+  - settings: Screensaver, Power, Sound, User interface, WiFi pages walked with the d-pad
+  - first button press after a wake works (no backlight blinking); keep awake holds during playback
+  - media browser: play an item, its artwork shows at once
+- [ ] **Translations**: `en_US.ts` updated with lupdate; the other `.ts` files keep upstream's text (ADR 0006)
 
 ## Rollback procedure
 
@@ -132,11 +165,31 @@ Keep the conflict-surface table in sync with [CUSTOM_FILES.md](CUSTOM_FILES.md) 
 
 ## Known upstream base
 
-Current fork base: **`v0.71.1`** (tracked via the `upstream` remote). Next upstream release bump requires walking through this doc end-to-end.
+Current fork base: **upstream `v0.84.0`** (`781882a`, the UI of firmware 2.12.0), merged in v1.6.0. Upstream tags
+are fetched into `refs/upstream-public/` (the `upstream` remote fetches branches only). Next upstream release bump
+requires walking through this doc end-to-end.
 
 ## Rehearsal history
 
 Log each rehearsal here so "last known merge state" is always at a glance.
+
+### 2026-10-31 — v0.84.0 merge (UI of firmware 2.12.0) → shipped as v1.6.0
+
+- **Trigger:** the owner's remote runs firmware 2.12.0 with UI v0.84.0; the fork was on v0.73.5 (v1.5.2) plus five
+  backports (v1.5.3).
+- **History rewrite:** upstream rewrote its history at v0.74.5; merged with a temporary graft (see "When upstream has
+  rewritten its history"). Merge commit `94c4006` (parents: our v1.5.4 `6649035`, upstream v0.84.0 `781882a`).
+- **Conflicts:** resolved file by file from four conflict maps (C++ platform, entity layer, settings / WiFi QML,
+  main / build / icons). Kept: every mod. Dropped as superseded or dead: Wake-replay HUD (owner: UC's retry
+  spinners), our battery chip (UC's `TitleStatus`), WiFi W5/W9 (upstream fixed the causes), our WebSocket keep-alive
+  (upstream's spec forbids it), the REST auth probe (it logged the PIN), `migrateLegacySettings()` (never worked).
+  Adopted upstream's power-mode contract (an unchanged mode is not announced again).
+- **After the merge:** our screens moved onto upstream's design system (screensaver settings, WiFi diagnostics,
+  shared `ChipPicker`); browse-thumbnail preview re-implemented on the 0.74 artwork pipeline; keep awake follows only
+  players a screen asked for (since 0.74 every configured entity is loaded at start-up); `MainContainer.qml` back to
+  upstream (our start-up retry timer took the buttons from the screensaver).
+- **Validation:** 0 errors on the ARM64 build; all suites pass (hardware 106, matrix rain 106, integration 41, QML 212,
+  upstream 31 programs); design check 0 problems; desktop simulator walks of every theme; on-device check by the owner.
 
 ### 2026-04-23 — v0.72.0 merge (first real upstream-advance under this playbook) → shipped as v1.4.0
 

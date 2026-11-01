@@ -11,6 +11,78 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## v1.6.0 — 2026-11-01 — caught up with Unfolded Circle's UI v0.84.0 (firmware 2.12.0)
+
+The fork now runs on Unfolded Circle's current UI, v0.84.0, the one in firmware 2.12.0. Everything UC added since
+v0.73.5 is in, and our mods were moved onto it. The `v0.84.0` to `v0.74.0` sections further down list UC's changes.
+
+### From Unfolded Circle (highlights)
+
+- **The d-pad works everywhere.** Everything except typing can be done with the keypad. The selection shows as a
+  lighter background in menus and lists and as a frame on settings controls, and disappears when the screen is
+  touched.
+- **Hold HOME for the page menu**: add entities and groups, pages, reorder, profile and settings.
+- **Easier-to-read text**: nothing is smaller than 22 px, help texts use the main typeface in a larger size, and
+  secondary text is drawn in lighter shades.
+- One layout for settings, sheets and buttons; album art decoded off the UI thread; many fixes. The icon font is the
+  free Font Awesome 6.7.2; icons that only exist in the licensed set fall back to a similar free one.
+
+### Changed
+
+- **Screensaver settings rebuilt on UC's design system.**
+  - Every setting is a UC setting row. Short help texts were added where a label is unclear on its own, such as the
+    two "Charging only" switches.
+  - Every grid of choices (theme, colours, fonts, characters, positions, directions) is one shared chip picker:
+    LEFT/RIGHT step through it, a tap picks, the ring marks it.
+  - The page opens on the theme picker. Every control can be reached with the d-pad on all five themes; six gaps in
+    the d-pad order were closed, and the glitch-direction toggles now work with the d-pad.
+- **Sound and Power settings**: the dock-chime and screen-off-style grids use the same chip picker.
+- **WiFi Diagnostics** is a sheet like UC's WiFi details. The link details that UC's new WiFi sheet no longer shows
+  (signal, link speed, throughput, BSSID, channel) are on it now.
+- **Keep awake while watching** follows only the media players on your pages, groups and activities. Since UC's
+  v0.74 every configured player is loaded at start-up, and a speaker on none of your pages must not keep the remote
+  awake. A player counts from the first time a screen shows it.
+- **Power modes**: an unchanged power mode is no longer announced again (UC's behaviour). This stops the screensaver
+  from opening or closing when the remote reconnects to the core.
+- Focus rings on our pages show only while the d-pad is in use, like on every UC page.
+
+### Fixed
+
+- **The screensaver keeps the buttons at start-up.** When it opened before the main screen had loaded, the main
+  screen took the buttons from it, and BACK and HOME acted on the page behind it. This was most likely the real cause
+  of the "undismissible screensaver after starting on the dock" of v1.4.40. Our own 500 ms "retry" in the main screen
+  made it worse and is gone.
+- **The Screensaver settings page keeps the d-pad after it is opened again** (it was lost in about half of the tries).
+- **Album-art preview from the media browser** (v1.4.9) works again, on UC's new artwork code: the item's picture shows
+  on the player at once and stays until the real artwork arrives. "Play next" and "Add to queue" no longer replace the
+  current art, and a preview problem can no longer stop an item from playing.
+- Three sliders on the Power page no longer log a binding loop.
+
+### Removed
+
+- **Wake-replay HUD** (the reconnect banner): UC's own retry indicators replace it.
+- **Our battery chip** on entity screens: UC's "battery indicator everywhere" draws it now. Our WiFi chip stays.
+- The REST authentication probe of v1.4.39 (it wrote the PIN to the log). The REST calls of Keep awake are unchanged.
+- The v1.3.0 settings migration (it never took effect), our WebSocket keep-alive (UC's connection rules forbid it),
+  W5 and W9 of the WiFi bundle (UC fixed both causes), and two workarounds in the artwork code that UC's new code
+  makes unnecessary.
+
+### Developer notes
+
+- **Merge**: upstream rewrote its history at v0.74.5. A temporary graft (`git replace --graft`) made our previous base
+  `3b46959` the merge base; it was deleted after the merge commit `94c4006`. The merge base with upstream is now
+  `781882a` (v0.84.0), so the next merge needs no graft. `docs/UPSTREAM_MERGE.md` has the steps.
+- New shared component `src/qml/components/ChipPicker.qml`. The swatch colours of the screensaver settings live in
+  `Palettes.qml`; the screensaver artwork is on the design-check allow-list.
+- **CI**: a new job runs UC's own unit tests (31 programs). UC's OpenSpec version check and Dependabot are removed.
+  UC's code-guideline checks (free icon font, icon mapping, design check, cpplint) and the docs link check pass.
+- **Tests**: hardware 106 (entity controller 13, keep awake 47, power 13, phantom wake 33), matrix rain 106,
+  integration 41, QML 212 (new: chip picker 10, WiFi Diagnostics 18), UC's suite 31 programs (new: 4 preview cases).
+  The QML test mocks now carry UC's colour tokens, type roles and input controller.
+- The device build keeps the pinned Qt 5.15.8 toolchain; the switch to UC's 5.15.19 comes in a later release.
+
+---
+
 ## v1.5.5 — 2026-10-31 — keep-awake and the phantom-wake blocker recognise button presses
 
 ### Fixed
