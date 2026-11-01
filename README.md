@@ -78,7 +78,7 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 
 > ### ⚠ Read this before installing on a UC3
 >
-> **Tested only on the maintainer's UC Remote 3, currently on firmware 2.12.0** (earlier releases soak-tested across 2.9.1 → 2.11.0). **v1.6.0 needs firmware 2.12.0 or newer**: it is Unfolded Circle's 2.12.0 UI with our mods, and `release.json` declares the minimum (`requirements.firmware_version`), so the remote refuses the install on older firmware. **Check your firmware first:** a refused attempt also switches the remote to the stock UI until you install v1.5.5 again. Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
+> **Tested only on the maintainer's UC Remote 3, currently on firmware 2.12.0** (earlier releases soak-tested across 2.9.1 → 2.11.0). **v1.6.0 and later need firmware 2.12.0 or newer**: it is Unfolded Circle's 2.12.0 UI with our mods, and `release.json` declares the minimum (`requirements.firmware_version`), so the remote refuses the install on older firmware. **Check your firmware first:** a refused attempt also switches the remote to the stock UI until you install v1.5.5 again. Other firmware versions and hardware revisions are **not** validated. If the custom UI fails to start on your device, the stock Qt UI is always available as a fallback — run:
 >
 > ```bash
 > curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" \
@@ -89,21 +89,21 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 
 See **[SCREENSAVER-README.md](SCREENSAVER-README.md)** for the full install flow including device setup, PIN, and revert procedure.
 
-Quick version for anyone who's already set up. v1.6.0 needs firmware 2.12.0 or newer; on older firmware use v1.5.5
+Quick version for anyone who's already set up. v1.6.0 and later need firmware 2.12.0 or newer; on older firmware use v1.5.5
 (same commands with `v1.5.5`).
 
 ```bash
 # 1. Download the release tarball, its signature and the checksums
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui-v1.6.0-UCR3-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui-v1.6.0-UCR3-static.tar.gz.asc
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.1/remote-ui-v1.6.1-UCR3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.1/remote-ui-v1.6.1-UCR3-static.tar.gz.asc
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.1/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG signature, see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.6.0-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.0-UCR3-static.tar.gz.asc
+./scripts/verify-release.sh remote-ui-v1.6.1-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.1-UCR3-static.tar.gz.asc
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.6.0-UCR3-static.tar.gz" \
+    --form "file=@remote-ui-v1.6.1-UCR3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -174,9 +174,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.6.0-UCR3-static.tar.gz \
+    remote-ui-v1.6.1-UCR3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.6.0-UCR3-static.tar.gz.asc
+    remote-ui-v1.6.1-UCR3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -261,6 +261,8 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.6.1** (2026-11-01) — **Built with Unfolded Circle's Qt 5.15.19 toolchain**, the one UC builds its own UI with (was Qt 5.15.8). Same features as v1.6.0, and the remote needs exactly the same system libraries as before. The keep-awake, phantom-wake and sound diagnostics are logged at info instead of warning (read them with `/api/system/logs?s=custom-ui&p=7`); failures stay warnings. Security problems can be reported privately through GitHub. Needs firmware 2.12.0 or newer, like v1.6.0. See [`CHANGELOG.md`](CHANGELOG.md) for the details.
 
 **v1.6.0** (2026-11-01) — **On Unfolded Circle's current UI (v0.84.0, the UI of firmware 2.12.0).** The d-pad works on every screen, holding HOME opens the page menu, and no text is smaller than 22 px. The Screensaver settings, the dock-chime and screen-off pickers and WiFi Diagnostics follow UC's design system; every screensaver setting can be reached with the d-pad, also after the page is opened again. The screensaver keeps the buttons when it opens before the main screen at start-up. The album-art preview from the media browser is back on UC's new artwork code. Keep awake follows only the players on your pages. The Wake-replay HUD and our battery chip are replaced by UC's own. See [`CHANGELOG.md`](CHANGELOG.md) for the details.
 
