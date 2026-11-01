@@ -17,7 +17,7 @@ Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero
 ## Features
 
 **Themes (v1.4.8):**
-- **Matrix rain** — 3-layer depth with per-cell residual glow, 108 tunable properties, 6 color modes (green / blue / red / amber / white / purple + rainbow / rainbow-gradient / neon), 4 charsets (ASCII / binary / digits / katakana), full glitch engine (flash, stutter, reverse, direction trails, chaos bursts), message overlay with pulse/flash effects. **⚠ 108 tunables is enough rope to make it look stunning, subtle, chaotic, or downright unreadable.** Every combination is legitimate and intended — the defaults are a conservative starting point, but every slider, toggle, and colour picker is exposed because the point of the mod is to let you push it wherever you want.
+- **Matrix rain** — 3-layer depth with per-cell residual glow, over 100 tunable properties, 6 color modes (green / blue / red / amber / white / purple + rainbow / rainbow-gradient / neon), 4 charsets (ASCII / binary / digits / katakana), full glitch engine (flash, stutter, reverse, direction trails, chaos bursts), message overlay with pulse/flash effects. **⚠ Over 100 tunables is enough rope to make it look stunning, subtle, chaotic, or downright unreadable.** Every combination is legitimate and intended — the defaults are a conservative starting point, but every slider, toggle, and colour picker is exposed because the point of the mod is to let you push it wherever you want.
   - **Auto-rotate** — optional continuous 360° direction sweep with smooth curved trails. Coprime-gravity spawn guarantees every row and column is visited on the way round — no dead zones. The rotation speed is a slider, so the sweep is **as slow or as fast as you want**: glacial-and-hypnotic on a docked remote, or a blur at the top end.
   - **Manual direction control** — 8-way DPAD or touch zones override auto-rotate at any time and bend the rain via gravity-lerp (no respawn on direction change).
 - **Starfield** — warp-speed star tunnel with depth, trail length, color gradients (rainbow / neon)
@@ -89,19 +89,21 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 
 See **[SCREENSAVER-README.md](SCREENSAVER-README.md)** for the full install flow including device setup, PIN, and revert procedure.
 
-Quick version for anyone who's already set up:
+Quick version for anyone who's already set up. v1.6.0 needs firmware 2.12.0 or newer; on older firmware use v1.5.5
+(same commands with `v1.5.5`).
 
 ```bash
-# 1. Download the latest release tarball + checksum
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.43/remote-ui-v1.4.43-UCR3-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.4.43/remote-ui.hash
+# 1. Download the release tarball, its signature and the checksums
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui-v1.6.0-UCR3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui-v1.6.0-UCR3-static.tar.gz.asc
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.0/remote-ui.hash
 
-# 2. Verify integrity (SHA256 + GPG if signed — see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.4.43-UCR3-static.tar.gz remote-ui.hash
+# 2. Verify integrity (SHA256 + GPG signature, see docs/RELEASE_SIGNING.md)
+./scripts/verify-release.sh remote-ui-v1.6.0-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.0-UCR3-static.tar.gz.asc
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.4.43-UCR3-static.tar.gz" \
+    --form "file=@remote-ui-v1.6.0-UCR3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -121,8 +123,8 @@ For safer rehearsals, the repo ships a mock UC3 HTTP endpoint at [`scripts/mock-
 ## Build from source
 
 Requirements:
-- Docker (for ARM64 cross-compile via UC's static Qt toolchain)
-- Qt 5.15.2+ on the host for local desktop builds (optional — only needed for the macOS / Linux simulator)
+- Docker (for the ARM64 cross-compile and the desktop simulator, both in UC's static Qt toolchain images)
+- Qt 5.15 on the host only for the test suites or a dynamic desktop build (optional)
 
 ```bash
 # Clone
@@ -130,22 +132,21 @@ git clone https://github.com/mmadalone/Madalones-Defolded-Circle-3.git
 cd Madalones-Defolded-Circle-3
 git submodule update --init --recursive
 
-# Cross-compile for UC3 (ARM64)
+# Cross-compile for UC3 (ARM64): the toolchain image is pinned by digest, the version is a qmake argument
 docker run --rm --user=$(id -u):$(id -g) \
     -v "$(pwd)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest
+    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6 \
+    remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=vX.Y.Z"
 
 # Output: binaries/linux-arm64/release/remote-ui
 ```
 
-Desktop-side build (requires Qt 5.15 Creator + UC's Core Simulator):
+Desktop simulator (no Qt installation needed): `make linux-x64`, then run it with `UC_MODEL=DEV` against UC's
+[core simulator](https://github.com/unfoldedcircle/core-simulator).
 
-```bash
-qmake && make -j$(sysctl -n hw.ncpu)
-UC_MODEL=DEV ./binaries/osx-*/release/Remote\ UI
-```
-
-See [`BUILD.md`](BUILD.md) for the full dev flow including `.env.local` setup for deploy credentials, the Docker VNC screensaver preview (`test/matrixrain_preview/`), and on-device `logdy` log viewer.
+See [`BUILD.md`](BUILD.md) for the full dev flow including the Windows / Git-Bash commands, `.env.local` setup for deploy
+credentials, the test suites, the Docker VNC screensaver preview (`test/matrixrain_preview/`), and the on-device `logdy`
+log viewer.
 
 ---
 
@@ -154,10 +155,10 @@ See [`BUILD.md`](BUILD.md) for the full dev flow including `.env.local` setup fo
 | Layer | Where | What |
 |---|---|---|
 | **C++ renderers** (`src/ui/`) | `matrixrain.cpp` (QQuickItem + QSGGeometryNode + texture atlas, orchestrator) + `src/ui/matrixrain/` 5 helper classes (LayerPipeline, AtlasBuilder, SingleLayerRenderer, InputHandler, BindingHelper — see `SCREENSAVER-IMPLEMENTATION.md`), `rainsimulation.cpp` (simulation logic), `glyphatlas.cpp` (GPU glyph atlas) | GPU pipeline, simulation tick, per-frame vertex emission on the Qt scene-graph render thread |
-| **Config bridge** (`src/ui/`) | `screensaverconfig.cpp` + `screensaverconfig_macros.h` | 108 Q_PROPERTY-backed settings via `SCRN_BOOL/INT/STRING` macros, QSettings-backed, survives popup destruction on undock |
+| **Config bridge** (`src/ui/`) | `screensaverconfig.cpp` + `screensaverconfig_macros.h` | 122 Q_PROPERTY-backed settings (all themes and overlays) via `SCRN_BOOL/INT/STRING` macros, QSettings-backed, survives popup destruction on undock |
 | **QML themes** (`src/qml/components/themes/`) | `MatrixTheme.qml`, `StarfieldTheme.qml`, `MinimalTheme.qml`, `AnalogTheme.qml`, `TvStaticTheme.qml` | Thin QML wrappers implementing a common theme-native screen-off protocol (see `BaseTheme.qml` for the contract) |
-| **Settings UI** (`src/qml/settings/settings/chargingscreen/`) | 13 sub-pages | DPAD-navigable theme picker + per-theme config sliders/toggles |
-| **CI** (`.github/workflows/`) | `build.yml` (cross-compile + release + GPG signing), `tidy.yml` (clang-tidy baseline), `test.yml` (QtTest suite + 5 theme tests), `code_guidelines.yml` (cpplint) | Every push is built, lint-checked, and release-signed (when tagged) |
+| **Settings UI** (`src/qml/settings/settings/chargingscreen/`) | 13 sections on UC's design system (`Components.SettingRow`, shared `Components.ChipPicker`) | Theme picker + per-theme settings, every control reachable with the d-pad |
+| **CI** (`.github/workflows/`) | `build.yml` (cross-compile + release + GPG signing), `test.yml` (our C++, QML and integration suites plus upstream's unit tests), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint, design check, icon font), `docs-links.yml` (Markdown links) | Every push is built, tested and lint-checked; tagged releases are signed |
 
 See [`STYLE_GUIDE.md`](STYLE_GUIDE.md) for the full architectural conventions and [`docs/CUSTOM_FILES.md`](docs/CUSTOM_FILES.md) for the custom-vs-upstream file manifest.
 
@@ -165,7 +166,7 @@ See [`STYLE_GUIDE.md`](STYLE_GUIDE.md) for the full architectural conventions an
 
 ## Release verification
 
-All tagged releases (`v1.2.2+`) ship with a SHA256 hash file; releases built after the maintainer configures the GPG signing secret will also ship with detached `.asc` signatures.
+All tagged releases (`v1.2.2+`) ship with a SHA256 hash file; current releases also ship detached `.asc` GPG signatures.
 
 ```bash
 # Import the project release key (one-time)
@@ -173,9 +174,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.4.43-UCR3-static.tar.gz \
+    remote-ui-v1.6.0-UCR3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.4.43-UCR3-static.tar.gz.asc
+    remote-ui-v1.6.0-UCR3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -184,9 +185,9 @@ Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNI
 
 ## Upstream relationship
 
-This is a **fork** of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui), tracked via the `upstream` git remote. All custom work lives on `main`; upstream commits are merged manually per the playbook in [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md). Current fork base: **`v0.71.1`**.
+This is a **fork** of [`unfoldedcircle/remote-ui`](https://github.com/unfoldedcircle/remote-ui), tracked via the `upstream` git remote. All custom work lives on `main`; upstream releases are merged manually per the playbook in [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md). Current fork base: **`v0.84.0`**, the UI of firmware 2.12.0, merged in v1.6.0 (upstream had rewritten its history, so the merge needed a one-off graft; the playbook has the steps).
 
-Fork state is re-checked before each release: `git fetch upstream && git merge --no-commit upstream/main` on a throwaway branch. Latest re-check (2026-04-13): **0 behind, 91 ahead, strict superset of `upstream/main@0586d45`, zero conflicts**. No upstream commits are missing from our tree, no signal/property renames to worry about.
+Because upstream's code is merged with its history, upstream's developers and bots (and the co-authoring AI, see below) show up in this repository's contributors graph next to the maintainer.
 
 If you're looking for the stock UC Remote 3 firmware source, go to the upstream repo. This fork is specifically for running the custom screensaver on a UC3.
 
@@ -225,8 +226,8 @@ The codebase has been through a full industry-standard audit ("brutally honest, 
 
 ### Testing discipline
 
-- **~280 automated tests** — ~84 C++ unit tests (`test/matrixrain/`) + ~195 QML functional tests (`test/qml/`, `test/integration/`) covering Matrix/Starfield/Minimal/Analog/TvStatic lifecycles, settings bindings, visibility rules, DPAD navigation, config defaults, and the enter-state machine.
-- **Four CI workflows** green on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (the full QtTest suite), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint).
+- **Over 500 automated test cases** (v1.6.0): 106 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 106 for keep awake, the phantom-wake suppressor, power and the entity controller (`test/hardware/`), 212 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
+- **Five CI workflows** on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (all the suites above), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint, design check, icon font), `docs-links.yml` (Markdown links).
 - **On-device verification for every Batch 0 bug fix** — 5 dock→idle→Low_power→wake cycles per theme, 10-cycle rapid churn test, 10-minute sustained dock for thermal, docked AND undocked paths for the wake-black fix.
 - **Visual Docker VNC preview** — renders the actual `QSGGeometryNode` scene graph via Mesa software OpenGL in a disposable container, for when the macOS native build can't exercise the code path (Qt 5.15 OpenGL 2.1 limitation).
 - **Settings round-trip verified** — every screensaver slider/toggle persists across the full Popup destroy/recreate cycle that happens on undock, because `ScreensaverConfig` is a QSettings-backed C++ singleton and not a Popup property.
@@ -235,7 +236,7 @@ The codebase has been through a full industry-standard audit ("brutally honest, 
 
 Because the device is a piece of hardware that belongs to someone, every change is built with the revert path as the first-class backstop:
 
-- **Stock UC firmware is never modified.** The custom install only replaces the Qt `remote-ui` process. Stock boot / integration layer / entity controller / core API are untouched.
+- **Stock UC firmware is never modified.** The custom install only replaces the Qt `remote-ui` process. Boot, the core, the integrations and the core API are untouched.
 - **Revert is one curl command** (`/api/system/install/ui?enable=false`), a fully supported UC3 API. The install section of this README shows it before the install command, not after.
 - **Canary deploy with auto-revert** is available via [`scripts/deploy-canary.sh`](scripts/deploy-canary.sh) for anyone who wants the extra safety net on first install.
 - **Upstream divergence logged** in [`docs/UPSTREAM_MERGE.md`](docs/UPSTREAM_MERGE.md) before every release — no silent drift from the upstream baseline.
@@ -277,7 +278,7 @@ See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log an
 
 **v1.4.20** (2026-04-30) — **Mod 6: Phantom-Wake Suppressor.** Inverse-symmetric companion to Mod 5. New `uc::hw::PhantomWakeSuppressor` singleton at `src/hardware/phantomWakeSuppressor.{h,cpp}` (~75 / ~110 lines). On `Power::powerModeChanged(from, to)`: if `from == LOW_POWER || SUSPEND` and `to == NORMAL`, arms a single-shot grace timer (default 500 ms, range 100–2000). If user input fires during grace (`InputController::keyPressed` / `touchDetected`, `TouchSlider::touchPressed`, `Battery::powerSupplyChanged`), timer cancels — wake-press path unaffected (~242 ms wake-to-functional measured on hardware). If grace expires without input, calls `core::Api::setPowerMode(LOW_POWER)` to force the device back to standby. Eliminates the ~9 %/hr off-dock battery drain caused by WoWLAN-induced phantom wakes (~5 min of NORMAL/IDLE per phantom wake → ≤500 ms per phantom wake). Default off. Bundled with this release: re-enabled the dormant WS keepalive at `core/core.cpp:26-30` (was commented out by upstream, never wired) — 60 s `m_webSocket.ping()` keeps the localhost UI ↔ core daemon connection healthy across kernel-suspend; eliminates the multi-second WS-reconnect tail on first wake-press. `Wifi` callback emit-guards (`isConnectedChanged` no longer fires every 30 s poll regardless of state change). Dead `oldNetwork` swap in `Wifi` ctor removed.
 
-**v1.4.19** (2026-04-29) — Wake-replay HUD + LOW_POWER wake-trigger fix. New `ReconnectingHUD` overlay (`src/qml/components/overlays/ReconnectingHUD.qml`, ~75 lines QML) shows a top-banner "Reconnecting…" slide-down whenever `EntityController.resumeWindow` is true. Bigger fix snuck in alongside: `entityController.cpp:757`'s wake trigger expanded from SUSPEND-only to `LOW_POWER || SUSPEND` — UC3's typical 5-min standby uses LOW_POWER (REST probe of `/api/system/power` confirmed; never observed SUSPEND in 6 v1.4.x releases of probing), so the upstream `m_pendingCommands` retry mechanism had been a no-op for daily wakes. With this fix, the existing 500 ms retry loop actually engages. HUD is purely a visual layer over plumbing that's been there all along.
+**v1.4.19** (2026-04-29) — Wake-replay HUD + LOW_POWER wake-trigger fix. New `ReconnectingHUD` overlay (`src/qml/components/overlays/ReconnectingHUD.qml`, removed in v1.6.0, ~75 lines QML) shows a top-banner "Reconnecting…" slide-down whenever `EntityController.resumeWindow` is true. Bigger fix snuck in alongside: `entityController.cpp:757`'s wake trigger expanded from SUSPEND-only to `LOW_POWER || SUSPEND` — UC3's typical 5-min standby uses LOW_POWER (REST probe of `/api/system/power` confirmed; never observed SUSPEND in 6 v1.4.x releases of probing), so the upstream `m_pendingCommands` retry mechanism had been a no-op for daily wakes. With this fix, the existing 500 ms retry loop actually engages. HUD is purely a visual layer over plumbing that's been there all along.
 
 **v1.4.18** (2026-04-29) — CI fix: bump `remote-ui.pro:75` `VERSION` from 1.4.11 → 1.4.18. Six releases (v1.4.12-v1.4.17) silently failed the `.github/workflows/build.yml:44-55` consistency check between `remote-ui.pro` and `release.json`. No runtime impact; firmware-side displayed version comes from `GIT_VERSION` (`git describe --tags`). CI artifact build was the only consumer of the bumped line.
 
@@ -327,19 +328,16 @@ See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log an
 
 ## Roadmap / backlog
 
-State of the world at v1.4.19. Items here aren't TODOs in the imperative sense — they're "if I ever care, this is where I left it."
+State of the world at v1.6.0. Items here aren't TODOs in the imperative sense — they're "if I ever care, this is where I left it."
 
 **Validation pending (no code, just observation):**
-- **Mod 5 Active Session Keeper end-to-end** during real TV watching. Toggle visibility confirmed; the 30-min movie keeping device pinned to NORMAL through a continuous Playing state hasn't been observed long-form.
 - **W6** 30 s periodic `getWifiStatus` poll visibility in Logdy.
 - **W10** scan-timer halt on screen-off in Logdy.
-- **W9** onboarding scoped failure cleanup — only triggerable on factory reset, so untested.
-- **WoWLAN day-long battery-impact** observation (per `feedback_ha_entity_prune_thermal.md` memory note).
-- **v1.4.19 LOW_POWER trigger fix** in real use — the bigger functional change of v1.4.19 is silently activating the `m_pendingCommands` retry loop that had been a no-op on UCR3. Whether it actually solves the "first press post-wake doesn't land" complaint is the test.
+- **WoWLAN day-long battery-impact** observation (pruning the HA entities pushed to the remote was an effective mitigation in April 2026).
 
 **Backlog (low-priority, deferrable):**
 - **W7** — WpaState progression UI in connect flow. Helps debug stuck-handshake / wrong-password scenarios with "Authenticating…" / "4-way handshake" intermediate labels. Niche; rare event.
-- **W8** — proper WPA3/EAP scan-result auth parsing. `wifi.cpp:177` has `// TODO(marton): properly convert security` and force-casts every encrypted result to `WPA2_PSK`. Visual-only bug; lock icon is correct, the security enum lies for WPA3 networks.
+- **W8** — proper WPA3/EAP scan-result auth parsing. Since upstream 0.84 the current connection's security comes from its key management (WPA3/SAE included), but scan results still classify every secured network as `WPA2_PSK` (`src/system/wifi.cpp`). Visual-only; the lock icon is correct.
 - **W11** — WPA3 / Enterprise option in the "Join other" wizard. Corporate-network scenario.
 - **W14** — WiFi quick-toggle in notification drawer (phone-style control center). ~80 LOC.
 
