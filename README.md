@@ -132,10 +132,10 @@ git clone https://github.com/mmadalone/Madalones-Defolded-Circle-3.git
 cd Madalones-Defolded-Circle-3
 git submodule update --init --recursive
 
-# Cross-compile for UC3 (ARM64): the toolchain image is pinned by digest, the version is a qmake argument
+# Cross-compile for UC3 (ARM64) with UC's Qt 5.15.19 toolchain: the image is pinned by digest, the version is a qmake argument
 docker run --rm --user=$(id -u):$(id -g) \
     -v "$(pwd)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6 \
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f \
     remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=vX.Y.Z"
 
 # Output: binaries/linux-arm64/release/remote-ui
@@ -201,7 +201,7 @@ This fork was **vibecoded** — designed, implemented, audited, and iterated ent
 
 1. **Describe intent** in natural language ("add a hidden message system that writes single chars into rain streams").
 2. **Generate** the implementation (usually spanning C++ renderer + config bridge + QML wrapper + settings UI + qrc registration + unit tests, in a single coherent change).
-3. **Rebuild** via the Docker ARM64 toolchain (`unfoldedcircle/r2-toolchain-qt-5.15.8-static`) and/or the Docker VNC screensaver preview (`test/matrixrain_preview/`) for visual verification against the actual Qt scene graph.
+3. **Rebuild** via the Docker ARM64 toolchain (`unfoldedcircle/r2-toolchain-qt-5.15.19-static`; Qt 5.15.8 up to v1.6.0) and/or the Docker VNC screensaver preview (`test/matrixrain_preview/`) for visual verification against the actual Qt scene graph.
 4. **Deploy** to a real UC Remote 3 via the stock install API (`/api/system/install/ui?void_warranty=yes`), verify the feature docked and on battery, verify no regressions in adjacent behavior (dock/undock cycles, screen-off animations, wake paths, thermal).
 5. **Refine** until everything holds, then commit with a conventional-commits message that explains the *why*, not just the *what*.
 

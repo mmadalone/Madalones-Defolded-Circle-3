@@ -221,7 +221,7 @@ Shows "Fully charged" at 100% when not actively charging.
 ```bash
 cd "/Users/madalone/_Claude Projects/UC-Remote-UI"
 docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f
 ```
 
 ### Package & Deploy

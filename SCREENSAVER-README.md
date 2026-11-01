@@ -280,7 +280,7 @@ All settings are in **Settings > Screensaver** on the remote.
 
 ### Requirements
 
-- **Unfolded Circle Remote 3** — **tested only on firmware 1.9.x** (maintainer device). Other firmware versions have **not** been validated; an ABI mismatch against the UC3's Qt 5.15.8 static runtime would cause the custom UI process to fail to start. If that happens, run the revert command above and stock firmware resumes.
+- **Unfolded Circle Remote 3** — tested on the maintainer's device; v1.6.0 and later need firmware 2.12.0 or newer. The custom UI is a single binary with Qt 5.15.19 built in, so it does not use the firmware's own Qt. If a firmware change still stops it from starting, the remote switches back to the stock UI after a few failed attempts; the revert command above does the same by hand.
 - **Hardware revisions:** only tested on the maintainer's device. If UC ships a silicon/display/touch revision, our untested code paths may differ.
 - **Warranty:** installing anything here requires `?void_warranty=yes`. Upstream UC will not support the device while the custom UI is active. The revert endpoint restores stock and puts the warranty state back in UC's hands.
 - **Docker** — for cross-compilation if you're building from source.
@@ -291,7 +291,7 @@ All settings are in **Settings > Screensaver** on the remote.
 # Cross-compile for ARM64
 cd "/path/to/UC-Remote-UI"
 docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f
 
 # Package and install
 cp binaries/linux-arm64/release/remote-ui deploy/bin/

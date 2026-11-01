@@ -191,6 +191,22 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 
 ---
 
+## Unreleased: Qt 5.15.19 device toolchain
+
+**Toolchain.** The device build moves from `unfoldedcircle/r2-toolchain-qt-5.15.8-static` (Docker Hub tag 0.6.0, 2023)
+to `unfoldedcircle/r2-toolchain-qt-5.15.19-static` (tag 1.0.0, 2026-09-23), the image upstream builds with, still
+pinned by digest. Same compiler (GCC 10.3.1), entrypoint, Qt features and Qt modules; the binary needs the same shared
+libraries and the same GLIBC / GLIBCXX versions as v1.6.0's.
+
+| File | Change |
+|------|--------|
+| `.github/workflows/build.yml` | `build-image` pinned to the 5.15.19 digest. |
+| `BUILD.md`, `README.md`, `SCREENSAVER-README.md`, `SCREENSAVER-IMPLEMENTATION.md` | Build commands use the new pinned image. BUILD.md also names the `1.0.0` tag, every file the digest appears in, and the `build/linux-arm64/release-static/` folder to wipe after a toolchain change. |
+| `docs/UPSTREAM_MERGE.md` | CI row: 5.15.19 toolchain. |
+| `sbom.cdx.json` | Qt static component 5.15.8 → 5.15.19. |
+
+---
+
 ## v1.6.0: upstream v0.84.0 merge — the fork on UC's current UI
 
 Merge commit `94c4006`. Upstream rewrote its history at v0.74.5; the merge used a temporary graft (see

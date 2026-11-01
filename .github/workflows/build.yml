@@ -97,11 +97,11 @@ jobs:
             name: "UCR3 aarch64", artifact: "UCR3", build: "static",
             qmake-args: "CONFIG+=release CONFIG+=static",
             # madalone (v1.4.28, audit-driven): digest-pin the toolchain image
-            # so CI builds are reproducible. BUILD.md and CLAUDE.md have always
-            # documented this pin for local builds; the audit caught CI was
-            # using the floating tag (audit-v1.4.26-thorough.md Finding 1).
-            # To rotate: see BUILD.md:21-28 for the digest-bump cookbook.
-            build-image: "unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6"
+            # so CI builds are reproducible (audit-v1.4.26-thorough.md Finding 1).
+            # Qt 5.15.19 = the image upstream builds with (Docker Hub tag 1.0.0,
+            # pushed 2026-09-23); the fork used Qt 5.15.8 up to v1.6.0. BUILD.md
+            # pins the same digest; to rotate it see "Toolchain pinning rationale" there.
+            build-image: "unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f"
           }
 # TODO add YIO Remote support
 #          - {

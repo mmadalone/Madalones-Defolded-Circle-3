@@ -10,20 +10,21 @@ set -a; source .env.local; set +a
 
 ## Cross-compile for UC Remote 3 (ARM64)
 
-Run from the repo root. Requires Docker.
+Run from the repo root. Requires Docker. The image is Unfolded Circle's Qt 5.15.19 toolchain, the one upstream builds
+the stock UI with ([docs/cross-compile.md](docs/cross-compile.md)); the fork used Qt 5.15.8 up to v1.6.0.
 
 **Linux / macOS:**
 
 ```bash
 docker run --rm --user=$(id -u):$(id -g) -v "$(pwd)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f
 ```
 
 **Windows + Git-Bash:** `$(pwd)` returns MSYS-style `/c/...` paths that Docker Desktop won't translate, and MSYS path conversion mangles `:/sources` if not disabled. Use `pwd -W` and `MSYS_NO_PATHCONV=1`:
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f
 ```
 
 `--user=$(id -u):$(id -g)` is harmless-but-ignored on Docker Desktop; kept on the Linux/macOS form for proper file ownership when running on a real Linux host.
@@ -32,22 +33,25 @@ MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
 
 ```bash
 MSYS_NO_PATHCONV=1 docker run --rm -v "$(pwd -W)":/sources \
-    unfoldedcircle/r2-toolchain-qt-5.15.8-static@sha256:d4b1b81b4722586aa1bc9e6fc2d8ccf329872d71d6bbda40a40adb74060d31c6 \
-    remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=v1.5.4"
+    unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f \
+    remote-ui.pro "CONFIG+=static CONFIG+=release UC_BUILD_VERSION=vX.Y.Z"
 ```
 
 CI builds don't need this: the container runs as the checkout's owner, and `git describe` finds the tag.
 
 Output: `binaries/linux-arm64/release/remote-ui`
 
-> **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. To rotate the pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:
+Intermediate files go to `build/linux-arm64/release-static/` and survive between runs. After a toolchain change, delete
+that folder first so nothing compiled against the old Qt is linked in.
+
+> **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. The pinned digest is Docker Hub's `1.0.0` tag of the image (pushed 2026-09-23); upstream's `make ucr2` target uses the same image by its `:latest` tag. The pin is the same in `.github/workflows/build.yml`. To rotate the pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:
 >
 > ```bash
-> docker pull unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest
-> docker inspect unfoldedcircle/r2-toolchain-qt-5.15.8-static:latest --format '{{index .RepoDigests 0}}'
+> docker pull unfoldedcircle/r2-toolchain-qt-5.15.19-static:latest
+> docker inspect unfoldedcircle/r2-toolchain-qt-5.15.19-static:latest --format '{{index .RepoDigests 0}}'
 > ```
 >
-> Replace the `@sha256:...` reference above and commit the bump as a `[chore] toolchain: bump to <new-digest>` commit so the move is auditable.
+> Replace the `@sha256:...` references here, in `README.md`, `SCREENSAVER-README.md`, `SCREENSAVER-IMPLEMENTATION.md` and `.github/workflows/build.yml`, and commit the bump as a `[chore] toolchain: bump to <new-digest>` commit so the move is auditable.
 
 ## Package & Deploy
 

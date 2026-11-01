@@ -11,6 +11,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## Unreleased
+
+### Changed
+
+- **Built with Unfolded Circle's Qt 5.15.19 toolchain**, the one UC builds its own UI with (was Qt 5.15.8, from a 2023
+  image). Same compiler and Qt features, and the remote needs exactly the same system libraries as before. The image
+  is still pinned by digest (`BUILD.md`, `.github/workflows/build.yml`).
+
 ## v1.6.0 — 2026-11-01 — caught up with Unfolded Circle's UI v0.84.0 (firmware 2.12.0)
 
 The fork now runs on Unfolded Circle's current UI, v0.84.0, the one in firmware 2.12.0. Everything UC added since
