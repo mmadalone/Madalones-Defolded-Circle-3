@@ -380,80 +380,30 @@ Settings.Page {
                 title: qsTr("Style")
                 controlBelow: true
 
-                // 9 chips in 3 columns. LEFT/RIGHT walk the styles, a tap picks one. Explicit x/y math instead of a
-                // GridLayout (v1.4.26: the layout solver cost ~270 ms on the device when the page opened).
-                Item {
+                // 9 chips in 3 columns. LEFT/RIGHT walk round the styles, a tap picks one.
+                Components.ChipPicker {
                     id: screenOffStyleRow
-                    width: parent.width
-                    height: 3 * cellHeight + 2 * cellSpacing
                     enabled: ScreensaverConfig.screenOffEffectEnabled
                     opacity: enabled ? 1.0 : 0.4
-
-                    readonly property real cellSpacing: 10
-                    readonly property real cellWidth: (width - 2 * cellSpacing) / 3
-                    readonly property real cellHeight: 60
-                    readonly property var styles: ["fade", "flash", "vignette", "wipe", "sleepwave", "genie",
-                                                   "pixelate", "dissolve", "theme-native"]
-
-                    function step(delta) {
-                        var i = styles.indexOf(ScreensaverConfig.screenOffEffectStyle);
-                        ScreensaverConfig.screenOffEffectStyle = styles[(Math.max(i, 0) + delta + styles.length) % styles.length];
-                        Haptic.play(Haptic.Click);
-                    }
+                    columns: 3
+                    wrap: true
+                    model: [
+                        { value: "fade",         label: qsTr("Fade") },
+                        { value: "flash",        label: qsTr("Flash") },
+                        { value: "vignette",     label: qsTr("Iris") },
+                        { value: "wipe",         label: qsTr("Wipe") },
+                        { value: "sleepwave",    label: qsTr("Wave") },
+                        { value: "genie",        label: qsTr("Genie") },
+                        { value: "pixelate",     label: qsTr("Pixels") },
+                        { value: "dissolve",     label: qsTr("Dissolve") },
+                        { value: "theme-native", label: qsTr("Theme") }
+                    ]
+                    currentValue: ScreensaverConfig.screenOffEffectStyle
+                    onPicked: ScreensaverConfig.screenOffEffectStyle = value
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: screenOffUndockedSwitch
                     KeyNavigation.down: sleepTimeoutSlider
-                    Keys.onLeftPressed: step(-1)
-                    Keys.onRightPressed: step(1)
-
-                    Components.Selectable {
-                        anchors.margins: -6
-                        selected: screenOffStyleRow.activeFocus
-                    }
-
-                    Repeater {
-                        model: [
-                            { name: "fade",         label: qsTr("Fade") },
-                            { name: "flash",        label: qsTr("Flash") },
-                            { name: "vignette",     label: qsTr("Iris") },
-                            { name: "wipe",         label: qsTr("Wipe") },
-                            { name: "sleepwave",    label: qsTr("Wave") },
-                            { name: "genie",        label: qsTr("Genie") },
-                            { name: "pixelate",     label: qsTr("Pixels") },
-                            { name: "dissolve",     label: qsTr("Dissolve") },
-                            { name: "theme-native", label: qsTr("Theme") }
-                        ]
-
-                        Rectangle {
-                            x: (index % 3) * (screenOffStyleRow.cellWidth + screenOffStyleRow.cellSpacing)
-                            y: Math.floor(index / 3) * (screenOffStyleRow.cellHeight + screenOffStyleRow.cellSpacing)
-                            width: screenOffStyleRow.cellWidth
-                            height: screenOffStyleRow.cellHeight
-                            radius: ui.cornerRadiusSmall
-                            readonly property bool chosen: ScreensaverConfig.screenOffEffectStyle === modelData.name
-                            color: chosen ? colors.textPrimary : colors.surface
-                            border { color: colors.divider; width: 2 }
-
-                            Text {
-                                anchors.centerIn: parent
-                                width: parent.width - 12
-                                text: modelData.label
-                                color: parent.chosen ? colors.bg : colors.textPrimary
-                                font: fonts.caption()
-                                elide: Text.ElideRight
-                                horizontalAlignment: Text.AlignHCenter
-                            }
-
-                            MouseArea {
-                                anchors.fill: parent
-                                onClicked: {
-                                    ScreensaverConfig.screenOffEffectStyle = modelData.name;
-                                    Haptic.play(Haptic.Click);
-                                }
-                            }
-                        }
-                    }
                 }
             }
 
