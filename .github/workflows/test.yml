@@ -151,7 +151,8 @@ jobs:
     # Unfolded Circle's own unit tests (test/CMakeLists.txt, merged with upstream v0.84.0). They cover the entity
     # layer, the artwork pipeline, the input controller, power, Wi-Fi and the models that our mods change, plus our
     # browse-preview cases in test/ui/test_entity_controller.cpp. Upstream's build.yml runs five of the programs;
-    # this job runs every one that is built. The Qt installation is upstream's (build.yml, unit-tests job).
+    # this job runs every one that is built. Qt as in upstream's unit-tests job, plus the `icu` archive: Qt 5.15.2's
+    # libQt5Core links ICU 56, which Ubuntu 24.04 does not ship (upstream builds ICU 56 from source instead).
 
     steps:
       - name: Checkout
@@ -164,9 +165,9 @@ jobs:
         with:
           version: ${{ env.QT_VERSION }}
           modules: 'qtvirtualkeyboard'
-          archives: 'qtbase qtdeclarative qtmultimedia qtquickcontrols2 qtsvg qttools qtwebsockets'
+          archives: 'icu qtbase qtdeclarative qtmultimedia qtquickcontrols2 qtsvg qttools qtwebsockets'
           cache: true
-          cache-key-prefix: ${{ env.QT_VERSION }}-upstream-unit-tests
+          cache-key-prefix: ${{ env.QT_VERSION }}-upstream-unit-tests-icu
 
       - name: Build upstream unit tests
         run: |
