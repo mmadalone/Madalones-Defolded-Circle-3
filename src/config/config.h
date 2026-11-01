@@ -442,7 +442,7 @@ class Config : public QObject {
     void phantomWakeSuppressGraceMsChanged();
     // madalone (v1.4.23)
     void phantomWakeSuppressInputLookbackMsChanged();
-    // madalone (Phase 0)
+    // madalone (v1.4.8): media-button toggles
     void showShuffleButtonChanged();
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();
