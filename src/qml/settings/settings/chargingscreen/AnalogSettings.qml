@@ -3,7 +3,6 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 import "qrc:/components" as Components
@@ -20,69 +19,34 @@ ColumnLayout {
     property alias firstFocusItem: shutoffHandsRow
     property alias lastFocusItem: shutoffHandsRow
 
+    // ChargingScreen.qml reveals the whole row of the focused control: the rows are the children of this root
+    readonly property bool settingsSection: true
+
     Layout.fillWidth: true
-    Layout.leftMargin: 10; Layout.rightMargin: 10
-    spacing: 20
+    spacing: 0
 
     // ---- Shutdown hands picker ----
     // Controls which hands animate during the native screen-off sequence
     // (only active when Settings → Power saving → Screen off animations
     // is set to "Theme (native)" and the sequence fires). Hardcoded timing
     // and easing; this is the only user-exposed knob.
-    Text {
-        Layout.fillWidth: true; color: colors.offwhite
-        text: qsTr("Shutdown hands")
-        font: fonts.primaryFont(30)
-    }
-    Text {
-        Layout.fillWidth: true; color: colors.light
-        text: qsTr("Which hands animate when the display is about to turn off")
-        font: fonts.primaryFont(20)
-        wrapMode: Text.WordWrap
-    }
-    RowLayout {
-        id: shutoffHandsRow
-        spacing: 10
-        Layout.fillWidth: true
-        focus: true
-        onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-        KeyNavigation.up: root.navUpTarget
-        KeyNavigation.down: root.navDownTarget
-        Keys.onLeftPressed: root.settingsPage.cycleOption(
-            ["all", "main"],
-            ScreensaverConfig.analogShutoffHands,
-            function(v) { ScreensaverConfig.analogShutoffHands = v },
-            -1)
-        Keys.onRightPressed: root.settingsPage.cycleOption(
-            ["all", "main"],
-            ScreensaverConfig.analogShutoffHands,
-            function(v) { ScreensaverConfig.analogShutoffHands = v },
-            1)
-        Repeater {
+    Components.SettingRow {
+        title: qsTr("Shutdown hands")
+        help: qsTr("Which hands animate when the display is about to turn off")
+        controlBelow: true
+
+        // one chip per line: two side by side cut "Minute + hour only" short
+        Components.ChipPicker {
+            id: shutoffHandsRow
+            columns: 1
             model: [
                 { value: "all",  label: qsTr("All three hands") },
                 { value: "main", label: qsTr("Minute + hour only") }
             ]
-            Rectangle {
-                Layout.fillWidth: true
-                Layout.preferredHeight: 56
-                radius: 8
-                color: ScreensaverConfig.analogShutoffHands === modelData.value ? colors.offwhite : colors.dark
-                border {
-                    color: colors.medium
-                    width: 1
-                }
-                Text {
-                    anchors.centerIn: parent
-                    text: modelData.label
-                    color: ScreensaverConfig.analogShutoffHands === modelData.value ? colors.black : colors.offwhite
-                    font: fonts.primaryFont(22)
-                }
-                Components.HapticMouseArea {
-                    anchors.fill: parent
-                    onClicked: ScreensaverConfig.analogShutoffHands = modelData.value
-                }
-            }
+            currentValue: ScreensaverConfig.analogShutoffHands
+            onPicked: ScreensaverConfig.analogShutoffHands = value
+            KeyNavigation.up: root.navUpTarget
+            KeyNavigation.down: root.navDownTarget
         }
     }
 }
