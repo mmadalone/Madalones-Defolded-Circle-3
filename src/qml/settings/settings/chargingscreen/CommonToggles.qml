@@ -2,541 +2,295 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-
-import Haptic 1.0
 
 import "qrc:/components" as Components
 import ScreensaverConfig 1.0
+import Palettes 1.0
 
 ColumnLayout {
     id: root
 
     required property Item settingsPage
 
-    property Item firstFocusItem: (ScreensaverConfig.theme === "minimal" || ScreensaverConfig.theme === "analog") ? showBatterySwitch : showClockSwitch
+    property Item firstFocusItem: clockSettings ? showClockSwitch : showBatterySwitch
     property Item lastFocusItem: ScreensaverConfig.showBatteryEnabled ? batteryTextSizeSlider : showBatterySwitch
     property Item navUpTarget
     property Item navDownTarget
 
-    spacing: 20
+    // ChargingScreen.qml reveals the whole row of the focused control: the rows are the children of this root
+    readonly property bool settingsSection: true
+    // Minimal and Analog always show their own clock
+    readonly property bool clockSettings: ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
+    readonly property bool clockShown: clockSettings && ScreensaverConfig.showClock
+    readonly property bool dateShown: clockShown && ScreensaverConfig.clockShowDate
 
-    // Leading separator
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    spacing: 0
 
-    // 2. SHOW CLOCK (hidden for Minimal — clock is always on)
-    ColumnLayout {
-        visible: ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text {
-                Layout.fillWidth: true; wrapMode: Text.WordWrap; color: colors.offwhite
-                text: qsTr("Show clock"); font: fonts.primaryFont(30)
-            }
-            Components.Switch {
-                id: showClockSwitch
-                objectName: "showClockSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.showClock
-                trigger: function() { ScreensaverConfig.showClock = !ScreensaverConfig.showClock; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Show clock"
-                KeyNavigation.up: root.navUpTarget
-                KeyNavigation.down: ScreensaverConfig.showClock ? clockDockedSwitch : showBatterySwitch
-            }
+    // SHOW CLOCK, and the clock's settings while it is on
+    Components.SettingRow {
+        visible: root.clockSettings
+        title: qsTr("Show clock")
+        showDivider: !ScreensaverConfig.showClock
+
+        Components.Switch {
+            id: showClockSwitch
+            objectName: "showClockSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.showClock
+            trigger: function() { ScreensaverConfig.showClock = !ScreensaverConfig.showClock; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Show clock"
+            KeyNavigation.up: root.navUpTarget
+            KeyNavigation.down: ScreensaverConfig.showClock ? clockDockedSwitch : showBatterySwitch
         }
     }
 
-    // 2b. CLOCK CHARGING ONLY (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Charging only"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: clockDockedSwitch
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.clockDockedOnly
-                trigger: function() { ScreensaverConfig.clockDockedOnly = !ScreensaverConfig.clockDockedOnly; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Clock charging only"
-                KeyNavigation.up: showClockSwitch; KeyNavigation.down: clockFontRow
-            }
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Charging only")
+        help: qsTr("Shows the clock only while the remote is charging.")
+        showDivider: false
+
+        Components.Switch {
+            id: clockDockedSwitch
+            icon: "uc:check"
+            checked: ScreensaverConfig.clockDockedOnly
+            trigger: function() { ScreensaverConfig.clockDockedOnly = !ScreensaverConfig.clockDockedOnly; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Clock charging only"
+            KeyNavigation.up: showClockSwitch
+            KeyNavigation.down: clockFontRow
         }
     }
 
-    // 2c. CLOCK FONT (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Font"); font: fonts.primaryFont(26) }
-        RowLayout {
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Font")
+        controlBelow: true
+        showDivider: false
+
+        Components.ChipPicker {
             id: clockFontRow
+            columns: 2
+            model: [
+                { value: "primary",   label: "Poppins" },
+                { value: "secondary", label: "Space Mono" }
+            ]
+            currentValue: ScreensaverConfig.clockFont
+            onPicked: ScreensaverConfig.clockFont = value
+            KeyNavigation.up: clockDockedSwitch
+            KeyNavigation.down: clockColorRow
+        }
+    }
+
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Color")
+        controlBelow: true
+        showDivider: false
+
+        Column {
+            width: parent.width
             spacing: 10
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockDockedSwitch; KeyNavigation.down: clockColorRow
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["primary","secondary"], ScreensaverConfig.clockFont, function(v){ ScreensaverConfig.clockFont = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["primary","secondary"], ScreensaverConfig.clockFont, function(v){ ScreensaverConfig.clockFont = v }, 1)
-            Repeater {
-                model: [
-                    { name: "primary", label: "Poppins" },
-                    { name: "secondary", label: "Space Mono" }
-                ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 8
-                    color: ScreensaverConfig.clockFont === modelData.name ? colors.offwhite : colors.dark
-                    border { color: colors.medium; width: 1 }
-                    Text {
-                        anchors.centerIn: parent; text: modelData.label
-                        color: ScreensaverConfig.clockFont === modelData.name ? colors.black : colors.offwhite
-                        font: fonts.primaryFont(22)
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: ScreensaverConfig.clockFont = modelData.name
-                    }
-                }
+
+            Components.ChipPicker {
+                id: clockColorRow
+                columns: 4
+                model: Palettes.textSwatches
+                currentValue: ScreensaverConfig.clockColor
+                onPicked: ScreensaverConfig.clockColor = value
+                KeyNavigation.up: clockFontRow
+                KeyNavigation.down: clockGradientRow
+            }
+
+            Components.ChipPicker {
+                id: clockGradientRow
+                columns: 3
+                model: Palettes.gradientSwatches
+                currentValue: ScreensaverConfig.clockColor
+                onPicked: ScreensaverConfig.clockColor = value
+                KeyNavigation.up: clockColorRow
+                KeyNavigation.down: clockSizeSlider
             }
         }
     }
 
-    // 2d. CLOCK COLOR (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Color"); font: fonts.primaryFont(26) }
-        RowLayout {
-            id: clockColorRow
-            spacing: 6; focus: true
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockFontRow; KeyNavigation.down: clockGradientRow
-            Keys.onLeftPressed: {
-                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
-                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockColor, function(v){ ScreensaverConfig.clockColor = v }, -1);
-            }
-            Keys.onRightPressed: {
-                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
-                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockColor, function(v){ ScreensaverConfig.clockColor = v }, 1);
-            }
-            Repeater {
-                model: [
-                    { color: "#ffffff" },
-                    { color: "#00ff41" },
-                    { color: "#00b4d8" },
-                    { color: "#ff0040" },
-                    { color: "#ffbf00" },
-                    { color: "#bf00ff" },
-                    { color: "#d0d0d0" }
-                ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 36; radius: 6
-                    color: modelData.color
-                    border {
-                        color: ScreensaverConfig.clockColor === modelData.color ? colors.offwhite : colors.medium
-                        width: ScreensaverConfig.clockColor === modelData.color ? 3 : 1
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: ScreensaverConfig.clockColor = modelData.color
-                    }
-                }
-            }
-        }
-    }
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Size")
+        controlBelow: true
+        showDivider: false
 
-    // 2d2. CLOCK GRADIENT PRESETS (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            id: clockGradientRow
-            spacing: 6; focus: true
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockColorRow; KeyNavigation.down: clockSizeSlider
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockColor, function(v){ ScreensaverConfig.clockColor = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockColor, function(v){ ScreensaverConfig.clockColor = v }, 1)
-            // Rainbow
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockColor === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockColor === "rainbow" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.25; color: "#ffbf00" }
-                        GradientStop { position: 0.5; color: "#00ff41" }
-                        GradientStop { position: 0.75; color: "#0000ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockColor = "rainbow" }
-            }
-            // Rainbow+
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockColor === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockColor === "rainbow_gradient" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.2; color: "#ffff00" }
-                        GradientStop { position: 0.4; color: "#00ff80" }
-                        GradientStop { position: 0.6; color: "#0080ff" }
-                        GradientStop { position: 0.8; color: "#8000ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockColor = "rainbow_gradient" }
-            }
-            // Neon
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockColor === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockColor === "neon" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff8080" }
-                        GradientStop { position: 0.2; color: "#ffff80" }
-                        GradientStop { position: 0.4; color: "#80ffd0" }
-                        GradientStop { position: 0.6; color: "#80d0ff" }
-                        GradientStop { position: 0.8; color: "#d080ff" }
-                        GradientStop { position: 1.0; color: "#ff8080" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockColor = "neon" }
-            }
-        }
-    }
-
-    // 2e. CLOCK SIZE (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Size"); font: fonts.primaryFont(26) }
         Components.Slider {
             id: clockSizeSlider
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 24; to: 96; stepSize: 4
             value: ScreensaverConfig.clockSize; live: true
             onMoved: ScreensaverConfig.clockSize = value
             onUserInteractionEnded: ScreensaverConfig.clockSize = value
             highlight: activeFocus && ui.keyNavigationActive
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockGradientRow; KeyNavigation.down: clock24hSwitch
+            KeyNavigation.up: clockGradientRow
+            KeyNavigation.down: clock24hSwitch
         }
     }
 
-    // 2f. CLOCK 24H TOGGLE
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("24-hour clock"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: clock24hSwitch
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.clockClock24h
-                trigger: function() { ScreensaverConfig.clockClock24h = !ScreensaverConfig.clockClock24h; }
-                highlight: activeFocus && ui.keyNavigationActive
-                KeyNavigation.up: clockSizeSlider; KeyNavigation.down: clockShowDateSwitch
-            }
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("24-hour clock")
+        showDivider: false
+
+        Components.Switch {
+            id: clock24hSwitch
+            icon: "uc:check"
+            checked: ScreensaverConfig.clockClock24h
+            trigger: function() { ScreensaverConfig.clockClock24h = !ScreensaverConfig.clockClock24h; }
+            highlight: activeFocus && ui.keyNavigationActive
+            KeyNavigation.up: clockSizeSlider
+            KeyNavigation.down: clockShowDateSwitch
         }
     }
 
-    // 2g. SHOW DATE TOGGLE
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Show date"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: clockShowDateSwitch
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.clockShowDate
-                trigger: function() { ScreensaverConfig.clockShowDate = !ScreensaverConfig.clockShowDate; }
-                highlight: activeFocus && ui.keyNavigationActive
-                KeyNavigation.up: clock24hSwitch
-                KeyNavigation.down: ScreensaverConfig.clockShowDate ? clockDateSizeSlider : showBatterySwitch
-            }
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Show date")
+        showDivider: false
+
+        Components.Switch {
+            id: clockShowDateSwitch
+            icon: "uc:check"
+            checked: ScreensaverConfig.clockShowDate
+            trigger: function() { ScreensaverConfig.clockShowDate = !ScreensaverConfig.clockShowDate; }
+            highlight: activeFocus && ui.keyNavigationActive
+            KeyNavigation.up: clock24hSwitch
+            KeyNavigation.down: ScreensaverConfig.clockShowDate ? clockDateSizeSlider : clockPositionRow
         }
     }
 
-    // 2h. DATE SIZE (visible when show date is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.clockShowDate && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Date size"); font: fonts.primaryFont(26) }
+    Components.SettingRow {
+        visible: root.dateShown
+        title: qsTr("Date size")
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: clockDateSizeSlider
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 12; to: 40; stepSize: 2
             value: ScreensaverConfig.clockDateSize; live: true
             onMoved: ScreensaverConfig.clockDateSize = value
             onUserInteractionEnded: ScreensaverConfig.clockDateSize = value
             highlight: activeFocus && ui.keyNavigationActive
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockShowDateSwitch; KeyNavigation.down: clockDateColorRow
+            KeyNavigation.up: clockShowDateSwitch
+            KeyNavigation.down: clockDateColorRow
         }
     }
 
-    // 2h2. DATE COLOR (visible when show date is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.clockShowDate && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Date color"); font: fonts.primaryFont(26) }
-        RowLayout {
-            id: clockDateColorRow
-            spacing: 6; focus: true
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockDateSizeSlider; KeyNavigation.down: clockDateGradientRow
-            Keys.onLeftPressed: {
-                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
-                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, -1);
+    Components.SettingRow {
+        visible: root.dateShown
+        title: qsTr("Date color")
+        controlBelow: true
+        showDivider: false
+
+        Column {
+            width: parent.width
+            spacing: 10
+
+            Components.ChipPicker {
+                id: clockDateColorRow
+                columns: 4
+                model: Palettes.textSwatches
+                currentValue: ScreensaverConfig.clockDateColor
+                onPicked: ScreensaverConfig.clockDateColor = value
+                KeyNavigation.up: clockDateSizeSlider
+                KeyNavigation.down: clockDateGradientRow
             }
-            Keys.onRightPressed: {
-                var cols = ["#ffffff","#00ff41","#00b4d8","#ff0040","#ffbf00","#bf00ff","#d0d0d0"];
-                root.settingsPage.cycleOption(cols, ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, 1);
-            }
-            Repeater {
-                model: [
-                    { color: "#ffffff" },
-                    { color: "#00ff41" },
-                    { color: "#00b4d8" },
-                    { color: "#ff0040" },
-                    { color: "#ffbf00" },
-                    { color: "#bf00ff" },
-                    { color: "#d0d0d0" }
-                ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 36; radius: 6
-                    color: modelData.color
-                    border {
-                        color: ScreensaverConfig.clockDateColor === modelData.color ? colors.offwhite : colors.medium
-                        width: ScreensaverConfig.clockDateColor === modelData.color ? 3 : 1
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: ScreensaverConfig.clockDateColor = modelData.color
-                    }
-                }
+
+            Components.ChipPicker {
+                id: clockDateGradientRow
+                columns: 3
+                model: Palettes.gradientSwatches
+                currentValue: ScreensaverConfig.clockDateColor
+                onPicked: ScreensaverConfig.clockDateColor = value
+                KeyNavigation.up: clockDateColorRow
+                KeyNavigation.down: clockPositionRow
             }
         }
     }
 
-    // 2h3. DATE GRADIENT PRESETS (visible when show date is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.clockShowDate && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            id: clockDateGradientRow
-            spacing: 6; focus: true
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: clockDateColorRow; KeyNavigation.down: clockPositionRow
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["rainbow","rainbow_gradient","neon"], ScreensaverConfig.clockDateColor, function(v){ ScreensaverConfig.clockDateColor = v }, 1)
-            // Rainbow
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockDateColor === "rainbow" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "rainbow" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.25; color: "#ffbf00" }
-                        GradientStop { position: 0.5; color: "#00ff41" }
-                        GradientStop { position: 0.75; color: "#0000ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "rainbow" }
-            }
-            // Rainbow+
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockDateColor === "rainbow_gradient" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "rainbow_gradient" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff0000" }
-                        GradientStop { position: 0.2; color: "#ffff00" }
-                        GradientStop { position: 0.4; color: "#00ff80" }
-                        GradientStop { position: 0.6; color: "#0080ff" }
-                        GradientStop { position: 0.8; color: "#8000ff" }
-                        GradientStop { position: 1.0; color: "#ff0000" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "rainbow_gradient" }
-            }
-            // Neon
-            Rectangle {
-                Layout.fillWidth: true; height: 36; radius: 6; color: "transparent"
-                border { color: ScreensaverConfig.clockDateColor === "neon" ? colors.offwhite : colors.medium; width: ScreensaverConfig.clockDateColor === "neon" ? 3 : 1 }
-                Rectangle {
-                    anchors.fill: parent; anchors.margins: 1; radius: 5
-                    gradient: Gradient {
-                        orientation: Gradient.Horizontal
-                        GradientStop { position: 0.0; color: "#ff8080" }
-                        GradientStop { position: 0.2; color: "#ffff80" }
-                        GradientStop { position: 0.4; color: "#80ffd0" }
-                        GradientStop { position: 0.6; color: "#80d0ff" }
-                        GradientStop { position: 0.8; color: "#d080ff" }
-                        GradientStop { position: 1.0; color: "#ff8080" }
-                    }
-                }
-                Components.HapticMouseArea { anchors.fill: parent; onClicked: ScreensaverConfig.clockDateColor = "neon" }
-            }
-        }
-    }
+    Components.SettingRow {
+        visible: root.clockShown
+        title: qsTr("Position")
+        controlBelow: true
 
-    // 2i. CLOCK POSITION (visible when Show clock is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.showClock && ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Position"); font: fonts.primaryFont(26) }
-        RowLayout {
+        Components.ChipPicker {
             id: clockPositionRow
-            spacing: 10; focus: true
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
+            columns: 3
+            model: [
+                { value: "top",    label: qsTr("Top") },
+                { value: "center", label: qsTr("Center") },
+                { value: "bottom", label: qsTr("Bottom") }
+            ]
+            currentValue: ScreensaverConfig.clockPosition
+            onPicked: ScreensaverConfig.clockPosition = value
             KeyNavigation.up: ScreensaverConfig.clockShowDate ? clockDateGradientRow : clockShowDateSwitch
             KeyNavigation.down: showBatterySwitch
-            Keys.onLeftPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, -1)
-            Keys.onRightPressed: root.settingsPage.cycleOption(["top","center","bottom"], ScreensaverConfig.clockPosition, function(v){ ScreensaverConfig.clockPosition = v }, 1)
-            Repeater {
-                model: [
-                    { name: "top", label: "Top" },
-                    { name: "center", label: "Center" },
-                    { name: "bottom", label: "Bottom" }
-                ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 40; radius: 8
-                    color: ScreensaverConfig.clockPosition === modelData.name ? colors.offwhite : colors.dark
-                    border { color: colors.medium; width: 1 }
-                    Text {
-                        anchors.centerIn: parent; text: modelData.label
-                        color: ScreensaverConfig.clockPosition === modelData.name ? colors.black : colors.offwhite
-                        font: fonts.primaryFont(22)
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: ScreensaverConfig.clockPosition = modelData.name
-                    }
-                }
-            }
         }
     }
 
-    Rectangle { visible: ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog"; Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    // SHOW BATTERY, and the battery's settings while it is on
+    Components.SettingRow {
+        title: qsTr("Show battery")
+        showDivider: !ScreensaverConfig.showBatteryEnabled
 
-    // 3. SHOW BATTERY
-    ColumnLayout {
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text {
-                Layout.fillWidth: true; wrapMode: Text.WordWrap; color: colors.offwhite
-                text: qsTr("Show battery"); font: fonts.primaryFont(30)
-            }
-            Components.Switch {
-                id: showBatterySwitch
-                objectName: "showBatterySwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.showBatteryEnabled
-                trigger: function() { ScreensaverConfig.showBatteryEnabled = !ScreensaverConfig.showBatteryEnabled; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Show battery"
-                KeyNavigation.up: (ScreensaverConfig.theme !== "minimal" && ScreensaverConfig.theme !== "analog")
-                    ? (ScreensaverConfig.showClock ? clockPositionRow : showClockSwitch)
-                    : root.navUpTarget
-                KeyNavigation.down: batteryDockedSwitch
-            }
+        Components.Switch {
+            id: showBatterySwitch
+            objectName: "showBatterySwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.showBatteryEnabled
+            trigger: function() { ScreensaverConfig.showBatteryEnabled = !ScreensaverConfig.showBatteryEnabled; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Show battery"
+            KeyNavigation.up: root.clockSettings ? (ScreensaverConfig.showClock ? clockPositionRow : showClockSwitch)
+                                                 : root.navUpTarget
+            KeyNavigation.down: batteryDockedSwitch
         }
     }
 
-    // 3b. BATTERY DOCKED ONLY (visible when Show battery is on)
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.showBatteryEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text {
-                Layout.fillWidth: true; color: colors.light
-                text: qsTr("Charging only"); font: fonts.primaryFont(26)
-            }
-            Components.Switch {
-                id: batteryDockedSwitch
-                objectName: "batteryDockedSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.batteryDockedOnly
-                trigger: function() { ScreensaverConfig.batteryDockedOnly = !ScreensaverConfig.batteryDockedOnly; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Charging only"
-                KeyNavigation.up: showBatterySwitch
-                KeyNavigation.down: batteryTextSizeSlider
-            }
+        title: qsTr("Charging only")
+        help: qsTr("Shows the battery level only while the remote is charging.")
+        showDivider: false
+
+        Components.Switch {
+            id: batteryDockedSwitch
+            objectName: "batteryDockedSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.batteryDockedOnly
+            trigger: function() { ScreensaverConfig.batteryDockedOnly = !ScreensaverConfig.batteryDockedOnly; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Charging only"
+            KeyNavigation.up: showBatterySwitch
+            KeyNavigation.down: batteryTextSizeSlider
         }
     }
 
-    // 3c. BATTERY TEXT SIZE (visible when Show battery is on)
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.showBatteryEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Text size"); font: fonts.primaryFont(26) }
+        title: qsTr("Text size")
+        controlBelow: true
+
         Components.Slider {
             id: batteryTextSizeSlider
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 16; to: 48; stepSize: 2
             value: ScreensaverConfig.batteryTextSize; live: true
             onMoved: ScreensaverConfig.batteryTextSize = value
             onUserInteractionEnded: ScreensaverConfig.batteryTextSize = value
             highlight: activeFocus && ui.keyNavigationActive
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: batteryDockedSwitch; KeyNavigation.down: root.navDownTarget
+            KeyNavigation.up: batteryDockedSwitch
+            KeyNavigation.down: root.navDownTarget
         }
     }
 }
