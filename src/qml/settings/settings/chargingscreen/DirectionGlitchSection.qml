@@ -1,7 +1,6 @@
 // Copyright (c) 2026 madalone. Direction glitch settings. SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
 
 import Haptic 1.0
@@ -19,6 +18,14 @@ ColumnLayout {
     property Item navUpTarget
     property Item navDownTarget
 
+    // ChargingScreen.qml reveals the whole row of the focused control: the rows are the children of this root
+    readonly property bool settingsSection: true
+    readonly property bool trailsShown: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
+    // the glitch directions that are on, as bits of glitchDirMask
+    readonly property var dirBits: [0, 1, 2, 3, 4, 5, 6, 7].filter(function(bit) {
+        return (ScreensaverConfig.glitchDirMask & (1 << bit)) !== 0;
+    })
+
     // Helper to toggle a bit in the mask with minimum-1 guard
     function toggleDirBit(bit) {
         var newMask = ScreensaverConfig.glitchDirMask ^ (1 << bit);
@@ -28,219 +35,183 @@ ColumnLayout {
         }
     }
 
-    spacing: 20
+    spacing: 0
 
-    // 12e. DIRECTION CHANGE
-    ColumnLayout {
+    // DIRECTION CHANGE, and its trails while it is on
+    Components.SettingRow {
         visible: ScreensaverConfig.glitch
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Direction change"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: glitchDirectionSwitch
-                objectName: "glitchDirectionSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.glitchDirection
-                trigger: function() { ScreensaverConfig.glitchDirection = !ScreensaverConfig.glitchDirection; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Direction change"
-                KeyNavigation.up: root.navUpTarget; KeyNavigation.down: glitchDirRateSlider
-            }
+        title: qsTr("Direction change")
+        showDivider: !ScreensaverConfig.glitchDirection
+
+        Components.Switch {
+            id: glitchDirectionSwitch
+            objectName: "glitchDirectionSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.glitchDirection
+            trigger: function() { ScreensaverConfig.glitchDirection = !ScreensaverConfig.glitchDirection; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Direction change"
+            KeyNavigation.up: root.navUpTarget
+            KeyNavigation.down: glitchDirRateSlider
         }
     }
 
-    // 12f. DIRECTION GLITCH FREQUENCY (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Frequency")
+        help: qsTr("How often streams send off glitch trails.")
+        controlBelow: true
+        showDivider: false
 
-        Text {
-            Layout.fillWidth: true; color: colors.light
-            text: qsTr("Frequency"); font: fonts.primaryFont(24)
-        }
         Components.Slider {
             id: glitchDirRateSlider
             objectName: "glitchDirRateSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 5; to: 80; stepSize: 5
             value: ScreensaverConfig.glitchDirRate; live: true
             onMoved: ScreensaverConfig.glitchDirRate = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirRate = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Frequency " + value
-            KeyNavigation.up: glitchDirectionSwitch; KeyNavigation.down: glitchDirLengthSlider
+            KeyNavigation.up: glitchDirectionSwitch
+            KeyNavigation.down: glitchDirLengthSlider
         }
     }
 
-    // 12f2. DIRECTION GLITCH LENGTH (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Trail length"); font: fonts.primaryFont(24) }
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Trail length")
+        help: qsTr("The length of the glitch trails.")
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: glitchDirLengthSlider
             objectName: "glitchDirLengthSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 3; to: 30; stepSize: 1; live: true
             value: ScreensaverConfig.glitchDirLength
             onMoved: ScreensaverConfig.glitchDirLength = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirLength = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail length " + value
-            KeyNavigation.up: glitchDirRateSlider; KeyNavigation.down: glitchDirCardinalRow
+            KeyNavigation.up: glitchDirRateSlider
+            KeyNavigation.down: glitchDirCardinalRow
         }
     }
 
-    // 12g. DIRECTION TOGGLES — 8 individual direction toggles (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
+    // 8 direction toggles: every chip is a toggle of its own, at least one stays on
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Glitch directions")
+        controlBelow: true
+        showDivider: false
 
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Glitch directions"); font: fonts.primaryFont(24) }
+        Column {
+            width: parent.width
+            spacing: 10
 
-        // Cardinal directions (bits 0-3: down, up, left, right)
-        RowLayout {
-            id: glitchDirCardinalRow
-            objectName: "glitchDirCardinalRow"
-            spacing: 8; focus: true
-            Accessible.name: "Glitch cardinal direction toggles"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: glitchDirLengthSlider; KeyNavigation.down: glitchDirDiagRow
-            Repeater {
+            // Cardinal directions (bits 0-3: down, up, left, right)
+            Components.ChipPicker {
+                id: glitchDirCardinalRow
+                objectName: "glitchDirCardinalRow"
+                Accessible.name: "Glitch cardinal direction toggles"
+                multiple: true
+                columns: 4
                 model: [
-                    { bit: 0, label: "\u2193 Down" },
-                    { bit: 1, label: "\u2191 Up" },
-                    { bit: 3, label: "\u2190 Left" },
-                    { bit: 2, label: "\u2192 Right" }
+                    { value: 0, label: "↓ " + qsTr("Down") },
+                    { value: 1, label: "↑ " + qsTr("Up") },
+                    { value: 3, label: "← " + qsTr("Left") },
+                    { value: 2, label: "→ " + qsTr("Right") }
                 ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 46; radius: 8
-                    property bool checked: (ScreensaverConfig.glitchDirMask & (1 << modelData.bit)) !== 0
-                    color: checked ? colors.offwhite : colors.dark
-                    border { color: checked ? colors.offwhite : colors.medium; width: checked ? 3 : 1 }
-                    Text {
-                        anchors.centerIn: parent; text: modelData.label
-                        color: parent.checked ? colors.black : colors.offwhite
-                        font: fonts.primaryFont(20)
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: root.toggleDirBit(modelData.bit)
-                    }
-                }
+                currentValues: root.dirBits
+                onPicked: root.toggleDirBit(value)
+                KeyNavigation.up: glitchDirLengthSlider
+                KeyNavigation.down: glitchDirDiagRow
             }
-        }
 
-        // Diagonal directions (bits 4-7: down-right, down-left, up-right, up-left)
-        RowLayout {
-            id: glitchDirDiagRow
-            objectName: "glitchDirDiagRow"
-            spacing: 8; focus: true
-            Accessible.name: "Glitch diagonal direction toggles"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            KeyNavigation.up: glitchDirCardinalRow; KeyNavigation.down: glitchDirFadeSlider
-            Repeater {
+            // Diagonal directions (bits 4-7: down-right, down-left, up-right, up-left)
+            Components.ChipPicker {
+                id: glitchDirDiagRow
+                objectName: "glitchDirDiagRow"
+                Accessible.name: "Glitch diagonal direction toggles"
+                multiple: true
+                columns: 4
                 model: [
-                    { bit: 4, label: "\u2198 D-R" },
-                    { bit: 5, label: "\u2199 D-L" },
-                    { bit: 6, label: "\u2197 U-R" },
-                    { bit: 7, label: "\u2196 U-L" }
+                    //: Direction down and to the right, abbreviated to fit a small button
+                    { value: 4, label: "↘ " + qsTr("D-R") },
+                    //: Direction down and to the left, abbreviated to fit a small button
+                    { value: 5, label: "↙ " + qsTr("D-L") },
+                    //: Direction up and to the right, abbreviated to fit a small button
+                    { value: 6, label: "↗ " + qsTr("U-R") },
+                    //: Direction up and to the left, abbreviated to fit a small button
+                    { value: 7, label: "↖ " + qsTr("U-L") }
                 ]
-                Rectangle {
-                    Layout.fillWidth: true; height: 46; radius: 8
-                    property bool checked: (ScreensaverConfig.glitchDirMask & (1 << modelData.bit)) !== 0
-                    color: checked ? colors.offwhite : colors.dark
-                    border { color: checked ? colors.offwhite : colors.medium; width: checked ? 3 : 1 }
-                    Text {
-                        anchors.centerIn: parent; text: modelData.label
-                        color: parent.checked ? colors.black : colors.offwhite
-                        font: fonts.primaryFont(20)
-                    }
-                    Components.HapticMouseArea {
-                        anchors.fill: parent
-                        onClicked: root.toggleDirBit(modelData.bit)
-                    }
-                }
+                currentValues: root.dirBits
+                onPicked: root.toggleDirBit(value)
+                KeyNavigation.up: glitchDirCardinalRow
+                KeyNavigation.down: glitchDirFadeSlider
             }
         }
     }
 
-    // 12g2. TRAIL FADE (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Trail fade"); font: fonts.primaryFont(24) }
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Trail fade")
+        help: qsTr("How long the glitch trails linger.")
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: glitchDirFadeSlider
             objectName: "glitchDirFadeSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 0; to: 100; stepSize: 5; live: true
             value: ScreensaverConfig.glitchDirFade
             onMoved: ScreensaverConfig.glitchDirFade = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirFade = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail fade " + value
-            KeyNavigation.up: glitchDirDiagRow; KeyNavigation.down: glitchDirSpeedSlider
+            KeyNavigation.up: glitchDirDiagRow
+            KeyNavigation.down: glitchDirSpeedSlider
         }
     }
 
-    // 12g3. TRAIL SPEED (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Trail speed"); font: fonts.primaryFont(24) }
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Trail speed")
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: glitchDirSpeedSlider
             objectName: "glitchDirSpeedSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
+            height: 60
             from: 10; to: 100; stepSize: 5; live: true
             value: ScreensaverConfig.glitchDirSpeed
             onMoved: ScreensaverConfig.glitchDirSpeed = value
             onUserInteractionEnded: ScreensaverConfig.glitchDirSpeed = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail speed " + value
-            KeyNavigation.up: glitchDirFadeSlider; KeyNavigation.down: glitchRandomColorSwitch
+            KeyNavigation.up: glitchDirFadeSlider
+            KeyNavigation.down: glitchRandomColorSwitch
         }
     }
 
-    // 12g4. RANDOM COLOR (visible when direction glitch is on)
-    ColumnLayout {
-        visible: ScreensaverConfig.glitch && ScreensaverConfig.glitchDirection
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Random color"); font: fonts.primaryFont(24) }
-            Components.Switch {
-                id: glitchRandomColorSwitch
-                objectName: "glitchRandomColorSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.glitchRandomColor
-                trigger: function() { ScreensaverConfig.glitchRandomColor = !ScreensaverConfig.glitchRandomColor; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Random color"
-                KeyNavigation.up: glitchDirSpeedSlider; KeyNavigation.down: root.navDownTarget
-            }
+    Components.SettingRow {
+        visible: root.trailsShown
+        title: qsTr("Random color")
+
+        Components.Switch {
+            id: glitchRandomColorSwitch
+            objectName: "glitchRandomColorSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.glitchRandomColor
+            trigger: function() { ScreensaverConfig.glitchRandomColor = !ScreensaverConfig.glitchRandomColor; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Random color"
+            KeyNavigation.up: glitchDirSpeedSlider
+            KeyNavigation.down: root.navDownTarget
         }
     }
 }
