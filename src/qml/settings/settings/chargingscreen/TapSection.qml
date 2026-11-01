@@ -1,10 +1,7 @@
 // Copyright (c) 2026 madalone. Tap effect settings. SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
-import QtQuick.Controls 2.15
 import QtQuick.Layouts 1.15
-
-import Haptic 1.0
 
 import "qrc:/components" as Components
 import ScreensaverConfig 1.0
@@ -19,31 +16,34 @@ ColumnLayout {
     property Item navUpTarget
     property Item navDownTarget
 
-    spacing: 20
+    // ChargingScreen.qml reveals the whole row of the focused control: the rows are the children of this root
+    readonly property bool settingsSection: true
 
-    // Leading separator
-    Rectangle { Layout.alignment: Qt.AlignCenter; width: parent.width - 20; height: 2; color: colors.medium }
+    spacing: 0
 
-    // 12m. TAP EFFECTS
+    // TAP EFFECTS: the heading and the master switch, one row for the reveal
     ColumnLayout {
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
+        Layout.fillWidth: true
+        spacing: 0
 
         Text {
-            Layout.fillWidth: true; color: colors.offwhite
-            text: qsTr("Tap effects"); font: fonts.primaryFont(30)
+            Layout.fillWidth: true
+            Layout.leftMargin: 20; Layout.rightMargin: 20
+            Layout.topMargin: 20
+            wrapMode: Text.WordWrap
+            color: colors.textPrimary
+            text: qsTr("Tap effects")
+            font: fonts.heading()
         }
 
-        // --- Master enable toggle ---
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.offwhite; text: qsTr("Enable tap effects"); font: fonts.primaryFont(26) }
+        Components.SettingRow {
+            title: qsTr("Enable tap effects")
+            showDivider: !ScreensaverConfig.tapEnabled
+
             Components.Switch {
                 id: tapEnabledSwitch
                 objectName: "tapEnabledSwitch"
                 icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
                 checked: ScreensaverConfig.tapEnabled
                 trigger: function() { ScreensaverConfig.tapEnabled = !ScreensaverConfig.tapEnabled; }
                 highlight: activeFocus && ui.keyNavigationActive
@@ -52,318 +52,305 @@ ColumnLayout {
                 KeyNavigation.down: ScreensaverConfig.tapEnabled ? tapBurstSwitch : root.navDownTarget
             }
         }
+    }
 
-        // --- Scatter burst + sub-settings ---
-        RowLayout {
-            visible: ScreensaverConfig.tapEnabled
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Scatter burst"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapBurstSwitch
-                objectName: "tapBurstSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapBurst
-                trigger: function() { ScreensaverConfig.tapBurst = !ScreensaverConfig.tapBurst; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Scatter burst"
-                KeyNavigation.up: tapEnabledSwitch
-                KeyNavigation.down: ScreensaverConfig.tapBurst ? tapBurstCountSlider : tapFlashSwitch
-            }
+    // --- Scatter burst + sub-settings ---
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled
+        title: qsTr("Scatter burst")
+        showDivider: false
+
+        Components.Switch {
+            id: tapBurstSwitch
+            objectName: "tapBurstSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapBurst
+            trigger: function() { ScreensaverConfig.tapBurst = !ScreensaverConfig.tapBurst; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Scatter burst"
+            KeyNavigation.up: tapEnabledSwitch
+            KeyNavigation.down: ScreensaverConfig.tapBurst ? tapBurstCountSlider : tapFlashSwitch
         }
     }
 
-    // Burst count
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapBurst
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Trail count") + " (" + ScreensaverConfig.tapBurstCount + ")"; font: fonts.primaryFont(22) }
+        title: qsTr("Trail count")
+        value: String(ScreensaverConfig.tapBurstCount)
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: tapBurstCountSlider
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 10; to: 50; stepSize: 5; live: true
+            height: 60
+            from: 10; to: 50; stepSize: 5; live: true; showLiveValue: false
             value: ScreensaverConfig.tapBurstCount
             onMoved: ScreensaverConfig.tapBurstCount = value
             onUserInteractionEnded: ScreensaverConfig.tapBurstCount = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail count " + value
-            KeyNavigation.up: tapBurstSwitch; KeyNavigation.down: tapBurstLengthSlider
+            KeyNavigation.up: tapBurstSwitch
+            KeyNavigation.down: tapBurstLengthSlider
         }
     }
 
-    // Burst trail length
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapBurst
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Trail length") + " (" + ScreensaverConfig.tapBurstLength + ")"; font: fonts.primaryFont(22) }
+        title: qsTr("Trail length")
+        value: String(ScreensaverConfig.tapBurstLength)
+        help: qsTr("The length of the burst trails.")
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: tapBurstLengthSlider
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 2; to: 15; stepSize: 1; live: true
+            height: 60
+            from: 2; to: 15; stepSize: 1; live: true; showLiveValue: false
             value: ScreensaverConfig.tapBurstLength
             onMoved: ScreensaverConfig.tapBurstLength = value
             onUserInteractionEnded: ScreensaverConfig.tapBurstLength = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Trail length " + value
-            KeyNavigation.up: tapBurstCountSlider; KeyNavigation.down: tapFlashSwitch
+            KeyNavigation.up: tapBurstCountSlider
+            KeyNavigation.down: tapFlashSwitch
         }
     }
 
     // --- Flash shockwave ---
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Flash shockwave"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapFlashSwitch
-                objectName: "tapFlashSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapFlash
-                trigger: function() { ScreensaverConfig.tapFlash = !ScreensaverConfig.tapFlash; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Flash shockwave"
-                KeyNavigation.up: ScreensaverConfig.tapBurst ? tapBurstLengthSlider : tapBurstSwitch
-                KeyNavigation.down: tapScrambleSwitch
-            }
-        }
+        title: qsTr("Flash shockwave")
+        showDivider: false
 
-        // --- Character scramble ---
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Character scramble"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapScrambleSwitch
-                objectName: "tapScrambleSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapScramble
-                trigger: function() { ScreensaverConfig.tapScramble = !ScreensaverConfig.tapScramble; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Character scramble"
-                KeyNavigation.up: tapFlashSwitch; KeyNavigation.down: tapSpawnSwitch
-            }
-        }
-
-        // --- Stream spawn + sub-settings ---
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Stream spawn"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapSpawnSwitch
-                objectName: "tapSpawnSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapSpawn
-                trigger: function() { ScreensaverConfig.tapSpawn = !ScreensaverConfig.tapSpawn; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Stream spawn"
-                KeyNavigation.up: tapScrambleSwitch
-                KeyNavigation.down: ScreensaverConfig.tapSpawn ? tapSpawnCountSlider : tapMessageSwitch
-            }
+        Components.Switch {
+            id: tapFlashSwitch
+            objectName: "tapFlashSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapFlash
+            trigger: function() { ScreensaverConfig.tapFlash = !ScreensaverConfig.tapFlash; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Flash shockwave"
+            KeyNavigation.up: ScreensaverConfig.tapBurst ? tapBurstLengthSlider : tapBurstSwitch
+            KeyNavigation.down: tapScrambleSwitch
         }
     }
 
-    // Spawn count
-    ColumnLayout {
+    // --- Character scramble ---
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled
+        title: qsTr("Character scramble")
+        showDivider: false
+
+        Components.Switch {
+            id: tapScrambleSwitch
+            objectName: "tapScrambleSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapScramble
+            trigger: function() { ScreensaverConfig.tapScramble = !ScreensaverConfig.tapScramble; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Character scramble"
+            KeyNavigation.up: tapFlashSwitch
+            KeyNavigation.down: tapSpawnSwitch
+        }
+    }
+
+    // --- Stream spawn + sub-settings ---
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled
+        title: qsTr("Stream spawn")
+        showDivider: false
+
+        Components.Switch {
+            id: tapSpawnSwitch
+            objectName: "tapSpawnSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapSpawn
+            trigger: function() { ScreensaverConfig.tapSpawn = !ScreensaverConfig.tapSpawn; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Stream spawn"
+            KeyNavigation.up: tapScrambleSwitch
+            KeyNavigation.down: ScreensaverConfig.tapSpawn ? tapSpawnCountSlider : tapMessageSwitch
+        }
+    }
+
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSpawn
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Spawn count") + " (" + ScreensaverConfig.tapSpawnCount + ")"; font: fonts.primaryFont(22) }
+        title: qsTr("Spawn count")
+        value: String(ScreensaverConfig.tapSpawnCount)
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: tapSpawnCountSlider
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 2; to: 12; stepSize: 1; live: true
+            height: 60
+            from: 2; to: 12; stepSize: 1; live: true; showLiveValue: false
             value: ScreensaverConfig.tapSpawnCount
             onMoved: ScreensaverConfig.tapSpawnCount = value
             onUserInteractionEnded: ScreensaverConfig.tapSpawnCount = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Spawn count " + value
-            KeyNavigation.up: tapSpawnSwitch; KeyNavigation.down: tapSpawnLengthSlider
+            KeyNavigation.up: tapSpawnSwitch
+            KeyNavigation.down: tapSpawnLengthSlider
         }
     }
 
-    // Spawn trail length
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSpawn
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Spawn length") + " (" + ScreensaverConfig.tapSpawnLength + ")"; font: fonts.primaryFont(22) }
+        title: qsTr("Spawn length")
+        value: String(ScreensaverConfig.tapSpawnLength)
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: tapSpawnLengthSlider
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 3; to: 20; stepSize: 1; live: true
+            height: 60
+            from: 3; to: 20; stepSize: 1; live: true; showLiveValue: false
             value: ScreensaverConfig.tapSpawnLength
             onMoved: ScreensaverConfig.tapSpawnLength = value
             onUserInteractionEnded: ScreensaverConfig.tapSpawnLength = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Spawn length " + value
-            KeyNavigation.up: tapSpawnCountSlider; KeyNavigation.down: tapMessageSwitch
+            KeyNavigation.up: tapSpawnCountSlider
+            KeyNavigation.down: tapMessageSwitch
         }
     }
 
     // --- Show message ---
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Show message"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapMessageSwitch
-                objectName: "tapMessageSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapMessage
-                trigger: function() { ScreensaverConfig.tapMessage = !ScreensaverConfig.tapMessage; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Show message"
-                KeyNavigation.up: ScreensaverConfig.tapSpawn ? tapSpawnLengthSlider : tapSpawnSwitch
-                KeyNavigation.down: tapSquareBurstSwitch
-            }
-        }
+        title: qsTr("Show message")
+        showDivider: false
 
-        // --- Square burst + sub-settings ---
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square burst"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapSquareBurstSwitch
-                objectName: "tapSquareBurstSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapSquareBurst
-                trigger: function() { ScreensaverConfig.tapSquareBurst = !ScreensaverConfig.tapSquareBurst; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Square burst"
-                KeyNavigation.up: tapMessageSwitch
-                KeyNavigation.down: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapRippleSwitch
-            }
+        Components.Switch {
+            id: tapMessageSwitch
+            objectName: "tapMessageSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapMessage
+            trigger: function() { ScreensaverConfig.tapMessage = !ScreensaverConfig.tapMessage; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Show message"
+            KeyNavigation.up: ScreensaverConfig.tapSpawn ? tapSpawnLengthSlider : tapSpawnSwitch
+            KeyNavigation.down: tapSquareBurstSwitch
         }
     }
 
-    // Square burst size
-    ColumnLayout {
+    // --- Square burst + sub-settings ---
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled
+        title: qsTr("Square burst")
+        showDivider: false
+
+        Components.Switch {
+            id: tapSquareBurstSwitch
+            objectName: "tapSquareBurstSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapSquareBurst
+            trigger: function() { ScreensaverConfig.tapSquareBurst = !ScreensaverConfig.tapSquareBurst; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Square burst"
+            KeyNavigation.up: tapMessageSwitch
+            KeyNavigation.down: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapRippleSwitch
+        }
+    }
+
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapSquareBurst
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 50; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Square size") + " (" + ScreensaverConfig.tapSquareBurstSize + ")"; font: fonts.primaryFont(22) }
+        title: qsTr("Square size")
+        value: String(ScreensaverConfig.tapSquareBurstSize)
+        controlBelow: true
+        showDivider: false
+
         Components.Slider {
             id: tapSquareBurstSizeSlider
             objectName: "tapSquareBurstSizeSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 2; to: 10; stepSize: 1; live: true
+            height: 60
+            from: 2; to: 10; stepSize: 1; live: true; showLiveValue: false
             value: ScreensaverConfig.tapSquareBurstSize
             onMoved: ScreensaverConfig.tapSquareBurstSize = value
             onUserInteractionEnded: ScreensaverConfig.tapSquareBurstSize = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Square size " + value
-            KeyNavigation.up: tapSquareBurstSwitch; KeyNavigation.down: tapRippleSwitch
+            KeyNavigation.up: tapSquareBurstSwitch
+            KeyNavigation.down: tapRippleSwitch
         }
     }
 
     // --- Ripple ---
-    ColumnLayout {
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 10; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Ripple"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapRippleSwitch
-                objectName: "tapRippleSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapRipple
-                trigger: function() { ScreensaverConfig.tapRipple = !ScreensaverConfig.tapRipple; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Ripple"
-                KeyNavigation.up: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapSquareBurstSwitch
-                KeyNavigation.down: tapWipeSwitch
-            }
-        }
+        title: qsTr("Ripple")
+        showDivider: false
 
-        // --- Wipe ---
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Screen wipe"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapWipeSwitch
-                objectName: "tapWipeSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapWipe
-                trigger: function() { ScreensaverConfig.tapWipe = !ScreensaverConfig.tapWipe; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Screen wipe"
-                KeyNavigation.up: tapRippleSwitch; KeyNavigation.down: tapRandomizeSwitch
-            }
+        Components.Switch {
+            id: tapRippleSwitch
+            objectName: "tapRippleSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapRipple
+            trigger: function() { ScreensaverConfig.tapRipple = !ScreensaverConfig.tapRipple; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Ripple"
+            KeyNavigation.up: ScreensaverConfig.tapSquareBurst ? tapSquareBurstSizeSlider : tapSquareBurstSwitch
+            KeyNavigation.down: tapWipeSwitch
         }
     }
 
-    // 12n. TAP RANDOMIZE
-    ColumnLayout {
+    // --- Wipe ---
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 30; Layout.rightMargin: 10
-        spacing: 10
-        RowLayout {
-            spacing: 10
-            Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Randomize"); font: fonts.primaryFont(26) }
-            Components.Switch {
-                id: tapRandomizeSwitch
-                objectName: "tapRandomizeSwitch"
-                icon: "uc:check"
-                onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-                checked: ScreensaverConfig.tapRandomize
-                trigger: function() { ScreensaverConfig.tapRandomize = !ScreensaverConfig.tapRandomize; }
-                highlight: activeFocus && ui.keyNavigationActive
-                Accessible.name: "Randomize"
-                KeyNavigation.up: tapWipeSwitch
-                KeyNavigation.down: ScreensaverConfig.tapRandomize ? tapRandomizeChanceSlider : root.navDownTarget
-            }
+        title: qsTr("Screen wipe")
+        showDivider: false
+
+        Components.Switch {
+            id: tapWipeSwitch
+            objectName: "tapWipeSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapWipe
+            trigger: function() { ScreensaverConfig.tapWipe = !ScreensaverConfig.tapWipe; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Screen wipe"
+            KeyNavigation.up: tapRippleSwitch
+            KeyNavigation.down: tapRandomizeSwitch
         }
     }
 
-    // 12o. TAP RANDOMIZE CHANCE
-    ColumnLayout {
+    // TAP RANDOMIZE, and its chance while it is on
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled
+        title: qsTr("Randomize")
+        showDivider: !ScreensaverConfig.tapRandomize
+
+        Components.Switch {
+            id: tapRandomizeSwitch
+            objectName: "tapRandomizeSwitch"
+            icon: "uc:check"
+            checked: ScreensaverConfig.tapRandomize
+            trigger: function() { ScreensaverConfig.tapRandomize = !ScreensaverConfig.tapRandomize; }
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Randomize"
+            KeyNavigation.up: tapWipeSwitch
+            KeyNavigation.down: ScreensaverConfig.tapRandomize ? tapRandomizeChanceSlider : root.navDownTarget
+        }
+    }
+
+    Components.SettingRow {
         visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapRandomize
-        Layout.alignment: Qt.AlignCenter
-        Layout.leftMargin: 70; Layout.rightMargin: 10
-        spacing: 10
-        Text { Layout.fillWidth: true; color: colors.light; text: qsTr("Chance") + " (" + ScreensaverConfig.tapRandomizeChance + "%)"; font: fonts.primaryFont(22) }
+        title: qsTr("Chance")
+        value: ScreensaverConfig.tapRandomizeChance + "%"
+        help: qsTr("How likely each effect is to play on a tap.")
+        controlBelow: true
+
         Components.Slider {
             id: tapRandomizeChanceSlider
             objectName: "tapRandomizeChanceSlider"
-            onActiveFocusChanged: if (activeFocus) root.settingsPage.ensureVisible(this)
-            height: 60; Layout.fillWidth: true
-            from: 10; to: 90; stepSize: 5; live: true
+            height: 60
+            from: 10; to: 90; stepSize: 5; live: true; showLiveValue: false
             value: ScreensaverConfig.tapRandomizeChance
             onMoved: ScreensaverConfig.tapRandomizeChance = value
             onUserInteractionEnded: ScreensaverConfig.tapRandomizeChance = value
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Chance " + value + "%"
-            KeyNavigation.up: tapRandomizeSwitch; KeyNavigation.down: root.navDownTarget
+            KeyNavigation.up: tapRandomizeSwitch
+            KeyNavigation.down: root.navDownTarget
         }
     }
 }
