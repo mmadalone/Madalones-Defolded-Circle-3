@@ -80,6 +80,10 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(bool subliminalOverlay READ subliminalOverlay WRITE setSubliminalOverlay NOTIFY subliminalOverlayChanged)
     Q_PROPERTY(bool subliminalFlash READ subliminalFlash WRITE setSubliminalFlash NOTIFY subliminalFlashChanged)
     Q_PROPERTY(bool tapBurst READ tapBurst WRITE setTapBurst NOTIFY tapBurstChanged)
+    // read by the Screensaver settings sections (src/ui/screensaverconfig.h)
+    Q_PROPERTY(bool tapEnabled READ tapEnabled WRITE setTapEnabled NOTIFY tapEnabledChanged)
+    Q_PROPERTY(int reopenWhileDockedSec READ reopenWhileDockedSec WRITE setReopenWhileDockedSec NOTIFY reopenWhileDockedSecChanged)
+    Q_PROPERTY(bool debugAtlasOverlay READ debugAtlasOverlay WRITE setDebugAtlasOverlay NOTIFY debugAtlasOverlayChanged)
     Q_PROPERTY(int tapBurstCount READ tapBurstCount WRITE setTapBurstCount NOTIFY tapBurstCountChanged)
     Q_PROPERTY(int tapBurstLength READ tapBurstLength WRITE setTapBurstLength NOTIFY tapBurstLengthChanged)
     Q_PROPERTY(bool tapFlash READ tapFlash WRITE setTapFlash NOTIFY tapFlashChanged)
@@ -281,6 +285,12 @@ class MockScreensaverConfig : public QObject {
     void setSubliminalFlash(bool v) { if (m_subliminalFlash == v) return; m_subliminalFlash = v; emit subliminalFlashChanged(); }
     bool tapBurst() const { return m_tapBurst; }
     void setTapBurst(bool v) { if (m_tapBurst == v) return; m_tapBurst = v; emit tapBurstChanged(); }
+    bool tapEnabled() const { return m_tapEnabled; }
+    void setTapEnabled(bool v) { if (m_tapEnabled == v) return; m_tapEnabled = v; emit tapEnabledChanged(); }
+    int reopenWhileDockedSec() const { return m_reopenWhileDockedSec; }
+    void setReopenWhileDockedSec(int v) { if (m_reopenWhileDockedSec == v) return; m_reopenWhileDockedSec = v; emit reopenWhileDockedSecChanged(); }
+    bool debugAtlasOverlay() const { return m_debugAtlasOverlay; }
+    void setDebugAtlasOverlay(bool v) { if (m_debugAtlasOverlay == v) return; m_debugAtlasOverlay = v; emit debugAtlasOverlayChanged(); }
     int tapBurstCount() const { return m_tapBurstCount; }
     void setTapBurstCount(int v) { if (m_tapBurstCount == v) return; m_tapBurstCount = v; emit tapBurstCountChanged(); }
     int tapBurstLength() const { return m_tapBurstLength; }
@@ -465,6 +475,9 @@ class MockScreensaverConfig : public QObject {
         setSubliminalOverlay(true);
         setSubliminalFlash(false);
         setTapBurst(true);
+        setTapEnabled(true);
+        setReopenWhileDockedSec(60);
+        setDebugAtlasOverlay(false);
         setTapBurstCount(25);
         setTapBurstLength(6);
         setTapFlash(true);
@@ -590,6 +603,9 @@ class MockScreensaverConfig : public QObject {
     void subliminalOverlayChanged();
     void subliminalFlashChanged();
     void tapBurstChanged();
+    void tapEnabledChanged();
+    void reopenWhileDockedSecChanged();
+    void debugAtlasOverlayChanged();
     void tapBurstCountChanged();
     void tapBurstLengthChanged();
     void tapFlashChanged();
@@ -720,6 +736,9 @@ class MockScreensaverConfig : public QObject {
     bool m_subliminalOverlay{true};
     bool m_subliminalFlash{false};
     bool m_tapBurst{true};
+    bool m_tapEnabled{true};
+    int m_reopenWhileDockedSec{60};
+    bool m_debugAtlasOverlay{false};
     int m_tapBurstCount{25};
     int m_tapBurstLength{6};
     bool m_tapFlash{true};

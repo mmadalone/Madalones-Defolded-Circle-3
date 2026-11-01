@@ -97,6 +97,9 @@ class MockFonts : public QObject {
 
     // type roles (docs/design-system.md section 4), sizes as in src/ui/fonts.h
     Q_PROPERTY(qreal proseLineHeight READ proseLineHeight CONSTANT)
+    // the family of the icon font (Components.Icon), as src/ui/fonts.h
+    Q_PROPERTY(QString iconFamily READ iconFamily CONSTANT)
+    QString iconFamily() const { return QStringLiteral("UC Icons"); }
     qreal proseLineHeight() const { return 1.3; }
     Q_INVOKABLE QFont title() { return primaryFont(28, "Medium"); }
     Q_INVOKABLE QFont heading() { return primaryFont(26, "Medium"); }
@@ -268,6 +271,16 @@ class MockUi : public QObject {
     int      m_warningNotifications = 0;
 };
 
+// ── Mock keyboard (keyboard / keyboardInputField context properties) ─
+// InputField.qml connects to the on-screen keyboard's closed() signal.
+class MockKeyboard : public QObject {
+    Q_OBJECT
+ public:
+    explicit MockKeyboard(QObject *parent = nullptr) : QObject(parent) {}
+ signals:
+    void closed();
+};
+
 // ── Mock C++ object for resource context property ─────────────────
 class MockResource : public QObject {
     Q_OBJECT
@@ -317,7 +330,7 @@ class Setup : public QObject {
 
         // keyboard / keyboardInputField — needed by InputField.qml
         // Stub with a QObject that has show()/hide() methods via QML
-        auto *keyboard = new QObject(engine);
+        auto *keyboard = new MockKeyboard(engine);
         ctx->setContextProperty("keyboard", keyboard);
         ctx->setContextProperty("keyboardInputField", keyboard);
 
