@@ -51,6 +51,7 @@
         <file alias="components/PopupList.qml">../../src/qml/components/PopupList.qml</file>
         <file alias="components/Switch.qml">../../src/qml/components/Switch.qml</file>
         <file alias="components/Checkbox.qml">../../src/qml/components/Checkbox.qml</file>
+        <file alias="components/ChipPicker.qml">../../src/qml/components/ChipPicker.qml</file>
         <file alias="components/Slider.qml">../../src/qml/components/Slider.qml</file>
         <file alias="components/Page.qml">../../src/qml/components/Page.qml</file>
         <file alias="components/PageAdd.qml">../../src/qml/components/PageAdd.qml</file>
