@@ -251,6 +251,7 @@ area. This section supersedes the rows above that point at `src/hardware/{power,
 | `test/qml/tst_qml_main.cpp`, `MockScreensaverConfig.h`, `MockWifi.h` | Mocks for UC's colour tokens, type roles, input controller and keyboard; W2 / W13 WiFi properties. |
 | `test/ui/test_entity_controller.cpp` (upstream test) | 4 browse-preview cases. |
 | `.github/workflows/test.yml` | Job "Upstream unit tests (CMake)". |
+| `deploy/release.json` | Version 1.6.0; `requirements.firmware_version: ">=2.12.0"` (the top-level `firmware_version` of earlier releases is not where the install reads it, so it was never checked); short description instead of the per-release history; `home_page`. |
 
 ---
 

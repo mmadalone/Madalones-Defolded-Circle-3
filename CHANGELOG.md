@@ -29,6 +29,12 @@ v0.73.5 is in, and our mods were moved onto it. The `v0.84.0` to `v0.74.0` secti
 
 ### Changed
 
+- **Requires firmware 2.12.0 or newer.** v1.6.0 is the UI Unfolded Circle made for 2.12.0, and it is tested only
+  there. The bundle now declares the minimum where the remote checks it (`requirements.firmware_version` in
+  `release.json`; the top-level `firmware_version` of earlier releases was never read), so on older firmware the
+  install is refused. Stay on v1.5.5 there.
+- The description on the remote's web page for the custom UI is a short summary now; the history lives here and in
+  the README.
 - **Screensaver settings rebuilt on UC's design system.**
   - Every setting is a UC setting row. Short help texts were added where a label is unclear on its own, such as the
     two "Charging only" switches.
