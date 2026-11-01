@@ -32,11 +32,10 @@ class Battery : public QObject {
 
     void setLevel(int level);
     void setCharging(bool value);
-    // Q_INVOKABLE so the DEV-mode dock-toggle shortcut in main.qml can fake dock/undock
-    // events in the simulator (no real hardware to flip the power supply line).
-    Q_INVOKABLE void setPowerSupply(bool value);
+    void setPowerSupply(bool value);
 
     static QObject *qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine);
+    // madalone: ScreensaverConfig and the DEV dock toggle (src/ui/devDockToggle.cpp) reach the battery from C++
     static Battery *instance() { return s_instance; }
 
  signals:
