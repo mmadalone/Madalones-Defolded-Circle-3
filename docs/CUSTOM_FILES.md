@@ -217,6 +217,9 @@ warning reports a fault). Firmware 2.12.0, the minimum for v1.6.0, keeps info li
 | `src/ui/soundEffects.cpp` | Back on upstream's category `uc.ui` (the v1.4.41 move to `uc.core` was a firmware 2.9.x workaround). Audio device, volume, enabled and chime change at info, so upstream's three lines differ from upstream only in level (debug → info); the missing-file lines stay warnings. |
 | `README.md`, `STYLE_GUIDE.md`, `SCREENSAVER-IMPLEMENTATION.md` | Log queries add `&p=7`; the Logdy note points to `/api/system/logs?s=custom-ui`. |
 
+Also: `SECURITY.md` sends security reports about the fork to GitHub's private vulnerability reporting, now enabled on
+the repository.
+
 ---
 
 ## v1.6.0: upstream v0.84.0 merge — the fork on UC's current UI

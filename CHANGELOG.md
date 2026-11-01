@@ -24,6 +24,7 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
   `/api/system/logs?s=custom-ui&p=7`, because the default query (`p=5`) no longer returns them. Failures (a REST
   error, a missing sound file, a failed return to standby) are still warnings. The sound lines are back in UC's
   `uc.ui` category.
+- **Security reports** go through GitHub's private vulnerability reporting for this repository (`SECURITY.md`).
 
 ## v1.6.0 — 2026-11-01 — caught up with Unfolded Circle's UI v0.84.0 (firmware 2.12.0)
 

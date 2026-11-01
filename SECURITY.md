@@ -4,9 +4,10 @@
 > Unfolded Circle's `remote-ui`. Unfolded Circle's policy below treats custom UI builds as out of its scope, so:
 >
 > - A problem that only exists in this fork (the screensaver, the power and WiFi mods, the settings they add, the
->   release bundle) goes to this repository: open an issue on
->   [mmadalone/Madalones-Defolded-Circle-3](https://github.com/mmadalone/Madalones-Defolded-Circle-3/issues). If the
->   details should not be public, open an issue that only asks for a private contact, without the details.
+>   release bundle) goes to this repository. Report a security problem privately with GitHub's private vulnerability
+>   reporting: [Report a vulnerability](https://github.com/mmadalone/Madalones-Defolded-Circle-3/security/advisories/new)
+>   (Security tab of the repository). Anything that is not sensitive can go in an
+>   [issue](https://github.com/mmadalone/Madalones-Defolded-Circle-3/issues).
 > - A problem that also occurs on the stock user interface of the remote goes to Unfolded Circle, as described below.
 >
 > The rest of this file is Unfolded Circle's policy, unchanged.
