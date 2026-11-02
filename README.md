@@ -154,7 +154,7 @@ log viewer.
 
 | Layer | Where | What |
 |---|---|---|
-| **C++ renderers** (`src/ui/`) | `matrixrain.cpp` (QQuickItem + QSGGeometryNode + texture atlas, orchestrator) + `src/ui/matrixrain/` 5 helper classes (LayerPipeline, AtlasBuilder, SingleLayerRenderer, InputHandler, BindingHelper — see `SCREENSAVER-IMPLEMENTATION.md`), `rainsimulation.cpp` (simulation logic), `glyphatlas.cpp` (GPU glyph atlas) | GPU pipeline, simulation tick, per-frame vertex emission on the Qt scene-graph render thread |
+| **C++ renderers** (`src/ui/`) | `matrixrain.cpp` (QQuickItem + QSGGeometryNode + texture atlas, orchestrator) + `src/ui/matrixrain/` 6 helper classes (LayerPipeline and its LayerOcclusion, AtlasBuilder, SingleLayerRenderer, InputHandler, BindingHelper — see `SCREENSAVER-IMPLEMENTATION.md`), `rainsimulation.cpp` (simulation logic), `glyphatlas.cpp` (GPU glyph atlas) | GPU pipeline, simulation tick, per-frame vertex emission on the Qt scene-graph render thread |
 | **Config bridge** (`src/ui/`) | `screensaverconfig.cpp` + `screensaverconfig_macros.h` | 122 Q_PROPERTY-backed settings (all themes and overlays) via `SCRN_BOOL/INT/STRING` macros, QSettings-backed, survives popup destruction on undock |
 | **QML themes** (`src/qml/components/themes/`) | `MatrixTheme.qml`, `StarfieldTheme.qml`, `MinimalTheme.qml`, `AnalogTheme.qml`, `TvStaticTheme.qml` | Thin QML wrappers implementing a common theme-native screen-off protocol (see `BaseTheme.qml` for the contract) |
 | **Settings UI** (`src/qml/settings/settings/chargingscreen/`) | 13 sections on UC's design system (`Components.SettingRow`, shared `Components.ChipPicker`) | Theme picker + per-theme settings, every control reachable with the d-pad |
@@ -226,7 +226,7 @@ The codebase has been through a full industry-standard audit ("brutally honest, 
 
 ### Testing discipline
 
-- **Over 500 automated test cases** (v1.6.0): 106 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 106 for keep awake, the phantom-wake suppressor, power and the entity controller (`test/hardware/`), 212 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
+- **Over 500 automated test cases** (2026-11-02): 223 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 106 for keep awake, the phantom-wake suppressor, power and the entity controller (`test/hardware/`), 212 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
 - **Five CI workflows** on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (all the suites above), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint, design check, icon font), `docs-links.yml` (Markdown links).
 - **On-device verification for every Batch 0 bug fix** — 5 dock→idle→Low_power→wake cycles per theme, 10-cycle rapid churn test, 10-minute sustained dock for thermal, docked AND undocked paths for the wake-black fix.
 - **Visual Docker VNC preview** — renders the actual `QSGGeometryNode` scene graph via Mesa software OpenGL in a disposable container, for when the macOS native build can't exercise the code path (Qt 5.15 OpenGL 2.1 limitation).

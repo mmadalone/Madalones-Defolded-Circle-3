@@ -23,11 +23,13 @@ Replaced the UC Remote 3's factory analog clock charging screen with a fully con
 >
 > - **`LayerPipeline`** (`src/ui/matrixrain/layerpipeline.{h,cpp}`) — multi-depth-plane (3 layers: far / mid / near) subsystem; `RainLayer` state, multi-layer atlas cache, `BuildTimings`, setter fan-outs (`apply*` helpers), render-thread entry points (`initAllLayers`, `countVisibleQuads`, `renderAll`, `renderMidInteractiveOverlays`). Hosts inline render primitives shared with the single-layer path (`MatrixRainVertex`, `emitQuad`, `packColor`, `depthColor`, `depthPriority`, `MAX_EMIT_VERTICES`).
 > - **`AtlasBuilder`** (`src/ui/matrixrain/atlasbuilder.{h,cpp}`) — all-static class wrapping the canonical `AtlasInputs` struct, SHA-1 `cacheKey` hashing (deduped across both build paths), and `buildSingle` for the layers-off path. Class-static single-layer cache (`s_singleCacheKey` / `s_singleCacheAtlas`) preserves file-static lifetime across `MatrixRainItem` destroy/recreate cycles between docks.
-> - **`SingleLayerRenderer`** (`src/ui/matrixrain/singlelayerrenderer.{h,cpp}`) **[v1.4.36 Phase A]** — stateless render path for the layers-off mode. Pure C++, no Qt object system; member by-value on `MatrixRainItem`. Public surface: `countVisibleQuads()` + `renderAll()` (5 private render helpers internally: stream trails → residual cells → glitch trails → message flash → message overlay). All state is passed by parameter; no cross-frame data, no signals, no timer. Mirrors the `LayerPipeline` shape but for the single-layer path. The `cx += colSp * 0.35f` depth-on offset detail prevented collapsing this into LayerPipeline directly.
+> - **`SingleLayerRenderer`** (`src/ui/matrixrain/singlelayerrenderer.{h,cpp}`) **[v1.4.36 Phase A]** — stateless render path for the layers-off mode. Pure C++, no Qt object system; member by-value on `MatrixRainItem`. Public surface: `countVisibleQuads()` + `renderAll()` (5 private render helpers internally: stream trails → residual cells → glitch trails → message flash → message overlay). All state is passed by parameter; no cross-frame data, no signals, no timer. Mirrors the `LayerPipeline` shape but for the single-layer path. ~~The `cx += colSp * 0.35f` depth-on offset detail prevented collapsing this into LayerPipeline directly.~~ *(Corrected 2026-11-02: that reason was wrong. LayerPipeline's trail renderer applies the same Color-layers far-band shift, and already did when this note was written; since 2026-11-02 it takes it from the named constant `LAYER_FAR_BAND_SHIFT` in `layerocclusion.h`. `singlelayerrenderer.cpp` still writes the literal `0.35f`.)*
 > - **`InputHandler`** (`src/ui/matrixrain/inputhandler.{h,cpp}`) **[v1.4.36 Phase B]** — QObject-with-timers helper. Owns the enter-button state machine (3 states: `EnterIdle` / `EnterPressed` / `EnterHeld`) plus 2 internal QTimers (300 ms double-tap, 500 ms hold) plus the `interactiveInput()` dispatch + 5 `handle*Input()` action handlers (direction / enter / slow / restore / tap). Friend of `MatrixRainItem` for state access (mirrors the precedent set by `ActivitySessionKeeper` / `PhantomWakeSuppressor` in the hardware layer). Forwards `enterAction(QString)` signal through the parent `MatrixRainItem` so QML listeners see the same signal they always have.
 > - **`BindingHelper`** (`src/ui/matrixrain/bindinghelper.{h,cpp}`) **[v1.4.36 Phase C]** — all-static utility class (no instances, no QObject, no friend declaration). 8 domain helpers: `bindAppearance`, `bindDirectionAndGravity`, `bindGlitch`, `bindChaos`, `bindTap`, `bindMessages`, `bindSubliminal`, `bindDepthAndLayers`. Each helper performs initial-sync setter calls + registers `Qt::AutoConnection` signal forwards. The orchestrator `MatrixRainItem::bindToScreensaverConfig` retains the `QSignalBlocker` batching scope; helpers just do the wiring work. Mirrors `AtlasBuilder` shape. The `.cpp` is wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to an empty TU.
 >
 > `MatrixRainItem` keeps the QSG pipeline (`updatePaintNode`, geometry, material), the simulation tick driver, the `displayOff` gating, the `bindToScreensaverConfig` orchestration (which still drives the 8 domain bindings, but now via `BindingHelper::bind*()` calls instead of inline member functions), and the public Q_PROPERTY / signal API surface (unchanged). External API is bit-identical to the pre-refactor build — pure internal restructuring. QML contract preserved verbatim across all three phases. Three deploys to UCR3 (one per phase) all visually verified before the next phase commit.
+>
+> **2026-11-02:** `LayerPipeline` owns one more pure-C++ helper by value, **`LayerOcclusion`** (`src/ui/matrixrain/layerocclusion.{h,cpp}`): with Rain layers on, the lit characters of a nearer grid hide the farther grids' characters behind them. See the 2026-11-02 Session section at the end of this document.
 
 **Rendering approach:** QSGGeometryNode + texture atlas (single draw call per frame).
 - Pre-renders all glyphs at multiple brightness levels × color variants into a single QImage atlas
@@ -35,16 +37,18 @@ Replaced the UC Remote 3's factory analog clock charging screen with a fully con
 - Per frame: updates vertex buffer positions + UV coordinates (pure float math, ~8KB)
 - Zero JavaScript execution, zero GC pauses
 
-**Simulation model (stream-based, direction-agnostic):**
+**Simulation model (stream-based, direction-agnostic; corrected 2026-11-02):**
 - Characters at fixed grid positions — they don't move, they fade in place
+- Grid: the whole screen at native glyph spacing, `width / charStepW` × `height / charStepH` with `charStep = int(0.85 × font)` (36 × 65 at font 16 on 480 × 850), whatever the direction or density
 - Head advances 1 cell per tick along the travel axis, sets character at new position
 - Travel axis: the axis the head moves along (rows for down/up, cols for left/right)
-- Spread axis: the axis streams are distributed across (cols for down/up, rows for left/right)
-- Density controls stream count on the spread axis (>100% packs tighter)
-- Frame rate = `50 / speed` ms, clamped to 25-150ms (40 FPS at max speed, ~7 FPS at min)
-- Brightness = `pow(0.88, distance_from_head)` — exponential decay mapped to brightness atlas levels
+- Spread axis: the axis streams are distributed across (cols for down/up, rows for left/right). A cardinal stream's position on it is its *lane*
+- Density scales the stream count: `N = max(1, int(max(cols, rows) × density))` (`cols + rows` for diagonal rain), at most `3 × max(cols, rows)`. The base is the same in every direction because gravity mode turns the rain without a re-init
+- Lanes (cardinal rain, gravity off): with at least one stream per lane each stream keeps its lane; with fewer streams than lanes every respawn takes the next lane of a golden-ratio walk, so every column (down/up) or row (left/right) rains. Gravity mode walks all cells instead, diagonal rain picks a random entry cell. See the 2026-11-02 Session section
+- Frame rate = `50 / speed` ms, clamped to 25-300 ms; the Animation speed slider (speed 0.2-2.0) gives 250 ms (4 FPS) to 25 ms (40 FPS)
+- Brightness = `fadeRate ^ distance_from_head` (`fadeRate` 0.88 at the default Trail fade): exponential decay, mapped to atlas level `round((1 − brightness) × (levels − 1))` (`GlyphAtlas::brightnessMap`)
 - Speed variation via random pause duration between column cycles
-- Density controls column spacing: >100% packs columns tighter than cell width (overlap closes gaps)
+- ~~Density controls column spacing: >100% packs columns tighter than cell width (overlap closes gaps)~~ Superseded 2026-04-07 by the full-screen grid (density = stream count, above)
 
 **Atlas structure:**
 - Single color mode: glyphCount × 16 brightness levels
@@ -98,7 +102,7 @@ Menu entry: "Screensaver" in Settings (after "User interface"), icon `uc:bolt`.
 6. Characters (Kana / ABC / 01 / 123) — Matrix only
 7. Font size slider (10-60) — Matrix only
 8. Animation speed slider (10-100) — Matrix only
-9. Column density slider (20-300, >100% = tighter column spacing, closes gaps; capped at quint16 vertex limit) — Matrix only
+9. Column density slider (20-500 since Session 5, default 70; scales the stream count, see the simulation model above; the grid is capped at the quint16 vertex limit) — Matrix only
 10. Trail length slider (10-100) — Matrix only
 11. Trail fade slider (20-100) — Matrix only
 12. Auto-rotate toggle — Matrix only
@@ -278,7 +282,7 @@ Log files also downloadable from the web configurator: **Settings → Developmen
 
 ## Known Issues & Open Items
 
-1. ~~**Column density >100% doesn't visually overlap**~~ **FIXED 2026-04-02 (Session 2)** — Density now controls column spacing, not stream count. `m_gridCols = width * density / glyphW`. At >100%, columns are packed tighter than cell width — characters overlap to close gaps. Each stream owns a unique column (no sharing). `setDensity()` now sets `m_needsReinit` for immediate effect.
+1. ~~**Column density >100% doesn't visually overlap**~~ **FIXED 2026-04-02 (Session 2)** — Density now controls column spacing, not stream count. `m_gridCols = width * density / glyphW`. At >100%, columns are packed tighter than cell width — characters overlap to close gaps. Each stream owns a unique column (no sharing). `setDensity()` now sets `m_needsReinit` for immediate effect. **Superseded 2026-04-07:** the grid covers the whole screen at native glyph spacing and density scales the stream count, `max(cols, rows) × density`; since 2026-11-02 every column and row gets rain even with fewer streams than lanes (2026-11-02 Session section).
 
 2. ~~**Idle timer doesn't catch DPAD presses**~~ **FIXED 2026-04-02 (Session 2)** — Connected to existing `ui.inputController.keyPressed` signal (C++ InputController event filter, fires for all 24 hardware buttons independently of QML ButtonNavigation stack). Research ruled out replacing the timer with system IDLE transition because `remote-core` controls the display backlight and the IDLE transition may coincide with display-off, making the screensaver invisible.
 
@@ -302,7 +306,7 @@ Log files also downloadable from the web configurator: **Settings → Developmen
 
 | Change | Files | Details |
 |--------|-------|---------|
-| Column density = spacing | `matrixrain.h`, `matrixrain.cpp` | Density controls column count/spacing, not stream multiplexing. >100% packs tighter, closing gaps. Each stream owns its column permanently. |
+| Column density = spacing | `matrixrain.h`, `matrixrain.cpp` | Density controls column count/spacing, not stream multiplexing. >100% packs tighter, closing gaps. Each stream owns its column permanently. *Superseded 2026-04-07 (full-screen grid, density = stream count) and 2026-11-02 (lanes: a stream changes column when there are fewer streams than columns).* |
 | DPAD idle detection | `main.qml` | `Connections` to `ui.inputController.keyPressed` resets idle timer on all 24 hardware buttons |
 | Animation speed works | `matrixrain.cpp` | Timer interval derived from speed property (25-150ms). Immediate effect on change. |
 | Rainbow+ color mode | `matrixrain.cpp`, `ChargingScreen.qml` | 24 HSL hues (vs 12), S=1.0, L=0.5 — smoother color transitions |
@@ -377,7 +381,7 @@ Log files also downloadable from the web configurator: **Settings → Developmen
 - **Don't duplicate system settings**: The system's "Display Off" timeout already controls display sleep for all scenarios including charging.
 - **Don't cut features**: If something doesn't work, fix it properly. Don't remove it as the "simplest fix."
 - **Speed must control frame rate, not just pause duration**: A speed slider that only affects inter-cycle pause is invisible to users. Derive the QTimer interval from the speed property so the actual animation rate changes visibly.
-- **Density = column spacing, not stream count**: Packing more streams onto the same column positions creates last-writer-wins artifacts. Instead, density should control column spacing — more density = more column positions packed tighter, eliminating gaps.
+- **Density = column spacing, not stream count**: Packing more streams onto the same column positions creates last-writer-wins artifacts. Instead, density should control column spacing — more density = more column positions packed tighter, eliminating gaps. *(Superseded 2026-04-07: density scales the stream count on a full-screen grid, and a per-cell claim (`cellDrawn`) draws one character per shared cell.)*
 - **InputController.keyPressed is the global input hook**: The C++ event filter fires for all 24 hardware buttons before QML ButtonNavigation routing. Use this for global input detection (idle timer reset) instead of trying to intercept at the QML layer.
 - **One-stream-per-column needs staggered timing**: When each stream exclusively owns its column, paused streams leave guaranteed dark columns. Compensate with wider init stagger (2× screen height spread), deeper respawn offsets, and shorter pause durations.
 - **quint16 index buffer limits vertex count**: `QSGGeometry` uses `indexDataAsUShort()` by default — max 65535 indices = 16383 quads. Cap `gridCols * gridRows` to prevent overflow at extreme density + small font combinations.
@@ -411,7 +415,7 @@ Log files also downloadable from the web configurator: **Settings → Developmen
 | Chaos tuning | `rainsimulation.cpp` | Durations 2-3x longer. Min interval 50 ticks (~2.5s). Scramble 100% grid + flash. Scatter 50-100 trails. |
 | Direction glitch length | all layers | `glitchDirLength` property (3-30). Slider in settings. Replaces hardcoded 3-7 range. |
 | Random glitch color | all layers | `glitchRandomColor` toggle. Direction glitch trails get random hue instead of parent's. |
-| Golden ratio color distribution | `rainsimulation.cpp` | Adjacent streams get maximally spread hues. Colors persist across respawn. |
+| Golden ratio color distribution | `rainsimulation.cpp` | Adjacent streams get maximally spread hues. Colors persist across respawn. *2026-11-02: in cardinal rain with gravity off and Color layers off, the hue belongs to the lane, `goldenHue(lane + lap × lanes)` (the hue the old one-stream-per-column layout gave that column and rank). A stream that keeps its lane keeps its colour; with fewer streams than lanes a stream takes its new lane's colour at every respawn.* |
 | Density slider max 500 | `MatrixAppearance.qml` | Raised from 300 to 500 for more overlap at small fonts. |
 | DPAD nav fix | settings components, `ChargingScreen.qml` | Declarative `navUpTarget`/`navDownTarget` properties. Correct nav order (Clock→Battery→Theme→Colors). |
 | Frozen screensaver fix | `matrixrain.h` | `m_running` default `false` so QML `setRunning(true)` starts timer. |
@@ -1220,13 +1224,15 @@ Fix: `reversed = false` hardcoded in the "stream" direction branch. Messages alw
 - **`precomputeBrightness` clears `m_glitchBright.fill(-1)`.** Any brightness written before this call is wiped. Pulse advancement must run AFTER precompute, not before.
 - **"Fix" that repeats the same math is a no-op.** Moving `int ci = reversed ? (len-1-i) : i` to `float posPx = reversed ? (start + (len-1-i) * step) : (start + i * step)` is the same computation. The real fix was removing `reversed` from the stream direction branch entirely.
 - **Touch gesture disambiguation is clean with movement threshold.** 30px threshold cleanly separates tap from swipe. Hold timer cancels on movement. No ambiguity between the three gesture types.
-- **Density-scaled grid breaks direction changes.** When grid dimensions are density-scaled per-axis, switching from vertical to horizontal rain produces sparse coverage because streams don't redistribute. Fix: full-screen grid on both axes, stream count = max(gridCols, gridRows), distribute streams across both axes at init.
+- **Density-scaled grid breaks direction changes.** When grid dimensions are density-scaled per-axis, switching from vertical to horizontal rain produces sparse coverage because streams don't redistribute. Fix: full-screen grid on both axes, stream count = max(gridCols, gridRows), distribute streams across both axes at init. *(2026-11-02: the distribution was `headCol = i % cols`, `headRow = i % rows`, and a cardinal respawn kept that column or row, so with fewer streams than columns or rows the rest never rained. Fixed by the lane model, 2026-11-02 Session section.)*
 - **Texture upload order matters.** Delete old texture AFTER new one succeeds, not before. If `createTextureFromImage()` fails, the old texture stays on the material — no dangling pointer.
 - **macOS Qt 5.15 build fix.** Homebrew Qt + newer Xcode CLT = missing `<type_traits>`. One-line fix: `QMAKE_CXXFLAGS += -isystem $(xcrun --show-sdk-path)/usr/include/c++/v1` in the .pro file.
 
 ### Session 12 Additional Fixes (parallel session)
 
 **Direction-agnostic grid:** Grid now always covers full screen on both axes (`screenSize / cellSize`, no density scaling). Stream count = `max(gridCols, gridRows)` — enough to fill either axis fully. Streams distributed across both columns AND rows at init via golden ratio, so any direction change via touch/DPAD/gravity has even coverage immediately. Density slider still controls vertical rain appearance via spawn rate and trail length.
+
+> **Corrected 2026-11-02:** the stream count is `max(gridCols, gridRows) × density` (the Column density slider is the multiplier). The init spread was sequential modulo, `headCol = i % cols` and `headRow = i % rows`; the golden ratio only picked the hues. A cardinal respawn kept that column (down/up) or row (left/right), so below one stream per lane the higher columns or rows never rained: left/right rain at the default density left the bottom ~250 px dry, down/up rain at a density of 55 or lower, and the far and near Rain layers grids below a density of about 160 and 220, stopped short of the right side. Coverage was even only with at least one stream per lane. Fixed by the lane model (2026-11-02 Session section).
 
 **Touch-zone "Remember direction" toggle:** Added under Touch Directions section in GeneralBehavior.qml. Reuses existing `dpadPersist` config property. `restoreDirection()` now checks both `dpadEnabled` and `tapDirection`.
 
@@ -1278,7 +1284,7 @@ Full codebase audit by industry pro dev criteria. Grade improved from C+ to B+. 
 
 **2. Full-screen grid** — Grid covers entire screen at native glyph spacing (no density scaling on grid dimensions). Characters visually touch. Density slider now controls stream count multiplier instead of grid spacing.
 
-**3. Coprime gravity spawn** — `coprimeGoldenStep()` function enforces `gcd(step, n) == 1` using `std::gcd` (C++17). Guarantees all rows/columns visited during gravity mode. Previously `gcd(40,65)=5` left 80% of rows empty.
+**3. Coprime gravity spawn** — `coprimeGoldenStep()` function enforces `gcd(step, n) == 1` using `std::gcd` (C++17). Guarantees all rows/columns visited during gravity mode. Previously `gcd(40,65)=5` left 80% of rows empty. *(2026-11-02: this covered gravity mode only. Cardinal rain with gravity off kept each stream on the column or row `initStreams` gave it, so with fewer streams than lanes the rest never rained. The lane model now walks the lanes with the same coprime step, `goldenLane()`; see the 2026-11-02 Session section.)*
 
 **4. 3D depth parallax** — Per-stream `depthFactor` (0.6–1.4) assigned at spawn. Modulates quad size (centered on cell) + brightness (atmospheric perspective dimming) + movement speed (far streams slower). Three Config properties: `depthEnabled`, `depthIntensity` (10–100), `depthOverlay` (70% normal / 30% depth-varied). Settings UI with toggle, intensity slider, overlay mode toggle. **Note: visual effect is subtle on the 480px display — needs redesign for small-screen depth in a future session.**
 
@@ -1351,7 +1357,7 @@ Single draw call preserved. `compare()` on texture pointer ensures batching. `GL
 1. **Atlas-based 3-band color variants** (3 discrete hue-shifted atlas colors) — visible but read as "color tinting," not depth. Brightness fade drowned out hue at mid-trail cells.
 2. **Different fade curves per atlas variant** — helped color visibility but still 3 discrete bands.
 3. **Multiplicative vertex color on colored atlas** — `green × teal = slightly-different-green`. R=0 in atlas meant vertex red had no effect. Fixed by switching to white atlas.
-4. **True 3D depth** (perspective, size scaling, occlusion) — size scaling imperceptible at 13px on 480×850. No perspective projection available in Qt 5.15 QSG fixed pipeline. The color gradient effect is visually nice but doesn't create 3D depth perception.
+4. **True 3D depth** (perspective, size scaling, occlusion) — size scaling imperceptible at 13px on 480×850. No perspective projection available in Qt 5.15 QSG fixed pipeline. The color gradient effect is visually nice but doesn't create 3D depth perception. *(2026-11-02: occlusion between the three Rain layers grids exists now, done on the CPU: lit nearer characters hide the farther ones behind them (`LayerOcclusion`). The scene graph cannot do it, because its alpha pass writes no depth and each node has one z. See the 2026-11-02 Session section.)*
 
 ### Keyboard (Docker preview)
 
@@ -1371,15 +1377,18 @@ Continuation of Session 14. Added multi-layer rain, depth glow, glow fade contro
 
 | Layer | Font Scale | Grid (480×850) | Speed | Density | Purpose |
 |-------|-----------|----------------|-------|---------|---------|
-| Far (0) | 0.65× (~10px) | ~56×100 | 0.5× | 35% | Background, small dim glyphs |
-| Mid (1) | 1.0× (16px) | 36×65 | 1.0× | 100% | Main interactive layer |
-| Near (2) | 1.35× (~21px) | ~27×48 | 1.5× | 25% | Foreground, large bright glyphs |
+| Far (0) | 0.65× (10 px) | 60×106 | 0.5× | 35% | Background, small dim glyphs |
+| Mid (1) | 1.0× (16 px) | 36×65 | 1.0× | 100% | Main interactive layer |
+| Near (2) | 1.35× (22 px) | 26×47 | 1.5× | 25% | Foreground, large bright glyphs |
+
+*Table corrected 2026-11-02 from the code (it said ~10 px / ~56×100 and ~21 px / ~27×48), for font 16 on 480×850: layer font `qMax(8, qRound(16 × scale))` = 10 / 16 / 22 px (`LAYER_*_FONT_SCALE`); grid = screen / `int(0.85 × layer font)`, so 480 / 8 × 850 / 8, 480 / 13 × 850 / 13 and 480 / 18 × 850 / 18. Density is the share of the Column density value (`LAYER_*_DENSITY_SCALE`); trail length is 50 % / 100 % / 120 % (`LAYER_*_TRAIL_PCT`). At the default Column density (70) that is 25, 45 and 8 streams, so the far and near grids have fewer streams than columns; until 2026-11-02 that left them dry right of x ≈ 200 and x ≈ 148.*
 
 - Interactive effects (glitch, messages, tap) on mid layer only
 - Far layer at 30% brightness (atmospheric perspective)
 - Residual glow on mid layer only (far/near add too much visual noise)
 - Combined atlas: 3 GlyphAtlas images stacked vertically, `remapUVs()` adjusts UV coordinates per layer
 - New Config: `chargingMatrixLayersEnabled`. Settings: "Rain layers" toggle.
+- 2026-11-02: the three grids no longer show through each other. The lit part of a near or mid trail hides the farther grids' characters behind it (2026-11-02 Session section).
 
 ### Depth Glow (shrinking residual glow)
 
@@ -2294,3 +2303,170 @@ Before entering plan mode for the refactor, the core assumption was verified aga
 **Verdict: skip the refactor, document the finding.** The audit was based on two false premises. The existing macro-based design is efficient enough (one-time cost at dock init, no per-frame cost, no hot-path impact). The complexity and MOC-bug risk of a cache refactor are non-trivial for zero measurable benefit. The macro header at `src/ui/screensaverconfig_macros.h` now carries a block comment warning future sessions not to re-litigate this without measuring first, and `src/ui/screensaverconfig.h` carries a block comment protecting the 47b6d59 dual-emit fix from well-meaning macro-conversion attempts.
 
 **Guidance for future audits**: before flagging a `QSettings`-backed getter pattern as a perf problem, verify (a) the backend (INI vs native — INI is always in-memory), (b) that the getters are actually in per-frame hot paths (most config getters are not), and (c) that the savings would be measurable (~µs-scale savings at one-time init are rounding errors).
+
+---
+
+## 2026-11-02 Session: rain in every lane + Rain layers occlusion
+
+**Status:** implemented, unit-tested, checked in the full-app simulator (CHANGELOG "Unreleased"; see "Full-app simulator" below) and on the remote: a test build (`1.6.1-rainfix`, pinned Qt 5.15.19 toolchain) ran on firmware 2.12.0 on 2026-11-02 and the owner confirmed the rain looks right. Its log shows the `lanes:` fields and the `Layer occlusion` lines and no new warnings. The CPU cost on the remote's ARM is not measured. Plan approved by the owner on 2026-11-02; scratch scripts and results are in the local, gitignored `logs/matrix_ab/` folder.
+
+On 2026-11-01, right after v1.6.1 was installed, the owner photographed "weird lines" in the Matrix rain: columns where the characters squeeze together into a solid strip. The investigation found two separate problems, both present since v1.2.0.
+
+### Root cause 1: a stream never left its first lane
+
+- A cardinal stream's **lane** is its position across the direction of travel: its column for down/up rain, its row for left/right rain.
+- `initStreams` creates `N = max(1, int(max(cols, rows) × density))` streams, and it gave stream i `headCol = i % cols` and `headRow = i % rows`. For cardinal rain with gravity off, `spawnStream` re-set only the travel axis, so each stream kept lane `i % lanes` for good. With fewer streams than lanes, the lanes from N up never rained; with more, the extra streams doubled up on the first lanes (the left side or the top).
+- Introduced by `1266974` (2026-04-07, the full-screen grid), so present in every release since v1.2.0. Diagonal rain (a random entry cell) and gravity mode (a coprime walk over all cells) were not affected.
+- Measured at 480 × 850, font 16 (the single-layer and mid grid is 36 × 65):
+  - **Left/right rain at Column density 70** (the default): 45 streams for 65 rows. Rows 45–64 never rained; in the simulator the rain ended at a hard edge at y ≈ 590 in all 12 shots, leaving about 260 px dry.
+  - **Down/up rain at Column density 55 or lower**: `int(65 × density)` is below the 36 columns. At 30 there were 19 streams on columns 0–18, and columns 19–35 (17 of 36) never rained.
+  - **Rain layers at Column density 70**: the far grid (60 × 106, density × 0.35) had 25 streams for 60 columns and never rained right of x ≈ 200; the near grid (26 × 47, density × 0.25) had 8 for 26 and never rained right of x ≈ 148. For down rain the far grid is short of streams below a Column density of about 160, the near grid below about 220.
+  - **The owner's settings** (katakana, font 30, Column density 210): the near grid had 13 streams for 14 columns, so column 13 (x ≈ 446–480) never rained.
+  - **Gravity turned off without a re-init** (a DPAD direction, then closing the screensaver): streams that gravity had steered off the grid kept their off-grid lane and rained where nothing is drawn. On the old code, 22 of 42 streams in `gravityOffWithoutReinitKeepsStreamsVisible` never came back.
+
+### Root cause 2: the three Rain layers grids are see-through
+
+- Rain layers (`charging/matrixLayersEnabled`) draws three grids, far, mid and near at 0.65×, 1× and 1.35× the font size, into one blended draw call in painter's order: far trails, mid trails, mid residual glow, near trails, then the mid overlays. Nothing hid a farther grid behind a nearer one, so wherever a column of one grid lies within a few pixels of a column of another, their characters interleave into a strip with no gaps.
+- At the owner's font 30 the near column pitch (34.29 px) is exactly twice the far pitch (17.14 px), so every near column lies about 2 px from a far column, and mid and near ink centres line up within 5 px at x = 98, 200, 272, 302 and 374. In the simulator shots, 7 of the 8 strongest strip windows fell on those columns. At font 16 with katakana the near ink (0.85 × 22 px = 18.7 px) is wider than the near column pitch (18.46 px), so every mid column lies under some near column.
+- Not caused by the Qt 5.15.19 toolchain of v1.6.1: 192 of 192 deterministic frames are identical with the old and the new Qt. Rain layers has drawn this way since v1.2.0.
+
+### Fix 1: the lane model (`src/ui/rainsimulation.{h,cpp}`)
+
+For cardinal rain with gravity off, `spawnStream` now sets the lane at every spawn. Gravity mode and diagonal rain are unchanged.
+
+- **The walk:** `goldenLane(k, n) = ((k mod n) × coprimeGoldenStep(n)) mod n`. The step is about 0.618 n, nudged up until it is coprime with n, so k = 0 … n − 1 visits every lane once and consecutive k land far apart. No random numbers.
+- **Dense** (at least one stream per lane, and every spawn from `initStreams`): stream i keeps `goldenLane(i)` for good (`StreamState::ordinal` holds i). This looks as before, except that the streams beyond one per lane are spread over the whole width or height instead of doubling up on the first lanes.
+- **Sparse** (fewer streams than lanes): every respawn takes the next lane of the walk, `goldenLane(m_spreadCursor++ mod lanes)`, so any `lanes` consecutive respawns cover every lane. `initStreams` starts stream i on `goldenLane(i)` and the cursor at N, so the first respawns fill exactly the lanes that start out dry.
+- **The colour follows the lane** when Color layers is off and the atlas has several colours (Rainbow, Rainbow+, Neon): the hue is `goldenHue(lane + lap × lanes)`, with lap = `ordinal / lanes` for dense lanes and 0 for sparse ones. That is the hue the old layout gave that column (or row) and rank. A dense stream keeps its colour; a sparse stream takes its new lane's colour at every respawn. With Color layers on, the hue is still re-rolled at every spawn.
+- The dense/sparse choice is made at every spawn with the current direction's lane count, so a direction change, or gravity turned off without a re-init, is covered. A stream whose lane is off the grid (after gravity, or a tap spawn) gets an on-grid lane at its next respawn.
+- **Random numbers:** the lane model draws no random numbers, but with direction glitches or messages on, later draws diverge from pre-change runs, so seeded frames are only comparable across the change with glitch and messages off. (A direction-glitch trail starts at a stream's trail cell and draws glyphs only while it is on the grid, and no head glyph is drawn on message cells; both depend on where the lanes are.)
+- The `initStreams` INFO line ends with `lanes:`: the lane count for the current direction, or `-` for diagonal rain and gravity mode.
+- Look only, no setting, key or API change: sparse grids move a stream to a new lane every cycle and cover the whole screen, dense grids spread their extra streams evenly, and in Rainbow, Rainbow+ and Neon with Color layers off a stream's colour follows its lane.
+
+### Fix 2: nearer grids hide the farther grids' characters (`src/ui/matrixrain/layerocclusion.{h,cpp}`, `layerpipeline.{h,cpp}`, `src/ui/glyphatlas.{h,cpp}`)
+
+The owner chose this option (nearer layers hide the characters behind them) and, on 2026-11-02, the threshold "bright part only" (θ = 0.30).
+
+**The rule**
+
+- **Occluders** are near and mid trail characters that are drawn: they won their cell, their glyph is real (not a −1 cascade blank, not the message space glyph), their UV index is in range, and no nearer occluder hides them. Their trail-fade level must be at most `maxLevel = floor((1 − θ) × (levels − 1))`, with θ = `OCCLUDER_MIN_TRAIL_BRIGHTNESS` = **0.30**: level 10 of 16 in the single colours, 4 of 8 in Rainbow and 3 of 6 in Rainbow+ and Neon, which is about the first 10 characters of a trail at the default Trail fade. The fade level is taken after head glow, stream flash, glitch brightness and message flash, and before the Color-layers grading, so it means the same in every colour mode. A θ above 1 turns the occlusion off.
+- **Hidden** are far trail characters under a mid or near occluder, and mid trail characters and mid residual glow under a near occluder. "Under" means that the centre of the farther character's ink lies inside the nearer character's ink box, edges included. The near grid is never hidden.
+- **Not involved:** the overlays drawn after the near grid (glitch trails, tap bursts and ripples, message flash, message and tap overlays) are never hidden and hide nothing. Mid residual glow can be hidden but hides nothing. A trail character that a glitch, a message flash or a stream flash lights up is a lit trail character and hides like one.
+- **Why not θ = 0** (every character hides what is behind it): default trails are longer than the screen is tall, so the far grid would almost disappear; the analysis gave about 10–20 % of far characters left with katakana. At 0.30 the faint tails stay see-through.
+
+**Near first.** The count marks the near grid's occluders first, then the mid grid's. Before it marks a mid character it asks `LayerOcclusion::isCellHidden`, at the renderer's own ink centre with the Color-layers shift, whether a near occluder hides it: a hidden mid character is not drawn, so it does not hide anything either. The count's total is a sum of per-grid counts, so the order changes nothing there. *(The first implementation marked mid before near. The review found far characters vanishing behind mid characters that were not drawn: about 2 per frame at the owner's settings with Color layers on, 13 at font 16 and Column density 500.)*
+
+**Ink boxes.** No measured ink box exists (font metrics are unreliable on the remote's ARM build), so the boxes use the atlas's spacing ratios, centred in the glyph's `glyphW × glyphH` quad (the atlas draws every glyph centred): **full width** 0.85 × 0.85 em for kana, **half width** 0.55 × 0.85 em for ASCII glyphs, which are every glyph of the ascii, binary and digits charsets, katakana's ten digits and the 37 appended message glyphs. The class comes from the character (East Asian Width: below U+0080 is narrow) and is stored per glyph by `GlyphAtlas::build()` and `buildMetricsOnly()` (`isHalfWidth()`), so it travels with the atlas-cache copy and a lookup never allocates. *(The first implementation boxed every katakana glyph at full width. The digits are 18–20 % of the occluders with katakana, and the review found their oversized boxes behind about 5–7 % of all hidden far characters.)*
+
+**Color layers.** Far-band streams (`depthFactor < 0.93`) are drawn `LAYER_FAR_BAND_SHIFT` (0.35) column spacings to the right of their cell. An occluder's box and a hidden character's centre both use the drawn position, so the mask holds one bit per shift and width class, 4 bits per cell. The trail renderer takes the shift from the same constant, so the drawing and the occlusion cannot drift apart.
+
+**The quad cap.** A frame whose count is over the 16,383-quad cap hides nothing: the count closes the frame (`endFrame()`). In such a frame `emitQuad` drops the frame's last quads (the overlays, then the near trails), occluders included, and without the guard characters vanished behind occluders that were never drawn (review: about 786 per capped frame at font 10, Column density 500, Color layers on). Only the smallest fonts with the highest densities get there, and there the count can straddle the cap, so the hiding switches on and off from frame to frame (review: katakana, font 10, Column density 500, Color layers on: 18 of 30 sampled frames over the cap; font 12: 14 of 30). The owner's settings stay far below the cap. The far-first budget under "Follow-ups" would remove this. The per-grid drawn counter counts a quad only when `emitQuad` actually wrote it.
+
+**Unchanged:** Rain layers off (the single-layer renderer has no occlusion), the material, the single draw call, the quad count and the overlays. The module is listed in all six build files that compile `layerpipeline.cpp` or lint it: `remote-ui.pro`, `test/matrixrain/matrixrain_test.pro`, `test/matrixrain/CMakeLists.txt`, `test/integration/matrixrain_integration_test.pro`, `test/matrixrain_preview/matrixrain_preview.pro` and `.github/workflows/tidy.yml`.
+
+**Logging** (`qCInfo(lcScreensaver)`, never per frame; on the remote: `/api/system/logs?s=custom-ui&p=7`): a `Layer occlusion: theta 0.3, size 480x850, ink full/half x height | far 60x106 glyph … maxLevel -1/16 | mid … | near …` line on every (re)configure, and a `Layer occlusion first frame (trails + residual glow): far … drawn … hidden | mid … | near …` line on the first frame after it. That frame comes right after the init, so its counts are small.
+
+### Why the hiding is done on the CPU
+
+The rain is one `QSGGeometryNode` with one blended material, drawn in one call. Qt Quick's default renderer draws opaque batches front to back with depth writes, then turns depth writes off for the alpha-blended batches, and it gives each node a single z: "giving each primitive a unique z position" and "Once opaque primitives have been drawn, the renderer will disable `glDepthMask`, enable `GL_BLEND` …" ([Qt Quick Scene Graph Default Renderer](https://doc.qt.io/qt-5/qtquick-visualcanvas-scenegraph-renderer.html), sections "Opaque Primitives" and "Alpha Blended Primitives"). Qt 5.15.19's `qsgbatchrenderer.cpp` does exactly that: `glDepthMask(false)` before the alpha batches, one `zorder` per element. No depth test can hide one quad of the node behind another, so a hidden character has to be left out of the vertex buffer.
+
+### The invariant: never emit more than was counted
+
+- `MatrixRainItem::updatePaintNode` sizes the geometry from the count (`min(count, 16,383)` quads). `emitQuad` only checks the global cap, and unused slots are padded with degenerate triangles. A render pass that emitted more quads than were counted would write past the buffer.
+- The occlusion leaves the count alone: it stays an upper bound, the render only drops counted quads, and the padding covers the difference.
+- **Claim before skip.** The trail renderer claims a cell (`cellDrawn`) before it asks `isHidden`, in the same stream order as the count, so both passes see the same claimed cells and a hidden character's cell stays claimed. The residual-glow pass fills only unclaimed cells, so it cannot draw in a hidden character's place. Skipping before the claim would not overrun the buffer (still one quad per cell at most), but it would draw residual glow where a hidden far-band character was. No count-based test can see that; a scene test does (`layerOcclusionFarBandTrailHiddenWhereDrawn`).
+- **One frame, one sync.** `countVisibleQuads` builds the occluder masks and `renderAll` of the same QSG sync reads them, count first. Outside a frame `isHidden` returns false, and if the item size changed between the two passes the frame hides nothing. The masks are sized in `configure()` (from `initAllLayers`, or on a grid, atlas or size change) and only cleared per frame. Measured: 0.00 heap allocations per frame in count and render; before this change the count made 3 per frame (a `QVector<int>` per grid, now the shared sort scratch buffer).
+
+### Tests (`test/matrixrain/test_matrixrain.cpp`: 106 → 223 rows)
+
+Each test collects its results in its loops and checks them with one `QVERIFY2` per check at the end, because CI runs the suite with `-v2` under ASan.
+
+**Lane model:** 6 tests, 95 rows. 78 of the rows fail on the old code; the 16 dense `spreadLaneCoverage` rows and `spreadWalkRestartsOnInit` pass on it, as they should.
+
+| Test | What it proves |
+|---|---|
+| `spreadLaneCoverage` (73 rows) | Fonts 16 and 30 × far, mid and near × Column density 20, 70 and 210 × the four directions, plus the owner's near grid at 480 × 850. Every lane stays on the grid; at start-up no run of lanes without a stream is longer than 3·⌈S/N⌉ (S lanes, N streams); within 5,000 ticks every lane gets rain (worst row 1,587 ticks, median 201). |
+| `sparseRespawnWalksEveryLane` | 30 streams for 61 row lanes: the first S − N respawns land exactly on the lanes that were dry at start-up, S respawns visit every lane once, every lane gets the old layout's hue, and the seed does not matter. |
+| `denseLanesStayFixed` (3 rows) | At least one stream per lane: ⌊N/S⌋ or ⌈N/S⌉ streams per lane, the extra streams spread out (the old code left runs of 30, 49 and 47 lanes without one), the old (column, rank) hue, and no lane or hue change in 3,000 ticks. |
+| `respawnPutsStrayStreamBackOnGrid` (16 rows) | A stream whose lane is off the grid (−3 or S + 2) is back on it after its next respawn; dense rows return it to its own lane. |
+| `gravityOffWithoutReinitKeepsStreamsVisible` | Gravity turned off without a re-init: every stream reaches the grid within 3,000 ticks. |
+| `spreadWalkRestartsOnInit` | The walk restarts at every `initStreams`: the same seed gives the same respawn lanes. |
+
+**Occlusion:** 14 tests, 22 rows. `metricsMatchBuild` and `metricsMatchBuildRainbow` now also compare the ink sizes and width classes of `build()` and `buildMetricsOnly()`.
+
+| Test | What it proves |
+|---|---|
+| `occlusionLevelThreshold` | The θ → level table (NaN included), θ pinned at 0.30, 10 lit cells at the default fade. |
+| `occlusionMappingMatchesBruteForce` | `isHidden` agrees with a scan of every marked nearer cell for ink from 0.3 to 3.6 cell pitches, both width classes and shifted marks (a fixed ±1 neighbourhood fails at 3.6). |
+| `glyphAtlasInkSize` | Both ink sizes, the width class of every glyph index, an inkless blank glyph, and the class table surviving the atlas-cache copy. |
+| `layerOcclusionEmitWithinCount` (6 rows) | Seeded runs (defaults; the owner's settings with Color layers off and on; cascade; glitch, chaos and messages; digits, messages and Color layers) into buffers of exactly the counted size, so ASan catches an overrun: emitted ≤ counted on every frame, the near-first total equals the per-grid sum, the near grid is never hidden, and something is hidden. |
+| `layerOcclusionHidesFartherUnderLitNearer` (2 rows) | A hand-placed scene: the frame with occlusion on is exactly the frame with it off, minus the far and mid characters under a lit, drawn nearer character. Every case occurs: far under near and under mid, mid trail and residual glow under near, a hidden mid character, −1, space and dim-tail occluders that hide nothing, shifted occluders and shifted characters. |
+| `layerOcclusionOverlaysOnTop` | Overlays put on lit near characters are still the frame's last quads, byte for byte. |
+| `layerOcclusionOverlaysNeverHide` | Glitch trails, message flash and message overlay glyphs hide no far character. |
+| `layerOcclusionFarBandTrailHiddenWhereDrawn` (2 rows) | A far-band mid trail is hidden where it is drawn (shifted), keeps its claim (no residual glow in its place), and stays drawn when only its unshifted spot is under near. |
+| `layerOcclusionOnlyTheCellWinnerOccludes` | A trail character that lost its cell does not hide anything. |
+| `layerOcclusionThresholdUsesFadeLevel` | θ is compared with the fade level, not the level Color layers draws. |
+| `layerOcclusionOverridesLightOccluders` | A glitch brightness, a message flash and a stream flash make dim trail cells hide what is behind them. |
+| `layerOcclusionHiddenMidDoesNotOcclude` (2 rows) | A mid character hidden by near hides nothing (with Color layers, only its shifted spot is under near); the next frame, without a reconfigure, shows the marks were reset. |
+| `layerOcclusionHalfWidthGlyphs` | With katakana, a digit or message glyph hides only inside its half-width box; a kana in the same column hides with the full box. |
+| `layerOcclusionCappedFrameHidesNothing` | A 20,951-quad scene (font 10) over the cap renders exactly the frame without occlusion, and the drawn counter equals the quads emitted; a control under the cap does hide. |
+
+**Mutation testing.** 40 mutants of the occlusion code are all caught: 39 by an assertion, and the count skipping the far grid by ASan in the exactly-sized buffers of `layerOcclusionEmitWithinCount`. They include hiding before the claim, ignoring either Color-layers shift, far-first marking, marking hidden mid characters, every width-class mistake in turn, no cap guard, θ compared with the graded level, overlays or residual glow hiding things, a fixed ±1 search and `beginFrame` keeping the last frame's marks. Before the review, six of them passed the 213 tests of the time (the hidden character's shift ignored, hide before the claim, an occluder that lost its cell, θ against the graded level, the count ignoring the overrides, overlays hiding things); the review's probe scenes became the tests above.
+
+**Sanitizers and builds.** 223 of 223 pass under ASan and UBSan (with float-cast-overflow), plain and with `-v2`, with no reports. The CMake build of the suite passes 223, the integration suite 41. cpplint is clean with CI's filter; there are no new warnings with `-Wall -Wextra -Wold-style-cast -Wfloat-equal -Wshadow`, and the changed files compile without warnings with the device compiler (aarch64 GCC 10.3.1, Qt 5.15.19 headers, syntax only).
+
+### Harness evidence
+
+Deterministic, seeded frames from the local harness (`logs/matrix_ab/harness`, Qt 5.15.3 image, 12 frames per variant). **P**: katakana, font 16, Rain layers and Color layers on, Column density 500, Trail length at maximum, glitch off. **PM**: P at Column density 70. **PS**: P with Rain layers off. **D**: the app's defaults (Rain layers off). The baseline was captured with the lane model in place, before any occlusion edit, and every run matched its own repeat.
+
+| Build | P | PM | PS | D |
+|---|---|---|---|---|
+| Occlusion off (θ = 2 through the `MATRIX_OCCLUDER_MIN_TRAIL_BRIGHTNESS` define) | 12/12 byte-identical | 12/12 byte-identical | 12/12 byte-identical | 12/12 byte-identical |
+| Occlusion on (θ = 0.30) | 0/12 identical; lit pixels 2,496,798 → 2,384,917 (−4.5 %) | 0/12 identical; 888,850 → 878,559 (−1.2 %) | 12/12 byte-identical | 12/12 byte-identical |
+
+So the shared brightness helper changed nothing, and the occlusion changes only the frames with Rain layers on. Gapless bright vertical runs of 40 px or more: P 71 → 32 at green ≥ 60 and 14 → 5 at green ≥ 80; PM 12 → 11, because its long runs are single bright near columns, which are never hidden. At the thresholds tuned on the owner's font 30 (green ≥ 100 or 150, runs ≥ 75 px) neither set has a single run at font 16.
+
+### Full-app simulator
+
+The local `logs/sim` rig (static x64 build with Qt 5.15.19, llvmpipe), v1.6.1 against this change (`v1.6.2-sim`), the same settings for both. Each run is a 12-shot burst in a fresh NORMAL window. The rain is not seeded, so the numbers are indicative; the exact proof is the harness and the unit tests. Before/after sheet: `logs/matrix_ab/after/BEFORE_AFTER_sheet.png` (local).
+
+| Run | Settings | Before (v1.6.1) | After |
+|---|---|---|---|
+| O_C0 | The owner's (katakana, font 30, Rain layers on, Column density 210), Color layers off | Strips where near and mid columns line up: gapless-chain score up to 0.91, 2 windows ≥ 0.70 | Up to 0.61, none ≥ 0.70; a near trail on a shared column stands alone |
+| O_C1 | O_C0 with Color layers on | Up to 0.73, 1 window ≥ 0.70 | Up to 0.52. A bright glitch streak can still cross a near trail (overlays are drawn on top by design) |
+| L70 | Defaults with Rain layers on (ascii, font 16, density 70) | Near rain only left of x ≈ 149, far rain only left of x ≈ 201; near-size characters right of x 210: 1 in 12 shots | Both reach the right edge: 180 in 12 shots |
+| LR | Defaults, rain going left (Rain layers off) | Rows below y ≈ 592 never rained; lowest lit row 563–629 | Rain reaches the bottom row in every shot (827–849) |
+
+The logs show the same grids and stream counts as before, the new `lanes:` fields (28/19/14 at the owner's settings, 60/36/26 for L70, 65 for LR) and the `Layer occlusion` lines, and no new warnings.
+
+### CPU cost
+
+x86, `-O2`, `LayerPipeline` count + render per frame, 600 frames after a 300-tick warm-up, Rain layers on, glitch and messages off, two runs each:
+
+| Settings | Off (µs/frame) | On (µs/frame) | On / off | Hidden per frame |
+|---|---|---|---|---|
+| P (katakana, font 16, density 5.0, trail 180, Color layers) | 519–540 | 780–790 | ×1.46–1.50 | 1,439 of 11,337 |
+| PM (P at density 0.7) | 111–117 | 156 | ×1.34–1.41 | 63 of 2,594 |
+| Owner (katakana, font 30, density 2.1, trail 180, Color layers off) | 88–96 | 112–113 | ×1.17–1.27 | 130 of 1,633 |
+| Defaults with Rain layers on (ascii, font 16, density 0.7, trail 83) | 67.5–68.8 | 91.5–94.2 | ×1.36–1.37 | 41 of 1,848 |
+
+A frame at the default speed is 50 ms. **The cost on the remote's ARM is not measured**; only the on/off ratios carry over.
+
+### Known approximations
+
+- A hidden character is culled whole, by its ink centre: the part of its ink outside the occluder's box goes with it, and removing a dim but opaque glyph can brighten a few pixels where it covered a brighter neighbour.
+- The ink boxes are ratios, not measured, and the ink sits about 0.09 em below the quad centre the boxes assume (font probe: ink centre at y = 18.0 px against a quad centre of 16.0 px at 22 px).
+- The count's `isCellHidden` and the renderer compute the ink centre with the same float expressions. FMA contraction could in principle make them differ by one ulp for a centre exactly on a box edge (one character, visual only, never more quads than counted). With the pinned device compiler (aarch64 GCC 10.3.1, `-O2`) both compile to the same `fmul`/`fmadd` sequence, so on the remote they agree bit for bit.
+
+### Follow-ups (not done)
+
+- An exact quad count through one walker shared by the count and render passes. Today the count is an upper bound and hidden quads become padding.
+- A far-first budget under the quad cap: drop far content first so occluders are always emitted. Today a capped frame hides nothing.
+- Messages as occluders.
+- A relative rule: hide only what is dimmer than the occluder.
+- The ~0.09 em vertical ink offset above.
+
+### Found on the way (out of scope)
+
+- `RainSimulation::tapSpawn` (the "Stream spawn" tap effect) only takes streams that are inactive with no pause left. Outside the screen-off drain such a stream is respawned in the same tick, so the effect may never fire. Not checked on the remote.
+- In the full-app simulator the rain froze once after an IDLE → NORMAL power-mode bounce at start-up (local run `logs/matrix_ab/sim_invalid/P_L0`). Seen once, not reproduced or investigated.

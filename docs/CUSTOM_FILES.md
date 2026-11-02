@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.84.0` (merged 2026-10-31 in v1.6.0, merge commit `94c4006`, upstream commit `781882a`; before: `v0.73.5` at v1.5.2, `v0.73.4` at v1.5.0, `v0.72.0` at v1.4.0, `v0.71.1`).  
-**Last updated:** 2026-11-01 (v1.6.0 — upstream v0.84.0 merge; our screens on UC's design system)
+**Last updated:** 2026-11-02 (Unreleased — Matrix rain in every column and row; Rain layers hide the rain behind them, new `src/ui/matrixrain/layerocclusion.{h,cpp}`)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -17,7 +17,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Purpose |
 |------|---------|
 | `src/ui/glyphatlas.h` | Glyph atlas texture builder — shared GPU texture for all character grid renderers |
-| `src/ui/glyphatlas.cpp` | Atlas build, UV lookup, brightness map, font loading |
+| `src/ui/glyphatlas.cpp` | Atlas build, UV lookup, brightness map, font loading; ink boxes and per-glyph width classes for the Rain layers occlusion (Unreleased) |
 | `src/ui/simcontext.h` | Simulation context struct (header-only) |
 
 ### Modified Upstream Files
@@ -33,7 +33,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/inputController.cpp` | DEV F12 dock-toggle event filter, `touchDetected` signal emit, idle-timer reset wiring. ~40 lines. |
 | `src/ui/entity/mediaPlayer.cpp` | Bugfix: re-download image when URL is present but image data is empty (2-line change). |
 | `src/qml/components/entities/media_player/ImageLoader.qml` | Same image-re-download bugfix on the QML side. |
-| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas, matrixrain/layerpipeline, matrixrain/atlasbuilder, matrixrain/singlelayerrenderer, matrixrain/inputhandler, matrixrain/bindinghelper). |
+| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas, matrixrain/layerpipeline, matrixrain/layerocclusion, matrixrain/atlasbuilder, matrixrain/singlelayerrenderer, matrixrain/inputhandler, matrixrain/bindinghelper). |
 | `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages. |
 
 ---
@@ -45,8 +45,10 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 |------|---------|-------|
 | `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 603 |
 | `src/ui/matrixrain.cpp` | QSG rendering orchestrator, vertex buffer, atlas upload, multi-layer dispatch. Single-layer rendering, input dispatch, and ScreensaverConfig wiring delegated to helper classes (v1.4.36) | 746 |
-| `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 244 |
-| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache | 661 |
+| `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 272 |
+| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (Unreleased) | 809 |
+| `src/ui/matrixrain/layerocclusion.h` | `LayerOcclusion` (Unreleased) — Rain layers: nearer grids hide the farther grids' characters. Per-grid facts and occluder masks, `OCCLUDER_MIN_TRAIL_BRIGHTNESS`, `LAYER_FAR_BAND_SHIFT`. Pure C++, by-value member of LayerPipeline. | 141 |
+| `src/ui/matrixrain/layerocclusion.cpp` | `configure`, `beginFrame`, `isHidden` / `isCellHidden` (ink-box test against the nearer cells in reach), `levelThreshold` | 136 |
 | `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | 65 |
 | `src/ui/matrixrain/atlasbuilder.cpp` | Class-static single-layer cache (`s_singleCacheKey`, `s_singleCacheAtlas`), `buildSingle`, `cacheKey` | 47 |
 | `src/ui/matrixrain/singlelayerrenderer.h` | `SingleLayerRenderer` — single-layer render path (countVisibleQuads + 5 render helpers extracted from MatrixRainItem in v1.4.36 Phase A). Stateless — all state passed by parameter. By-value member of MatrixRainItem. | 87 |
@@ -55,8 +57,8 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/matrixrain/inputhandler.cpp` | EnterIdle/Pressed/Held state machine + interactiveInput dispatch + handleDirection/Enter/Slow/Restore/Tap implementations. | 254 |
 | `src/ui/matrixrain/bindinghelper.h` | `BindingHelper` (all-static utility class) — 8 ScreensaverConfig binding helpers (extracted in v1.4.36 Phase C): bindAppearance, bindDirectionAndGravity, bindGlitch, bindChaos, bindTap, bindMessages, bindSubliminal, bindDepthAndLayers. Mirrors AtlasBuilder shape (no instances, no QObject). | 38 |
 | `src/ui/matrixrain/bindinghelper.cpp` | 8 binding helper implementations. Wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to empty TU. Caller (`MatrixRainItem::bindToScreensaverConfig`) owns QSignalBlocker batching scope. | 199 |
-| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 419 |
-| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management | 706 |
+| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 432 |
+| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (Unreleased) | 746 |
 | `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow | 197 |
 | `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control | 394 |
 | `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | 168 |
@@ -188,6 +190,36 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally NOT modified:** `src/qml/components/entities/activity/deviceclass/Activity.qml` — already architecturally correct (`activityBase.triggerCommand()` fires unconditionally outside the `hasFeature` block wrapping only `volume.start()`). Verified by direct read during v1.4.4 implementation; research agent's earlier "structurally identical to v1.4.1 additions" classification was incorrect for this specific file.
 
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
+
+---
+
+## Unreleased: Matrix rain in every column and row; Rain layers hide the rain behind them
+
+**Lanes.** A cardinal stream's lane is its column (down/up rain) or row (left/right rain). Since v1.2.0 `initStreams`
+put stream i on lane `i % lanes` for good, so with fewer streams than lanes the rest never rained. Now a stream keeps
+a lane of a golden-ratio walk when there is at least one stream per lane, and otherwise every respawn takes the next
+lane of the walk.
+
+**Occlusion.** With Rain layers on, a lit near trail character hides the mid and far characters (mid residual glow
+included) whose ink centre lies in its ink box, and a lit mid trail character hides the far ones. It is CPU culling:
+the count pass marks the occluders, the render pass skips the hidden characters. Rain layers off, the single-layer
+path, the material and the one draw call are unchanged. Rule, tests and measurements:
+[SCREENSAVER-IMPLEMENTATION.md](../SCREENSAVER-IMPLEMENTATION.md), section "2026-11-02 Session".
+
+| File | Lines | Change |
+|------|-------|--------|
+| `src/ui/rainsimulation.h` | 432 | `StreamState::ordinal`, `m_spreadCursor`, `m_atlasColorVariants`; the `spawnStream` and `m_gravitySpawnRow` comments. |
+| `src/ui/rainsimulation.cpp` | 746 | `goldenLane()`, `goldenHue()`; the lane in `spawnStream`; `initStreams` drops the `i % cols` / `i % rows` layout, restarts the walk and logs `lanes:`. |
+| `src/ui/matrixrain/layerocclusion.h` (new) | 141 | `LayerOcclusion`: per-grid facts and occluder masks (4 bits per cell: width class × Color-layers shift); `OCCLUDER_MIN_TRAIL_BRIGHTNESS` (0.30, overridable at build time with `MATRIX_OCCLUDER_MIN_TRAIL_BRIGHTNESS`); `LAYER_FAR_BAND_SHIFT` (0.35). |
+| `src/ui/matrixrain/layerocclusion.cpp` (new) | 136 | `configure` (the only allocation), `matches`, `beginFrame`, `isHidden` / `isCellHidden`, `levelThreshold`. |
+| `src/ui/matrixrain/layerpipeline.h` | 272 | `countVisibleQuads(glowFade, sortScratch)`; `m_occlusion`, the θ test hook and per-grid drawn / hidden counters; the thread contract; `friend class MatrixRainTest` (test builds only). |
+| `src/ui/matrixrain/layerpipeline.cpp` | 809 | `trailLook()` and `trailUvIndex()`, shared by count and render; the count marks the occluders near first and hides nothing over the quad cap; the trail and residual renderers skip hidden characters after the claim; two INFO lines. |
+| `src/ui/glyphatlas.h` | 119 | `inkSize(halfWidth)`, `isHalfWidth(glyph)`, `blankGlyph()`. |
+| `src/ui/glyphatlas.cpp` | 361 | `GRID_STEP_RATIO` and `MESSAGE_STEP_RATIO` at file scope; `setInkMetrics()`, called from `build()` and `buildMetricsOnly()`: ink sizes, a width class per glyph, the blank glyph. |
+| `src/ui/matrixrain.cpp` | 746 | Passes `m_sortOrder` to `countVisibleQuads`. |
+| `test/matrixrain/test_matrixrain.cpp` | 4156 | 117 new rows (106 → 223): 95 for the lanes, 22 for the occlusion; `metricsMatchBuild` and `metricsMatchBuildRainbow` also compare the ink metrics. |
+| `remote-ui.pro`, `test/matrixrain/matrixrain_test.pro`, `test/matrixrain/CMakeLists.txt`, `test/integration/matrixrain_integration_test.pro`, `test/matrixrain_preview/matrixrain_preview.pro`, `.github/workflows/tidy.yml` | — | List `layerocclusion.{h,cpp}` next to `layerpipeline`. |
+| `CHANGELOG.md`, `SCREENSAVER-IMPLEMENTATION.md`, `SCREENSAVER-README.md`, `README.md`, `ENGINEERING_LOG.md` | — | Unreleased entry; the 2026-11-02 Session section and the stale passages it corrects (density, the Rain layers grid table, the 0.35 shift); the Rain layers description; the test count and the list of helper classes; the v1.4.36 claim about the 0.35 shift. |
 
 ---
 

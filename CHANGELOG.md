@@ -11,6 +11,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## Unreleased
+
+### Fixed
+
+- **Matrix rain reaches every column and row.** Broken since v1.2.0: a stream kept the column it started in (the row,
+  for rain going left or right), so when there were fewer streams than columns, the rest never got rain.
+  - Rain going left or right at the default Column density (70) left the bottom ~250 px of the screen empty.
+  - Rain going down or up at a Column density of 55 or lower stopped short of the right side, and so did the back and
+    front grids of Rain layers below a Column density of about 160 and 220 (at the default 70, the front grid only
+    rained on the left third of the screen).
+  - Now, when there are fewer streams than columns, each stream that starts again takes the next column of a walk
+    that visits them all, so every column gets rain. With at least one stream per column nothing moves, but the extra
+    streams are spread over the whole screen instead of crowding the left side (or the top). With Rainbow, Rainbow+
+    or Neon and Color layers off, the colours belong to the columns, so a stream that moves takes its new column's
+    colour.
+
+### Changed
+
+- **Rain layers: nearer rain now hides the rain behind it, so columns no longer squeeze into solid strips.** The three
+  grids of Rain layers were all see-through: where a column of one grid lined up with a column of another, their
+  characters squeezed together into a solid strip (the "weird lines"). Now the bright part of a front or middle trail,
+  about its first ten characters at the default Trail fade, hides the characters of the grids behind it, and the front
+  grid also hides the glow the middle grid leaves behind. Faint tails stay see-through, so the rain keeps its depth.
+  Glitch trails, tap effects and messages are still drawn on top of everything. The strips are not new in v1.6.1:
+  Rain layers has drawn this way since v1.2.0. With Rain layers off nothing changes.
+
+### Developer notes
+
+- New `src/ui/matrixrain/layerocclusion.{h,cpp}`, owned by `LayerPipeline`. The hiding is done on the CPU, because
+  the rain's single blended draw call writes no depth. `SCREENSAVER-IMPLEMENTATION.md` (2026-11-02 Session) has the
+  rule, the measurements and the follow-ups.
+- New info log lines (read them with `/api/system/logs?s=custom-ui&p=7`): `initStreams` ends with `lanes:` (the lane
+  count, `-` for diagonal rain and gravity mode); with Rain layers on, `Layer occlusion: theta 0.3 …` after every
+  rebuild and `Layer occlusion first frame …` with the characters drawn and hidden per grid.
+- Tests: matrix rain 106 → 223 (95 rows for the columns and rows, 22 for the hiding), passing under ASan and UBSan.
+
 ## v1.6.1 — 2026-11-01 — built with UC's Qt 5.15.19 toolchain; diagnostics at info
 
 Same features as v1.6.0, and like v1.6.0 it needs firmware 2.12.0 or newer.
