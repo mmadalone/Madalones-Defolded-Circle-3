@@ -8,6 +8,7 @@
 #include <QImage>
 #include <QMap>
 #include <QRectF>
+#include <QSizeF>
 #include <QString>
 #include <QVector>
 
@@ -66,6 +67,17 @@ class GlyphAtlas {
     /// @brief UV rectangles for every (glyph x brightness x color) cell in the atlas texture.
     const QVector<QRectF>& glyphUVs() const { return m_glyphUVs; }
     int messageGlyphOffset() const { return m_messageGlyphOffset; }
+    /// @brief Approximate ink box of a glyph, centred in its glyphW x glyphH quad (drawText AlignCenter):
+    /// 0.85 x 0.85 em for a full-width glyph (kana), 0.55 x 0.85 em for a half-width one (see isHalfWidth).
+    QSizeF inkSize(bool halfWidth) const { return halfWidth ? m_inkSizeHalf : m_inkSizeFull; }
+    /// @brief Width class of glyph glyphIdx: true (half width) for ASCII glyphs, i.e. every glyph of the ascii,
+    /// binary and digits charsets, katakana's ten digits and the appended message glyphs; false for kana and for an
+    /// index outside the atlas. A per-atlas table built by build() and buildMetricsOnly(): lookups never allocate.
+    bool isHalfWidth(int glyphIdx) const {
+        return glyphIdx >= 0 && glyphIdx < m_halfWidth.size() && m_halfWidth[glyphIdx] != 0;
+    }
+    /// @brief Index of the inkless glyph (the message charset's space), or -1 when the atlas has none.
+    int blankGlyph() const { return m_blankGlyph; }
     const QImage& atlasImage() const { return m_atlasImage; }
     bool isBuilt() const { return m_glyphCount > 0; }
 
@@ -77,6 +89,9 @@ class GlyphAtlas {
     void remapUVs(int yPixelOffset, int combinedWidth, int combinedHeight);
 
  private:
+    // inkSize, the width classes and blankGlyph for build() and buildMetricsOnly(); needs m_messageGlyphOffset set.
+    void setInkMetrics(int fontSize, const QString &chars, int msgGlyphCount);
+
     QImage          m_atlasImage;
     QVector<QRectF> m_glyphUVs;
     int             m_glyphW           = 0;
@@ -93,6 +108,10 @@ class GlyphAtlas {
     int             m_depthVariantBase = 0;      // index of normal/base variant (1 when depth active)
     QVector<int>    m_brightnessMap;
     int             m_messageGlyphOffset = 0;
+    QSizeF          m_inkSizeFull;               // see inkSize()
+    QSizeF          m_inkSizeHalf;
+    QVector<quint8> m_halfWidth;                 // per glyph (main + message glyphs): 1 = half width, see isHalfWidth()
+    int             m_blankGlyph = -1;           // see blankGlyph()
 
 #ifdef MATRIX_RAIN_TESTING
     friend class MatrixRainTest;

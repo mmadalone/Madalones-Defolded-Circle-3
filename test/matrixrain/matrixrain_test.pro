@@ -14,6 +14,7 @@ SOURCES += \
     test_matrixrain.cpp \
     ../../src/ui/matrixrain.cpp \
     ../../src/ui/matrixrain/layerpipeline.cpp \
+    ../../src/ui/matrixrain/layerocclusion.cpp \
     ../../src/ui/matrixrain/atlasbuilder.cpp \
     ../../src/ui/matrixrain/bindinghelper.cpp \
     ../../src/ui/matrixrain/singlelayerrenderer.cpp \
@@ -28,6 +29,7 @@ SOURCES += \
 HEADERS += \
     ../../src/ui/matrixrain.h \
     ../../src/ui/matrixrain/layerpipeline.h \
+    ../../src/ui/matrixrain/layerocclusion.h \
     ../../src/ui/matrixrain/atlasbuilder.h \
     ../../src/ui/matrixrain/bindinghelper.h \
     ../../src/ui/matrixrain/singlelayerrenderer.h \

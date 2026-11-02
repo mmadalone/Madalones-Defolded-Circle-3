@@ -419,8 +419,8 @@ QSGNode *MatrixRainItem::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *
     int quadCount;
 
     if (m_layerPipeline.enabled()) {
-        // Multi-layer path: count quads across all 3 layers
-        quadCount = m_layerPipeline.countVisibleQuads(m_glowFade);
+        // Multi-layer path: count quads across all 3 layers (also builds the occluder masks renderAll reads)
+        quadCount = m_layerPipeline.countVisibleQuads(m_glowFade, m_sortOrder);
     } else {
         // Single-layer path — delegated to SingleLayerRenderer, which handles
         // the resize+fill of m_cellDrawn internally.

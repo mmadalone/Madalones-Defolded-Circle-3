@@ -56,6 +56,79 @@ quint32 depthColor(float depthFactor, const QColor &baseColor, int depthIntensit
     return (quint32(cr) << 24) | (quint32(cg) << 16) | (quint32(cb) << 8) | 0xFF;
 }
 
+// --- trailLook: one trail character's brightness, shared by count and render ---
+namespace {
+
+// A layer's inputs to trailLook, read once per layer per pass.
+struct TrailLookInputs {
+    const QVector<int> &bmap;           // GlyphAtlas::brightnessMap
+    const QVector<int> &glitchBright;   // per cell, -1 = no override
+    const QVector<int> &messageBright;  // per cell, > 0 = message flash
+    int  blevels;
+    bool glow;
+    bool invertTrail;
+    bool messagePulse;
+    bool depthOn;
+};
+
+TrailLookInputs trailLookInputs(const RainSimulation &sim, const GlyphAtlas &atlas) {
+    return {atlas.brightnessMap(), sim.glitchBright(), sim.messageBright(), atlas.brightnessLevels(),
+            sim.glow(), sim.invertTrail(), sim.messagePulse(), sim.depthEnabled()};
+}
+
+// Trail step `step` of stream s at cell cellIdx (= c * gridRows + r):
+//   fadeLevel  trail-fade level after head glow, flash, glitch and message overrides (0 = brightest);
+//              what the occlusion compares with its maxLevel, the same in every colour mode
+//   drawLevel  the atlas level drawn: fadeLevel after the Color-layers grading (== fadeLevel without it)
+//   shifted    Color layers far band: drawn LAYER_FAR_BAND_SHIFT column spacings right of the cell
+struct TrailLook {
+    int  fadeLevel;
+    int  drawLevel;
+    bool shifted;
+};
+
+TrailLook trailLook(const StreamState &s, int step, int cellIdx, const TrailLookInputs &in) {
+    int dist = SimContext::trailDist(step, s.trailLength, in.invertTrail);
+    int bright = (dist < in.bmap.size()) ? in.bmap[dist] : in.blevels - 1;
+    if (dist == 0 && in.glow) bright = 0;
+
+    if (s.flashFrames > 0) {
+        bright = 0;
+    } else if (cellIdx >= 0 && cellIdx < in.glitchBright.size() && in.glitchBright[cellIdx] >= 0) {
+        bright = in.glitchBright[cellIdx];
+    }
+
+    if (cellIdx >= 0 && cellIdx < in.messageBright.size() && in.messageBright[cellIdx] > 0) {
+        bright = (in.messagePulse && (in.messageBright[cellIdx] % 4 < 2))
+            ? qMin(2, in.blevels - 1) : 0;
+    }
+
+    TrailLook look{bright, bright, false};
+    if (in.depthOn) {
+        // Color layers: the far band is shifted off-grid with a brightness floor and a gentler fade, the near
+        // band fades steeper
+        if (s.depthFactor < 0.93f) {
+            look.shifted = true;
+            int minBright = in.blevels * 2 / 5;
+            bright = qMax(bright, minBright);
+        }
+        float fadeMod = 1.0f;
+        if (s.depthFactor < 0.93f) fadeMod = 0.7f;
+        else if (s.depthFactor > 1.07f) fadeMod = 1.3f;
+        look.drawLevel = qBound(0, static_cast<int>(bright * fadeMod), in.blevels - 1);
+    }
+    return look;
+}
+
+// Index of the trail character's UV rect: glyph x brightness levels x colour variants (glyphUVs layout).
+int trailUvIndex(int glyphIdx, int colorVariant, int level, const GlyphAtlas &atlas) {
+    const int blevels = atlas.brightnessLevels();
+    const int cv = qMin(colorVariant, qMax(0, atlas.colorVariants() - 1));
+    return glyphIdx * blevels * atlas.colorVariants() + cv * blevels + level;
+}
+
+}  // namespace
+
 // ===========================================================================
 // LayerPipeline — multi-layer atlas build + render
 // ===========================================================================
@@ -302,12 +375,57 @@ void LayerPipeline::initAllLayers(qreal width, qreal height) {
         m_layers[i].cellDrawn.resize(cells);
         m_layers[i].cellDrawn.fill(0);
     }
+    configureOcclusion(width, height);
 }
 
-int LayerPipeline::countVisibleQuads(int glowFade) {
+LayerOcclusion::Facts LayerPipeline::occlusionFacts() const {
+    LayerOcclusion::Facts facts;
+    for (int i = 0; i < LAYER_COUNT; ++i) {
+        const GlyphAtlas &la = m_layers[i].atlas;
+        facts[i] = {m_layers[i].sim.gridCols(), m_layers[i].sim.gridRows(), la.glyphW(), la.glyphH(),
+                    {static_cast<float>(la.inkSize(false).width()), static_cast<float>(la.inkSize(true).width())},
+                    static_cast<float>(la.inkSize(false).height()), la.brightnessLevels()};
+    }
+    return facts;
+}
+
+void LayerPipeline::configureOcclusion(qreal width, qreal height) {
+    const LayerOcclusion::Facts facts = occlusionFacts();
+    m_occlusion.configure(width, height, facts, m_occluderMinBrightness);
+    m_occlusionStatsPending = true;
+
+    static const char *const layerNames[LAYER_COUNT] = {"far", "mid", "near"};
+    QString perLayer;
+    for (int i = 0; i < LAYER_COUNT; ++i) {
+        perLayer += QStringLiteral(" | %1 %2x%3 glyph %4x%5 ink %6/%7x%8 maxLevel %9/%10")
+                        .arg(QLatin1String(layerNames[i])).arg(facts[i].cols).arg(facts[i].rows)
+                        .arg(facts[i].glyphW).arg(facts[i].glyphH)
+                        .arg(static_cast<double>(facts[i].inkW[LayerOcclusion::FULL_WIDTH]), 0, 'f', 1)
+                        .arg(static_cast<double>(facts[i].inkW[LayerOcclusion::HALF_WIDTH]), 0, 'f', 1)
+                        .arg(static_cast<double>(facts[i].inkH), 0, 'f', 1)
+                        .arg(m_occlusion.maxLevel(i)).arg(facts[i].levels);
+    }
+    qCInfo(lcScreensaver).noquote() << QStringLiteral("Layer occlusion: theta %1, size %2x%3, ink full/half x height%4")
+                                           .arg(static_cast<double>(m_occluderMinBrightness))
+                                           .arg(width).arg(height).arg(perLayer);
+}
+
+void LayerPipeline::ensureOcclusion(qreal width, qreal height) {
+    if (!m_occlusion.matches(width, height, occlusionFacts())) configureOcclusion(width, height);
+}
+
+int LayerPipeline::countVisibleQuads(int glowFade, QVector<int> &sortScratch) {
     int totalQuads = 0;
 
-    for (int li = 0; li < LAYER_COUNT; ++li) {
+    // Occluder masks for this frame. The grids and atlases only change in initAllLayers, which configures the
+    // occlusion; reconfiguring here keeps the masks matching the grids even if one changed without it.
+    ensureOcclusion(m_occlusion.width(), m_occlusion.height());
+    m_occlusion.beginFrame();
+
+    // Near first: the near occluders are all marked before a mid character asks whether one hides it (a hidden mid
+    // character is not drawn, so it does not occlude). The total is a sum of per-layer counts: the order changes
+    // nothing.
+    for (int li = LAYER_COUNT - 1; li >= 0; --li) {
         RainSimulation &ls = m_layers[li].sim;
         int gridCols = ls.gridCols(), gridRows = ls.gridRows();
         const auto &streams = ls.streams();
@@ -319,14 +437,23 @@ int LayerPipeline::countVisibleQuads(int glowFade) {
         m_layers[li].cellDrawn.resize(cellCount);
         m_layers[li].cellDrawn.fill(0);
 
-        // Sort streams by depthFactor ascending for occlusion
-        QVector<int> order(streams.size());
+        // Sort streams by depthFactor ascending for occlusion (shared scratch buffer: no per-frame allocation)
+        auto &order = sortScratch;
+        order.resize(streams.size());
         std::iota(order.begin(), order.end(), 0);
         if (depthOn) {
             std::sort(order.begin(), order.end(), [&streams](int a, int b) {
                 return streams[a].depthFactor < streams[b].depthFactor;
             });
         }
+
+        // Occluders (mid and near): trail characters the renderer will draw with a real glyph, lit enough, that no
+        // nearer occluder hides
+        const int maxOccluderLevel = m_occlusion.maxLevel(li);
+        const TrailLookInputs lookIn = trailLookInputs(ls, la);
+        const auto &charGrid = ls.charGrid();
+        const int blankGlyph = la.blankGlyph();
+        const int uvCount = la.glyphUVs().size();
 
         // Count stream trail quads
         for (int si : order) {
@@ -341,6 +468,17 @@ int LayerPipeline::countVisibleQuads(int glowFade) {
                 if (m_layers[li].cellDrawn[cellIdx] >= prio) continue;
                 m_layers[li].cellDrawn[cellIdx] = prio;
                 totalQuads++;
+
+                // After the claim, with the trail renderer's checks: only a drawn character occludes
+                if (maxOccluderLevel < 0 || cellIdx >= charGrid.size()) continue;
+                const int glyphIdx = charGrid[cellIdx];
+                if (glyphIdx < 0 || glyphIdx == blankGlyph) continue;
+                const TrailLook look = trailLook(s, step, cellIdx, lookIn);
+                if (look.fadeLevel > maxOccluderLevel) continue;
+                const int uvIdx = trailUvIndex(glyphIdx, s.colorVariant, look.drawLevel, la);
+                if (uvIdx < 0 || uvIdx >= uvCount) continue;
+                if (m_occlusion.isCellHidden(li, c, r, look.shifted)) continue;
+                m_occlusion.markOccluder(li, c, r, look.shifted, la.isHalfWidth(glyphIdx));
             }
         }
 
@@ -380,6 +518,9 @@ int LayerPipeline::countVisibleQuads(int glowFade) {
         }
     }
 
+    // Over the quad cap, emitQuad drops the frame's last quads (near trails first), occluders included: such a frame
+    // hides nothing, so nothing vanishes behind a character that is not drawn.
+    if (totalQuads > MAX_EMIT_VERTICES / 4) m_occlusion.endFrame();
     return totalQuads;
 }
 
@@ -394,8 +535,13 @@ void LayerPipeline::renderAll(MatrixRainVertex *verts, quint16 *ixBuf,
                               const QString &colorMode) {
     // Reset cellDrawn for each layer's rendering pass (countVisibleQuads filled
     // them in for occlusion testing; rendering needs a fresh slate).
-    for (int li = 0; li < LAYER_COUNT; ++li)
+    for (int li = 0; li < LAYER_COUNT; ++li) {
         m_layers[li].cellDrawn.fill(0);
+        m_frameDrawn[li] = 0;
+        m_frameHidden[li] = 0;
+    }
+    // The item size changed since the count's configuration: reconfigure, and this frame hides nothing.
+    ensureOcclusion(width, height);
 
     // Render all 3 layers: stream trails per layer, residual glow on mid only.
     for (int li = 0; li < LAYER_COUNT; ++li) {
@@ -411,6 +557,15 @@ void LayerPipeline::renderAll(MatrixRainVertex *verts, quint16 *ixBuf,
 
     // Mid layer (interactive) gets glitch trails, message flash, message overlay.
     renderMidInteractiveOverlays(verts, ixBuf, vi, ii, width, height, baseVertexColor);
+    m_occlusion.endFrame();
+
+    if (m_occlusionStatsPending) {
+        m_occlusionStatsPending = false;
+        qCInfo(lcScreensaver).nospace() << "Layer occlusion first frame (trails + residual glow): far "
+                                        << m_frameDrawn[0] << " drawn " << m_frameHidden[0] << " hidden | mid "
+                                        << m_frameDrawn[1] << " drawn " << m_frameHidden[1] << " hidden | near "
+                                        << m_frameDrawn[2] << " drawn " << m_frameHidden[2] << " hidden";
+    }
 }
 
 void LayerPipeline::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *verts, quint16 *ixBuf,
@@ -431,13 +586,12 @@ void LayerPipeline::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *vert
 
     const auto &streams = ls.streams();
     const auto &charGrid = ls.charGrid();
-    const auto &glitchBright = ls.glitchBright();
-    const auto &messageBright = ls.messageBright();
-    bool simGlow = ls.glow(), simInvertTrail = ls.invertTrail(), simMessagePulse = ls.messagePulse();
-    const auto &bmap = la.brightnessMap();
-    int bmapSize = bmap.size(), blevels = la.brightnessLevels();
+    const TrailLookInputs lookIn = trailLookInputs(ls, la);
     bool depthOn = ls.depthEnabled();
     float brightMul = m_layers[layerIdx].brightnessMul;
+    // Far and mid characters can be hidden behind a nearer layer's lit characters (layerocclusion.h)
+    const bool canBeHidden = layerIdx < LAYER_COUNT - 1 && m_occlusion.active();
+    int drawn = 0, hidden = 0;
 
     // Sort streams far-first for painter's algorithm within the layer
     auto &order = sortOrderScratch;
@@ -478,54 +632,35 @@ void LayerPipeline::renderLayerStreamTrails(int layerIdx, MatrixRainVertex *vert
             if (m_layers[layerIdx].cellDrawn[cellIdx] >= prio) continue;
             m_layers[layerIdx].cellDrawn[cellIdx] = prio;
 
-            int dist = SimContext::trailDist(step, s.trailLength, simInvertTrail);
-            int bright = (dist < bmapSize) ? bmap[dist] : blevels - 1;
-            if (dist == 0 && simGlow) bright = 0;
-
-            if (s.flashFrames > 0) {
-                bright = 0;
-            } else {
-                int gridIdx = c * gridRows + r;
-                if (gridIdx >= 0 && gridIdx < glitchBright.size() && glitchBright[gridIdx] >= 0)
-                    bright = glitchBright[gridIdx];
-            }
-
-            int gridIdx = c * gridRows + r;
-            if (gridIdx >= 0 && gridIdx < messageBright.size() && messageBright[gridIdx] > 0) {
-                bright = (simMessagePulse && (messageBright[gridIdx] % 4 < 2))
-                    ? qMin(2, blevels - 1) : 0;
-            }
-
-            // Depth layers: brightness attenuation for far streams
+            // Brightness (head glow, flash, glitch, message, Color-layers grading) and the far-band shift
+            const TrailLook look = trailLook(s, step, cellIdx, lookIn);
             float cx = c * colSp, cy = r * rowSp;
-            if (depthOn) {
-                if (s.depthFactor < 0.93f)
-                    cx += colSp * 0.35f;
-                if (s.depthFactor < 0.93f) {
-                    int minBright = blevels * 2 / 5;
-                    bright = qMax(bright, minBright);
-                }
-                float fadeMod = 1.0f;
-                if (s.depthFactor < 0.93f) fadeMod = 0.7f;
-                else if (s.depthFactor > 1.07f) fadeMod = 1.3f;
-                bright = qBound(0, static_cast<int>(bright * fadeMod), blevels - 1);
-            }
+            if (look.shifted)
+                cx += colSp * LAYER_FAR_BAND_SHIFT;
 
-            if (gridIdx < 0 || gridIdx >= charGrid.size()) continue;
-            int glyphIdx = charGrid[gridIdx];
+            if (cellIdx < 0 || cellIdx >= charGrid.size()) continue;
+            int glyphIdx = charGrid[cellIdx];
             if (glyphIdx < 0) continue;
-            int cv = qMin(s.colorVariant, qMax(0, la.colorVariants() - 1));
-            int uvIdx = glyphIdx * blevels * la.colorVariants() + cv * blevels + bright;
+            int uvIdx = trailUvIndex(glyphIdx, s.colorVariant, look.drawLevel, la);
             if (uvIdx < 0 || uvIdx >= la.glyphUVs().size()) continue;
+            // After the claim and the glyph checks, so the residual pass never fills a hidden trail cell
+            if (canBeHidden && m_occlusion.isHidden(layerIdx, cx + gw * 0.5f, cy + gh * 0.5f)) {
+                ++hidden;
+                continue;
+            }
 
             const QRectF &uv = la.glyphUVs()[uvIdx];
+            const int viBefore = vi;
             emitQuad(verts, ixBuf, vi, ii,
                      cx, cy, gw, gh,
                      static_cast<float>(uv.x()), static_cast<float>(uv.y()),
                      static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
                      streamColors[si]);
+            if (vi > viBefore) ++drawn;  // the quad cap drops it otherwise
         }
     }
+    m_frameDrawn[layerIdx] += drawn;
+    m_frameHidden[layerIdx] += hidden;
 }
 
 void LayerPipeline::renderLayerResidualCells(int layerIdx, MatrixRainVertex *verts, quint16 *ixBuf,
@@ -557,6 +692,10 @@ void LayerPipeline::renderLayerResidualCells(int layerIdx, MatrixRainVertex *ver
         residualColor = (quint32(cr) << 24) | (quint32(cg) << 16) | (quint32(cb) << 8) | 0xFF;
     }
 
+    // Residual glow can be hidden behind a nearer layer's lit characters, but never hides anything
+    const bool canBeHidden = layerIdx < LAYER_COUNT - 1 && m_occlusion.active();
+    int drawn = 0, hidden = 0;
+
     int maxGlowAge = (glowFade <= 0) ? 0 : qMin(bmapSize, qMax(4, bmapSize * glowFade / 100));
     for (int idx = 0; idx < cellAge.size(); ++idx) {
         if (m_layers[layerIdx].cellDrawn[idx] > 0) continue;
@@ -572,14 +711,23 @@ void LayerPipeline::renderLayerResidualCells(int layerIdx, MatrixRainVertex *ver
         int baseCV = la.hasDepthVariants() ? la.depthVariantBase() : 0;
         int uvIdx = glyphIdx * blevels * la.colorVariants() + baseCV * blevels + bright;
         if (uvIdx < 0 || uvIdx >= la.glyphUVs().size()) continue;
+        const float x = c * colSp, y = r * rowSp;
+        if (canBeHidden && m_occlusion.isHidden(layerIdx, x + gw * 0.5f, y + gh * 0.5f)) {
+            ++hidden;
+            continue;
+        }
 
         const QRectF &uv = la.glyphUVs()[uvIdx];
+        const int viBefore = vi;
         emitQuad(verts, ixBuf, vi, ii,
-                 c * colSp, r * rowSp, gw, gh,
+                 x, y, gw, gh,
                  static_cast<float>(uv.x()), static_cast<float>(uv.y()),
                  static_cast<float>(uv.x() + uv.width()), static_cast<float>(uv.y() + uv.height()),
                  residualColor);
+        if (vi > viBefore) ++drawn;  // the quad cap drops it otherwise
     }
+    m_frameDrawn[layerIdx] += drawn;
+    m_frameHidden[layerIdx] += hidden;
 }
 
 void LayerPipeline::renderMidInteractiveOverlays(MatrixRainVertex *verts, quint16 *ixBuf,

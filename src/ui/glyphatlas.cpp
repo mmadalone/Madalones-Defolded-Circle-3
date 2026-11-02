@@ -23,6 +23,11 @@ static constexpr int    RAINBOW_HUES             = 12;
 static constexpr int    RAINBOW_PLUS_HUES        = 24;
 static constexpr int    BRIGHTNESS_MAP_SIZE      = 128;   // precomputed distance -> level entries
 
+// Tight spacing for grid, messages and ink. ARM font metrics (horizontalAdvance, maxWidth, averageCharWidth) are
+// unreliable — use fractions of fontSize.
+static constexpr float  GRID_STEP_RATIO          = 0.85f;  // CJK full-width ink ≈ 85% of em-square
+static constexpr float  MESSAGE_STEP_RATIO       = 0.55f;  // ASCII monospace advance ≈ 55% of em-square
+
 // Full-width katakana (square CJK glyphs -- no vertical stretching) + digits
 static const QString CHARS_KATAKANA = QStringLiteral(
     "\u30A2\u30A4\u30A6\u30A8\u30AA\u30AB\u30AD\u30AF\u30B1\u30B3"
@@ -96,10 +101,7 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
     m_glyphH = qMax(fm.height(), fontSize);
     m_glyphW = m_glyphH;  // square cells for CJK/ASCII
 
-    // Tight spacing for grid and messages. ARM font metrics (horizontalAdvance,
-    // maxWidth, averageCharWidth) are unreliable — use fractions of fontSize.
-    static constexpr float GRID_STEP_RATIO    = 0.85f;  // CJK full-width ink ≈ 85% of em-square
-    static constexpr float MESSAGE_STEP_RATIO = 0.55f;  // ASCII monospace advance ≈ 55% of em-square
+    // Tight spacing for grid and messages (GRID_STEP_RATIO / MESSAGE_STEP_RATIO, file scope).
     m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_messageStepW = qMax(1, static_cast<int>(fontSize * MESSAGE_STEP_RATIO));
@@ -161,6 +163,7 @@ void GlyphAtlas::build(const QColor &color, const QString &colorMode,
     } else {
         m_messageGlyphOffset = 0;  // ASCII charset: messages reuse existing glyphs
     }
+    setInkMetrics(fontSize, chars, msgGlyphCount);
     int totalGlyphs = m_glyphCount + msgGlyphCount;
 
     // Integer overflow guard: dimensions must fit in int and produce a viable QImage
@@ -257,8 +260,6 @@ void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
     QFontMetrics fm(font);
     m_glyphH = qMax(fm.height(), fontSize);
     m_glyphW = m_glyphH;
-    static constexpr float GRID_STEP_RATIO    = 0.85f;
-    static constexpr float MESSAGE_STEP_RATIO = 0.55f;
     m_charStepW = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_charStepH = qMax(1, static_cast<int>(fontSize * GRID_STEP_RATIO));
     m_messageStepW = qMax(1, static_cast<int>(fontSize * MESSAGE_STEP_RATIO));
@@ -285,6 +286,7 @@ void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
     } else {
         m_messageGlyphOffset = 0;
     }
+    setInkMetrics(fontSize, chars, msgGlyphCount);
     int totalGlyphs = m_glyphCount + msgGlyphCount;
 
     // Integer overflow guard (mirrors build())
@@ -327,6 +329,24 @@ void GlyphAtlas::buildMetricsOnly(const QColor &color, const QString &colorMode,
 
     // No QImage created — atlasImage() will be null
     m_atlasImage = QImage();
+}
+
+void GlyphAtlas::setInkMetrics(int fontSize, const QString &chars, int msgGlyphCount) {
+    // No measured ink box exists (ARM font metrics are unreliable), so the ink uses the spacing ratios: full width
+    // (kana) and half width (ASCII: Latin letters and digits), both GRID_STEP_RATIO tall.
+    m_inkSizeFull = QSizeF(fontSize * GRID_STEP_RATIO, fontSize * GRID_STEP_RATIO);
+    m_inkSizeHalf = QSizeF(fontSize * MESSAGE_STEP_RATIO, fontSize * GRID_STEP_RATIO);
+    // Width class per glyph, by its character (East Asian Width: ASCII is narrow, kana are wide): every glyph of the
+    // ascii, binary and digits charsets and katakana's ten digits are half width, and so are the appended message
+    // glyphs (CHARS_MESSAGE is all ASCII).
+    m_halfWidth.resize(chars.size() + msgGlyphCount);
+    for (int g = 0; g < chars.size(); ++g) m_halfWidth[g] = (chars.at(g).unicode() < 0x80) ? 1 : 0;
+    for (int g = chars.size(); g < m_halfWidth.size(); ++g) m_halfWidth[g] = 1;
+    // The inkless glyph: a space in the main charset (none today), else the appended message space, which
+    // MessageEngine writes into charGrid for a ' ' in a message.
+    m_blankGlyph = chars.indexOf(QLatin1Char(' '));
+    if (m_blankGlyph < 0 && msgGlyphCount > 0)
+        m_blankGlyph = m_messageGlyphOffset + CHARS_MESSAGE.indexOf(QLatin1Char(' '));
 }
 
 void GlyphAtlas::remapUVs(int yPixelOffset, int combinedWidth, int combinedHeight) {

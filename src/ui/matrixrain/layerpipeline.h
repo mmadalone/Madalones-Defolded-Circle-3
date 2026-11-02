@@ -8,6 +8,8 @@
 //     initAllLayers, countVisibleQuads, renderAll, renderLayer*, renderMidInteractiveOverlays.
 //   Per-frame scratch buffers (sortOrder, streamColorCache) are passed in by reference
 //   from MatrixRainItem so they can be shared with the single-layer render path.
+//   countVisibleQuads builds the occluder masks (m_occlusion, layerocclusion.h) that renderAll
+//   reads: both run in the same sync, count first.
 //
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -22,6 +24,7 @@
 #include "../glyphatlas.h"
 #include "../rainsimulation.h"
 #include "atlasbuilder.h"  // AtlasInputs (shared between single + multi-layer paths)
+#include "layerocclusion.h"
 
 // --- Multi-layer rain constants (3 depth planes: far, mid, near) ----------
 // Mid layer uses the unscaled primary parameters — no LAYER_MID_* needed.
@@ -116,6 +119,7 @@ struct BuildTimings {
 class LayerPipeline {
  public:
     static constexpr int LAYER_COUNT = 3;
+    static_assert(LayerOcclusion::LAYER_COUNT == LAYER_COUNT, "one occlusion layer per rain layer");
 
     LayerPipeline() = default;
     ~LayerPipeline() = default;
@@ -159,20 +163,28 @@ class LayerPipeline {
     void applyResetAfterScreenOff();
 
     // --- Render thread (QSG sync point) ---
-    // Initialize stream grids for all 3 layers. Called from MatrixRainItem::
-    // updatePaintNode when m_needsReinit and layers enabled.
+    // Initialize stream grids for all 3 layers and configure the occlusion for
+    // them. Called from MatrixRainItem::updatePaintNode when m_needsReinit and
+    // layers enabled.
     void initAllLayers(qreal width, qreal height);
 
     // Count quads needed across all 3 layers (stream trails + residual glow on
     // mid + glitch trails + message flash + message overlay). Call before
     // allocating QSGGeometry. Resets per-layer cellDrawn arrays as a side effect
-    // (so renderAll can rely on a clean slate).
-    int countVisibleQuads(int glowFade);
+    // (so renderAll can rely on a clean slate) and marks the occluders renderAll
+    // hides farther characters behind: layers near first, so a mid character
+    // the near layer hides does not occlude; a count over the quad cap hides
+    // nothing. The count stays an upper bound: hiding only drops counted quads.
+    // sortScratch is MatrixRainItem's shared per-frame stream-order buffer (no
+    // heap churn).
+    int countVisibleQuads(int glowFade, QVector<int> &sortScratch);
 
     // Render all 3 layers into the provided vertex/index buffers. Internally
     // iterates layers far→mid→near (painter's algorithm) calling
     // renderLayerStreamTrails / renderLayerResidualCells per layer, then calls
     // renderMidInteractiveOverlays for the mid layer's glitch/message effects.
+    // Far and mid characters under a lit nearer character are skipped (see
+    // layerocclusion.h); overlays are always drawn.
     //
     // sortOrderScratch and streamColorScratch are MatrixRainItem-owned per-frame
     // scratch buffers shared with the single-layer render path — passed in by
@@ -236,9 +248,25 @@ class LayerPipeline {
                                       qreal width, qreal height,
                                       quint32 baseVertexColor);
 
+    // Rain layers occlusion (layerocclusion.h): the layers' grid and atlas facts,
+    // configure + INFO log, and configure-if-changed (grid, atlas or item size).
+    LayerOcclusion::Facts occlusionFacts() const;
+    void configureOcclusion(qreal width, qreal height);
+    void ensureOcclusion(qreal width, qreal height);
+
     RainLayer    m_layers[LAYER_COUNT];
     QImage       m_combinedAtlasImage;
     bool         m_enabled{false};
     bool         m_needsRebuild{false};
     BuildTimings m_lastTimings;
+
+    LayerOcclusion m_occlusion;
+    float m_occluderMinBrightness{OCCLUDER_MIN_TRAIL_BRIGHTNESS};  // theta; > 1 = occlusion off
+    bool  m_occlusionStatsPending{false};  // log drawn/hidden per layer on the first frame after a configure
+    int   m_frameDrawn[LAYER_COUNT]{};     // last renderAll: trail + residual quads emitted (not capped) per layer
+    int   m_frameHidden[LAYER_COUNT]{};    // last renderAll: trail + residual quads hidden per layer
+
+#ifdef MATRIX_RAIN_TESTING
+    friend class MatrixRainTest;
+#endif
 };

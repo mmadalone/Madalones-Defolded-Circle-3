@@ -7,8 +7,14 @@
 #endif
 #include <QtTest>
 #include <QGuiApplication>
+#include <QHash>
+#include <QPointF>
 #include <QSignalSpy>
 #include <QtMath>
+#include <cstring>
+#include <limits>
+#include <random>
+#include <vector>
 #include "ui/matrixrain.h"
 #include "ui/gravitydirection.h"
 
@@ -78,6 +84,276 @@ class MatrixRainTest : public QObject {
         for (int i = 0; i < v.size() && i < maxItems; ++i) parts << QString::number(v[i]);
         if (v.size() > maxItems) parts << QStringLiteral("...");
         return parts.join(QLatin1Char(','));
+    }
+
+    // ── Rain layers occlusion helpers ──
+    static AtlasInputs pipelineInputs(const QString &charset, int font, bool colorLayers) {
+        AtlasInputs in;
+        in.color = QColor("#00ff41");
+        in.colorMode = QStringLiteral("green");
+        in.fontSize = font;
+        in.charset = charset;
+        in.fadeRate = 0.88;
+        in.depthEnabled = colorLayers;
+        in.depthIntensity = 50;
+        return in;
+    }
+    // The primary simulation whose settings syncLayerConfig forwards: down, speed 1, head glow on, no effects.
+    static void setupPrimary(RainSimulation &primary, const AtlasInputs &in, qreal density, int trail) {
+        primary.setDirection(QStringLiteral("down"));
+        primary.setCharset(in.charset);
+        primary.setDensity(density);
+        primary.setTrailLength(trail);
+        primary.setGlow(true);
+        primary.setDepthEnabled(in.depthEnabled);
+        primary.setGlitch(false);
+        primary.setGlitchChaos(false);
+        primary.setMessagesEnabled(false);
+        primary.setSubliminal(false);
+    }
+    // A LayerPipeline built and initialised the way MatrixRainItem does it (build, syncLayerConfig, initAllLayers)
+    // for the 480x850 screen, every layer's RNG seeded before initAllLayers.
+    static void setupPipeline(LayerPipeline &pipe, const RainSimulation &primary, const AtlasInputs &in,
+                              quint32 seed = 42) {
+        pipe.setEnabled(true);
+        BuildTimings timings;
+        pipe.build(in, timings);
+        pipe.syncLayerConfig(primary, 50);
+        for (int i = 0; i < LayerPipeline::LAYER_COUNT; ++i)
+            pipe.m_layers[i].sim.m_rng.seed(seed + static_cast<quint32>(i));
+        pipe.initAllLayers(480, 850);
+    }
+    // One Rain-layers frame the way updatePaintNode draws it: count (capped like it), vertex and index buffers of
+    // exactly that size (ASan reports any write past them), renderAll.
+    struct LayerFrame {
+        int rawCounted{0};  // countVisibleQuads
+        int counted{0};     // capped like updatePaintNode caps it: the buffers' size in quads
+        int vi{0};
+        int ii{0};
+        std::vector<MatrixRainVertex> verts;
+        std::vector<quint16> indices;
+    };
+    static LayerFrame renderLayerFrame(LayerPipeline &pipe, const AtlasInputs &in, int glowFade = 50) {
+        LayerFrame f;
+        QVector<int> sortScratch;
+        QVector<quint32> colorScratch;
+        f.rawCounted = pipe.countVisibleQuads(glowFade, sortScratch);
+        f.counted = qMin(f.rawCounted, MAX_EMIT_VERTICES / 4);
+        f.verts.resize(static_cast<size_t>(f.counted) * 4);
+        f.indices.resize(static_cast<size_t>(f.counted) * 6);
+        if (f.counted > 0) {
+            const quint32 base = in.depthEnabled ? packColor(GlyphAtlas::resolveColor(in.colorMode, in.color))
+                                                 : 0xFFFFFFFF;
+            pipe.renderAll(f.verts.data(), f.indices.data(), f.vi, f.ii, 480, 850, base, sortScratch, colorScratch,
+                           glowFade, in.color, in.colorMode);
+        }
+        return f;
+    }
+    // A down trail placed by hand: head at (col, headRow), len cells up to row headRow - len + 1.
+    static void placeTrail(StreamState &s, int col, int headRow, int len, float depthFactor) {
+        s.active = true;
+        s.pauseTicks = 0;
+        s.stutterFrames = 0;
+        s.flashFrames = 0;
+        s.dx = 0;
+        s.dy = 1;
+        s.dxF = 0.0f;
+        s.dyF = 1.0f;
+        s.trailLength = len;
+        s.depthFactor = depthFactor;
+        s.colorVariant = 0;
+        s.histHead = 0;
+        s.histCount = 0;
+        for (int r = headRow - len + 1; r <= headRow; ++r) {
+            s.headCol = col;
+            s.headRow = r;
+            s.pushHistory();
+        }
+        s.headColF = static_cast<float>(col);
+        s.headRowF = static_cast<float>(headRow);
+    }
+    // Position key of an emitted quad (exact: both renders compute the same floats), without float ==.
+    static qint64 quadKey(int layer, float x, float y) {
+        return (static_cast<qint64>(layer) << 42) | (static_cast<qint64>(qRound(x * 64.0f) + 65536) << 21)
+               | static_cast<qint64>(qRound(y * 64.0f) + 65536);
+    }
+
+    // ── Constructed occlusion scenes (480x850, everything placed by hand) ──
+    // Per layer: the grid, the quad, the renderer's cell pitch and the ink half-extents of both width classes.
+    struct SceneGeo {
+        int cols, rows, glyphW, glyphH;
+        float colSp, rowSp;
+        float halfW[2];  // half the ink width: [0] full-width glyph (kana), [1] half-width glyph (Latin, digits)
+        float halfH;
+    };
+    static void sceneGeo(const LayerPipeline &pipe, SceneGeo geo[3]) {
+        for (int i = 0; i < 3; ++i) {
+            const RainSimulation &sim = pipe.m_layers[i].sim;
+            const GlyphAtlas &atlas = pipe.m_layers[i].atlas;
+            geo[i] = {sim.gridCols(), sim.gridRows(), atlas.glyphW(), atlas.glyphH(),
+                      480.0f / static_cast<float>(sim.gridCols()), 850.0f / static_cast<float>(sim.gridRows()),
+                      {static_cast<float>(atlas.inkSize(false).width()) * 0.5f,
+                       static_cast<float>(atlas.inkSize(true).width()) * 0.5f},
+                      static_cast<float>(atlas.inkSize(false).height()) * 0.5f};
+        }
+    }
+    // Emitted quads are told apart by width (= the layer's glyphW): the three must differ.
+    static QString sceneWidthsError(const SceneGeo geo[3]) {
+        if (geo[0].glyphW != geo[1].glyphW && geo[1].glyphW != geo[2].glyphW && geo[0].glyphW != geo[2].glyphW)
+            return QString();
+        return QString("quad widths must differ per layer: %1 %2 %3")
+            .arg(geo[0].glyphW).arg(geo[1].glyphW).arg(geo[2].glyphW);
+    }
+    // An empty stage: every stream inactive (and kept so), no residual glow, no glitch or message overrides, no
+    // overlays, glyph 3 in every cell.
+    static void clearScene(LayerPipeline &pipe) {
+        for (int i = 0; i < 3; ++i) {
+            RainSimulation &sim = pipe.m_layers[i].sim;
+            for (StreamState &s : sim.m_streams) {
+                s.active = false;
+                s.pauseTicks = 1000000;
+            }
+            sim.m_cellAge.fill(9999);  // RainSimulation's CELL_AGE_MAX: no glow
+            sim.m_glitch.m_glitchBright.fill(-1);
+            sim.m_glitch.m_glitchTrails.clear();
+            sim.m_message.m_messageBright.fill(0);
+            sim.m_message.m_messageOverlay.clear();
+            sim.m_charGrid.fill(3);
+        }
+    }
+    // The renderer's ink centre of a cell's character (quad origin + half the quad); shifted: Color layers far band.
+    static float sceneX(const SceneGeo &g, int c, bool shifted) {
+        float x = c * g.colSp;
+        if (shifted) x += g.colSp * LAYER_FAR_BAND_SHIFT;
+        return x + g.glyphW * 0.5f;
+    }
+    static float sceneY(const SceneGeo &g, int r) { return r * g.rowSp + g.glyphH * 0.5f; }
+    // The scene rendered with occlusion off (theta 2), then on (the owner's theta). Count and render only read the
+    // simulations, so both frames show the same scene.
+    static void renderOffOn(LayerPipeline &pipe, const AtlasInputs &in, LayerFrame &off, LayerFrame &on) {
+        pipe.m_occluderMinBrightness = 2.0f;
+        pipe.configureOcclusion(480, 850);
+        off = renderLayerFrame(pipe, in);
+        pipe.m_occluderMinBrightness = OCCLUDER_MIN_TRAIL_BRIGHTNESS;
+        pipe.configureOcclusion(480, 850);
+        on = renderLayerFrame(pipe, in);
+    }
+    // The ink box of a placed mid or near character.
+    struct SceneBox {
+        float cx, cy, halfW, halfH;
+    };
+    // Is (px, py) inside one of the boxes (closed)? edge: within 1e-3 px of a box border, so not decidable in float.
+    static bool inSceneBoxes(const QVector<SceneBox> &boxes, float px, float py, bool &edge) {
+        bool inside = false;
+        for (const SceneBox &b : boxes) {
+            const float m = qMin(b.halfW - qAbs(px - b.cx), b.halfH - qAbs(py - b.cy));
+            if (qAbs(m) < 1e-3f) edge = true;
+            if (m >= 0.0f) inside = true;
+        }
+        return inside;
+    }
+    // The far quads of a frame (told apart by width), by position, with multiplicity.
+    static QHash<qint64, int> farQuads(const LayerFrame &f, const SceneGeo geo[3]) {
+        QHash<qint64, int> quads;
+        for (int q = 0; q + 3 < f.vi; q += 4) {
+            if (qRound(f.verts[q + 1].x - f.verts[q].x) == geo[0].glyphW)
+                ++quads[quadKey(0, f.verts[q].x, f.verts[q].y)];
+        }
+        return quads;
+    }
+    // The far quads of `off` whose ink centre lies in a `lit` box (an occluder by the rule) must be gone from `on`,
+    // every other one kept. hiddenExpected counts the first; trapVisible the far quads in a `trap` box (one a wrong
+    // rule would hide them behind) and outside every lit box. Quads at a box edge are skipped. Empty when right.
+    static QString checkFarQuads(const LayerFrame &off, const LayerFrame &on, const SceneGeo geo[3],
+                                 const QVector<SceneBox> &lit, const QVector<SceneBox> &trap, int &hiddenExpected,
+                                 int &trapVisible) {
+        QHash<qint64, int> onFar = farQuads(on, geo);
+        int wrongDrawn = 0, wrongHidden = 0, edges = 0;
+        hiddenExpected = 0;
+        trapVisible = 0;
+        for (int q = 0; q + 3 < off.vi; q += 4) {
+            if (qRound(off.verts[q + 1].x - off.verts[q].x) != geo[0].glyphW) continue;
+            const float x = off.verts[q].x, y = off.verts[q].y;
+            const float px = x + geo[0].glyphW * 0.5f, py = y + geo[0].glyphH * 0.5f;
+            bool edge = false;
+            const bool inLit = inSceneBoxes(lit, px, py, edge);
+            const bool inTrap = inSceneBoxes(trap, px, py, edge);
+            const qint64 key = quadKey(0, x, y);
+            const bool present = onFar.value(key) > 0;
+            if (present) --onFar[key];
+            if (edge) {
+                ++edges;
+                continue;
+            }
+            if (inLit) {
+                ++hiddenExpected;
+                if (present) ++wrongDrawn;
+            } else {
+                if (inTrap) ++trapVisible;
+                if (!present) ++wrongHidden;
+            }
+        }
+        int extra = 0;
+        for (auto it = onFar.cbegin(); it != onFar.cend(); ++it) extra += it.value();
+        if (wrongDrawn == 0 && wrongHidden == 0 && extra == 0) return QString();
+        return QString("%1 far quads drawn under a lit box, %2 hidden though uncovered, %3 extra (%4 at an edge)")
+            .arg(wrongDrawn).arg(wrongHidden).arg(extra).arg(edges);
+    }
+    // Full-height far trails in the far columns whose ink centre is within halfW of x (columns that have one keep
+    // it); returns how many far columns around x have one.
+    static int placeFarUnder(LayerPipeline &pipe, const SceneGeo geo[3], float x, float halfW) {
+        QVector<StreamState> &streams = pipe.m_layers[0].sim.m_streams;
+        int covered = 0, next = 0;
+        for (int c = 0; c < geo[0].cols; ++c) {
+            if (qAbs(sceneX(geo[0], c, false) - x) > halfW) continue;
+            bool has = false;
+            for (const StreamState &s : streams) has = has || (s.active && s.headCol == c);
+            while (!has && next < streams.size() && streams[next].active) ++next;
+            if (!has && next < streams.size()) {
+                placeTrail(streams[next], c, geo[0].rows - 1, geo[0].rows, 1.0f);
+                has = true;
+            }
+            if (has) ++covered;
+        }
+        return covered;
+    }
+    // Far quads of a frame whose ink centre is in `in` and not in `notIn` (box edges excluded).
+    static int farQuadsOnlyIn(const LayerFrame &f, const SceneGeo geo[3], const QVector<SceneBox> &in,
+                              const QVector<SceneBox> &notIn) {
+        int n = 0;
+        for (int q = 0; q + 3 < f.vi; q += 4) {
+            if (qRound(f.verts[q + 1].x - f.verts[q].x) != geo[0].glyphW) continue;
+            const float px = f.verts[q].x + geo[0].glyphW * 0.5f, py = f.verts[q].y + geo[0].glyphH * 0.5f;
+            bool edge = false;
+            const bool inside = inSceneBoxes(in, px, py, edge) && !inSceneBoxes(notIn, px, py, edge);
+            if (inside && !edge) ++n;
+        }
+        return n;
+    }
+    // Quads of one layer in a frame (told apart by width).
+    static int quadsOfLayer(const LayerFrame &f, const SceneGeo geo[3], int layer) {
+        int n = 0;
+        for (int q = 0; q + 3 < f.vi; q += 4) {
+            if (qRound(f.verts[q + 1].x - f.verts[q].x) == geo[layer].glyphW) ++n;
+        }
+        return n;
+    }
+    // The ink boxes of a placed mid or near trail's cells (head at headRow, len cells up), each with its glyph's
+    // width class; litOnly: only the lit ones (trail-fade level <= maxLevel, head glow on, no override).
+    static QVector<SceneBox> trailBoxes(const LayerPipeline &pipe, const SceneGeo geo[3], int layer, int col,
+                                        int headRow, int len, bool shifted, bool litOnly) {
+        const GlyphAtlas &atlas = pipe.m_layers[layer].atlas;
+        const int maxLevel = LayerOcclusion::levelThreshold(OCCLUDER_MIN_TRAIL_BRIGHTNESS, atlas.brightnessLevels());
+        QVector<SceneBox> boxes;
+        for (int d = 0; d < len; ++d) {
+            const int r = headRow - d;
+            const bool lit = (d == 0) || atlas.brightnessMap()[d] <= maxLevel;
+            if (litOnly && !lit) continue;
+            const int glyphIdx = pipe.m_layers[layer].sim.m_charGrid[col * geo[layer].rows + r];
+            boxes.append({sceneX(geo[layer], col, shifted), sceneY(geo[layer], r),
+                          geo[layer].halfW[atlas.isHalfWidth(glyphIdx) ? 1 : 0], geo[layer].halfH});
+        }
+        return boxes;
     }
 
  private slots:
@@ -2056,6 +2332,18 @@ class MatrixRainTest : public QObject {
         QCOMPARE(metrics.brightnessLevels(), full.brightnessLevels());
         QCOMPARE(metrics.colorVariants(), full.colorVariants());
         QCOMPARE(metrics.glyphUVs().size(), full.glyphUVs().size());
+        QCOMPARE(metrics.inkSize(false), full.inkSize(false));
+        QCOMPARE(metrics.inkSize(true), full.inkSize(true));
+        QCOMPARE(metrics.blankGlyph(), full.blankGlyph());
+        // Width class of every glyph, main and message (katakana: its ten digits and the 37 message glyphs are half)
+        int widthMismatches = 0, halfGlyphs = 0;
+        for (int g = -1; g <= full.glyphCount() + 37; ++g) {
+            if (metrics.isHalfWidth(g) != full.isHalfWidth(g)) ++widthMismatches;
+            if (full.isHalfWidth(g)) ++halfGlyphs;
+        }
+        QVERIFY2(widthMismatches == 0 && halfGlyphs == 10 + 37,
+                 qPrintable(QString("%1 width classes differ, %2 half-width glyphs").arg(widthMismatches)
+                                .arg(halfGlyphs)));
 
         // UV coordinates must match exactly
         for (int i = 0; i < full.glyphUVs().size(); ++i) {
@@ -2073,6 +2361,17 @@ class MatrixRainTest : public QObject {
         QCOMPARE(metrics.atlasH(), full.atlasH());
         QCOMPARE(metrics.colorVariants(), full.colorVariants());
         QCOMPARE(metrics.glyphUVs().size(), full.glyphUVs().size());
+        QCOMPARE(metrics.inkSize(false), full.inkSize(false));
+        QCOMPARE(metrics.inkSize(true), full.inkSize(true));
+        QCOMPARE(metrics.blankGlyph(), full.blankGlyph());
+        int widthMismatches = 0, halfGlyphs = 0;  // binary: both glyphs and the 37 message glyphs are half width
+        for (int g = -1; g <= full.glyphCount() + 37; ++g) {
+            if (metrics.isHalfWidth(g) != full.isHalfWidth(g)) ++widthMismatches;
+            if (full.isHalfWidth(g)) ++halfGlyphs;
+        }
+        QVERIFY2(widthMismatches == 0 && halfGlyphs == 2 + 37,
+                 qPrintable(QString("%1 width classes differ, %2 half-width glyphs").arg(widthMismatches)
+                                .arg(halfGlyphs)));
         for (int i = 0; i < full.glyphUVs().size(); ++i)
             QCOMPARE(metrics.glyphUVs()[i], full.glyphUVs()[i]);
     }
@@ -2630,6 +2929,1221 @@ class MatrixRainTest : public QObject {
                  qPrintable(QString("only %1 respawns in 600 ticks (want > %2)").arg(first.size()).arg(S / 2)));
         QVERIFY2(first == second, qPrintable(QString("respawn lanes differ after re-init: [%1] vs [%2]")
                                                  .arg(joinInts(first, 40), joinInts(second, 40))));
+    }
+
+    // ─────────────────────────────────────────
+    // Rain layers occlusion: nearer layers hide the farther layers' characters behind them
+    // ─────────────────────────────────────────
+    // Occluders: lit (trail-fade level <= maxLevel) mid and near trail characters with a real glyph. Hidden: far and
+    // mid characters, mid residual glow included, whose ink centre lies inside an occluder's ink box on a strictly
+    // nearer layer. Overlays are never hidden. Results are collected and verified once at the end.
+
+    void occlusionLevelThreshold() {
+        struct Row {
+            float theta;
+            int levels;
+            int expected;
+        };
+        static const Row rows[] = {
+            {0.0f, 16, 15}, {0.3f, 16, 10}, {0.3f, 8, 4}, {0.3f, 6, 3}, {1.0f, 16, 0}, {2.0f, 16, -1},
+            {-1.0f, 16, 15}, {0.6f, 16, 6},  // 1 - 0.6f is 0.39999998 in float: still level 6
+            {0.3f, 0, -1}, {std::numeric_limits<float>::quiet_NaN(), 16, -1},
+        };
+        QStringList bad;
+        for (const Row &row : rows) {
+            const int got = LayerOcclusion::levelThreshold(row.theta, row.levels);
+            if (got != row.expected) {
+                bad << QString("(%1, %2) -> %3, want %4")
+                           .arg(static_cast<double>(row.theta)).arg(row.levels).arg(got).arg(row.expected);
+            }
+        }
+        // The owner's theta keeps about the first 10 cells of a trail lit at the default fade rate (0.88, 16 levels)
+        GlyphAtlas atlas;
+        atlas.buildMetricsOnly(QColor("#00ff41"), "green", 16, "ascii", 0.88);
+        const int maxLevel = LayerOcclusion::levelThreshold(OCCLUDER_MIN_TRAIL_BRIGHTNESS, atlas.brightnessLevels());
+        int litCells = 0;
+        while (litCells < atlas.brightnessMap().size() && atlas.brightnessMap()[litCells] <= maxLevel) ++litCells;
+
+        QVERIFY2(bad.isEmpty(), qPrintable(bad.join(QStringLiteral("; "))));
+        QVERIFY2(qAbs(OCCLUDER_MIN_TRAIL_BRIGHTNESS - 0.30f) < 1e-6f,
+                 qPrintable(QString("OCCLUDER_MIN_TRAIL_BRIGHTNESS is %1, the owner chose 0.30")
+                                .arg(static_cast<double>(OCCLUDER_MIN_TRAIL_BRIGHTNESS))));
+        QVERIFY2(litCells == 10, qPrintable(QString("%1 trail cells lit at the default fade, want 10").arg(litCells)));
+    }
+
+    void occlusionMappingMatchesBruteForce() {
+        // isHidden only looks at the cells around the point: a scan of every marked nearer cell must agree, on grids
+        // whose full-width ink is smaller than, about, and larger than the cell pitch (3.6 pitches: a fixed +-1
+        // neighbourhood would miss cells), half-width ink 0.55/0.85 of it, with shifted occluders. Per scale and
+        // layer the marks are of both width classes, half width only or full width only (the search reach follows
+        // the widest class marked). The ink-box test must also be the plan's box (centre = quad origin + half the
+        // quad, half the class's ink size each way); points within 1e-3 px of a box edge are not compared for that.
+        static const float inkScales[] = {0.3f, 1.0f, 2.6f, 3.6f};
+        static const int classPolicy[4][3] = {{0, 0, 1}, {0, 1, 0}, {0, 2, 0}, {0, 0, 2}};  // 0 both, 1 half, 2 full
+        static const float halfRatio = 0.55f / 0.85f;
+        static const int cols[3] = {60, 36, 26};
+        static const int rows[3] = {106, 65, 47};
+        static const int glyph[3] = {12, 19, 26};
+        struct Mark {
+            int c, r;
+            bool shifted, halfWidth;
+        };
+        QStringList mismatches, boxMismatches;
+        int compared = 0, hiddenPoints = 0, visiblePoints = 0, edgeSkips = 0;
+        int marksOfClass[2] = {0, 0};
+        for (int si = 0; si < 4; ++si) {
+            const float inkScale = inkScales[si];
+            LayerOcclusion occ;
+            LayerOcclusion::Facts facts;
+            for (int i = 0; i < 3; ++i) {
+                const float fullW = 480.0f / static_cast<float>(cols[i]) * inkScale;
+                facts[i] = {cols[i], rows[i], glyph[i], glyph[i], {fullW, fullW * halfRatio},
+                            850.0f / static_cast<float>(rows[i]) * inkScale, 16};
+            }
+            occ.configure(480, 850, facts, 0.3f);
+            occ.beginFrame();
+            std::mt19937 rng(7);
+            QVector<Mark> marks[3];  // [1] mid, [2] near: about a quarter of the cells, a third of them shifted
+            for (int n = 1; n < 3; ++n) {
+                for (int c = 0; c < cols[n]; ++c) {
+                    for (int r = 0; r < rows[n]; ++r) {
+                        if (rng() % 4 != 0) continue;
+                        const bool shifted = (rng() % 3 == 0);
+                        const int policy = classPolicy[si][n];
+                        const bool halfWidth = (policy == 1) || (policy == 0 && rng() % 2 == 0);
+                        occ.markOccluder(n, c, r, shifted, halfWidth);
+                        marks[n].append({c, r, shifted, halfWidth});
+                        ++marksOfClass[halfWidth ? 1 : 0];
+                    }
+                }
+            }
+            for (int layer = 0; layer < 2; ++layer) {
+                // Query points: random (some off screen) and the layer's glyph centres, shifted and not
+                QVector<QPointF> points;
+                std::uniform_real_distribution<float> randX(-30.0f, 510.0f), randY(-30.0f, 880.0f);
+                for (int k = 0; k < 1500; ++k) points.append(QPointF(randX(rng), randY(rng)));
+                const float colSp = 480.0f / static_cast<float>(cols[layer]);
+                const float rowSp = 850.0f / static_cast<float>(rows[layer]);
+                for (int c = 0; c < cols[layer]; ++c) {
+                    for (int r = 0; r < rows[layer]; r += 2) {
+                        for (int s = 0; s < 2; ++s) {
+                            float x = c * colSp;
+                            if (s == 1) x += colSp * LAYER_FAR_BAND_SHIFT;
+                            points.append(QPointF(x + glyph[layer] * 0.5f, r * rowSp + glyph[layer] * 0.5f));
+                        }
+                    }
+                }
+                for (const QPointF &p : points) {
+                    const float x = static_cast<float>(p.x()), y = static_cast<float>(p.y());
+                    bool brute = false;
+                    for (int n = layer + 1; n < 3; ++n) {
+                        const float nColSp = 480.0f / static_cast<float>(cols[n]);
+                        const float nRowSp = 850.0f / static_cast<float>(rows[n]);
+                        for (const Mark &m : marks[n]) {
+                            const bool contained = occ.inkContains(n, m.c, m.r, m.shifted, m.halfWidth, x, y);
+                            brute = brute || contained;
+                            const float boxX = m.c * nColSp + (m.shifted ? nColSp * LAYER_FAR_BAND_SHIFT : 0.0f)
+                                               + glyph[n] * 0.5f;
+                            const float boxY = m.r * nRowSp + glyph[n] * 0.5f;
+                            const float edge = qMin(facts[n].inkW[m.halfWidth ? 1 : 0] * 0.5f - qAbs(x - boxX),
+                                                    facts[n].inkH * 0.5f - qAbs(y - boxY));
+                            if (qAbs(edge) < 1e-3f) {
+                                ++edgeSkips;
+                            } else if ((edge > 0.0f) != contained && boxMismatches.size() < 5) {
+                                boxMismatches << QString("ink x%1: layer %2 cell (%3,%4)%5%6 point (%7,%8)")
+                                                     .arg(static_cast<double>(inkScale)).arg(n).arg(m.c).arg(m.r)
+                                                     .arg(m.shifted ? " shifted" : "")
+                                                     .arg(m.halfWidth ? " half" : " full").arg(p.x()).arg(p.y());
+                            }
+                        }
+                    }
+                    const bool fast = occ.isHidden(layer, x, y);
+                    ++compared;
+                    if (fast) {
+                        ++hiddenPoints;
+                    } else {
+                        ++visiblePoints;
+                    }
+                    if (fast != brute && mismatches.size() < 5) {
+                        mismatches << QString("ink x%1: layer %2 point (%3,%4) isHidden %5, scan %6")
+                                          .arg(static_cast<double>(inkScale)).arg(layer).arg(p.x()).arg(p.y())
+                                          .arg(fast).arg(brute);
+                    }
+                }
+            }
+        }
+        QVERIFY2(mismatches.isEmpty(), qPrintable(mismatches.join(QStringLiteral("; "))));
+        QVERIFY2(boxMismatches.isEmpty(), qPrintable(boxMismatches.join(QStringLiteral("; "))));
+        QVERIFY2(hiddenPoints > 0 && visiblePoints > 0 && marksOfClass[0] > 0 && marksOfClass[1] > 0,
+                 qPrintable(QString("vacuous: %1 of %2 points hidden, marks full %3 half %4").arg(hiddenPoints)
+                                .arg(compared).arg(marksOfClass[0]).arg(marksOfClass[1])));
+        QVERIFY2(edgeSkips < compared / 100, qPrintable(QString("%1 edge ties skipped").arg(edgeSkips)));
+    }
+
+    void glyphAtlasInkSize() {
+        // Ink boxes (unit maths, metrics only): full width 0.85 x 0.85 em, half width 0.55 x 0.85 em. Width class per
+        // glyph: half for every ascii, binary and digits glyph, for katakana's ten digits (and an unknown name's,
+        // which falls back to katakana) and for the 37 appended message glyphs (A-Z 0-9 space); full for kana. The
+        // blank glyph is the appended message space (index 36 of them), none for ascii.
+        struct Row {
+            const char *charset;
+            int mainGlyphs;  // charset glyphs; [firstHalf, mainGlyphs) of them are half width
+            int firstHalf;
+        };
+        static const Row rows[] = {{"katakana", 56, 46}, {"nonexistent", 56, 46}, {"ascii", 36, 0},
+                                   {"binary", 2, 0}, {"digits", 10, 0}};
+        QStringList bad;
+        for (const Row &row : rows) {
+            const bool ascii = QLatin1String(row.charset) == QLatin1String("ascii");
+            const int total = row.mainGlyphs + (ascii ? 0 : 37);
+            for (int font : {10, 16, 22, 30}) {
+                GlyphAtlas a;
+                a.buildMetricsOnly(Qt::green, "green", font, row.charset, 0.88);
+                const QSizeF full = a.inkSize(false), half = a.inkSize(true);
+                if (qAbs(full.width() - static_cast<qreal>(font * 0.85f)) > 1e-4
+                    || qAbs(half.width() - static_cast<qreal>(font * 0.55f)) > 1e-4
+                    || qAbs(full.height() - static_cast<qreal>(font * 0.85f)) > 1e-4
+                    || qAbs(half.height() - static_cast<qreal>(font * 0.85f)) > 1e-4) {
+                    bad << QString("%1 font %2: ink full %3x%4 half %5x%6").arg(row.charset).arg(font)
+                               .arg(full.width()).arg(full.height()).arg(half.width()).arg(half.height());
+                }
+                QStringList wrongClass;
+                for (int g = -1; g <= total; ++g) {
+                    const bool want = g >= row.firstHalf && g < total;
+                    if (a.isHalfWidth(g) != want) wrongClass << QString::number(g);
+                }
+                if (!wrongClass.isEmpty()) {
+                    bad << QString("%1 font %2: wrong width class for glyphs %3").arg(row.charset).arg(font)
+                               .arg(wrongClass.join(QLatin1Char(',')));
+                }
+                const int wantBlank = ascii ? -1 : a.messageGlyphOffset() + 36;
+                if (a.blankGlyph() != wantBlank)
+                    bad << QString("%1: blank glyph %2, want %3").arg(row.charset).arg(a.blankGlyph()).arg(wantBlank);
+            }
+        }
+        // The blank glyph really has no ink and a digit has some (digits uses the monospace font: no CJK font needed)
+        GlyphAtlas digits;
+        digits.build(Qt::green, "green", 16, "digits", 0.88);
+        auto inkPixels = [&digits](int glyphIdx) {
+            const QImage &img = digits.atlasImage();
+            int n = 0;
+            for (int y = 0; y < digits.glyphH(); ++y) {
+                for (int x = glyphIdx * digits.glyphW(); x < (glyphIdx + 1) * digits.glyphW(); ++x) {
+                    if (qAlpha(img.pixel(x, y)) > 0) ++n;
+                }
+            }
+            return n;
+        };
+        const int blank = digits.blankGlyph();
+        const int blankInk = (blank >= 0) ? inkPixels(blank) : -1;
+        const int digitInk = inkPixels(0);
+        // The table travels with LayerPipeline's atlas cache: a second build of the same inputs is a cache hit
+        const AtlasInputs in = pipelineInputs(QStringLiteral("katakana"), 16, false);
+        LayerPipeline first, second;
+        BuildTimings timings;
+        first.build(in, timings);
+        second.build(in, timings);
+        int cacheMismatches = 0;
+        for (int i = 0; i < LayerPipeline::LAYER_COUNT; ++i) {
+            GlyphAtlas ref;
+            ref.buildMetricsOnly(in.color, in.colorMode, qMax(8, qRound(in.fontSize * second.m_layers[i].fontScale)),
+                                 in.charset, in.fadeRate, in.depthEnabled, in.depthIntensity);
+            for (int g = -1; g <= ref.glyphCount() + 37; ++g) {
+                if (second.m_layers[i].atlas.isHalfWidth(g) != ref.isHalfWidth(g)) ++cacheMismatches;
+            }
+            if (second.m_layers[i].atlas.inkSize(true) != ref.inkSize(true)) ++cacheMismatches;
+        }
+
+        QVERIFY2(bad.isEmpty(), qPrintable(bad.join(QStringLiteral("; "))));
+        QVERIFY2(blank >= 0 && blankInk == 0 && digitInk > 0,
+                 qPrintable(QString("blank glyph %1 has %2 ink px, digit 0 has %3").arg(blank).arg(blankInk)
+                                .arg(digitInk)));
+        QVERIFY2(timings.cacheHit && cacheMismatches == 0,
+                 qPrintable(QString("cache hit %1, %2 width-class mismatches after it").arg(timings.cacheHit)
+                                .arg(cacheMismatches)));
+    }
+
+    void layerOcclusionEmitWithinCount_data() {
+        QTest::addColumn<QString>("charset");
+        QTest::addColumn<int>("font");
+        QTest::addColumn<qreal>("density");
+        QTest::addColumn<int>("trail");
+        QTest::addColumn<bool>("colorLayers");
+        QTest::addColumn<int>("effects");  // 0 none, 1 glitch (app default), 2 glitch + chaos + messages + subliminal
+        QTest::addColumn<bool>("cascade");  // screen-off cascade (drain mode 1) from tick 150
+        QTest::newRow("defaults") << QString("ascii") << 16 << 0.7 << 83 << false << 1 << false;
+        QTest::newRow("owner, color layers off") << QString("ascii") << 30 << 2.1 << 180 << false << 0 << false;
+        QTest::newRow("owner, color layers on") << QString("ascii") << 30 << 2.1 << 180 << true << 0 << false;
+        QTest::newRow("cascade") << QString("ascii") << 16 << 0.7 << 83 << false << 1 << true;
+        QTest::newRow("glitch + chaos + messages") << QString("ascii") << 16 << 1.5 << 83 << false << 2 << false;
+        QTest::newRow("digits + messages, color layers") << QString("digits") << 16 << 1.5 << 120 << true << 2
+                                                         << false;
+    }
+
+    void layerOcclusionEmitWithinCount() {
+        // The geometry is sized from the count: hiding only drops counted quads, so emitted <= counted in every frame
+        // (buffers of exactly the counted size: ASan catches an overrun), and the near layer is never hidden. The
+        // count runs near first, its total must still be the sum of the per-layer counts: SingleLayerRenderer counts
+        // one simulation the same way (residual glow only on mid, so glowFade 0 for far and near).
+        QFETCH(QString, charset);
+        QFETCH(int, font);
+        QFETCH(qreal, density);
+        QFETCH(int, trail);
+        QFETCH(bool, colorLayers);
+        QFETCH(int, effects);
+        QFETCH(bool, cascade);
+
+        const AtlasInputs in = pipelineInputs(charset, font, colorLayers);
+        RainSimulation primary;
+        setupPrimary(primary, in, density, trail);
+        if (effects >= 1) primary.setGlitch(true);
+        if (effects >= 2) {
+            primary.setGlitchChaos(true);
+            primary.setGlitchChaosFrequency(100);
+            primary.setMessagesEnabled(true);
+            primary.setMessages(QStringLiteral("WAKE UP NEO,FOLLOW THE WHITE RABBIT,KNOCK KNOCK"));
+            primary.setMessageInterval(1);
+            primary.setSubliminal(true);
+            primary.setSubliminalInterval(1);
+            primary.setSubliminalFlash(true);
+        }
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+
+        int frames = 0, overruns = 0, drawn = 0, hidden = 0, nearHidden = 0, countMismatches = 0;
+        QString firstOverrun, firstCountMismatch;
+        SingleLayerRenderer perLayer;
+        QVector<quint8> perLayerDrawn;
+        QVector<int> perLayerOrder;
+        for (int t = 1; t <= 300; ++t) {
+            pipe.syncLayerConfig(primary, 50);
+            pipe.advanceTick();
+            if (cascade && t == 150) {
+                pipe.applySpawnSuppress(true);
+                pipe.applyDrainSpeedMultiplier(3.0f);
+                pipe.applyDrainMode(1);
+            }
+            if (t % 10 != 0) continue;
+            const LayerFrame f = renderLayerFrame(pipe, in);
+            ++frames;
+            if ((f.vi > 4 * f.counted || f.ii > 6 * f.counted || f.ii != f.vi / 4 * 6) && overruns++ == 0) {
+                firstOverrun = QString("tick %1: %2 vertices %3 indices for %4 counted quads")
+                                   .arg(t).arg(f.vi).arg(f.ii).arg(f.counted);
+            }
+            int layerSum = 0;
+            QStringList perLayerCounts;
+            for (int i = 0; i < LayerPipeline::LAYER_COUNT; ++i) {
+                const int n = perLayer.countVisibleQuads(pipe.m_layers[i].sim, pipe.m_layers[i].atlas, perLayerDrawn,
+                                                         perLayerOrder, pipe.m_layers[i].isInteractive ? 50 : 0);
+                layerSum += n;
+                perLayerCounts << QString::number(n);
+            }
+            if (f.rawCounted != layerSum && countMismatches++ == 0) {
+                firstCountMismatch = QString("tick %1: counted %2, per layer %3").arg(t).arg(f.rawCounted)
+                                         .arg(perLayerCounts.join(QLatin1Char('+')));
+            }
+            for (int i = 0; i < LayerPipeline::LAYER_COUNT; ++i) {
+                drawn += pipe.m_frameDrawn[i];
+                hidden += pipe.m_frameHidden[i];
+            }
+            nearHidden += pipe.m_frameHidden[2];
+        }
+        QVERIFY2(overruns == 0, qPrintable(QString("%1 of %2 frames emitted more than counted, first: %3")
+                                               .arg(overruns).arg(frames).arg(firstOverrun)));
+        QVERIFY2(countMismatches == 0, qPrintable(QString("%1 of %2 frames: the total is not the per-layer sum, first: "
+                                                          "%3").arg(countMismatches).arg(frames)
+                                                      .arg(firstCountMismatch)));
+        QVERIFY2(drawn > 0 && hidden > 0,
+                 qPrintable(QString("vacuous: %1 drawn, %2 hidden in %3 frames").arg(drawn).arg(hidden).arg(frames)));
+        QVERIFY2(nearHidden == 0, qPrintable(QString("%1 near characters hidden").arg(nearHidden)));
+    }
+
+    void layerOcclusionHidesFartherUnderLitNearer_data() {
+        QTest::addColumn<bool>("colorLayers");
+        QTest::newRow("plain") << false;
+        QTest::newRow("color layers") << true;
+    }
+
+    void layerOcclusionHidesFartherUnderLitNearer() {
+        // A hand-placed scene on all three layers, rendered with occlusion off and on (digits: half-width ink, and a
+        // message space glyph exists). The on-frame must be exactly the off-frame minus the far and mid characters
+        // whose ink centre lies in the ink box of a lit nearer character that is drawn (a lit mid character inside a
+        // lit near ink box is hidden itself, so it hides nothing), and every case must occur: far under near, far
+        // under mid, mid trail and mid residual glow under near, a lit mid character hidden by near; -1 and space
+        // occluders and a dim tail hide nothing; with Color layers, a shifted occluder and a shifted far character.
+        QFETCH(bool, colorLayers);
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, colorLayers);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+
+        struct Geo {
+            int cols, rows, glyphW, glyphH;
+            float colSp, rowSp, inkHalfW, inkHalfH;
+        };
+        Geo geo[3];
+        for (int i = 0; i < 3; ++i) {
+            const RainSimulation &sim = pipe.m_layers[i].sim;
+            const GlyphAtlas &atlas = pipe.m_layers[i].atlas;
+            geo[i] = {sim.gridCols(), sim.gridRows(), atlas.glyphW(), atlas.glyphH(),
+                      480.0f / static_cast<float>(sim.gridCols()), 850.0f / static_cast<float>(sim.gridRows()),
+                      static_cast<float>(atlas.inkSize(true).width()) * 0.5f,  // digits: every glyph half width
+                      static_cast<float>(atlas.inkSize(true).height()) * 0.5f};
+        }
+        QVERIFY2(geo[0].glyphW != geo[1].glyphW && geo[1].glyphW != geo[2].glyphW && geo[0].glyphW != geo[2].glyphW,
+                 qPrintable(QString("quad widths must differ per layer: %1 %2 %3")
+                                .arg(geo[0].glyphW).arg(geo[1].glyphW).arg(geo[2].glyphW)));
+        QVERIFY2(geo[2].cols >= 26 && geo[2].rows >= 42 && geo[1].cols >= 30 && geo[1].rows >= 50,
+                 qPrintable(QString("unexpected grids: mid %1x%2 near %3x%4")
+                                .arg(geo[1].cols).arg(geo[1].rows).arg(geo[2].cols).arg(geo[2].rows)));
+        auto cellX = [&geo](int layer, int c, bool shifted) {  // the renderer's quad x
+            float x = c * geo[layer].colSp;
+            if (shifted) x += geo[layer].colSp * LAYER_FAR_BAND_SHIFT;
+            return x;
+        };
+        auto centreX = [&](int layer, int c, bool shifted) {  // the renderer's ink centre x
+            return cellX(layer, c, shifted) + geo[layer].glyphW * 0.5f;
+        };
+
+        // Empty stage: no streams, no residual glow, no glitch or message overrides, a real glyph in every cell
+        for (int i = 0; i < 3; ++i) {
+            RainSimulation &sim = pipe.m_layers[i].sim;
+            for (StreamState &s : sim.m_streams) {
+                s.active = false;
+                s.pauseTicks = 1000000;
+            }
+            sim.m_cellAge.fill(9999);  // RainSimulation's CELL_AGE_MAX: no glow
+            sim.m_glitch.m_glitchBright.fill(-1);
+            sim.m_glitch.m_glitchTrails.clear();
+            sim.m_message.m_messageBright.fill(0);
+            sim.m_message.m_messageOverlay.clear();
+            sim.m_charGrid.fill(3);
+        }
+        struct Trail {
+            int layer, col, headRow, len;
+            float depth;
+        };
+        QVector<Trail> trails;
+        int nextStream[3] = {0, 0, 0};
+        bool enoughStreams = true;
+        auto place = [&](int layer, int col, int headRow, int len, float depth) {
+            QVector<StreamState> &streams = pipe.m_layers[layer].sim.m_streams;
+            if (nextStream[layer] >= streams.size()) {
+                enoughStreams = false;
+                return;
+            }
+            placeTrail(streams[nextStream[layer]++], col, headRow, len, depth);
+            trails.append({layer, col, headRow, len, depth});
+        };
+
+        // Near: N1 rows 5..30 (lit 21..30, dim tail 5..20); N2 rows 31..40, all lit, but rows 33-34 are cascade blanks
+        // (-1) and rows 37-38 the message space; N3, Color layers far band (shifted when Color layers is on), at three
+        // columns where the shift moves the ink box over different far columns.
+        RainSimulation &nearSim = pipe.m_layers[2].sim;
+        place(2, 4, 30, 26, 1.0f);
+        place(2, 12, 40, 10, 1.0f);
+        nearSim.m_charGrid[12 * geo[2].rows + 33] = -1;
+        nearSim.m_charGrid[12 * geo[2].rows + 34] = -1;
+        nearSim.m_charGrid[12 * geo[2].rows + 37] = pipe.m_layers[2].atlas.blankGlyph();
+        nearSim.m_charGrid[12 * geo[2].rows + 38] = pipe.m_layers[2].atlas.blankGlyph();
+        auto inBox = [&](int layer, float boxX, float x) { return qAbs(x - boxX) <= geo[layer].inkHalfW - 0.5f; };
+        int n3Placed = 0;
+        for (int col = 14; col < geo[2].cols - 2 && n3Placed < 3; ++col) {
+            bool shiftedOnly = false, unshiftedOnly = false;
+            for (int c = 0; c < geo[0].cols; ++c) {
+                const float x = centreX(0, c, false);
+                const bool a = inBox(2, centreX(2, col, true), x), b = inBox(2, centreX(2, col, false), x);
+                shiftedOnly = shiftedOnly || (a && !b);
+                unshiftedOnly = unshiftedOnly || (b && !a);
+            }
+            if (!shiftedOnly || !unshiftedOnly) continue;
+            place(2, col, 27, 8, 0.8f);
+            ++n3Placed;
+        }
+
+        // Mid: M1 under N1 rows 14..24 (its lit end under N1's lit rows), residual glow below it under N1 rows 25..33
+        // (rows 31-33 are past N1), M2 rows 21..40 away from every near trail.
+        RainSimulation &midSim = pipe.m_layers[1].sim;
+        auto midRowAt = [&geo](int nearRow) {  // the mid row whose glyph centre is nearest the near row's
+            return qRound((nearRow * geo[2].rowSp + geo[2].glyphH * 0.5f - geo[1].glyphH * 0.5f) / geo[1].rowSp);
+        };
+        const float n1X = centreX(2, 4, false);
+        const int m1Col = qRound((n1X - geo[1].glyphW * 0.5f) / geo[1].colSp);
+        const int m1Top = midRowAt(14), m1Head = midRowAt(24), residualLast = midRowAt(33);
+        place(1, m1Col, m1Head, m1Head - m1Top + 1, 1.0f);
+        for (int r = m1Head + 1; r <= residualLast; ++r) midSim.m_cellAge[m1Col * geo[1].rows + r] = 1;
+        const int m2Col = geo[1].cols - 2;
+        place(1, m2Col, 40, 20, 1.0f);
+
+        // Far: full-height trails in every far column in and around an occluder's ink box; one of those under N1 in
+        // the Color layers far band (shifted) when Color layers is on.
+        QVector<float> regionX, regionHalf;
+        for (const Trail &t : trails) {
+            const bool shifted = colorLayers && t.depth < 0.93f;
+            regionX << centreX(t.layer, t.col, shifted);
+            regionHalf << geo[t.layer].inkHalfW + 3.0f * geo[0].colSp + geo[t.layer].colSp * LAYER_FAR_BAND_SHIFT;
+        }
+        int shiftedFarCol = -1;
+        for (int c = 0; c < geo[0].cols && shiftedFarCol < 0; ++c) {
+            if (inBox(2, n1X, centreX(0, c, true))) shiftedFarCol = c;
+        }
+        for (int c = 0; c < geo[0].cols; ++c) {
+            bool nearOccluder = false;
+            for (int k = 0; k < regionX.size(); ++k)
+                nearOccluder = nearOccluder || qAbs(centreX(0, c, false) - regionX[k]) <= regionHalf[k];
+            if (nearOccluder)
+                place(0, c, geo[0].rows - 1, geo[0].rows, (colorLayers && c == shiftedFarCol) ? 0.8f : 1.0f);
+        }
+        QVERIFY2(enoughStreams && n3Placed == 3 && shiftedFarCol >= 0,
+                 qPrintable(QString("scene setup: streams far %1/%2 mid %3/%4 near %5/%6, N3 columns %7, shifted far "
+                                    "column %8")
+                                .arg(nextStream[0]).arg(pipe.m_layers[0].sim.m_streams.size())
+                                .arg(nextStream[1]).arg(midSim.m_streams.size())
+                                .arg(nextStream[2]).arg(nearSim.m_streams.size()).arg(n3Placed).arg(shiftedFarCol)));
+
+        // Ink boxes of the placed mid and near characters: lit, dim, cascade blank, space, and lit but hidden (mid)
+        enum BoxKind { Lit, Dim, Cascade, Space, HiddenMid };
+        struct Box {
+            int layer;
+            float cx, cy, unshiftedCx, halfW;
+            int kind;
+            bool shifted;
+        };
+        QVector<Box> boxes;
+        for (const Trail &t : trails) {
+            if (t.layer == 0) continue;
+            const GlyphAtlas &atlas = pipe.m_layers[t.layer].atlas;
+            const int maxLevel = LayerOcclusion::levelThreshold(OCCLUDER_MIN_TRAIL_BRIGHTNESS,
+                                                                atlas.brightnessLevels());
+            const bool shifted = colorLayers && t.depth < 0.93f;
+            for (int d = 0; d < t.len; ++d) {
+                const int r = t.headRow - d;
+                const int glyphIdx = pipe.m_layers[t.layer].sim.m_charGrid[t.col * geo[t.layer].rows + r];
+                const bool lit = (d == 0) || atlas.brightnessMap()[d] <= maxLevel;  // head glow on: level 0
+                const int kind = (glyphIdx < 0) ? Cascade : (glyphIdx == atlas.blankGlyph()) ? Space : lit ? Lit : Dim;
+                const float cy = r * geo[t.layer].rowSp + geo[t.layer].glyphH * 0.5f;
+                const float halfW = static_cast<float>(atlas.inkSize(atlas.isHalfWidth(glyphIdx)).width()) * 0.5f;
+                boxes.append({t.layer, centreX(t.layer, t.col, shifted), cy, centreX(t.layer, t.col, false), halfW,
+                              kind, shifted});
+            }
+        }
+        // Near first: a lit mid character whose ink centre lies in a lit near ink box is not drawn, so not an occluder
+        int hiddenMidBoxes = 0, midBoxEdges = 0;
+        for (Box &b : boxes) {
+            if (b.layer != 1 || b.kind != Lit) continue;
+            bool hiddenByNear = false;
+            for (const Box &n : boxes) {
+                if (n.layer != 2 || n.kind != Lit) continue;
+                const float m = qMin(n.halfW - qAbs(b.cx - n.cx), geo[2].inkHalfH - qAbs(b.cy - n.cy));
+                if (qAbs(m) < 1e-3f) ++midBoxEdges;
+                hiddenByNear = hiddenByNear || m >= 0.0f;
+            }
+            if (hiddenByNear) {
+                b.kind = HiddenMid;
+                ++hiddenMidBoxes;
+            }
+        }
+
+        // Off, then on (the scene does not change: count and render only read the simulations)
+        pipe.m_occluderMinBrightness = 2.0f;
+        pipe.configureOcclusion(480, 850);
+        const LayerFrame off = renderLayerFrame(pipe, in);
+        const int hiddenWhenOff = pipe.m_frameHidden[0] + pipe.m_frameHidden[1] + pipe.m_frameHidden[2];
+        pipe.m_occluderMinBrightness = OCCLUDER_MIN_TRAIL_BRIGHTNESS;
+        pipe.configureOcclusion(480, 850);
+        const LayerFrame on = renderLayerFrame(pipe, in);
+
+        auto layerOfWidth = [&geo](float w) {
+            for (int i = 0; i < 3; ++i) {
+                if (qRound(w) == geo[i].glyphW) return i;
+            }
+            return -1;
+        };
+        QHash<qint64, int> onRemaining;
+        int unknownWidth = 0;
+        for (int q = 0; q + 3 < on.vi; q += 4) {
+            const int layer = layerOfWidth(on.verts[q + 1].x - on.verts[q].x);
+            if (layer < 0) ++unknownWidth;
+            ++onRemaining[quadKey(layer, on.verts[q].x, on.verts[q].y)];
+        }
+        int wronglyDrawn = 0, wronglyHidden = 0, nearMissing = 0, edgeCases = 0;
+        int farUnderNear = 0, farUnderMidOnly = 0, midTrailUnderNear = 0, residualUnderNear = 0, residualVisible = 0;
+        int underCascade = 0, underSpace = 0, underDimTail = 0, underHiddenMidOnly = 0;
+        int shiftedOccluderOnly = 0, unshiftedSpotVisible = 0, shiftedFarHidden = 0, shiftedFarVisible = 0;
+        QString firstWrong;
+        for (int q = 0; q + 3 < off.vi; q += 4) {
+            const float x = off.verts[q].x, y = off.verts[q].y;
+            const int layer = layerOfWidth(off.verts[q + 1].x - x);
+            if (layer < 0) {
+                ++unknownWidth;
+                continue;
+            }
+            const qint64 key = quadKey(layer, x, y);
+            const bool presentOn = onRemaining.value(key) > 0;
+            if (presentOn) --onRemaining[key];
+            if (layer == 2) {
+                if (!presentOn) ++nearMissing;
+                continue;
+            }
+            const float px = x + geo[layer].glyphW * 0.5f, py = y + geo[layer].glyphH * 0.5f;
+            bool insideLit = false, insideNearLit = false, insideMidLit = false, edge = false;
+            bool insideKind[5] = {false, false, false, false, false};
+            bool insideUnshiftedOnly = false, onlyShiftedLit = true;
+            for (const Box &b : boxes) {
+                if (b.layer <= layer) continue;
+                const float m = qMin(b.halfW - qAbs(px - b.cx), geo[b.layer].inkHalfH - qAbs(py - b.cy));
+                if (b.kind == Lit && qAbs(m) < 1e-3f) edge = true;
+                if (m < 0.0f) {
+                    const float mu = qMin(b.halfW - qAbs(px - b.unshiftedCx), geo[b.layer].inkHalfH - qAbs(py - b.cy));
+                    if (b.shifted && b.kind == Lit && mu >= 0.0f) insideUnshiftedOnly = true;
+                    continue;
+                }
+                insideKind[b.kind] = true;
+                if (b.kind != Lit) continue;
+                insideLit = true;
+                insideNearLit = insideNearLit || b.layer == 2;
+                insideMidLit = insideMidLit || b.layer == 1;
+                const float mu = qMin(b.halfW - qAbs(px - b.unshiftedCx), geo[b.layer].inkHalfH - qAbs(py - b.cy));
+                if (!b.shifted || mu >= 0.0f) onlyShiftedLit = false;
+            }
+            if (edge) {
+                ++edgeCases;
+                continue;
+            }
+            if (insideLit == presentOn) {  // hidden must be gone, everything else must stay
+                if (firstWrong.isEmpty()) {
+                    firstWrong = QString("layer %1 quad (%2,%3) %4").arg(layer).arg(x).arg(y)
+                                     .arg(insideLit ? "drawn under a lit nearer character" : "hidden but uncovered");
+                }
+                wronglyDrawn += insideLit ? 1 : 0;
+                wronglyHidden += insideLit ? 0 : 1;
+            }
+            const int midCol = qRound(x / geo[1].colSp), midRow = qRound(y / geo[1].rowSp);
+            const bool m1Cell = layer == 1 && midCol == m1Col && midRow >= m1Top && midRow <= m1Head;
+            const bool residualCell = layer == 1 && midCol == m1Col && midRow > m1Head && midRow <= residualLast;
+            const bool shiftedFar = layer == 0 && colorLayers
+                                    && qAbs(x / geo[0].colSp - static_cast<float>(qRound(x / geo[0].colSp))) > 0.1f;
+            if (layer == 0 && insideNearLit) ++farUnderNear;
+            if (layer == 0 && insideMidLit && !insideNearLit) ++farUnderMidOnly;
+            if (m1Cell && insideNearLit) ++midTrailUnderNear;
+            if (residualCell && insideNearLit) ++residualUnderNear;
+            if (residualCell && !insideLit) ++residualVisible;
+            if (layer == 0 && !insideLit && insideKind[Cascade]) ++underCascade;
+            if (layer == 0 && !insideLit && insideKind[Space]) ++underSpace;
+            if (layer == 0 && !insideLit && insideKind[Dim]) ++underDimTail;
+            if (layer == 0 && !insideLit && insideKind[HiddenMid]) ++underHiddenMidOnly;
+            if (layer == 0 && insideLit && onlyShiftedLit) ++shiftedOccluderOnly;
+            if (layer == 0 && !insideLit && insideUnshiftedOnly) ++unshiftedSpotVisible;
+            if (shiftedFar && insideLit) ++shiftedFarHidden;
+            if (shiftedFar && !insideLit) ++shiftedFarVisible;
+        }
+        int extraOn = 0;
+        for (auto it = onRemaining.cbegin(); it != onRemaining.cend(); ++it) extraOn += it.value();
+
+        QVERIFY2(off.vi <= 4 * off.counted && on.vi <= 4 * on.counted,
+                 qPrintable(QString("emitted past the count: off %1/%2 on %3/%4 vertices")
+                                .arg(off.vi).arg(4 * off.counted).arg(on.vi).arg(4 * on.counted)));
+        QVERIFY2(hiddenWhenOff == 0 && unknownWidth == 0,
+                 qPrintable(QString("%1 hidden with occlusion off, %2 quads of unknown width")
+                                .arg(hiddenWhenOff).arg(unknownWidth)));
+        QVERIFY2(wronglyDrawn == 0 && wronglyHidden == 0 && nearMissing == 0 && extraOn == 0,
+                 qPrintable(QString("%1 drawn under a lit nearer character, %2 hidden though uncovered, %3 near "
+                                    "missing, %4 extra; first: %5 (%6 edge cases skipped)")
+                                .arg(wronglyDrawn).arg(wronglyHidden).arg(nearMissing).arg(extraOn).arg(firstWrong)
+                                .arg(edgeCases)));
+        QVERIFY2(farUnderNear > 0 && farUnderMidOnly > 0 && midTrailUnderNear > 0 && residualUnderNear > 0
+                     && residualVisible > 0,
+                 qPrintable(QString("vacuous: far under near %1, far under mid only %2, mid trail under near %3, "
+                                    "residual under near %4, residual visible %5")
+                                .arg(farUnderNear).arg(farUnderMidOnly).arg(midTrailUnderNear).arg(residualUnderNear)
+                                .arg(residualVisible)));
+        QVERIFY2(underCascade > 0 && underSpace > 0 && underDimTail > 0,
+                 qPrintable(QString("vacuous: far under a -1 cell %1, under a space %2, under a dim tail %3")
+                                .arg(underCascade).arg(underSpace).arg(underDimTail)));
+        QVERIFY2(hiddenMidBoxes > 0 && midBoxEdges == 0,
+                 qPrintable(QString("lit mid characters hidden by near %1 (want > 0), %2 at a near box edge (far only "
+                                    "under one of them: %3)").arg(hiddenMidBoxes).arg(midBoxEdges)
+                                .arg(underHiddenMidOnly)));
+        if (colorLayers) {
+            QVERIFY2(shiftedOccluderOnly > 0 && unshiftedSpotVisible > 0 && shiftedFarHidden > 0
+                         && shiftedFarVisible > 0,
+                     qPrintable(QString("vacuous: hidden only by a shifted occluder %1, visible at its unshifted spot "
+                                        "%2, shifted far hidden %3 / visible %4")
+                                    .arg(shiftedOccluderOnly).arg(unshiftedSpotVisible).arg(shiftedFarHidden)
+                                    .arg(shiftedFarVisible)));
+        }
+    }
+
+    void layerOcclusionOverlaysOnTop() {
+        // Overlays (glitch trails, tap bursts and ripples, message flash, message and tap overlays) are drawn after
+        // the near layer and never hidden: put on lit near characters, they are the frame's last quads, byte for byte
+        // what an overlay-only render emits.
+        const AtlasInputs in = pipelineInputs(QStringLiteral("ascii"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        primary.setGlitch(true);
+        primary.setMessagesEnabled(true);
+        primary.setMessages(QStringLiteral("WAKE UP NEO,THE MATRIX HAS YOU"));
+        primary.setMessageInterval(1);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        for (int t = 0; t < 60; ++t) {
+            pipe.syncLayerConfig(primary, 50);
+            pipe.advanceTick();
+        }
+
+        RainSimulation &midSim = pipe.m_layers[1].sim;
+        const GlyphAtlas &midAtlas = pipe.m_layers[1].atlas;
+        const RainSimulation &nearSim = pipe.m_layers[2].sim;
+        const GlyphAtlas &nearAtlas = pipe.m_layers[2].atlas;
+        const float nColSp = 480.0f / static_cast<float>(nearSim.gridCols());
+        const float nRowSp = 850.0f / static_cast<float>(nearSim.gridRows());
+        const float mColSp = 480.0f / static_cast<float>(midSim.gridCols());
+        const float mRowSp = 850.0f / static_cast<float>(midSim.gridRows());
+        int taps = 0;
+        for (const StreamState &s : nearSim.streams()) {  // tap on lit near heads
+            if (!s.active || s.headCol < 0 || s.headCol >= nearSim.gridCols() || s.headRow < 0
+                || s.headRow >= nearSim.gridRows())
+                continue;
+            const float x = s.headCol * nColSp + nearAtlas.glyphW() * 0.5f;
+            const float y = s.headRow * nRowSp + nearAtlas.glyphH() * 0.5f;
+            const int mc = qBound(0, qRound((x - midAtlas.glyphW() * 0.5f) / mColSp), midSim.gridCols() - 1);
+            const int mr = qBound(0, qRound((y - midAtlas.glyphH() * 0.5f) / mRowSp), midSim.gridRows() - 1);
+            const int cv = midAtlas.colorVariants();
+            midSim.tapBurst(mc, mr, cv);
+            midSim.tapSquareBurst(mc, mr, cv);
+            midSim.tapRipple(mc, mr, cv);
+            midSim.tapWipe(mc, mr, cv);
+            midSim.tapMessage(mc, mr, cv, mColSp, mRowSp, midAtlas.messageStepW(), midAtlas.messageGlyphOffset(),
+                              midAtlas.glyphW(), 480.0f, midSim.charset());
+            midSim.m_message.m_messageBright[mc * midSim.gridRows() + mr] = 7;  // message flash on the head
+            GlitchTrail gt;
+            gt.col = mc;
+            gt.row = mr;
+            gt.dx = 0;
+            gt.dy = 1;
+            gt.length = 3;
+            gt.framesLeft = 10;
+            gt.colorVariant = 0;
+            midSim.m_glitch.m_glitchTrails.append(gt);
+            if (++taps == 4) break;
+        }
+        QVERIFY2(taps > 0, "no active near stream head on the grid after 60 ticks");
+
+        // Reference: an overlay-only render before the count, so no occlusion frame is open (overlays read neither the
+        // occluder masks nor the cell claims, so the full render must reproduce it exactly)
+        std::vector<MatrixRainVertex> overlayVerts(static_cast<size_t>(MAX_EMIT_VERTICES));
+        std::vector<quint16> overlayIdx(static_cast<size_t>(MAX_EMIT_VERTICES / 4) * 6);
+        int ovi = 0, oii = 0;
+        pipe.renderMidInteractiveOverlays(overlayVerts.data(), overlayIdx.data(), ovi, oii, 480, 850, 0xFFFFFFFF);
+
+        QVector<int> sortScratch;
+        QVector<quint32> colorScratch;
+        const int counted = pipe.countVisibleQuads(50, sortScratch);
+        QVERIFY2(counted > 0 && counted < MAX_EMIT_VERTICES / 4, qPrintable(QString("counted %1").arg(counted)));
+        // How many overlay quads sit where a mid character would be hidden
+        int overUnderLit = 0;
+        for (int q = 0; q + 3 < ovi; q += 4) {
+            if (pipe.m_occlusion.isHidden(1, overlayVerts[q].x + midAtlas.glyphW() * 0.5f,
+                                          overlayVerts[q].y + midAtlas.glyphH() * 0.5f))
+                ++overUnderLit;
+        }
+        std::vector<MatrixRainVertex> verts(static_cast<size_t>(counted) * 4);
+        std::vector<quint16> indices(static_cast<size_t>(counted) * 6);
+        int vi = 0, ii = 0;
+        pipe.renderAll(verts.data(), indices.data(), vi, ii, 480, 850, 0xFFFFFFFF, sortScratch, colorScratch, 50,
+                       in.color, in.colorMode);
+        const int hidden = pipe.m_frameHidden[0] + pipe.m_frameHidden[1];
+        const bool tailMatches = ovi > 0 && vi >= ovi
+                                 && std::memcmp(verts.data() + (vi - ovi), overlayVerts.data(),
+                                                static_cast<size_t>(ovi) * sizeof(MatrixRainVertex)) == 0;
+
+        QVERIFY2(vi <= 4 * counted && ii <= 6 * counted,
+                 qPrintable(QString("emitted %1 vertices for %2 counted quads").arg(vi).arg(counted)));
+        QVERIFY2(ovi > 0 && overUnderLit > 0 && hidden > 0,
+                 qPrintable(QString("vacuous: %1 overlay quads, %2 on lit near characters, %3 hidden")
+                                .arg(ovi / 4).arg(overUnderLit).arg(hidden)));
+        QVERIFY2(tailMatches, qPrintable(QString("the frame's last %1 quads are not the overlays").arg(ovi / 4)));
+    }
+    void layerOcclusionCappedFrameHidesNothing() {
+        // Over the 16,383-quad cap emitQuad drops the frame's last quads (near trails, emitted last, go first),
+        // occluders included, so a frame over the cap hides nothing: it is the frame occlusion off draws, within the
+        // capped buffer, and only emitted quads count as drawn. Font 10: one full-height trail per column fills every
+        // cell of every layer (far 80x141, mid 60x106, near 43x77 = 20,951 quads). Control: without the far layer the
+        // frame fits under the cap, and the lit near characters hide mid ones.
+        const AtlasInputs in = pipelineInputs(QStringLiteral("ascii"), 10, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 5.0, 180);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        int cells = 0;
+        bool enoughStreams = true;
+        for (int i = 0; i < 3; ++i) {
+            QVector<StreamState> &streams = pipe.m_layers[i].sim.m_streams;
+            enoughStreams = enoughStreams && streams.size() >= geo[i].cols;
+            for (int c = 0; c < geo[i].cols && c < streams.size(); ++c)
+                placeTrail(streams[c], c, geo[i].rows - 1, geo[i].rows, 1.0f);
+            cells += geo[i].cols * geo[i].rows;
+        }
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int onDrawn = 0, onHidden = 0;
+        for (int i = 0; i < LayerPipeline::LAYER_COUNT; ++i) {
+            onDrawn += pipe.m_frameDrawn[i];
+            onHidden += pipe.m_frameHidden[i];
+        }
+        const size_t vertexBytes = static_cast<size_t>(on.vi) * sizeof(MatrixRainVertex);
+        const size_t indexBytes = static_cast<size_t>(on.ii) * sizeof(quint16);
+        const bool sameAsOff = on.vi == off.vi && on.ii == off.ii
+                               && std::memcmp(on.verts.data(), off.verts.data(), vertexBytes) == 0
+                               && std::memcmp(on.indices.data(), off.indices.data(), indexBytes) == 0;
+        for (StreamState &s : pipe.m_layers[0].sim.m_streams) s.active = false;
+        const LayerFrame fits = renderLayerFrame(pipe, in);
+        const int fitsHidden = pipe.m_frameHidden[1];
+
+        QVERIFY2(enoughStreams && off.rawCounted == cells && on.rawCounted == cells && cells > MAX_EMIT_VERTICES / 4,
+                 qPrintable(QString("scene: %1 cells, counted off %2 on %3, cap %4, enough streams %5").arg(cells)
+                                .arg(off.rawCounted).arg(on.rawCounted).arg(MAX_EMIT_VERTICES / 4).arg(enoughStreams)));
+        QVERIFY2(on.counted == MAX_EMIT_VERTICES / 4 && on.vi <= 4 * on.counted && on.ii <= 6 * on.counted,
+                 qPrintable(QString("%1 vertices, %2 indices for a buffer of %3 quads").arg(on.vi).arg(on.ii)
+                                .arg(on.counted)));
+        QVERIFY2(onHidden == 0 && sameAsOff,
+                 qPrintable(QString("over the cap: %1 hidden, frame %2 the occlusion-off frame (%3 / %4 vertices)")
+                                .arg(onHidden).arg(sameAsOff ? "equals" : "differs from").arg(on.vi).arg(off.vi)));
+        QVERIFY2(onDrawn == on.vi / 4,
+                 qPrintable(QString("%1 quads counted as drawn, %2 emitted").arg(onDrawn).arg(on.vi / 4)));
+        QVERIFY2(fits.rawCounted <= MAX_EMIT_VERTICES / 4 && fitsHidden > 0,
+                 qPrintable(QString("control: %1 counted, %2 mid characters hidden").arg(fits.rawCounted)
+                                .arg(fitsHidden)));
+    }
+
+    void layerOcclusionFarBandTrailHiddenWhereDrawn_data() {
+        QTest::addColumn<bool>("drawnSpotUnderNear");
+        QTest::newRow("drawn (shifted) spot under near: hidden, keeps its claim") << true;
+        QTest::newRow("only the unshifted spot under near: drawn") << false;
+    }
+
+    void layerOcclusionFarBandTrailHiddenWhereDrawn() {
+        // With Color layers a far-band trail character is drawn shifted, and it is hidden or not where it is drawn.
+        // A hidden trail character still claims its cell, so the residual glow pass cannot draw there instead. Scene:
+        // a far-band (depth 0.8) mid trail with one of its two spots (shifted, unshifted) under a lit near trail and
+        // the other clear, its cells just visited (residual glow due there). Off: the shifted trail, no glow. On: the
+        // shifted trail only when its shifted spot is clear, and never the glow.
+        QFETCH(bool, drawnSpotUnderNear);
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, true);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        const float nearHalfW = geo[2].halfW[1];  // digits: half width
+        int nearCol = -1, midCol = -1;
+        for (int n = 4; n < geo[2].cols - 4 && nearCol < 0; ++n) {
+            const float nx = sceneX(geo[2], n, false);
+            for (int c = 0; c < geo[1].cols && nearCol < 0; ++c) {
+                const float underX = sceneX(geo[1], c, drawnSpotUnderNear);
+                const float clearX = sceneX(geo[1], c, !drawnSpotUnderNear);
+                if (qAbs(underX - nx) <= nearHalfW - 0.5f && qAbs(clearX - nx) > nearHalfW + 0.5f) {
+                    nearCol = n;
+                    midCol = c;
+                }
+            }
+        }
+        int midTop = -1, midHead = -1;
+        if (nearCol >= 0) {
+            placeTrail(pipe.m_layers[2].sim.m_streams[0], nearCol, 30, 10, 1.0f);  // rows 21..30, all lit
+            const float top = sceneY(geo[2], 21) - geo[2].halfH + 0.5f;
+            const float bottom = sceneY(geo[2], 30) + geo[2].halfH - 0.5f;
+            for (int r = 0; r < geo[1].rows; ++r) {
+                const float y = sceneY(geo[1], r);
+                if (y < top || y > bottom) continue;
+                if (midTop < 0) midTop = r;
+                midHead = r;
+            }
+        }
+        QVERIFY2(widthsError.isEmpty() && nearCol >= 0 && midTop >= 0,
+                 qPrintable(QString("scene setup: %1 near column %2, mid rows %3..%4").arg(widthsError).arg(nearCol)
+                                .arg(midTop).arg(midHead)));
+        RainSimulation &mid = pipe.m_layers[1].sim;
+        placeTrail(mid.m_streams[0], midCol, midHead, midHead - midTop + 1, 0.8f);  // far band: drawn shifted
+        for (int r = midTop; r <= midHead; ++r) mid.m_cellAge[midCol * geo[1].rows + r] = midHead - r;  // just visited
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        const float shiftedX = midCol * geo[1].colSp + geo[1].colSp * LAYER_FAR_BAND_SHIFT;
+        const float unshiftedX = midCol * geo[1].colSp;
+        auto midQuadsAt = [&geo](const LayerFrame &f, float x) {
+            int n = 0;
+            for (int q = 0; q + 3 < f.vi; q += 4) {
+                if (qRound(f.verts[q + 1].x - f.verts[q].x) == geo[1].glyphW && qAbs(f.verts[q].x - x) < 0.01f) ++n;
+            }
+            return n;
+        };
+        const int rows = midHead - midTop + 1;
+        const int wantOnShifted = drawnSpotUnderNear ? 0 : rows;
+        const int offShifted = midQuadsAt(off, shiftedX), onShifted = midQuadsAt(on, shiftedX);
+        const int offResidual = midQuadsAt(off, unshiftedX), onResidual = midQuadsAt(on, unshiftedX);
+        QVERIFY2(offShifted == rows && offResidual == 0 && onShifted == wantOnShifted && onResidual == 0
+                     && on.vi <= 4 * on.counted,
+                 qPrintable(QString("mid rows %1: off shifted %2 residual %3 | on shifted %4 residual %5 (want %1 0 %6 "
+                                    "0)").arg(rows).arg(offShifted).arg(offResidual).arg(onShifted).arg(onResidual)
+                                .arg(wantOnShifted)));
+    }
+
+    void layerOcclusionOnlyTheCellWinnerOccludes() {
+        // Only the character drawn in a cell occludes. One near column, two streams: S0 (counted first) covers rows
+        // 11..40, lit on 31..40 and dim on 11..30; S1 is lit on 21..30 but loses those cells to S0, so it is not drawn
+        // there. Far characters beside S1's cells (and outside S0's lit ones) stay visible.
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        const int col = 10;
+        placeTrail(pipe.m_layers[2].sim.m_streams[0], col, 40, 30, 1.0f);
+        placeTrail(pipe.m_layers[2].sim.m_streams[1], col, 30, 10, 1.0f);
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[2], col, false), geo[2].halfW[0] + geo[0].colSp);
+        const QVector<SceneBox> lit = trailBoxes(pipe, geo, 2, col, 40, 30, false, true);
+        const QVector<SceneBox> loser = trailBoxes(pipe, geo, 2, col, 30, 10, false, false);
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, loserVisible = 0;
+        const QString err = checkFarQuads(off, on, geo, lit, loser, hiddenExpected, loserVisible);
+        QVERIFY2(widthsError.isEmpty() && farPlaced > 0 && hiddenExpected > 0 && loserVisible > 0 && err.isEmpty(),
+                 qPrintable(QString("%1 far columns %2, expected hidden %3, beside the losing lit stream %4: %5")
+                                .arg(widthsError).arg(farPlaced).arg(hiddenExpected).arg(loserVisible).arg(err)));
+    }
+
+    void layerOcclusionThresholdUsesFadeLevel() {
+        // theta is compared with the trail-fade level, not the level Color layers draws: a near-band near trail
+        // (depthFactor 1.2, drawn x1.3 steeper) is lit on all its 10 cells by the fade level, though the drawn level
+        // of its last cells is past maxLevel. The far characters beside those cells are hidden too.
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, true);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        const int col = 10;
+        const GlyphAtlas &nearAtlas = pipe.m_layers[2].atlas;
+        const int levels = nearAtlas.brightnessLevels();
+        const int maxLevel = LayerOcclusion::levelThreshold(OCCLUDER_MIN_TRAIL_BRIGHTNESS, levels);
+        placeTrail(pipe.m_layers[2].sim.m_streams[0], col, 30, 10, 1.2f);
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[2], col, false), geo[2].halfW[0] + geo[0].colSp);
+        const QVector<SceneBox> all = trailBoxes(pipe, geo, 2, col, 30, 10, false, false);
+        QVector<SceneBox> lit, gradedPast, gradedLit;
+        for (int d = 0; d < 10; ++d) {
+            const int fade = (d == 0) ? 0 : nearAtlas.brightnessMap()[d];
+            const int graded = qBound(0, static_cast<int>(fade * 1.3f), levels - 1);
+            if (fade <= maxLevel) lit.append(all[d]);
+            if (fade <= maxLevel && graded > maxLevel) {
+                gradedPast.append(all[d]);
+            } else if (fade <= maxLevel) {
+                gradedLit.append(all[d]);
+            }
+        }
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, unused = 0;
+        const QString err = checkFarQuads(off, on, geo, lit, QVector<SceneBox>(), hiddenExpected, unused);
+        const int onlyBesideGradedPast = farQuadsOnlyIn(off, geo, gradedPast, gradedLit);
+        QVERIFY2(widthsError.isEmpty() && farPlaced > 0 && lit.size() == 10 && !gradedPast.isEmpty()
+                     && onlyBesideGradedPast > 0 && err.isEmpty(),
+                 qPrintable(QString("%1 far columns %2, lit cells %3, lit but drawn past maxLevel %4 (far beside only "
+                                    "those %5): %6").arg(widthsError).arg(farPlaced).arg(lit.size())
+                                .arg(gradedPast.size()).arg(onlyBesideGradedPast).arg(err)));
+    }
+
+    void layerOcclusionOverridesLightOccluders() {
+        // The occluder level is taken after the brightness overrides: a glitch brightness, a message flash and a
+        // stream flash light dim trail cells, which then hide the far characters beside them like any lit cell.
+        // Mid S0 (column 15): rows 11..50, lit on 41..50, dim on 11..40 except a glitch override on 20..25 and a
+        // message flash on 30..33. Mid S1 (column 25): rows 11..40, flashing (every cell at full brightness).
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        RainSimulation &mid = pipe.m_layers[1].sim;
+        const int col0 = 15, col1 = 25;
+        placeTrail(mid.m_streams[0], col0, 50, 40, 1.0f);
+        placeTrail(mid.m_streams[1], col1, 40, 30, 1.0f);
+        mid.m_streams[1].flashFrames = 5;
+        for (int r = 20; r <= 25; ++r) mid.m_glitch.m_glitchBright[col0 * geo[1].rows + r] = 0;
+        for (int r = 30; r <= 33; ++r) mid.m_message.m_messageBright[col0 * geo[1].rows + r] = 7;
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[1], col0, false), geo[1].halfW[0] + geo[0].colSp)
+                              + placeFarUnder(pipe, geo, sceneX(geo[1], col1, false), geo[1].halfW[0] + geo[0].colSp);
+        const QVector<SceneBox> s0All = trailBoxes(pipe, geo, 1, col0, 50, 40, false, false);
+        const QVector<SceneBox> s0FadeLit = trailBoxes(pipe, geo, 1, col0, 50, 40, false, true);
+        const QVector<SceneBox> s1All = trailBoxes(pipe, geo, 1, col1, 40, 30, false, false);
+        const QVector<SceneBox> s1FadeLit = trailBoxes(pipe, geo, 1, col1, 40, 30, false, true);
+        QVector<SceneBox> glitchCells, messageCells, flashCells;
+        for (int d = 0; d < 40; ++d) {
+            const int r = 50 - d;
+            if (r >= 20 && r <= 25) glitchCells.append(s0All[d]);
+            if (r >= 30 && r <= 33) messageCells.append(s0All[d]);
+        }
+        for (int d = 10; d < 30; ++d) flashCells.append(s1All[d]);  // dim by the fade map, lit by the flash
+        const QVector<SceneBox> lit = s0FadeLit + glitchCells + messageCells + s1All;
+        const QVector<SceneBox> fadeLit = s0FadeLit + s1FadeLit;
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, unused = 0;
+        const QString err = checkFarQuads(off, on, geo, lit, QVector<SceneBox>(), hiddenExpected, unused);
+        const int byGlitch = farQuadsOnlyIn(off, geo, glitchCells, fadeLit);
+        const int byMessage = farQuadsOnlyIn(off, geo, messageCells, fadeLit);
+        const int byFlash = farQuadsOnlyIn(off, geo, flashCells, fadeLit);
+        QVERIFY2(widthsError.isEmpty() && farPlaced > 0 && byGlitch > 0 && byMessage > 0 && byFlash > 0
+                     && err.isEmpty(),
+                 qPrintable(QString("%1 far columns %2; far beside a cell lit only by a glitch %3, a message %4, a "
+                                    "flash %5: %6").arg(widthsError).arg(farPlaced).arg(byGlitch).arg(byMessage)
+                                .arg(byFlash).arg(err)));
+    }
+
+    void layerOcclusionOverlaysNeverHide() {
+        // Overlays never hide anything: a mid glitch trail, message-flash cells and message overlay glyphs, with no
+        // mid trail under them, over far trails. Every far character stays, and every overlay quad is drawn.
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        RainSimulation &mid = pipe.m_layers[1].sim;
+        const int col0 = 15, col1 = 24;
+        GlitchTrail gt;
+        gt.col = col0;
+        gt.row = 30;
+        gt.dx = 0;
+        gt.dy = 1;
+        gt.length = 8;  // rows 23..30
+        gt.framesLeft = 10;
+        gt.colorVariant = 0;
+        mid.m_glitch.m_glitchTrails.append(gt);
+        for (int r = 34; r <= 38; ++r) mid.m_message.m_messageBright[col0 * geo[1].rows + r] = 7;
+        const int letterA = pipe.m_layers[1].atlas.messageGlyphOffset();
+        for (int r = 28; r <= 31; ++r)
+            mid.m_message.m_messageOverlay.append({col1 * geo[1].colSp, r * geo[1].rowSp, letterA, 10, 0});
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[1], col0, false), geo[1].halfW[0] + geo[0].colSp)
+                              + placeFarUnder(pipe, geo, sceneX(geo[1], col1, false), geo[1].halfW[0] + geo[0].colSp);
+        QVector<SceneBox> overlays;
+        for (int r = 23; r <= 38; ++r)
+            overlays.append({sceneX(geo[1], col0, false), sceneY(geo[1], r), geo[1].halfW[0], geo[1].halfH});
+        for (int r = 28; r <= 31; ++r)
+            overlays.append({sceneX(geo[1], col1, false), sceneY(geo[1], r), geo[1].halfW[0], geo[1].halfH});
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, underOverlays = 0;
+        const QString err = checkFarQuads(off, on, geo, QVector<SceneBox>(), overlays, hiddenExpected, underOverlays);
+        const int overlayQuads = 8 + 5 + 4;  // glitch trail, message flash, message overlay
+        const int offMid = quadsOfLayer(off, geo, 1), onMid = quadsOfLayer(on, geo, 1);
+        QVERIFY2(widthsError.isEmpty() && farPlaced > 0 && underOverlays > 0 && err.isEmpty() && offMid == overlayQuads
+                     && onMid == overlayQuads,
+                 qPrintable(QString("%1 far columns %2, far under the overlays %3, overlay quads off %4 on %5 (want "
+                                    "%6): %7").arg(widthsError).arg(farPlaced).arg(underOverlays).arg(offMid)
+                                .arg(onMid).arg(overlayQuads).arg(err)));
+    }
+
+    void layerOcclusionHiddenMidDoesNotOcclude_data() {
+        QTest::addColumn<bool>("colorLayers");
+        QTest::newRow("plain") << false;
+        QTest::newRow("color layers: the shift puts the mid character under near") << true;
+    }
+
+    void layerOcclusionHiddenMidDoesNotOcclude() {
+        // Only drawn characters occlude. Lit mid characters whose ink centres lie under a lit near trail are hidden,
+        // so the far characters inside their ink boxes but outside every near ink box (beside the near column, or
+        // below the near trail's end) stay visible. With Color layers the mid trail is in the far band and only its
+        // shifted spot is under the near trail: the count must ask with the shift. Control, the next frame (no
+        // reconfigure) with the near trail moved far away: the same mid characters are drawn and hide those far
+        // characters, so the frame does not keep the previous frame's near occluders either.
+        QFETCH(bool, colorLayers);
+        const AtlasInputs in = pipelineInputs(QStringLiteral("digits"), 16, colorLayers);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        const float nearHalfW = geo[2].halfW[1], midHalfW = geo[1].halfW[1];  // digits: half width
+        // Geometry: near column n with a 10-cell lit trail on rows nearHead-9..nearHead; mid column m whose drawn ink
+        // centre is inside that column's near ink box (with Color layers only the shifted one is); the mid trail on
+        // the mid rows inside the near trail's ink span (at most 10 cells, all lit, ending with the lowest); a far
+        // column whose ink centre is inside the mid ink box, with a far character outside every near ink box: beside
+        // the near column, or below the near trail's end inside the lowest mid box.
+        int nearCol = -1, nearHead = -1, midCol = -1, midTop = -1, midHead = -1, farCol = -1;
+        for (int n = 1; n < geo[2].cols - 1 && nearCol < 0; ++n) {
+            const float xn = sceneX(geo[2], n, false);
+            for (int m = 0; m < geo[1].cols && nearCol < 0; ++m) {
+                const float xm = sceneX(geo[1], m, colorLayers);
+                if (qAbs(xm - xn) > nearHalfW - 0.5f) continue;  // drawn there, the mid character is under near
+                if (colorLayers && qAbs(sceneX(geo[1], m, false) - xn) <= nearHalfW + 0.5f) continue;  // shift decides
+                for (int f = 0; f < geo[0].cols && nearCol < 0; ++f) {
+                    const float xf = sceneX(geo[0], f, false);
+                    if (qAbs(xf - xm) > midHalfW - 0.5f) continue;
+                    const bool besideNear = qAbs(xf - xn) > nearHalfW + 0.5f;
+                    for (int head = 25; head <= 40 && nearCol < 0; ++head) {
+                        const float top = sceneY(geo[2], head - 9) - geo[2].halfH + 0.5f;
+                        const float bottom = sceneY(geo[2], head) + geo[2].halfH - 0.5f;
+                        int rTop = -1, rHead = -1;
+                        for (int r = 0; r < geo[1].rows; ++r) {
+                            const float y = sceneY(geo[1], r);
+                            if (y < top || y > bottom) continue;
+                            if (rTop < 0) rTop = r;
+                            rHead = r;
+                        }
+                        if (rHead < 0) continue;
+                        bool outsideNear = besideNear;
+                        for (int k = 0; k < geo[0].rows && !outsideNear; ++k) {
+                            const float yf = sceneY(geo[0], k);
+                            outsideNear = qAbs(yf - sceneY(geo[1], rHead)) <= geo[1].halfH - 0.5f
+                                          && yf > sceneY(geo[2], head) + geo[2].halfH + 0.5f;
+                        }
+                        if (!outsideNear) continue;
+                        nearCol = n;
+                        nearHead = head;
+                        midCol = m;
+                        midTop = qMax(rTop, rHead - 9);
+                        midHead = rHead;
+                        farCol = f;
+                    }
+                }
+            }
+        }
+        QVERIFY2(widthsError.isEmpty() && nearCol >= 0,
+                 qPrintable(QString("scene setup: %1 columns near %2 mid %3 far %4, near head %5, mid rows %6..%7")
+                                .arg(widthsError).arg(nearCol).arg(midCol).arg(farCol).arg(nearHead).arg(midTop)
+                                .arg(midHead)));
+        const int midLen = midHead - midTop + 1;
+        placeTrail(pipe.m_layers[2].sim.m_streams[0], nearCol, nearHead, 10, 1.0f);
+        placeTrail(pipe.m_layers[1].sim.m_streams[0], midCol, midHead, midLen, colorLayers ? 0.8f : 1.0f);
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[1], midCol, colorLayers), midHalfW + geo[0].colSp)
+                              + placeFarUnder(pipe, geo, sceneX(geo[2], nearCol, false), nearHalfW + geo[0].colSp);
+        const QVector<SceneBox> nearLit = trailBoxes(pipe, geo, 2, nearCol, nearHead, 10, false, true);
+        const QVector<SceneBox> midLit = trailBoxes(pipe, geo, 1, midCol, midHead, midLen, colorLayers, true);
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, underHiddenMidOnly = 0;
+        const QString err = checkFarQuads(off, on, geo, nearLit, midLit, hiddenExpected, underHiddenMidOnly);
+        const int offMid = quadsOfLayer(off, geo, 1), onMid = quadsOfLayer(on, geo, 1);
+        // Control: the near trail moves half the screen away (the far quads of `off` do not depend on it)
+        const int movedCol = (nearCol + geo[2].cols / 2) % geo[2].cols;
+        placeTrail(pipe.m_layers[2].sim.m_streams[0], movedCol, nearHead, 10, 1.0f);
+        const LayerFrame next = renderLayerFrame(pipe, in);
+        int hiddenNext = 0, unused = 0;
+        const QString err2 = checkFarQuads(off, next, geo, midLit + trailBoxes(pipe, geo, 2, movedCol, nearHead, 10,
+                                                                                false, true),
+                                           QVector<SceneBox>(), hiddenNext, unused);
+        const int sameFarHidden = farQuadsOnlyIn(off, geo, midLit, nearLit);
+
+        QVERIFY2(farPlaced > 0 && offMid == midLen && onMid == 0,
+                 qPrintable(QString("far columns %1; mid characters off %2 on %3 (want %4 0)").arg(farPlaced)
+                                .arg(offMid).arg(onMid).arg(midLen)));
+        QVERIFY2(err.isEmpty() && underHiddenMidOnly > 0,
+                 qPrintable(QString("far only under hidden mid characters %1 (want > 0): %2").arg(underHiddenMidOnly)
+                                .arg(err)));
+        QVERIFY2(err2.isEmpty() && sameFarHidden > 0,
+                 qPrintable(QString("control, near trail moved away: far under the drawn mid characters only %1 (want "
+                                    "> 0): %2").arg(sameFarHidden).arg(err2)));
+    }
+
+    void layerOcclusionHalfWidthGlyphs() {
+        // An occluder's ink box follows its glyph's width class: with katakana the ten digits and the message glyphs
+        // are half width, the kana full width. A far character just outside a lit near digit's half-width box, though
+        // inside the full-width box a kana gets, stays visible; beside a lit near kana in the same column it is
+        // hidden. The same for a lit mid message glyph and a mid kana. (Metrics only: no CJK font needed.)
+        const AtlasInputs in = pipelineInputs(QStringLiteral("katakana"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 2.0, 83);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        SceneGeo geo[3];
+        sceneGeo(pipe, geo);
+        clearScene(pipe);
+        const QString widthsError = sceneWidthsError(geo);
+        const GlyphAtlas &midAtlas = pipe.m_layers[1].atlas, &nearAtlas = pipe.m_layers[2].atlas;
+        const int digit = GlyphAtlas::charsetString(QStringLiteral("katakana")).indexOf(QLatin1Char('0'));
+        const int kana = 0, letterA = midAtlas.messageGlyphOffset();
+        const bool classes = nearAtlas.isHalfWidth(digit) && !nearAtlas.isHalfWidth(kana)
+                             && midAtlas.isHalfWidth(letterA) && !midAtlas.isHalfWidth(kana);
+        // A column with a far column whose ink centre is in the band between the half- and full-width extents
+        auto bandColumn = [&geo](int layer) {
+            for (int c = 2; c < geo[layer].cols - 2; ++c) {
+                const float x = sceneX(geo[layer], c, false);
+                for (int f = 0; f < geo[0].cols; ++f) {
+                    const float d = qAbs(sceneX(geo[0], f, false) - x);
+                    if (d >= geo[layer].halfW[1] + 0.5f && d <= geo[layer].halfW[0] - 0.5f) return c;
+                }
+            }
+            return -1;
+        };
+        const int nearCol = bandColumn(2), midCol = bandColumn(1);
+        QVERIFY2(widthsError.isEmpty() && classes && digit == 46 && nearCol >= 0 && midCol >= 0,
+                 qPrintable(QString("scene setup: %1 width classes %2, digit glyph %3, columns near %4 mid %5")
+                                .arg(widthsError).arg(classes).arg(digit).arg(nearCol).arg(midCol)));
+        // Near, column nearCol: kana on rows 4..13, digits on rows 18..27. Mid, below them (no near box there),
+        // column midCol: message glyph A on rows 44..53, kana on rows 55..64. All 10-cell trails: every cell lit.
+        struct Placed {
+            int layer, stream, col, headRow, glyph;
+        };
+        const Placed placed[] = {{2, 0, nearCol, 13, kana}, {2, 1, nearCol, 27, digit},
+                                 {1, 0, midCol, 53, letterA}, {1, 1, midCol, 64, kana}};
+        // lit: the boxes the rule uses; asFull[layer]: the half-width glyphs' boxes at full width (a charset-wide
+        // rule's); kanaFull / kanaHalf: the kana boxes, and the same at half width
+        QVector<SceneBox> lit, asFull[3], kanaFull, kanaHalf;
+        for (const Placed &pl : placed) {
+            RainSimulation &sim = pipe.m_layers[pl.layer].sim;
+            placeTrail(sim.m_streams[pl.stream], pl.col, pl.headRow, 10, 1.0f);
+            for (int r = pl.headRow - 9; r <= pl.headRow; ++r)
+                sim.m_charGrid[pl.col * geo[pl.layer].rows + r] = pl.glyph;
+            const QVector<SceneBox> boxes = trailBoxes(pipe, geo, pl.layer, pl.col, pl.headRow, 10, false, true);
+            lit += boxes;
+            for (SceneBox b : boxes) {
+                b.halfW = geo[pl.layer].halfW[0];
+                if (pl.glyph != kana) {
+                    asFull[pl.layer].append(b);
+                } else {
+                    kanaFull.append(b);
+                    b.halfW = geo[pl.layer].halfW[1];
+                    kanaHalf.append(b);
+                }
+            }
+        }
+        const int farPlaced = placeFarUnder(pipe, geo, sceneX(geo[2], nearCol, false), geo[2].halfW[0] + geo[0].colSp)
+                              + placeFarUnder(pipe, geo, sceneX(geo[1], midCol, false), geo[1].halfW[0] + geo[0].colSp);
+        LayerFrame off, on;
+        renderOffOn(pipe, in, off, on);
+        int hiddenExpected = 0, besideHalfWidth = 0;
+        const QString err = checkFarQuads(off, on, geo, lit, asFull[1] + asFull[2], hiddenExpected, besideHalfWidth);
+        const int besideNearDigit = farQuadsOnlyIn(off, geo, asFull[2], lit);
+        const int besideMidLetter = farQuadsOnlyIn(off, geo, asFull[1], lit);
+        const int kanaBand = farQuadsOnlyIn(off, geo, kanaFull, kanaHalf);
+        QVERIFY2(farPlaced > 0 && err.isEmpty() && besideNearDigit > 0 && besideMidLetter > 0 && kanaBand > 0,
+                 qPrintable(QString("far columns %1; far in the full-width but not the half-width box of a near digit "
+                                    "%2, a mid message glyph %3 (stay), of a kana %4 (hidden): %5").arg(farPlaced)
+                                .arg(besideNearDigit).arg(besideMidLetter).arg(kanaBand).arg(err)));
     }
 };
 
