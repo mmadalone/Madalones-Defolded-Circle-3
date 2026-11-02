@@ -29,6 +29,57 @@ class MatrixRainTest : public QObject {
         item.m_sim.initStreams(w, h, item.m_atlas);
     }
 
+    // One Rain-layers layer (0 far, 1 mid, 2 near) set up the way LayerPipeline does it (build: layer font
+    // layerpipeline.cpp:111; syncLayerConfig: speed/density/trail scales, glitch + messages off for far and near),
+    // with the primary sim at its defaults (speed 1.0, trail 25). Seeded, then initStreams(480, height).
+    void setupLayerSim(RainSimulation &sim, GlyphAtlas &atlas, int layerIdx, int font, qreal density,
+                       const QString &dir, int height = 800, const QString &colorMode = "green",
+                       quint32 seed = 42) {
+        static constexpr float fontScales[]    = {LAYER_FAR_FONT_SCALE, 1.0f, LAYER_NEAR_FONT_SCALE};
+        static constexpr float speedScales[]   = {LAYER_FAR_SPEED_SCALE, 1.0f, LAYER_NEAR_SPEED_SCALE};
+        static constexpr float densityScales[] = {LAYER_FAR_DENSITY_SCALE, 1.0f, LAYER_NEAR_DENSITY_SCALE};
+        static constexpr int   trailPcts[]     = {LAYER_FAR_TRAIL_PCT, 100, LAYER_NEAR_TRAIL_PCT};
+        static constexpr qreal primarySpeed = 1.0;
+        static constexpr int   primaryTrail = 25;
+        sim.setSpeed(primarySpeed * static_cast<qreal>(speedScales[layerIdx]));
+        sim.setDensity(density * static_cast<qreal>(densityScales[layerIdx]));
+        sim.setTrailLength(primaryTrail * trailPcts[layerIdx] / 100);
+        sim.setDirection(dir);
+        if (layerIdx != 1) {
+            sim.setGlitch(false);
+            sim.setGlitchChaos(false);
+            sim.setMessagesEnabled(false);
+            sim.setSubliminal(false);
+        }
+        const int layerFont = qMax(8, qRound(font * fontScales[layerIdx]));  // float maths: 30 * 0.65f -> 20
+        atlas.buildMetricsOnly(QColor("#00ff41"), colorMode, layerFont, sim.charset(), 0.88);
+        sim.m_rng.seed(seed);
+        sim.initStreams(480, height, atlas);
+    }
+
+    // Cross-axis position of a cardinal stream: the column for down/up rain, the row for left/right rain.
+    static int laneOf(const RainSimulation &sim, const StreamState &s) {
+        return (sim.m_dy != 0) ? s.headCol : s.headRow;
+    }
+    static int laneCount(const RainSimulation &sim) {
+        return (sim.m_dy != 0) ? sim.m_gridCols : sim.m_gridRows;
+    }
+    // Longest run of consecutive lanes (in lane order, not wrapping) for which flags[lane] is false.
+    static int longestFalseRun(const QVector<bool> &flags) {
+        int best = 0, run = 0;
+        for (bool f : flags) {
+            run = f ? 0 : run + 1;
+            best = qMax(best, run);
+        }
+        return best;
+    }
+    static QString joinInts(const QVector<int> &v, int maxItems = 24) {
+        QStringList parts;
+        for (int i = 0; i < v.size() && i < maxItems; ++i) parts << QString::number(v[i]);
+        if (v.size() > maxItems) parts << QStringLiteral("...");
+        return parts.join(QLatin1Char(','));
+    }
+
  private slots:
     // ─────────────────────────────────────────
     // 1. Trail cells — 2D bounds for all 8 directions
@@ -2168,6 +2219,417 @@ class MatrixRainTest : public QObject {
         item.m_sim.m_message.m_messageOverlay.append(stale);
         int staleCount = item.countVisibleQuads();
         QCOMPARE(staleCount, baseCount);  // stale entry excluded
+    }
+
+    // ─────────────────────────────────────────
+    // Lane model: rain reaches every column (down/up) and every row (left/right)
+    // ─────────────────────────────────────────
+    // A cardinal stream's lane is its cross-axis position. With fewer streams than lanes (far/near Rain layers at
+    // most densities, left/right rain below 100 %) the lanes past the stream count used to stay dry for good.
+    // CI runs these with -v2 under ASan, so results are collected in the loops and verified once at the end.
+
+    void spreadLaneCoverage_data() {
+        QTest::addColumn<int>("font");
+        QTest::addColumn<int>("layer");
+        QTest::addColumn<int>("slider");
+        QTest::addColumn<QString>("direction");
+        QTest::addColumn<int>("height");
+        static const char *const layerNames[] = {"far", "mid", "near"};
+        static const char *const dirs[] = {"down", "up", "left", "right"};
+        for (int font : {16, 30}) {
+            for (int layer = 0; layer < 3; ++layer) {
+                for (int slider : {20, 70, 210}) {
+                    for (const char *dir : dirs) {
+                        QTest::addRow("f%d %s s%d %s", font, layerNames[layer], slider, dir)
+                            << font << layer << slider << QString(dir) << 800;
+                    }
+                }
+            }
+        }
+        // The owner's case on the 480x850 screen: near layer at font 30, slider 210 = 13 streams for 14 columns.
+        QTest::addRow("f30 near s210 down 480x850") << 30 << 2 << 210 << QString("down") << 850;
+    }
+
+    void spreadLaneCoverage() {
+        QFETCH(int, font);
+        QFETCH(int, layer);
+        QFETCH(int, slider);
+        QFETCH(QString, direction);
+        QFETCH(int, height);
+
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, layer, font, slider / 100.0, direction, height);
+        const int cols = sim.m_gridCols, rows = sim.m_gridRows;
+        const int S = laneCount(sim);
+        const int N = sim.m_streams.size();
+        const QString setup = QString("N=%1 S=%2 grid %3x%4 cell %5px font %6")
+                                  .arg(N).arg(S).arg(cols).arg(rows).arg(atlas.charStepW()).arg(font);
+
+        // (a) every lane stays inside [0, S): at init and after every tick
+        int outOfRange = 0;
+        QString firstOutOfRange;
+        auto checkLaneRange = [&](int tick) {
+            for (int i = 0; i < N; ++i) {
+                const int lane = laneOf(sim, sim.m_streams[i]);
+                if (lane >= 0 && lane < S) continue;
+                if (outOfRange++ == 0)
+                    firstOutOfRange = QString("tick %1 stream %2 lane %3").arg(tick).arg(i).arg(lane);
+            }
+        };
+        checkLaneRange(0);
+
+        // (b) start-up spread: no long run of lanes without a stream (none at all when N >= S)
+        QVector<bool> ownedAtInit(S, false);
+        for (const StreamState &s : sim.m_streams) {
+            const int l = laneOf(sim, s);
+            if (l >= 0 && l < S) ownedAtInit[l] = true;
+        }
+        const int longestDryAtInit = longestFalseRun(ownedAtInit);
+        const int allowedDryAtInit = (N < S) ? 3 * ((S + N - 1) / N) : 0;
+
+        // (c) every lane gets an active stream with its head on the grid within 5000 ticks
+        QVector<bool> rained(S, false);
+        int dryCount = S;
+        auto markRain = [&]() {
+            for (const StreamState &st : sim.m_streams) {
+                if (!st.active || st.headCol < 0 || st.headCol >= cols || st.headRow < 0 || st.headRow >= rows)
+                    continue;
+                const int lane = laneOf(sim, st);
+                if (!rained[lane]) {
+                    rained[lane] = true;
+                    --dryCount;
+                }
+            }
+        };
+        markRain();
+        int ticks = 0;
+        while (dryCount > 0 && ticks < 5000) {
+            sim.advanceSimulation(atlas);
+            ++ticks;
+            checkLaneRange(ticks);
+            markRain();
+        }
+        QVector<int> dryLanes;
+        for (int l = 0; l < S; ++l) {
+            if (!rained[l]) dryLanes << l;
+        }
+
+        QVERIFY2(outOfRange == 0, qPrintable(QString("%1 lane value(s) outside [0,%2), first: %3; %4")
+                                                 .arg(outOfRange).arg(S).arg(firstOutOfRange, setup)));
+        QVERIFY2(longestDryAtInit <= allowedDryAtInit,
+                 qPrintable(QString("start-up: %1 consecutive lanes without a stream (allowed %2); %3")
+                                .arg(longestDryAtInit).arg(allowedDryAtInit).arg(setup)));
+        QVERIFY2(dryLanes.isEmpty(), qPrintable(QString("%1 lane(s) never rained in %2 ticks: [%3]; %4")
+                                                    .arg(dryLanes.size()).arg(ticks).arg(joinInts(dryLanes), setup)));
+    }
+
+    void sparseRespawnWalksEveryLane() {
+        // Mid layer, font 16, left rain at density 0.5: 30 streams for 61 row lanes, rainbow colours. S forced
+        // respawns must first fill exactly the lanes left dry at init, cover every lane once, give each lane the hue
+        // the old one-stream-per-lane layout gave it, and not depend on the RNG seed.
+        QStringList preconditions, dryFirst, permutation, hues;
+        QVector<int> laneSeq[2], hueSeq[2];
+        const quint32 seeds[2] = {1u, 2u};
+        for (int run = 0; run < 2; ++run) {
+            RainSimulation sim;
+            GlyphAtlas atlas;
+            setupLayerSim(sim, atlas, 1, 16, 0.5, "left", 800, "rainbow", seeds[run]);
+            const int S = laneCount(sim);
+            const int N = sim.m_streams.size();
+            const int CV = atlas.colorVariants();
+            if (S != 61 || N != 30 || CV < 2) {
+                preconditions << QString("seed %1: S=%2 (want 61) N=%3 (want 30) CV=%4 (want >1)")
+                                     .arg(seeds[run]).arg(S).arg(N).arg(CV);
+                continue;
+            }
+            QVector<bool> ownedAtInit(S, false);
+            for (const StreamState &s : sim.m_streams) {
+                const int l = laneOf(sim, s);
+                if (l >= 0 && l < S) ownedAtInit[l] = true;
+            }
+            for (int k = 0; k < S; ++k) {
+                StreamState &s = sim.m_streams[k % N];
+                sim.spawnStream(s, false);
+                laneSeq[run] << laneOf(sim, s);
+                hueSeq[run] << s.colorVariant;
+            }
+
+            QVector<int> notDry;  // the first S-N respawns must each land on a different lane that was dry at init
+            QVector<bool> filled(S, false);
+            for (int k = 0; k < S - N; ++k) {
+                const int l = laneSeq[run][k];
+                if (l < 0 || l >= S || ownedAtInit[l] || filled[l])
+                    notDry << l;
+                else
+                    filled[l] = true;
+            }
+            if (!notDry.isEmpty()) {
+                dryFirst << QString("seed %1: of the first %2 respawns, %3 hit a lane that was not dry at init "
+                                    "(or a lane twice): [%4]")
+                                .arg(seeds[run]).arg(S - N).arg(notDry.size()).arg(joinInts(notDry));
+            }
+
+            QVector<int> hits(S, 0);
+            int outside = 0;
+            for (int l : laneSeq[run]) {
+                if (l >= 0 && l < S) {
+                    ++hits[l];
+                } else {
+                    ++outside;
+                }
+            }
+            if (outside > 0 || hits.count(1) != S) {
+                permutation << QString("seed %1: %2 respawns are not a permutation of [0,%2): [%3]")
+                                   .arg(seeds[run]).arg(S).arg(joinInts(laneSeq[run], S));
+            }
+
+            int hueMismatch = 0;
+            QString firstHue;
+            for (int k = 0; k < S; ++k) {
+                const int expected = static_cast<int>(laneSeq[run][k] * 0.618033988749895 * CV) % CV;
+                if (hueSeq[run][k] != expected && hueMismatch++ == 0) {
+                    firstHue = QString("respawn %1 lane %2 hue %3, want %4")
+                                   .arg(k).arg(laneSeq[run][k]).arg(hueSeq[run][k]).arg(expected);
+                }
+            }
+            if (hueMismatch > 0) {
+                hues << QString("seed %1: %2 hue mismatch(es), first: %3")
+                            .arg(seeds[run]).arg(hueMismatch).arg(firstHue);
+            }
+        }
+        QVERIFY2(preconditions.isEmpty(), qPrintable(preconditions.join(QStringLiteral("; "))));
+        QVERIFY2(dryFirst.isEmpty(), qPrintable(dryFirst.join(QStringLiteral("; "))));
+        QVERIFY2(permutation.isEmpty(), qPrintable(permutation.join(QStringLiteral("; "))));
+        QVERIFY2(hues.isEmpty(), qPrintable(hues.join(QStringLiteral("; "))));
+        QVERIFY2(laneSeq[0] == laneSeq[1] && hueSeq[0] == hueSeq[1],
+                 qPrintable(QString("respawn lanes depend on the RNG seed: [%1] vs [%2]")
+                                .arg(joinInts(laneSeq[0]), joinInts(laneSeq[1]))));
+    }
+
+    void denseLanesStayFixed_data() {
+        QTest::addColumn<int>("layer");
+        QTest::addColumn<int>("font");
+        QTest::addColumn<int>("slider");
+        QTest::addColumn<QString>("direction");
+        QTest::newRow("mid f16 s70 down (S=36 N=42)") << 1 << 16 << 70 << QString("down");
+        QTest::newRow("mid f16 s120 left") << 1 << 16 << 120 << QString("left");
+        QTest::newRow("far f16 s210 down") << 0 << 16 << 210 << QString("down");
+    }
+
+    void denseLanesStayFixed() {
+        // At least one stream per lane: every stream keeps its lane and hue for good, the extra streams are spread
+        // over the lanes instead of crowding the left/top, and the hue per (lane, rank) is the old layout's.
+        QFETCH(int, layer);
+        QFETCH(int, font);
+        QFETCH(int, slider);
+        QFETCH(QString, direction);
+
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, layer, font, slider / 100.0, direction, 800, "rainbow");
+        const int S = laneCount(sim);
+        const int N = sim.m_streams.size();
+        const int CV = atlas.colorVariants();
+        QVERIFY2(N >= S && N % S != 0 && CV > 1,
+                 qPrintable(QString("precondition: dense with a remainder, N=%1 S=%2 CV=%3").arg(N).arg(S).arg(CV)));
+
+        QVector<int> lane0(N), hue0(N), owners(S, 0);
+        int laneOutside = 0;
+        for (int i = 0; i < N; ++i) {
+            lane0[i] = laneOf(sim, sim.m_streams[i]);
+            hue0[i] = sim.m_streams[i].colorVariant;
+            if (lane0[i] >= 0 && lane0[i] < S) {
+                ++owners[lane0[i]];
+            } else {
+                ++laneOutside;
+            }
+        }
+        const int fewest = N / S, most = (N + S - 1) / S;
+        QVector<int> badOwnerLanes;
+        QVector<bool> extraOwner(S, false);
+        for (int l = 0; l < S; ++l) {
+            if (owners[l] != fewest && owners[l] != most) badOwnerLanes << l;
+            extraOwner[l] = (owners[l] == most);
+        }
+        const int longestNoExtra = longestFalseRun(extraOwner);
+        const int allowedNoExtra = 3 * ((S + N % S - 1) / (N % S));
+
+        QVector<int> hueMismatch;
+        for (int i = 0; i < N; ++i) {
+            const int expected = static_cast<int>((lane0[i] + (i / S) * S) * 0.618033988749895 * CV) % CV;
+            if (hue0[i] != expected) hueMismatch << i;
+        }
+
+        QVector<bool> prevActive(N), respawned(N, false);
+        for (int i = 0; i < N; ++i) prevActive[i] = sim.m_streams[i].active;
+        int changes = 0;
+        QString firstChange;
+        for (int t = 1; t <= 3000; ++t) {
+            sim.advanceSimulation(atlas);
+            for (int i = 0; i < N; ++i) {
+                const StreamState &s = sim.m_streams[i];
+                if (s.active && !prevActive[i]) respawned[i] = true;
+                prevActive[i] = s.active;
+                const int lane = laneOf(sim, s);
+                if ((lane != lane0[i] || s.colorVariant != hue0[i]) && changes++ == 0) {
+                    firstChange = QString("tick %1 stream %2: lane %3->%4 hue %5->%6")
+                                      .arg(t).arg(i).arg(lane0[i]).arg(lane).arg(hue0[i]).arg(s.colorVariant);
+                }
+            }
+        }
+        QVector<int> neverRespawned;
+        for (int i = 0; i < N; ++i) {
+            if (!respawned[i]) neverRespawned << i;
+        }
+
+        QVERIFY2(laneOutside == 0 && badOwnerLanes.isEmpty(),
+                 qPrintable(QString("owners per lane must be %1 or %2: %3 lane(s) off [%4], %5 stream(s) off grid")
+                                .arg(fewest).arg(most).arg(badOwnerLanes.size()).arg(joinInts(badOwnerLanes))
+                                .arg(laneOutside)));
+        QVERIFY2(longestNoExtra <= allowedNoExtra,
+                 qPrintable(QString("%1 consecutive lanes without an extra stream (allowed %2), N=%3 S=%4")
+                                .arg(longestNoExtra).arg(allowedNoExtra).arg(N).arg(S)));
+        QVERIFY2(hueMismatch.isEmpty(), qPrintable(QString("%1 stream(s) without the old (lane, rank) hue: [%2]")
+                                                       .arg(hueMismatch.size()).arg(joinInts(hueMismatch))));
+        QVERIFY2(changes == 0, qPrintable(QString("%1 lane/hue change(s) in 3000 ticks, first: %2")
+                                              .arg(changes).arg(firstChange)));
+        QVERIFY2(neverRespawned.isEmpty(), qPrintable(QString("%1 stream(s) never respawned in 3000 ticks: [%2]")
+                                                          .arg(neverRespawned.size()).arg(joinInts(neverRespawned))));
+    }
+
+    void respawnPutsStrayStreamBackOnGrid_data() {
+        QTest::addColumn<QString>("direction");
+        QTest::addColumn<qreal>("density");
+        QTest::addColumn<bool>("strayHigh");  // false: lane -3, true: lane S+2
+        static const char *const dirs[] = {"down", "up", "left", "right"};
+        for (const char *dir : dirs) {
+            for (qreal density : {0.3, 1.5}) {
+                for (bool strayHigh : {false, true}) {
+                    QTest::addRow("%s d%.1f lane %s", dir, density, strayHigh ? "S+2" : "-3")
+                        << QString(dir) << density << strayHigh;
+                }
+            }
+        }
+    }
+
+    void respawnPutsStrayStreamBackOnGrid() {
+        // A stream whose lane is off the grid (a tap spawn, or gravity turned off without a restart) gets an
+        // in-grid lane at its next respawn; with >= 1 stream per lane it goes back to its own lane.
+        QFETCH(QString, direction);
+        QFETCH(qreal, density);
+        QFETCH(bool, strayHigh);
+
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 16, density, direction);
+        const bool vertical = (sim.m_dy != 0);
+        const int S = laneCount(sim);
+        const bool dense = sim.m_streams.size() >= S;
+        StreamState &s = sim.m_streams[1];
+        const int initLane = laneOf(sim, s);
+        const int stray = strayHigh ? S + 2 : -3;
+        if (vertical) {
+            s.headCol = stray;
+            s.headColF = static_cast<float>(stray);
+        } else {
+            s.headRow = stray;
+            s.headRowF = static_cast<float>(stray);
+        }
+        s.active = false;
+        sim.spawnStream(s, false);
+
+        const int lane = laneOf(sim, s);
+        QVERIFY2(lane >= 0 && lane < S,
+                 qPrintable(QString("lane %1 after respawn, want [0,%2) (stray %3)").arg(lane).arg(S).arg(stray)));
+        QCOMPARE(s.headColF, static_cast<float>(s.headCol));
+        QCOMPARE(s.headRowF, static_cast<float>(s.headRow));
+        QVERIFY2(!sim.isStreamOffScreen(s), qPrintable(QString("respawned stream off screen at (%1,%2)")
+                                                           .arg(s.headCol).arg(s.headRow)));
+        if (dense) QCOMPARE(lane, initLane);
+    }
+
+    void gravityOffWithoutReinitKeepsStreamsVisible() {
+        // A DPAD direction followed by closing the screensaver turns gravity off without initStreams
+        // (MatrixRainItem::setRunning(false)). Streams that gravity steered off the grid must come back onto it at
+        // their next respawn instead of raining invisibly for good.
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down", 0.7, 16);
+        RainSimulation &sim = item.m_sim;
+        sim.m_rng.seed(42);
+        sim.initStreams(480, 800, item.m_atlas);
+        sim.setGravityMode(true);
+        sim.setGravityDirection(1.0f, 0.0f);
+        for (int t = 0; t < 400; ++t) sim.advanceSimulation(item.m_atlas);
+
+        const int cols = sim.m_gridCols, rows = sim.m_gridRows;
+        StreamState &stray = sim.m_streams[0];  // one guaranteed stray: right of the grid, about to respawn
+        stray.headCol = cols + 4;
+        stray.headColF = static_cast<float>(cols + 4);
+        stray.active = false;
+        stray.pauseTicks = 1;
+
+        sim.setGravityMode(false);  // what setRunning(false) does after a DPAD override: no initStreams
+        const int N = sim.m_streams.size();
+        QVector<bool> seen(N, false);
+        int unseen = N;
+        for (int t = 0; t < 3000 && unseen > 0; ++t) {
+            sim.advanceSimulation(item.m_atlas);
+            for (int i = 0; i < N; ++i) {
+                const StreamState &s = sim.m_streams[i];
+                if (seen[i] || !s.active) continue;
+                if (s.headCol >= 0 && s.headCol < cols && s.headRow >= 0 && s.headRow < rows) {
+                    seen[i] = true;
+                    --unseen;
+                }
+            }
+        }
+        QStringList invisible;
+        for (int i = 0; i < N && invisible.size() < 12; ++i) {
+            if (!seen[i]) {
+                invisible << QString("%1@(%2,%3)").arg(i).arg(sim.m_streams[i].headCol)
+                                 .arg(sim.m_streams[i].headRow);
+            }
+        }
+        QVERIFY2(unseen == 0, qPrintable(QString("%1 of %2 streams never had their head on the %3x%4 grid in 3000 "
+                                                 "ticks after gravity off: %5")
+                                             .arg(unseen).arg(N).arg(cols).arg(rows)
+                                             .arg(invisible.join(QLatin1Char(' ')))));
+    }
+
+    void spreadWalkRestartsOnInit() {
+        // The sparse lane walk restarts on every initStreams, so the same seed gives the same respawn lanes.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 2, 30, 2.1, "down");  // the owner's near layer: 12 streams for 14 columns
+        const int S = laneCount(sim);
+        QVERIFY2(sim.m_streams.size() < S,
+                 qPrintable(QString("precondition: sparse, N=%1 S=%2").arg(sim.m_streams.size()).arg(S)));
+
+        auto respawnLanes = [&sim, &atlas]() {
+            const int count = sim.m_streams.size();
+            QVector<bool> wasActive(count);
+            for (int i = 0; i < count; ++i) wasActive[i] = sim.m_streams[i].active;
+            QVector<int> lanes;
+            for (int t = 0; t < 600; ++t) {
+                sim.advanceSimulation(atlas);
+                for (int i = 0; i < count; ++i) {
+                    const StreamState &st = sim.m_streams[i];
+                    if (st.active && !wasActive[i]) lanes << laneOf(sim, st);
+                    wasActive[i] = st.active;
+                }
+            }
+            return lanes;
+        };
+        const QVector<int> first = respawnLanes();
+        sim.m_rng.seed(42);
+        sim.initStreams(480, 800, atlas);
+        const QVector<int> second = respawnLanes();
+
+        QVERIFY2(first.size() > S / 2,
+                 qPrintable(QString("only %1 respawns in 600 ticks (want > %2)").arg(first.size()).arg(S / 2)));
+        QVERIFY2(first == second, qPrintable(QString("respawn lanes differ after re-init: [%1] vs [%2]")
+                                                 .arg(joinInts(first, 40), joinInts(second, 40))));
     }
 };
 

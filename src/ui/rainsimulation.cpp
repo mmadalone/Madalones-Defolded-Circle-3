@@ -4,6 +4,7 @@
 
 #include "rainsimulation.h"
 
+#include <QByteArray>
 #include <QtMath>
 #include <cmath>
 #include <numeric>  // std::gcd (C++17)
@@ -32,6 +33,13 @@ static int coprimeGoldenStep(int n) {
     return step;
 }
 
+// k-th lane of the golden walk over n lanes: the step is coprime with n, so k = 0..n-1 visits every lane once and
+// consecutive k land ~0.62 n apart. RNG-free. (k % n) * step < n^2 <= MAX_QUADS^2 fits in int.
+static int goldenLane(int k, int n) { return (n <= 1) ? 0 : ((k % n) * coprimeGoldenStep(n)) % n; }
+
+// Golden-ratio hue for a stream key: consecutive keys get maximally spread hues (rainbow / neon atlases).
+static int goldenHue(int key, int variants) { return static_cast<int>(key * GOLDEN_RATIO * variants) % variants; }
+
 // Direction vector table — indexed by direction string
 struct DirVec { int dx; int dy; };
 static const QMap<QString, DirVec> s_dirTable = {
@@ -47,7 +55,8 @@ RainSimulation::RainSimulation()
 }
 
 // Spawn (or respawn) a single stream at the entry edge for the current direction.
-// stagger=true randomizes head position behind the entry for init variety.
+// stagger=true (initStreams only) randomizes head position behind the entry for init variety.
+// Cardinal rain without gravity also sets the stream's lane (cross-axis position) here — see the lane model below.
 void RainSimulation::spawnStream(StreamState &s, bool stagger) {
     s.dx = m_dx;
     s.dy = m_dy;
@@ -78,7 +87,9 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
     }
     s.trailLength = baseLen;
 
-    // colorVariant assigned by initStreams() with golden ratio distribution — preserve on respawn
+    // colorVariant: initStreams() seeds a golden-ratio hue per stream. Cardinal rain without gravity re-keys it by
+    // lane below (same hue per lane as the old one-stream-per-lane layout); otherwise it is kept on respawn.
+    // Color layers (depth) re-rolls it after every spawn in assignDepthColorVariant().
 
     if (!isDiagonal()) {
         // Cardinal: offset based on travel axis dimension
@@ -104,6 +115,27 @@ void RainSimulation::spawnStream(StreamState &s, bool stagger) {
             s.headCol = m_gravitySpawnRow % cols;
             s.headRow = (m_gravitySpawnRow / cols) % rows;
             m_gravitySpawnRow = (m_gravitySpawnRow + step) % (cols * rows);
+        } else {
+            // Lane = cross axis. >= 1 stream per lane: keep goldenLane(ordinal). Fewer streams than lanes: each
+            // respawn takes the next walk lane, so all lanes rain within `lanes` respawns. Written on every cardinal
+            // spawn, so a stream that drifted off its lane (gravity off without restart, tap spawn) is back on
+            // the grid.
+            const bool vertical = (m_dy != 0);
+            const int lanes = qMax(1, vertical ? m_gridCols : m_gridRows);
+            int lane, hueKey;  // hueKey == index in the old `i % lanes` layout: same hue per (lane, lap)
+            if (stagger || m_streams.size() >= lanes) {  // stagger == called from initStreams
+                lane = goldenLane(s.ordinal, lanes);
+                hueKey = lane + (s.ordinal / lanes) * lanes;
+            } else {
+                const int k = m_spreadCursor % lanes;
+                m_spreadCursor = k + 1;
+                lane = goldenLane(k, lanes);
+                hueKey = lane;
+            }
+            if (vertical) s.headCol = lane;
+            else          s.headRow = lane;
+            if (!m_depthEnabled && m_atlasColorVariants > 1)  // Color layers re-rolls the hue per spawn instead
+                s.colorVariant = goldenHue(hueKey, m_atlasColorVariants);
         }
     } else {
         // Diagonal: select entry position FIRST, then compute offset from on-screen travel.
@@ -180,9 +212,12 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
             m_gridRows = qMax(1, MAX_QUADS / m_gridCols);
     }
 
-    // Stream count: max(cols, rows) ensures full coverage for ANY direction,
-    // including gravity mode transitions where direction changes without reinit.
-    // Density slider scales stream count (0.3 = sparse, 1.0 = base, 2.0 = packed).
+    // Stream count: max(cols, rows) x density, the same base for every direction (gravity mode changes
+    // direction without reinit). Density slider scales it (0.3 = sparse, 1.0 = base, 2.0 = packed).
+    // Cardinal rain: a stream's lane is its column (down/up) or row (left/right). Below one stream per lane
+    // spawnStream walks the lanes on every respawn, so every column/row still rains. That covers the far/near
+    // Rain layers at most densities, left/right rain under 100%, and down/up rain below about 55%, with Rain
+    // layers off too (480x850 at font 16: 65 x density streams for 36 columns).
     int baseStreams;
     if (diag)
         baseStreams = m_gridCols + m_gridRows;
@@ -192,6 +227,9 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
 
     // Cap stream count to prevent excessive CPU at extreme density
     numStreams = qMin(numStreams, qMax(m_gridCols, m_gridRows) * 3);
+    // Sparse lanes: init gives stream i goldenLane(i), so the walk resumes at N and the first respawns fill
+    // exactly the lanes that start out dry.
+    m_spreadCursor = numStreams;
 
     m_streams.resize(numStreams);
     m_charGrid.resize(m_gridCols * m_gridRows);
@@ -200,6 +238,7 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
     m_message.resize(m_gridCols, m_gridRows);
     m_glitch.resize(m_gridCols, m_gridRows);
     m_depthVariantBase = atlas.hasDepthVariants() ? atlas.depthVariantBase() : 0;
+    m_atlasColorVariants = atlas.colorVariants();
 
     // Fill grid with random glyphs
     std::uniform_int_distribution<int> charDist(0, qMax(0, atlas.glyphCount() - 1));
@@ -209,30 +248,30 @@ void RainSimulation::initStreams(qreal screenWidth, qreal screenHeight, const Gl
     // Initialize each stream
     for (int i = 0; i < numStreams; ++i) {
         auto &s = m_streams[i];
+        s.ordinal = i;  // keys the stream's lane and lane hue in spawnStream
 
         // Golden ratio color distribution: maximally spread hues across adjacent streams.
         // When depth is enabled, colorVariant is reassigned by assignDepthColorVariant after spawn.
+        // Cardinal rain without gravity: spawnStream re-keys it by lane (same hue per (lane, lap)).
         if (!m_depthEnabled && atlas.colorVariants() > 1)
-            s.colorVariant = static_cast<int>(i * GOLDEN_RATIO * atlas.colorVariants()) % atlas.colorVariants();
+            s.colorVariant = goldenHue(i, atlas.colorVariants());
         else
             s.colorVariant = atlas.hasDepthVariants() ? atlas.depthVariantBase() : 0;
 
-        // Spread streams across BOTH axes so any direction (including gravity
-        // transitions) has full coverage. Sequential modulo guarantees every
-        // row and column gets at least one stream.
-        s.headCol = i % qMax(1, m_gridCols);
-        s.headRow = i % qMax(1, m_gridRows);
-
+        // spawnStream sets both axes: entry offset + lane (cardinal), the gravity 2-D walk, or a diagonal entry.
         spawnStream(s, true);  // stagger for variety
         assignDepthColorVariant(s, atlas);
     }
 
+    // Lane count for the current direction ("-" when lanes don't apply: diagonal rain, gravity mode)
+    const QByteArray laneInfo = (diag || m_gravityMode)
+        ? QByteArrayLiteral("-") : QByteArray::number(m_dy != 0 ? m_gridCols : m_gridRows);
     qCInfo(lcScreensaver) << "initStreams:" << m_gridCols << "x" << m_gridRows
         << "streams:" << numStreams << "cellW:" << cellW << "cellH:" << cellH
         << "glyphW:" << atlas.glyphW() << "density:" << m_density
         << "width:" << screenWidth << "height:" << screenHeight
         << "colSp:" << (m_gridCols > 1 ? screenWidth / m_gridCols : cellW)
-        << "dir:" << m_direction;
+        << "dir:" << m_direction << "lanes:" << laneInfo.constData();
 }
 
 void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
@@ -294,7 +333,8 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
                 // m_spawnSuppress is false (normal operation), respawn
                 // happens exactly as before.
                 if (m_spawnSuppress) continue;
-                // For cardinal, preserve fixed axis position; spawnStream handles offset
+                // spawnStream sets the entry offset and, for cardinal rain without gravity, the lane
+                // (kept with >= 1 stream per lane, next lane of the golden walk otherwise)
                 spawnStream(s, false);
                 assignDepthColorVariant(s, atlas);
             }

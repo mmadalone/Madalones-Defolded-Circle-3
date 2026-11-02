@@ -34,6 +34,7 @@ struct StreamState {
     int  stutterFrames; // > 0 = stream paused (stutter glitch)
     int  flashFrames;   // > 0 = stream at full brightness (flash glitch)
     float depthFactor{1.0f};  // 3D depth parallax: 0.6 (far/small) to 1.4 (near/large)
+    int  ordinal{0};    // index in m_streams (set by initStreams); keys the lane and the lane hue in spawnStream
 
     // Position history ring buffer — stores past head positions for curved trail rendering
     std::array<int, MAX_TRAIL_HISTORY> histCol{};
@@ -88,7 +89,13 @@ class RainSimulation {
     void initStreams(qreal screenWidth, qreal screenHeight, const GlyphAtlas &atlas);
     /// @brief Advance the simulation by one tick. Moves stream heads, applies glitches, decays messages.
     void advanceSimulation(const GlyphAtlas &atlas);
-    /// @brief Respawn a single stream at a random entry edge position.
+    /// @brief Spawn or respawn a stream at the entry edge for the current direction, a random distance behind it.
+    /// Cross axis: cardinal rain keeps the stream's lane (column for down/up, row for left/right) when there is at
+    /// least one stream per lane, and otherwise takes the next lane of a golden-ratio walk, so every lane rains;
+    /// with gravity on, a cardinal direction uses a 2-D golden walk over all cells instead; diagonal directions
+    /// (gravity or not) pick a random entry-edge cell.
+    /// stagger=true (initStreams only) scatters heads from 2 travel lengths behind the entry edge up to the far edge,
+    /// so the rain starts already in progress; respawns start at most half a travel length behind the entry.
     void spawnStream(StreamState &s, bool stagger);
 
     /// @brief Trigger a chaos burst event (enter button action when glitch+chaos are enabled).
@@ -379,7 +386,13 @@ class RainSimulation {
     float m_dyF = 1.0f;  // default: down
     bool m_gravityMode = false;
     float m_gravityLerpRate = 0.08f;  // per-stream lerp toward global direction (configurable)
-    int m_gravitySpawnRow = 0;  // golden ratio counter for even horizontal row distribution
+    // Gravity-mode 2-D spawn walk: a flat cell index (col + row * cols), advanced by coprimeGoldenStep(cols * rows)
+    // so every cell is visited. initStreams does not reset it.
+    int m_gravitySpawnRow = 0;
+    // Cardinal lane walk when there are fewer streams than lanes: the next k of goldenLane(k, lanes).
+    // initStreams sets it to the stream count (streams 0..N-1 start on goldenLane(0..N-1)).
+    int m_spreadCursor = 0;
+    int m_atlasColorVariants{1};  // atlas.colorVariants() at initStreams; > 1 = per-lane golden hue in spawnStream
     QString m_savedDirection;  // saved manual direction when entering gravity mode
 
     // Screen-off fall-off: when true, inactive streams are not respawned.
