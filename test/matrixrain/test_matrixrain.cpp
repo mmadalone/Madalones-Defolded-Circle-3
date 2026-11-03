@@ -4500,8 +4500,11 @@ class MatrixRainTest : public QObject {
         QMap<int, int> lastCol, lengthOfRow, farthest;
         int wrongPace = 0, wrongLife = 0, maxLife = 0;
         for (const GlitchTrail &gt : trails) {
-            if (gt.pace != speed) ++wrongPace;
-            if (gt.framesLeft != ceilDivInt((cols + gt.length) * 200, speed) + ceilDivInt(200, speed)) ++wrongLife;
+            // A short streak that would jump over its edge cell starts behind it (the shared clock is at 0: phase 0)
+            const int behind = qMax(0, speed / 200 - (gt.length - 1));
+            if (gt.pace != speed || gt.col != startCol - dir * behind) ++wrongPace;
+            if (gt.framesLeft != ceilDivInt((cols + gt.length + behind) * 200, speed) + ceilDivInt(200, speed))
+                ++wrongLife;
             lastCol[gt.row] = gt.col;
             lengthOfRow[gt.row] = gt.length;
             farthest[gt.row] = gt.col;
@@ -4529,12 +4532,65 @@ class MatrixRainTest : public QObject {
         const int expectedStep = qMax(1, ceilDivInt(speed, 200));
         QVERIFY2(!farthest.isEmpty() && wrongPace == 0 && wrongLife == 0 && backwards == 0 && maxStep == expectedStep
                      && maxStep <= 3 && notAcross == 0 && unwritten == 0 && trails.isEmpty(),
-                 qPrintable(QString("%1%: %2 streaks, %3 with another pace, %4 with another lifetime, at most %5 cells "
-                                    "per tick (expected %6), %7 steps backwards, %8 did not cross, %9 cells never "
-                                    "entered, %10 left after %11 ticks")
+                 qPrintable(QString("%1%: %2 streaks, %3 with another pace or start, %4 with another lifetime, "
+                                    "at most %5 cells per tick (expected %6), %7 steps backwards, %8 did not cross, "
+                                    "%9 cells never entered, %10 left after %11 ticks")
                                 .arg(speed).arg(farthest.size()).arg(wrongPace).arg(wrongLife).arg(maxStep)
                                 .arg(expectedStep).arg(backwards).arg(notAcross).arg(unwritten).arg(trails.size())
                                 .arg(ticks)));
+    }
+
+    void wipeLightsItsEdgeColumnAtFullSpeed_data() {
+        QTest::addColumn<int>("speed");
+        QTest::addColumn<int>("phase");
+        QTest::addColumn<bool>("tapLeft");
+        for (int speed : {500, 575, 600}) {
+            for (int phase : {0, 1}) {
+                const QString tag = QString("%1 %, clock %2, ").arg(speed).arg(phase);
+                QTest::newRow(qPrintable(tag + "left")) << speed << phase << true;
+                QTest::newRow(qPrintable(tag + "right")) << speed << phase << false;
+            }
+        }
+    }
+
+    void wipeLightsItsEdgeColumnAtFullSpeed() {
+        // A streak is drawn as its head plus length - 1 cells behind it. At 500-600 % a 3-cell streak can move 3 cells
+        // on its first tick: starting on the edge cell it would never draw (or scramble) that cell, so it starts
+        // behind the edge. Every streak draws its edge cell at least once. Only the positions after an advance count:
+        // the rain repaints at the end of its tick (MatrixRainItem::tick), after the trails have moved, and neither a
+        // tap (InputHandler) nor a chaos event (advanceChaos runs before advanceTrails) repaints in between.
+        QFETCH(int, speed);
+        QFETCH(int, phase);
+        QFETCH(bool, tapLeft);
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        sim.m_glitch.m_dirTrailTickCounter = phase;
+        sim.setTapWipeSpeed(speed);
+        const int edge = tapLeft ? 0 : cols - 1;
+        sim.tapWipe(tapLeft ? 2 : cols - 3, rows / 2, atlas.colorVariants());
+        QSet<int> streakRows, edgeDrawn;
+        int behindStarts = 0;
+        auto markEdge = [&]() {
+            for (const GlitchTrail &gt : trails)
+                for (int k = 0; k < gt.length; ++k)
+                    if (gt.col - k * gt.dx == edge) edgeDrawn.insert(gt.row);
+        };
+        for (const GlitchTrail &gt : trails) {
+            streakRows.insert(gt.row);
+            if (gt.col != edge) ++behindStarts;
+        }
+        for (int t = 0; t < 200 && !trails.isEmpty(); ++t) {
+            advanceTrailsOnly(sim, atlas.glyphCount());
+            markEdge();
+        }
+        QVERIFY2(!streakRows.isEmpty() && edgeDrawn == streakRows && trails.isEmpty(),
+                 qPrintable(QString("%1 %, clock %2: %3 of %4 streaks drew the edge column (%5 started behind it), "
+                                    "%6 left").arg(speed).arg(phase).arg(edgeDrawn.size()).arg(streakRows.size())
+                                .arg(behindStarts).arg(trails.size())));
     }
 
     void wipeSkipsMessageCellsAtFullSpeed() {

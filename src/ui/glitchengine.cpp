@@ -202,24 +202,30 @@ void GlitchEngine::spawnWipe(int dir, SimContext &ctx, int colorVariant, int col
     const int count = qMin(room, rows.size());
 
     // A streak gains its pace (the wipe speed, % of one cell per 2 ticks) every tick and moves one cell per
-    // WIPE_PACE_PER_CELL gained; it is drawn back from its head. Starting on the edge cell, it needs
-    // (cols + length - 1) moves until its tail has left the far edge: ceil((cols + length) * 200 / pace) ticks
-    // give at least that many, plus one move of slack. The pace is stored per streak, so a setting changed
-    // mid-wipe cannot strand one. The first move lines up with the shared Trail-speed clock, so at 100 % and the
-    // default Trail speed a wipe moves on the same ticks, and lives as long, as before it had its own speed.
+    // WIPE_PACE_PER_CELL gained; it is drawn back from its head. Starting on the edge cell (or `behind` cells
+    // before it, below), it needs (cols + length - 1 + behind) moves until its tail has left the far edge:
+    // ceil((cols + length + behind) * 200 / pace) ticks give at least that many, plus one move of slack. The pace
+    // is stored per streak, so a setting changed mid-wipe cannot strand one. The first move lines up with the
+    // shared Trail-speed clock, so at 100 % and the default Trail speed a wipe moves on the same ticks, and lives
+    // as long, as before it had its own speed.
     const int pace = qBound(WIPE_SPEED_MIN, speedPct, WIPE_SPEED_MAX);
     const int tickSkip = qMax(1, 100 / m_glitchDirSpeed);
     const int phase = qMin(m_dirTrailTickCounter, tickSkip - 1) * WIPE_PACE_PER_CELL / tickSkip;
     auto ceilDiv = [](int a, int b) { return (a + b - 1) / b; };
+    // Cells the first advance moves: a streak shorter than that + 1 would jump over its edge cell (drawn from the
+    // head back), so such a streak starts that many cells behind the edge and enters the edge cell like any other.
+    // 0 up to 400 %, so the default keeps its exact path.
+    const int firstMoves = (phase + pace) / WIPE_PACE_PER_CELL;
     for (int i = 0; i < count; ++i) {
         const int r = rows[static_cast<int>(static_cast<qint64>(i) * rows.size() / count)];
         GlitchTrail gt;
-        gt.col = (dir > 0) ? 0 : ctx.gridCols - 1;
         gt.row = r;
         gt.dx = dir;
         gt.dy = 0;
         gt.length = WIPE_LENGTH_MIN + static_cast<int>(ctx.rng() % WIPE_LENGTH_RANGE);
-        gt.framesLeft = ceilDiv((ctx.gridCols + gt.length) * WIPE_PACE_PER_CELL, pace) +
+        const int behind = qMax(0, firstMoves - (gt.length - 1));
+        gt.col = (dir > 0) ? -behind : ctx.gridCols - 1 + behind;
+        gt.framesLeft = ceilDiv((ctx.gridCols + gt.length + behind) * WIPE_PACE_PER_CELL, pace) +
                         ceilDiv(WIPE_PACE_PER_CELL, pace);
         gt.colorVariant = (colorVariant >= 0) ? colorVariant
                         : (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
