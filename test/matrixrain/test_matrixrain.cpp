@@ -4341,6 +4341,67 @@ class MatrixRainTest : public QObject {
                                     "scrambled, %5 trails left").arg(sim.m_charGrid[msgIdx]).arg(sim.m_charGrid[subIdx])
                                 .arg(changed).arg(cols - 2).arg(trails.size())));
     }
+
+    // ─────────────────────────────────────────
+    // A d-pad direction survives screen-off (2026-11-03). Before, setDisplayOff(false) started auto-rotation
+    // whenever gravity mode was on, and a d-pad (or remembered) direction runs on gravity mode.
+    // ─────────────────────────────────────────
+
+    void wakeKeepsDpadDirection() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.interactiveInput("right");
+        item.setGravityMode(true);  // MatrixTheme's localGravity sync, after the C++ call
+        const bool rotatingBefore = item.m_gravity.isAutoRotating();
+        item.setDisplayOff(true);
+        item.setDisplayOff(false);
+        const bool rotatingAfter = item.m_gravity.isAutoRotating();
+        item.m_timer.stop();
+        QVERIFY2(!rotatingBefore && !rotatingAfter && item.m_interactiveOverride && item.m_sim.gravityMode()
+                     && qFuzzyCompare(item.m_sim.m_dxF, 1.0f) && qFuzzyIsNull(item.m_sim.m_dyF),
+                 qPrintable(QString("rotating before %1 after %2, override %3, gravity %4, direction %5,%6")
+                                .arg(rotatingBefore).arg(rotatingAfter).arg(item.m_interactiveOverride)
+                                .arg(item.m_sim.gravityMode()).arg(item.m_sim.m_dxF).arg(item.m_sim.m_dyF)));
+    }
+
+    void wakeResumesAutoRotate() {
+        // With the Auto-rotate setting on (and no d-pad override) the rotation resumes after a wake
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.setGravityMode(true);
+        const bool before = item.m_gravity.isAutoRotating();
+        item.setDisplayOff(true);
+        const bool whileOff = item.m_gravity.isAutoRotating();
+        item.setDisplayOff(false);
+        const bool after = item.m_gravity.isAutoRotating();
+        item.m_timer.stop();
+        item.m_gravity.stopAutoRotation();
+        QVERIFY2(before && !whileOff && after,
+                 qPrintable(QString("rotating before %1, while off %2, after %3").arg(before).arg(whileOff).arg(after)));
+    }
+
+    void dpadBindingSyncKeepsAutoRotateOff() {
+        // MatrixTheme.interactiveInput's order since 2026-11-03: the C++ call first, then the localGravity binding.
+        // The binding's setGravityMode(true) is then a no-op, nothing records auto-rotate as running, and "restore"
+        // (with localGravity back to the Auto-rotate setting, off) returns to the configured direction.
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.interactiveInput("right");
+        item.setGravityMode(true);
+        const bool rotating = item.m_gravity.isAutoRotating(), wasActive = item.m_autoRotateWasActive;
+        item.interactiveInput("restore");
+        item.setGravityMode(false);
+        item.m_timer.stop();
+        QVERIFY2(!rotating && !wasActive && !item.m_interactiveOverride && !item.m_sim.gravityMode()
+                     && !item.m_gravity.isAutoRotating() && item.m_sim.direction() == QStringLiteral("down"),
+                 qPrintable(QString("rotating %1, recorded auto-rotate %2; after restore: override %3, gravity %4, "
+                                    "rotating %5, direction %6").arg(rotating).arg(wasActive)
+                                .arg(item.m_interactiveOverride).arg(item.m_sim.gravityMode())
+                                .arg(item.m_gravity.isAutoRotating()).arg(item.m_sim.direction())));
+    }
 };
 
 int main(int argc, char *argv[]) {

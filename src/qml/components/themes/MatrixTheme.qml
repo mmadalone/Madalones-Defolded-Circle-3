@@ -35,14 +35,18 @@ Item {
     // Forward interactive input from ChargingScreen DPAD to C++ MatrixRain.
     // Sync localGravity so the QML binding doesn't reassert the config value
     // onto the C++ property, which would undo the DPAD direction change.
+    // C++ first: it switches gravity mode on for the override itself, so the binding's
+    // setGravityMode(true) is then a no-op and never starts auto-rotation (which C++
+    // would record as "auto-rotate was on" and resume on "restore"). After "restore"
+    // the rain follows the user's Auto-rotate setting again.
     function interactiveInput(action) {
+        matrixRain.interactiveInput(action);
         if (action === "up" || action === "down" || action === "left" || action === "right" ||
             action === "up-left" || action === "down-left" || action === "up-right" || action === "down-right") {
             root.localGravity = true;
         } else if (action === "restore") {
-            root.localGravity = false;
+            root.localGravity = ScreensaverConfig.gravityMode;
         }
-        matrixRain.interactiveInput(action);
     }
 
     // Bypass QML running-binding race on wake via C++ defensive reset.

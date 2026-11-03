@@ -586,7 +586,8 @@ void MatrixRainItem::setGravityMode(bool g) {
     if (m_sim.setGravityMode(g)) {
         if (m_layerPipeline.enabled()) m_layerPipeline.applyGravityMode(g);
         if (g) {
-            m_gravity.startAutoRotation();
+            // Not during a d-pad override: the direction the user picked holds until "restore"
+            if (!m_interactiveOverride) m_gravity.startAutoRotation();
         } else {
             m_gravity.stopAutoRotation();
             m_needsReinit = true;  // only reinit when disabling (restore grid for saved direction)
@@ -669,7 +670,9 @@ void MatrixRainItem::setDisplayOff(bool off) {
                     static_cast<int>(TICK_BASE_MS / m_sim.speed()),
                     TICK_MAX_MS));
             }
-            if (m_running && m_sim.gravityMode())
+            // Auto-rotation resumes only for the Auto-rotate setting: a d-pad direction (or the remembered one)
+            // runs on gravity mode too, and must stay put through screen-off (the setRunning(true) rule)
+            if (m_running && m_sim.gravityMode() && !m_interactiveOverride)
                 m_gravity.startAutoRotation();
         }
         emit displayOffChanged();
