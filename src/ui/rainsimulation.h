@@ -418,17 +418,18 @@ class RainSimulation {
     int   m_drainPauseTicksRemaining = 0;
     bool  m_drainCleanupPending = false;     // set when drainMode resets 1/2 → 0
 
-    // Config properties
+    // Config properties (the bools are kept together: single bools between ints left 3-byte holes, clang-tidy
+    // optin.performance.Padding)
     qreal   m_speed{1.0};
     qreal   m_density{0.7};
     int     m_trailLength{25};
     bool    m_glow{true};
-    QString m_charset{"ascii"};
     bool    m_depthEnabled{false};
-    int     m_depthIntensity{50};
     bool    m_depthOverlay{false};
-    int     m_depthVariantBase{0};  // atlas depthVariantBase (1 when depth active, else 0)
     bool    m_invertTrail{false};
+    QString m_charset{"ascii"};
+    int     m_depthIntensity{50};
+    int     m_depthVariantBase{0};  // atlas depthVariantBase (1 when depth active, else 0)
     int     m_tapBurstCount{25};
     int     m_tapBurstLength{6};
     int     m_tapSpawnCount{6};
