@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.84.0` (merged 2026-10-31 in v1.6.0, merge commit `94c4006`, upstream commit `781882a`; before: `v0.73.5` at v1.5.2, `v0.73.4` at v1.5.0, `v0.72.0` at v1.4.0, `v0.71.1`).  
-**Last updated:** 2026-11-03 (Unreleased — Matrix rain in every column and row; Rain layers hide the rain behind them, new `src/ui/matrixrain/layerocclusion.{h,cpp}`; full-screen wipe, screen-off timing with the new `src/hardware/screenOffSync.{h,cpp}`, a d-pad direction across a wake)
+**Last updated:** 2026-11-03 (v1.6.2 — Matrix rain in every column and row; Rain layers hide the rain behind them, new `src/ui/matrixrain/layerocclusion.{h,cpp}`; full-screen wipe, screen-off timing with the new `src/hardware/screenOffSync.{h,cpp}`, a d-pad direction across a wake)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -17,7 +17,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Purpose |
 |------|---------|
 | `src/ui/glyphatlas.h` | Glyph atlas texture builder — shared GPU texture for all character grid renderers |
-| `src/ui/glyphatlas.cpp` | Atlas build, UV lookup, brightness map, font loading; ink boxes and per-glyph width classes for the Rain layers occlusion (Unreleased) |
+| `src/ui/glyphatlas.cpp` | Atlas build, UV lookup, brightness map, font loading; ink boxes and per-glyph width classes for the Rain layers occlusion (v1.6.2) |
 | `src/ui/simcontext.h` | Simulation context struct (header-only) |
 
 ### Modified Upstream Files
@@ -46,8 +46,8 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 611 |
 | `src/ui/matrixrain.cpp` | QSG rendering orchestrator, vertex buffer, atlas upload, multi-layer dispatch. Single-layer rendering, input dispatch, and ScreensaverConfig wiring delegated to helper classes (v1.4.36) | 749 |
 | `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 272 |
-| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (Unreleased) | 811 |
-| `src/ui/matrixrain/layerocclusion.h` | `LayerOcclusion` (Unreleased) — Rain layers: nearer grids hide the farther grids' characters. Per-grid facts and occluder masks, `OCCLUDER_MIN_TRAIL_BRIGHTNESS`, `LAYER_FAR_BAND_SHIFT`. Pure C++, by-value member of LayerPipeline. | 141 |
+| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (v1.6.2) | 811 |
+| `src/ui/matrixrain/layerocclusion.h` | `LayerOcclusion` (v1.6.2) — Rain layers: nearer grids hide the farther grids' characters. Per-grid facts and occluder masks, `OCCLUDER_MIN_TRAIL_BRIGHTNESS`, `LAYER_FAR_BAND_SHIFT`. Pure C++, by-value member of LayerPipeline. | 141 |
 | `src/ui/matrixrain/layerocclusion.cpp` | `configure`, `beginFrame`, `isHidden` / `isCellHidden` (ink-box test against the nearer cells in reach), `levelThreshold` | 136 |
 | `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | 65 |
 | `src/ui/matrixrain/atlasbuilder.cpp` | Class-static single-layer cache (`s_singleCacheKey`, `s_singleCacheAtlas`), `buildSingle`, `cacheKey` | 47 |
@@ -58,14 +58,14 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/matrixrain/bindinghelper.h` | `BindingHelper` (all-static utility class) — 8 ScreensaverConfig binding helpers (extracted in v1.4.36 Phase C): bindAppearance, bindDirectionAndGravity, bindGlitch, bindChaos, bindTap, bindMessages, bindSubliminal, bindDepthAndLayers. Mirrors AtlasBuilder shape (no instances, no QObject). | 38 |
 | `src/ui/matrixrain/bindinghelper.cpp` | 8 binding helper implementations. Wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to empty TU. Caller (`MatrixRainItem::bindToScreensaverConfig`) owns QSignalBlocker batching scope. | 203 |
 | `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 444 |
-| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (Unreleased) | 735 |
-| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow; `spawnWipe()` for both screen wipes, each streak at its own pace (Unreleased) | 228 |
-| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control; edge-to-edge wipes, message cells kept by trails (Unreleased) | 462 |
+| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (v1.6.2) | 735 |
+| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow; `spawnWipe()` for both screen wipes, each streak at its own pace (v1.6.2) | 228 |
+| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control; edge-to-edge wipes, message cells kept by trails (v1.6.2) | 462 |
 | `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | 168 |
 | `src/ui/messageengine.cpp` | Text layout, character placement | 358 |
 | `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate (most logic now inline in header — `.cpp` is a near-empty shell after the inline-implementation refactor) | 50 |
 | `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math (most code moved into the header during a prior refactor; this `.cpp` is now a thin shell) | 28 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations; counts as of v1.4.28, `measuredDimPhaseMs` removed in Unreleased) | 324 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations; counts as of v1.4.28, `measuredDimPhaseMs` removed in v1.6.2) | 324 |
 | `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 310 |
 | `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | 58 |
 
@@ -193,7 +193,9 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 
 ---
 
-## Unreleased: Wipe speed (Tap and Chaos screen wipes), Animation length (screen-off styles)
+## v1.6.2: Wipe speed (Tap and Chaos screen wipes), Animation length (screen-off styles)
+
+Version 1.6.2 in `remote-ui.pro` and `deploy/release.json`; this section and the two below it are v1.6.2.
 
 **Wipe speed.** The Tap effects and Chaos events "Screen wipe" each get a "Wipe speed" slider (50-600 %, default 100 =
 the speed at the default Trail speed). A wipe streak moves at the pace it was spawned with, one cell at a time, at most
@@ -221,7 +223,7 @@ still ends before the switch-off (`ScreenOffSync::fitLeadMs`); skipped below 300
 | `test/hardware/screenoff_test/test_screenOffSync.cpp` | 237 | 12 new rows (25 → 37) for `fitLeadMs`. |
 | `test/qml/MockScreensaverConfig.h`, `test/qml/tst_wipe_speed_rows.qml` (new) | 813 / 129 | The two speeds in the mock; the keypad chain through both new rows (QML 212 → 219). |
 
-## Unreleased: full-screen wipe, screen-off timing, a d-pad direction across a wake
+## v1.6.2: full-screen wipe, screen-off timing, a d-pad direction across a wake
 
 **Wipe.** Both "Screen wipe" effects (tap, Chaos) now sweep edge to edge over the full height (`GlitchEngine::spawnWipe`),
 and glitch trails no longer scramble message cells. **Screen-off timing.** The new `ScreenOffSync` knows when the core's
@@ -248,7 +250,7 @@ results: [SCREENSAVER-IMPLEMENTATION.md](../SCREENSAVER-IMPLEMENTATION.md), sect
 | `test/hardware/screenoff_test/` (new) | 183 | `ScreenOffSync` unit tests (25), mock core; in `test/hardware/hardware_test.pro` and the CI hardware job. |
 | `remote-ui.pro`, `.github/workflows/tidy.yml`, `.github/workflows/test.yml` | — | List `screenOffSync`; run `test_screenOffSync`. |
 
-## Unreleased: Matrix rain in every column and row; Rain layers hide the rain behind them
+## v1.6.2: Matrix rain in every column and row; Rain layers hide the rain behind them
 
 **Lanes.** A cardinal stream's lane is its column (down/up rain) or row (left/right rain). Since v1.2.0 `initStreams`
 put stream i on lane `i % lanes` for good, so with fewer streams than lanes the rest never rained. Now a stream keeps
@@ -274,7 +276,7 @@ path, the material and the one draw call are unchanged. Rule, tests and measurem
 | `src/ui/matrixrain.cpp` | 746 | Passes `m_sortOrder` to `countVisibleQuads`. |
 | `test/matrixrain/test_matrixrain.cpp` | 4156 | 117 new rows (106 → 223): 95 for the lanes, 22 for the occlusion; `metricsMatchBuild` and `metricsMatchBuildRainbow` also compare the ink metrics. |
 | `remote-ui.pro`, `test/matrixrain/matrixrain_test.pro`, `test/matrixrain/CMakeLists.txt`, `test/integration/matrixrain_integration_test.pro`, `test/matrixrain_preview/matrixrain_preview.pro`, `.github/workflows/tidy.yml` | — | List `layerocclusion.{h,cpp}` next to `layerpipeline`. |
-| `CHANGELOG.md`, `SCREENSAVER-IMPLEMENTATION.md`, `SCREENSAVER-README.md`, `README.md`, `ENGINEERING_LOG.md` | — | Unreleased entry; the 2026-11-02 Session section and the stale passages it corrects (density, the Rain layers grid table, the 0.35 shift); the Rain layers description; the test count and the list of helper classes; the v1.4.36 claim about the 0.35 shift. |
+| `CHANGELOG.md`, `SCREENSAVER-IMPLEMENTATION.md`, `SCREENSAVER-README.md`, `README.md`, `ENGINEERING_LOG.md` | — | v1.6.2 entry; the 2026-11-02 Session section and the stale passages it corrects (density, the Rain layers grid table, the 0.35 shift); the Rain layers description; the test count and the list of helper classes; the v1.4.36 claim about the 0.35 shift. |
 
 ---
 

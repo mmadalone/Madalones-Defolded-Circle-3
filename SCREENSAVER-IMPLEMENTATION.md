@@ -2309,7 +2309,7 @@ Before entering plan mode for the refactor, the core assumption was verified aga
 
 ## 2026-11-02 Session: rain in every lane + Rain layers occlusion
 
-**Status:** implemented, unit-tested, checked in the full-app simulator (CHANGELOG "Unreleased"; see "Full-app simulator" below) and on the remote: a test build (`1.6.1-rainfix`, pinned Qt 5.15.19 toolchain) ran on firmware 2.12.0 on 2026-11-02 and the owner confirmed the rain looks right. Its log shows the `lanes:` fields and the `Layer occlusion` lines and no new warnings. The CPU cost on the remote's ARM is not measured. Plan approved by the owner on 2026-11-02; scratch scripts and results are in the local, gitignored `logs/matrix_ab/` folder.
+**Status:** implemented, unit-tested, checked in the full-app simulator (CHANGELOG v1.6.2; see "Full-app simulator" below) and on the remote: a test build (`1.6.1-rainfix`, pinned Qt 5.15.19 toolchain) ran on firmware 2.12.0 on 2026-11-02 and the owner confirmed the rain looks right. Its log shows the `lanes:` fields and the `Layer occlusion` lines and no new warnings. The CPU cost on the remote's ARM is not measured. Plan approved by the owner on 2026-11-02; scratch scripts and results are in the local, gitignored `logs/matrix_ab/` folder.
 
 On 2026-11-01, right after v1.6.1 was installed, the owner photographed "weird lines" in the Matrix rain: columns where the characters squeeze together into a solid strip. The investigation found two separate problems, both present since v1.2.0.
 
@@ -2474,7 +2474,7 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 
 ## 2026-11-03 Session: full-screen wipe, screen-off timing, a d-pad direction across a wake
 
-**Status:** implemented, unit-tested, checked in the full-app simulator and, on 2026-11-03, on the remote by the owner (test build `1.6.1-screenfix`): all three work (CHANGELOG "Unreleased"). The owner reported the three problems after testing the Rain layers fix on the remote (2026-11-02); all three are older than that work.
+**Status:** implemented, unit-tested, checked in the full-app simulator and, on 2026-11-03, on the remote by the owner (test build `1.6.1-screenfix`): all three work (CHANGELOG v1.6.2). The owner reported the three problems after testing the Rain layers fix on the remote (2026-11-02); all three are older than that work.
 
 ### 1. Screen wipe covered part of the screen
 

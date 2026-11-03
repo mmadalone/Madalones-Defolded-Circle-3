@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
-## Unreleased
+## v1.6.2 — 2026-11-03 — Rain layers without strips; full-screen wipes with a speed; screen-off animations end with the screen
+
+Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.0 and 2.12.1.
 
 ### Added
 
