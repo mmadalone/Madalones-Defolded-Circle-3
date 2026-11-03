@@ -30,7 +30,7 @@ Five themes, nine screen-off animation styles, full DPAD/touch interaction, zero
 - Battery level (icon + percent with 5-tier color coding, size slider, "Fully charged" translated)
 
 **Screen-off animations:**
-A shared animation system plays a short shutdown effect right before the hardware blanks the display. Two-tier architecture: a *Tier 1* shared overlay (8 styles, works on any theme) plus an optional *Tier 2* theme-native protocol (themes can opt in with their own tightly-integrated effect). Event-driven via the core's `Normal → Idle` transition with self-calibrating dim-phase measurement — no baseline drift, no guessing.
+A shared animation system plays a short shutdown effect right before the hardware blanks the display. Two-tier architecture: a *Tier 1* shared overlay (8 styles, works on any theme) plus an optional *Tier 2* theme-native protocol (themes can opt in with their own tightly-integrated effect). Timed from the core's `Normal → Idle` transition and its measured dim phase, so the animation ends just before the switch-off, and the remote then switches the screen off at once (`ScreenOffSync`).
 - **Fade** — monotonic black ramp. Clean dim-to-nothing, safest baseline.
 - **Flash** — brief white full-screen pulse, hard cut to black. Classic "TV zap off".
 - **Iris (vignette)** — circular black mask closes from edges to centre. Camera-shutter feel.
@@ -41,12 +41,12 @@ A shared animation system plays a short shutdown effect right before the hardwar
 - **Dissolve** — theme blends into per-pixel white noise, progressively shifts to pure noise, then fades to black.
 - **TV Static (theme-native, CRT collapse)** — only when the TV Static theme is active. Snow and scanlines collapse vertically into a bright horizontal line, the line shrinks horizontally to a dot, the dot fades to black. 800 ms collapse + 500 ms black hold, synchronized with the real hardware display-off.
 
-Controls live under `Settings → Power saving → Screen off animations`: master on/off, "Fire when undocked" toggle (plays on battery idle-timeout too), and the style picker.
+Controls live under `Settings → Power saving → Screen off animations`: master on/off, "Fire when undocked" toggle (plays on battery idle-timeout too), the style picker, and "Animation length" (300–4500 ms, default 800) for the drawn styles; "Theme" keeps a theme's own effect.
 
 **Interactive (Matrix theme):**
 - DPAD 8-way direction with smooth gravity-lerp (no respawn on direction change)
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
-- Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe (all togglable, optional randomize)
+- Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe with its own speed (all togglable, optional randomize)
 
 **UI chrome beyond the screensaver (v1.3.0 → v1.6.0):**
 
@@ -226,7 +226,7 @@ The codebase has been through a full industry-standard audit ("brutally honest, 
 
 ### Testing discipline
 
-- **Over 600 automated test cases** (2026-11-03): 234 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 131 for keep awake, the phantom-wake suppressor, power, the entity controller and the screen-off sync (`test/hardware/`), 212 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
+- **Over 600 automated test cases** (2026-11-03): 248 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 143 for keep awake, the phantom-wake suppressor, power, the entity controller and the screen-off sync (`test/hardware/`), 219 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics, the Wipe speed rows) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
 - **Five CI workflows** on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (all the suites above), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint, design check, icon font), `docs-links.yml` (Markdown links).
 - **On-device verification for every Batch 0 bug fix** — 5 dock→idle→Low_power→wake cycles per theme, 10-cycle rapid churn test, 10-minute sustained dock for thermal, docked AND undocked paths for the wake-black fix.
 - **Visual Docker VNC preview** — renders the actual `QSGGeometryNode` scene graph via Mesa software OpenGL in a disposable container, for when the macOS native build can't exercise the code path (Qt 5.15 OpenGL 2.1 limitation).

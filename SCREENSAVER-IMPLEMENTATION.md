@@ -1701,7 +1701,8 @@ Architecture is two-tier, documented in `BaseTheme.qml`:
 - **Config keys** (in `ScreensaverConfig`):
   - `screenOffEffectEnabled` (bool, default true)
   - `screenOffEffectUndocked` (bool, default false)
-  - `screenOffEffectStyle` (string, default `"theme-native"`) — values: `fade`, `flash`, `vignette`, `wipe`, `theme-native`
+  - `screenOffEffectStyle` (string, default `"theme-native"`) — values: `fade`, `flash`, `vignette`, `wipe`, `sleepwave`, `genie`, `pixelate`, `dissolve`, `theme-native` *(list completed 2026-11-03)*
+  - `screenOffEffectLengthMs` (int, default 800) — the drawn styles' length, settings slider 300–4500 ms; shortened at run time to fit the dim phase (`ScreenOffSync::fitLeadMs`). *(2026-11-03, "Animation length")*
 
 - **TV Static's CRT collapse (the native implementation)**:
   - `SequentialAnimation` with two phases: `NumberAnimation` on `u_tvOff` from 0.0 → 1.0 over 800 ms (the collapse), then `PauseAnimation` for 500 ms (pure-black hold). Total duration = 1300 ms = `screenOffLeadMs`.
@@ -2481,11 +2482,11 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 - **Now** one spawner, `GlitchEngine::spawnWipe(dir, ctx, colorVariant, colorVariants)`, serves both:
   - every row (about a quarter skipped at random, as before);
   - the head starts on the start-edge cell, so it shows on the first frame;
-  - `framesLeft = (cols + length) × tickSkip + tickSkip`, so the tail passes the far edge whatever the phase of the shared tick counter;
+  - `framesLeft = (cols + length) × tickSkip + tickSkip`, so the tail passes the far edge whatever the phase of the shared tick counter; *(superseded the same day: a wipe now moves at its own Wipe speed, see "2026-11-03 Session 2")*
   - with too little room left in the shared 300-trail list, an evenly spaced subset of the rows, so a wipe never loses its bottom.
 - The tap wipe runs from the edge on the tapped side to the other edge, in one colour (as before). The chaos wipe runs from a random edge, with a random colour per streak (as before).
 - `advanceTrails` gets the message state and no longer scrambles message or subliminal cells, the guard stream heads use. It draws the random glyph before the guard, so the random sequence does not depend on where messages are.
-- **Trade-off:** a wipe streak now lives about 2.6 s at font 30. Direction glitches and scatter only append below 200 trails, so they pause while a big wipe runs.
+- **Trade-off:** a wipe streak now lives about 2.6 s at font 30 (at the default 100 % Wipe speed). Direction glitches and scatter only append below 200 trails, so they pause while a big wipe runs.
 
 ### 2. Screen-off animations ended at the wrong moment
 
@@ -2594,3 +2595,145 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 
 - Test build `1.6.1-screenfix` (pinned 5.15.19 toolchain) installed at 18:39 CET; start-up log clean apart from the usual EGLConfig warning. The owner checked the three behaviours: all work.
 - **Known limit:** a UI that starts while the core is already in IDLE (a custom-UI install or a UI restart with the remote left alone) learns the mode from Power's start-up query, which Power reports as a change from Normal. `ScreenOffSync` then counts that dim phase from the UI's start: its animation is late or skipped, and the log shows a too-short dim phase (`… dim phase of 5504 ms (shortest expected 15000 ms)` right after the test install). Harmless, because `finalizeScreenOffEffect()` stops the pending start when the display goes off. A fix would take the Idle start from `core::Api::powerModeChanged` (live events only; the query answers through `respPowerMode`), after checking in the simulator whether the core sends a `power_mode_change` on connect.
+
+## 2026-11-03 Session 2: Wipe speed (Tap and Chaos screen wipes) and Animation length (screen-off styles)
+
+**Status:** implemented and tested: unit, QML, mutants, frame harness, full-app simulator, and on the remote by the owner (test build `1.6.1-sliders`, firmware 2.12.0 and then 2.12.1): both sliders work. The owner asked for "a screen wipe effect speed slider in settings" and chose **both** wipes:
+- the Tap / Chaos "Screen wipe" sweep;
+- the screen-off animation length, for **all drawn styles**.
+
+### 1. Wipe speed (Tap effects and Chaos events)
+
+**Before.** A wipe streak moved at the shared glitch-trail clock: one cell every `max(1, 100 / glitchDirSpeed)` ticks. That is "Trail speed" in Direction glitches, which had two problems:
+- the slider is hidden unless Glitch and Direction glitches are both on;
+- it is coarse: 55–100 all give one cell per tick.
+
+**Settings.** A "Wipe speed" row sits under each "Screen wipe" switch and shows while the switch is on.
+- **Keys:** `charging/matrixTapWipeSpeed` and `charging/matrixGlitchChaosWipeSpeed`.
+- **Values:** percent of the default pace, 50–600 %, step 25, default 100.
+- **Plumbing:** the same as "Square size":
+  - `ScreensaverConfig` → `BindingHelper` → `MatrixRainItem`;
+  - then `RainSimulation` (tap) or `GlitchEngine` (chaos);
+  - `LayerPipeline::syncLayerConfig` forwards both to the mid layer, where the wipes run with Rain layers on.
+
+**Pace model** (`glitchengine.{h,cpp}`):
+- `GlitchTrail` gains `pace` and `paceAcc`, appended with defaults.
+- `pace 0` is the shared clock, so direction glitches, scatter and tap bursts keep exactly the old path and random draws.
+- A wipe streak adds its pace every tick and takes one-cell steps, one per `WIPE_PACE_PER_CELL` (200) gained. It never jumps: a jump would skip the scramble and the message guard of the cells in between.
+- 600 % is 3 cells per tick, the shortest streak, so no gap opens between two frames. A `static_assert` enforces this.
+- The pace is stored when the streak spawns, so moving the slider mid-wipe can't strand a streak.
+
+**At 100 % nothing changes.**
+- `paceAcc` starts in step with the shared clock: `min(counter, tickSkip − 1) · 200 / tickSkip`.
+- `framesLeft = ⌈(cols + length)·200 / pace⌉ + ⌈200 / pace⌉`, which is `(cols + length)·2 + 2` at 100 %.
+- No random draws are added.
+- So at the default Trail speed a 100 % wipe moves on the same ticks and lives exactly as long as before.
+
+**Crossing time** at font 30 and rain Speed 1.0: about 5 s at 50 %, 2.4 s at 100 % and 0.4 s at 600 %. The wipe still follows the rain's Speed, like every other glitch effect: the tick is 50 ms ÷ Speed.
+
+**⚠️ Behaviour change:** the wipe no longer follows Trail speed. That only shows for a Trail speed outside 34–50.
+
+### 2. Animation length (Power Saving → Screen off animations)
+
+**Setting.** "Animation length", under Style.
+- **Key:** `charging/screenOffEffectLengthMs`.
+- **Values:** 300–4500 ms, step 100, default 800 (the old fixed length).
+- **Display:** hidden for "Theme"; dimmed with its siblings when Screen off animations is off.
+- **Top of the range:** 4500 ms fits the shortest timeout the settings slider allows. At 10 s the dim phase lasts at least 5000 ms, minus the 250 ms margin.
+
+**Fit.** `ScreenOffSync::fitLeadMs(lead)` returns `min(lead, max(0, dimPhaseMin − 250 − msSinceIdle))` in Idle, and `lead` outside it. In ChargingScreen:
+- the shared branch of `_currentLeadMs()` uses it; the fixed lengths of TV Static and Analog stay as they are;
+- `_scheduleScreenOff()` skips the animation below 300 ms and logs `[screen-off] skipped: N ms left before the switch-off`; the core then switches the display off as usual;
+- `startScreenOffEffect()` sets `screenOffAnim.duration` from the same fitted number as the end timer and the safety timer. The binding to the old 800 ms constant is gone;
+- the start log shows both the length played and the length set.
+
+**⚠️ Behaviour changes:**
+- A screensaver that opens late in the dim phase gets a shortened animation that still finishes, or none under 0.3 s. Before, it got one the switch-off might cut.
+- At web-configurator timeouts of 3 s or less there is no animation: the dim phase can last 0–1 s.
+- Long lengths keep the extra render pass of Genie, Pixels and Dissolve running longer.
+- Flash's white phase stays 40 % of the length.
+
+**Core 0.83.2 (firmware 2.12.1)**, in UC's 0.83.2 simulator (`logs/fw_2.12.1/sim_0832/`):
+- The schedule is unchanged.
+- A forced LOW_POWER at Idle + dimMin − 250 ms stuck in 10 of 10 tries.
+- A display-off timeout of 0 is not "never": the core dims at about 3.9 s and switches off at about 4.9 s, like a 3 s timeout.
+
+### Tests
+
+**Matrix suite: 234 → 248**, ASan + UBSan.
+- `wipeDefaultSpeedMovesWithSharedClock`: at both clock phases, the same ticks and lifetime as a shared-clock trail.
+- `wipeSpeedCrossesScreen` at 50, 100, 300 and 600 %, from both sides. It checks:
+  - pace and the lifetime formula;
+  - at most ⌈speed/200⌉ cells per tick;
+  - every cell of the row entered;
+  - the crossing, and the removal.
+- `wipeSkipsMessageCellsAtFullSpeed`: message cells crossed in the middle of a 3-cell move stay untouched.
+- `wipeSpeedChangeKeepsStreaksInFlight`.
+- `wipeSpeedWithoutWipeKeepsRandomSequence`: two seeded simulations at 50 % and 600 % stay identical for 300 ticks.
+- `wipeSpeedPlumbing`: clamps, item signals, the layer sync, and a layered tap wipe.
+- `chaosWipeUsesChaosWipeSpeed`.
+- Two `layerOcclusionEmitWithinCount` rows, with fast and with slow wipes in flight.
+
+**`screenoff_test`: 25 → 37.** `fitLeadMs`:
+- unchanged outside Idle;
+- from the Idle entry at T = 30, 10, 5, 4, 3 and 0 s; a shortened length starts at once;
+- mid-Idle;
+- a negative length.
+
+**QML: 212 → 219**, 0 QWARN.
+- New `tst_wipe_speed_rows.qml`: the keypad goes Down and Up through each Wipe speed row and skips it while the switch is off; the sliders follow the settings.
+- New local runner: `logs/qmltest/run.sh`. It uses mrab-ubuntu2204 plus the QML modules and an in-tree build in a scratch copy under xvfb.
+
+**Mutants: 19 of 19 caught** (`logs/wipespeed/mutants/`).
+- Matrix, 15:
+  - pace ignored; lifetime from the shared clock; a jump instead of single steps;
+  - no message guard on the pace path; the first move out of phase;
+  - the chaos or the tap wipe at the default speed;
+  - no layer sync, for tap and for chaos;
+  - no clamp; an extra change signal;
+  - a top speed above 3 cells per tick, which the `static_assert` stops at build time;
+  - three re-aimed 2026-11-02 mutants.
+- `fitLeadMs`, 4: ignores the time in Idle, never shortens, returns 0 outside Idle, lets a negative length through.
+
+**Frame harness:** all four variants (P, PM, PS, D) are byte-identical to a fresh baseline from HEAD, 12 of 12 frames each.
+- ⚠️ **Trap:** the katakana variants load `deploy/config/NotoSansMonoCJKjp.otf` from the mounted tree. An exported tree (`git archive … src`) lacks it and falls back to the system font, with other glyph sizes (13/19/27 instead of 15/24/33 px). Mixing the two gives 0 of 12 identical frames in P, PM and PS while D (ASCII) stays identical. Compare like with like: both exported, or both the working tree.
+
+**Other checks:**
+- design-check: 0 problems.
+- cpplint, CI's recursive run over `src/`: 0 findings.
+
+### Full-app simulator (build `1.6.2-sim3`; `logs/screenoff-timing/sim_len*`, `sim_tw_speed*`, `sim_pw_*`, `sim_ss_rows`)
+
+- **Animation length, T = 10 s** (Wipe style, 3 cycles each). Start in the dim phase, length played, and when the display went off:
+  - 300 ms: start 4453–4455 ms (295–297 ms played), off at 4.77–4.79 s;
+  - 800 ms: start 3953 ms, off at 4.68–4.72 s;
+  - 3000 ms: start 1752 ms, off at 4.64–4.66 s;
+  - 4500 ms: start 251–252 ms, off at 4.56–4.62 s.
+  - In every cycle the end sent the switch-off request; the display went off 3–61 ms later and was still off 3 s on. The core alone would switch off at 5.0–6.0 s.
+- **Fit, T = 5 s, 3000 ms set:** shortened to 1748–1749 ms and started 1–2 ms into the dim phase; the display went off at 1.65–1.71 s, before the core's earliest switch-off (2 s).
+- **Skip, T = 3 s:** `[screen-off] skipped: 0 ms left before the switch-off` and no request; the core switched off by itself after 0.94–1.0 s.
+- **TV Static (Theme):** unchanged: 1300 ms from 3451 ms, display off at 4.70–4.74 s.
+- **Tap Wipe speed** (font 30, sparse rain, tap at the left edge; shots every 0.32 s, `sim_tw_speed_sheet.png`). The full-height band crossed in:
+  - about 4 s at 50 %;
+  - 2 s at 100 %;
+  - 0.7 s at 300 %;
+  - under 0.5 s at 600 %.
+- **Keypad on Power Saving** (`sim_power_walk_sheet.png`):
+  - Style → Animation length → Sleep timeout, and back;
+  - with Style on Theme the row is hidden and skipped;
+  - with Screen off animations off it is dimmed, and the d-pad skips it in both directions, like the Style picker.
+- **Screensaver page** (`sim_ss_rows_sheet.png`): both Wipe speed rows show under their Screen wipe switch, with the value from the config (250 % / 350 %) and the help line.
+
+### On the remote (2026-11-03)
+
+- **Install:** test build `1.6.1-sliders` (pinned 5.15.19 toolchain, sha256 `8582543c…b79e`) installed at 20:30 CET.
+  - Start-up log clean apart from the usual EGLConfig warning.
+  - Keep awake while watching: `[M1 REST] GET 200`.
+  - The screensaver opened on the dock.
+- **Owner's check:** both sliders work, before and after the update to firmware 2.12.1.
+- **After the OTA** (os 2.12.1, core 0.83.2, API 0.21.0): the custom UI was still installed and active, with the same installation date.
+  - Keep awake while watching still authenticates.
+  - No new warning types:
+    - the core's known `hass.main.assist`, dangling `hass.main.switch.tv_plug` and session-cookie warnings;
+    - `Activity.qml` null-property TypeErrors from that dangling entity;
+    - the Kodi integration's bool repeat mode, logged before the update too.

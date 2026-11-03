@@ -131,10 +131,10 @@ Clock and battery overlay controls — show/hide, font, color, size, charging-on
 - Freeze (all streams pause)
 - Square burst (expanding square outline overlay)
 - Ripple (expanding circular ring overlay)
-- Screen wipe (brightness wave sweeps across screen)
+- Screen wipe (brightness wave sweeps across the screen, edge to edge) — configurable speed
 - Scatter (burst of glitch trails from random points)
 - Configurable frequency, intensity, and individual sub-type toggles
-- Square burst has independent size slider
+- Square burst has independent size slider, Screen wipe its own speed slider
 
 **Hidden Messages:**
 - Configurable message text (comma-separated)
@@ -159,7 +159,7 @@ Clock and battery overlay controls — show/hide, font, color, size, charging-on
   - Message injection (hidden message at tap point)
   - Square burst (expanding square outline overlay) — configurable size
   - Ripple (expanding circular ring overlay)
-  - Screen wipe (brightness sweep from tap point)
+  - Screen wipe (brightness sweep from the edge on the tapped side to the other edge) — configurable speed
 - Randomize mode — each effect gets an independent coin flip per tap
 - Double-tap to close screensaver (toggleable)
 
@@ -231,7 +231,8 @@ All other themes (Matrix, Starfield, Analog, Minimal) use the Tier 1 shared over
 **Controls:** `Settings → Power saving → Screen off animations`:
 - **Enabled** — master on/off (default on)
 - **Fire when undocked** — also plays on battery idle-timeout (default off). Turning this on also auto-cascades so the screensaver actually opens on battery (you don't need a separate toggle).
-- **Style picker** — Fade / Flash / Iris / Wipe / Theme. "Theme" defers to the theme's native implementation if it has one, otherwise falls back to fade.
+- **Style picker** — Fade / Flash / Iris / Wipe / Wave / Genie / Pixels / Dissolve / Theme. "Theme" uses the theme's own effect if it has one (TV Static, Analog); on a theme without one (Matrix, Starfield, Minimal) nothing is drawn and the screen goes off at its usual time.
+- **Animation length** — how long the drawn styles play, 300–4500 ms (default 800). Hidden for "Theme". Shortened when the display turns off sooner (a short Display off timeout, or a screensaver that opens late), so the animation still finishes; skipped with under 300 ms left.
 
 ### General Behavior
 
@@ -256,14 +257,14 @@ All settings are in **Settings > Screensaver** on the remote.
 | Visual | Invert trail, Head glow, Glow fade, Depth glow (+ min size), Rain layers, Color layers (+ intensity + overlay) | Matrix |
 | Glitch | Master toggle, Intensity, Column flash/stutter, Reverse glow | Matrix |
 | Direction Glitch | Toggle, Frequency, Length, 8 direction toggles, Fade, Speed, Random color | Matrix |
-| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe/Scatter (+ freq + length) | Matrix |
-| Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe, Randomize + chance | Matrix |
+| Chaos | Toggle, Frequency, Intensity, Surge/Scramble/Freeze/Square burst (+ size)/Ripple/Wipe (+ speed)/Scatter (+ freq + length) | Matrix |
+| Tap Effects | Burst (+ count + length), Flash, Scramble, Spawn (+ count + length), Message, Square burst (+ size), Ripple, Wipe (+ speed), Randomize + chance | Matrix |
 | Subliminal | Toggle, Stream/Overlay/Flash modes, Interval, Duration | Matrix |
 | Messages | Text input, Interval, Random order, Direction, Flash, Pulse | Matrix |
 | Starfield | Animation speed, Star density, Star size, Trail length, Star color (7 solid + 3 rainbow) | Starfield |
 | Minimal | 24-hour clock, Font (Poppins / Space Mono), Time color (7 solid + 3 rainbow), Date color (7 solid + 3 rainbow), Clock size, Date size | Minimal |
 | TV Static | Snow intensity, Snow size (1–8 px), Scanline strength, Scanline roll speed, Chroma bleed, Rolling tracking bar (+ speed), Tint color, Channel flash (on-tap + auto bursts + interval + duration + brightness) | TV Static |
-| Screen off animations | Enabled, Fire when undocked, Style (Fade / Flash / Iris / Wipe / Wave / Genie / Pixels / Dissolve / Theme-native) | All (lives under **Power saving**, not Screensaver) |
+| Screen off animations | Enabled, Fire when undocked, Style (Fade / Flash / Iris / Wipe / Wave / Genie / Pixels / Dissolve / Theme-native), Animation length | All (lives under **Power saving**, not Screensaver) |
 | Behavior | Double-tap to close, Close on wake, Idle screensaver, Idle timeout | All |
 | Interaction | DPAD interactive (+ remember direction + touchbar speed), Touch directions (+ remember direction + swipe speed) | Matrix |
 
@@ -324,7 +325,7 @@ curl -X PUT "http://<remote-ip>/api/system/install/ui?enable=false" \
 
 - **Matrix renderer:** C++ QQuickItem with custom `MatrixRainShader` (texture × per-vertex RGBA) — single GPU draw call per frame
 - **TV Static renderer:** Qt 5.15 `ShaderEffect` with inline GLSL ES 2.0 fragment shader. All six visual layers (snow, chroma, scanlines, tracking bar, intensity, channel flash) composed in a single full-frame pass. Pure QML — no C++ additions.
-- **Screen-off animation system:** two-tier architecture in `ChargingScreen.qml`. **Tier 1** shared `ScreenOffOverlay.qml` draws one of N styles above the active theme via a single `progress: 0..1` property. **Tier 2** optional theme-native protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff/cancelScreenOff/finalizeScreenOff`) lets themes take over rendering entirely. Trigger is event-driven via `Power.powerModeChanged` on `Normal → Idle` with empirical dim-phase measurement (self-calibrating, zero baseline math). 200 ms wall-clock poller as fallback.
+- **Screen-off animation system:** two-tier architecture in `ChargingScreen.qml`. **Tier 1** shared `ScreenOffOverlay.qml` draws one of N styles above the active theme via a single `progress: 0..1` property. **Tier 2** optional theme-native protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff/cancelScreenOff/finalizeScreenOff`) lets themes take over rendering entirely. Timing comes from `ScreenOffSync` (C++): it knows when the core's dim phase began and how short it can be (measured), starts the animation so it ends just before the earliest switch-off (shortening the Animation length when it doesn't fit), and switches the display off when the animation ends. The old empirical measurement and 200 ms poller were removed on 2026-11-03.
 - **Simulation (Matrix):** Pure C++ (no Qt object system) — deterministic, cache-friendly
 - **Config bridge:** ScreensaverConfig C++ singleton — owns its own QSettings instance (zero custom lines in upstream config.h), SCRN_* macros for single-declaration properties
 - **GradientText:** Reusable QML component for solid or rainbow gradient text via QtGraphicalEffects LinearGradient (zero GPU overhead when solid)

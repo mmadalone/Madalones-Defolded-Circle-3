@@ -13,6 +13,17 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 ## Unreleased
 
+### Added
+
+- **Wipe speed for the Screen wipe.** Tap effects and Chaos events each have a "Wipe speed" slider under their
+  "Screen wipe" switch, shown while the switch is on: from 50% (half the speed) to 600% (six times as fast);
+  100% is the speed the wipe had. It still follows the rain's Speed setting, like the other glitch effects.
+- **Animation length for the screen-off animations.** Power Saving → Screen off animations has an "Animation
+  length" slider for all the drawn styles, from 300 ms to 4500 ms (800 ms, as before, until you move it). It is
+  hidden for "Theme": TV Static and Analog keep their own timing. When the display turns off sooner than the
+  animation needs (a short Display off timeout, or a screensaver that opens late), the animation is shortened so it
+  still plays to the end; with less than 300 ms left it is skipped and the screen goes off as usual.
+
 ### Fixed
 
 - **Matrix rain reaches every column and row.** Broken since v1.2.0: a stream kept the column it started in (the row,
@@ -29,8 +40,9 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 - **Screen wipe crosses the whole screen.** The "Screen wipe" tap effect and the Chaos "Screen wipe" sent out short
   streaks that faded after a quarter to a third of the screen width, and only over the middle 40 rows (about half the
   screen at small font sizes). Now a wipe sweeps edge to edge over the full height: the tap effect from the edge on
-  the side you tapped to the other edge, the Chaos wipe from a random side. Its speed still follows "Trail speed"
-  (Direction glitches). Glitch streaks no longer scramble the characters of a message on screen.
+  the side you tapped to the other edge, the Chaos wipe from a random side. Its speed now has its own setting (Wipe
+  speed, under Added); before, it followed "Trail speed" (Direction glitches). Glitch streaks no longer scramble
+  the characters of a message on screen.
 - **Screen-off animations play to the end, and the screen goes off right after them.** The animation started up to
   two seconds too early or too late, because it was timed from a guess at when the remote would switch the screen
   off: sometimes the screen stayed black but lit for a second or two after the animation, sometimes the switch-off cut
@@ -71,6 +83,16 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
   wall-clock fallback poller and its dim-phase measurement (`charging/measuredDimPhaseMs`) are gone.
 - Tests: matrix rain 223 → 234 (wipes, message cells, the d-pad direction across a wake); new hardware test
   `screenoff_test` (25), in the CI hardware job.
+- Wipe speed: `charging/matrixTapWipeSpeed` and `charging/matrixGlitchChaosWipeSpeed` (%, default 100 = one cell
+  every 2 ticks, clamped to 50–600 by `GlitchEngine`). A wipe streak (`GlitchTrail::pace`) moves at the pace it
+  was spawned with, one cell at a time and at most 3 cells per tick (the shortest streak, a `static_assert`); at
+  100 % its first move lines up with the shared Trail-speed clock, so it moves and lives exactly as before.
+  Direction glitches and scatter keep the shared clock.
+- Animation length: `charging/screenOffEffectLengthMs` (default 800). `ScreenOffSync::fitLeadMs()` shortens it so
+  the animation still ends 250 ms before the earliest switch-off; ChargingScreen skips it below 300 ms (info log
+  `[screen-off] skipped: N ms left before the switch-off`), and the start line shows the played and the set length.
+- Tests: matrix rain 234 → 248, `screenoff_test` 25 → 37, QML 212 → 219 (new `tst_wipe_speed_rows.qml`: the
+  keypad chain through the two new rows).
 
 ## v1.6.1 — 2026-11-01 — built with UC's Qt 5.15.19 toolchain; diagnostics at info
 

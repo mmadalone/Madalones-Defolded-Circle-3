@@ -83,14 +83,14 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/components/overlays/GradientText.qml` | Reusable solid/rainbow gradient text component |
 | `src/qml/components/overlays/ClockOverlay.qml` | Clock overlay with GradientText, date, 24h, color |
 | `src/qml/components/overlays/BatteryOverlay.qml` | Battery overlay for screensaver |
-| `src/qml/components/overlays/ScreenOffOverlay.qml` | Shared screen-off animation overlay (fade/flash/vignette/wipe/theme-native) |
+| `src/qml/components/overlays/ScreenOffOverlay.qml` | Shared screen-off animation overlay (fade, flash, vignette, wipe, sleepwave, genie, pixelate, dissolve; theme-native draws nothing here), a pure function of `progress` stretched to the Animation length |
 | `src/qml/settings/settings/chargingscreen/ThemeSelector.qml` | Theme picker sub-page |
 | `src/qml/settings/settings/chargingscreen/CommonToggles.qml` | Clock/battery/tap-to-close toggles |
 | `src/qml/settings/settings/chargingscreen/MatrixAppearance.qml` | Matrix color, speed, density, charset settings |
 | `src/qml/settings/settings/chargingscreen/MatrixEffects.qml` | Container for matrix effect sub-sections (delegates to ChaosSection, DirectionGlitchSection, TapSection, MessageSection) |
-| `src/qml/settings/settings/chargingscreen/ChaosSection.qml` | Chaos burst effects (surge, scramble, freeze, square burst, ripple, wipe, scatter) |
+| `src/qml/settings/settings/chargingscreen/ChaosSection.qml` | Chaos burst effects (surge, scramble, freeze, square burst, ripple, wipe + Wipe speed, scatter) |
 | `src/qml/settings/settings/chargingscreen/DirectionGlitchSection.qml` | Direction flip + glitch (rate, flash, stutter, reverse) settings |
-| `src/qml/settings/settings/chargingscreen/TapSection.qml` | Tap/touch effect settings (burst, flash, scramble, spawn, message, ripple, wipe) |
+| `src/qml/settings/settings/chargingscreen/TapSection.qml` | Tap/touch effect settings (burst, flash, scramble, spawn, message, square burst, ripple, wipe + Wipe speed) |
 | `src/qml/settings/settings/chargingscreen/MessageSection.qml` | Message/subliminal text settings |
 | `src/qml/settings/settings/chargingscreen/StarfieldSettings.qml` | Starfield theme sliders + color pickers (extracted from inline 2026-04-14) |
 | `src/qml/settings/settings/chargingscreen/MinimalSettings.qml` | Minimal theme clock/date sizes + font + color pickers (extracted from inline 2026-04-14) |
@@ -125,7 +125,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/qml/components/LoadingFirst.qml` | Skip splash animation in DEV mode (UC_MODEL=DEV). ~8 lines. |
 | `src/qml/MainContainer.qml` | Retry timer for ButtonNavigation on startup (~3 lines) — workaround for first-boot focus race. |
 | `src/qml/main.qml` | Added `screensaverActive` property, idle timer DEV mode bypass, ScreensaverConfig import. |
-| `src/qml/settings/settings/Power.qml` | Added "Screen off animations" settings section (~164 lines) — style picker, master toggle, undocked-fire toggle, measured-dim-phase display. |
+| `src/qml/settings/settings/Power.qml` | Added "Screen off animations" settings section — master toggle, undocked-fire toggle, style picker, Animation length slider (the measured-dim-phase display went with the measurement, 2026-11-03). |
 
 ---
 
@@ -192,6 +192,32 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
 
 ---
+
+## Unreleased: Wipe speed (Tap and Chaos screen wipes), Animation length (screen-off styles)
+
+**Wipe speed.** The Tap effects and Chaos events "Screen wipe" each get a "Wipe speed" slider (50-600 %, default 100 =
+the speed before). A wipe streak moves at the pace it was spawned with, one cell at a time, at most 3 cells per tick;
+at 100 % it moves and lives exactly as before. It no longer follows "Trail speed". **Animation length.** The drawn
+screen-off styles get an "Animation length" slider (300-4500 ms, default 800), shortened at run time so the animation
+still ends before the switch-off (`ScreenOffSync::fitLeadMs`); skipped below 300 ms. Design, tests and results:
+[SCREENSAVER-IMPLEMENTATION.md](../SCREENSAVER-IMPLEMENTATION.md), section "2026-11-03 Session 2".
+
+| File | Lines | Change |
+|------|-------|--------|
+| `src/ui/glitchengine.{h,cpp}` | 227 / 457 | `GlitchTrail::pace` / `paceAcc`; `WIPE_SPEED_MIN/MAX/DEFAULT`, `WIPE_PACE_PER_CELL` (+ `static_assert`); `advanceTrails()` steps wipe streaks at their own pace, one cell at a time; `spawnWipe(…, speedPct)` stores the pace, lines up the first move with the shared clock and sets the lifetime from the pace; the Chaos Wipe speed. |
+| `src/ui/rainsimulation.{h,cpp}` | 443 / 735 | The tap Wipe speed (clamped setter), the chaos one forwarded to `GlitchEngine`; `tapWipe()` passes the tap speed. |
+| `src/ui/matrixrain.h` | 611 | `tapWipeSpeed` and `glitchChaosWipeSpeed` Q_PROPERTYs. |
+| `src/ui/matrixrain/bindinghelper.cpp` | 203 | Both speeds bound to `ScreensaverConfig` (initial sync + live connect). |
+| `src/ui/matrixrain/layerpipeline.cpp` | 811 | `syncLayerConfig` forwards both speeds to the mid layer (where wipes run with Rain layers on). |
+| `src/ui/screensaverconfig.{h,cpp}` | 324 / 310 | `tapWipeSpeed`, `glitchChaosWipeSpeed`, `screenOffEffectLengthMs` (+ `resetDefaults` emits). |
+| `src/hardware/screenOffSync.{h,cpp}` | 88 / 148 | `fitLeadMs()`; the dim-phase comment corrected (a timeout of 0 behaves like 3 s, not "never"). |
+| `src/qml/components/ChargingScreen.qml` | 909 | The shared length from the setting, fitted; the 300 ms skip in `_scheduleScreenOff()`; `screenOffAnim.duration` set from the fitted length; the fixed `screenOffFallbackLeadMs` removed. |
+| `src/qml/settings/settings/Power.qml` | 483 | The "Animation length" row under Style (hidden for "Theme", dimmed with its siblings) and its key links. |
+| `src/qml/settings/settings/chargingscreen/TapSection.qml` | 379 | The "Wipe speed" row under "Screen wipe" and its key links. |
+| `src/qml/settings/settings/chargingscreen/ChaosSection.qml` | 305 | The same for the Chaos "Screen wipe". |
+| `test/matrixrain/test_matrixrain.cpp` | 4717 | 14 new rows (234 → 248): pace, lifetime, single steps, message guard at full speed, mid-flight change, random sequence, plumbing, the chaos speed; fast and slow wipes in `layerOcclusionEmitWithinCount`. |
+| `test/hardware/screenoff_test/test_screenOffSync.cpp` | 237 | 12 new rows (25 → 37) for `fitLeadMs`. |
+| `test/qml/MockScreensaverConfig.h`, `test/qml/tst_wipe_speed_rows.qml` (new) | 813 / 129 | The two speeds in the mock; the keypad chain through both new rows (QML 212 → 219). |
 
 ## Unreleased: full-screen wipe, screen-off timing, a d-pad direction across a wake
 
