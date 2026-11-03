@@ -1136,7 +1136,7 @@ When `dpadEnabled` is OFF, all DPAD/direction buttons now close the screensaver 
 
 **Ripple (PulseOverlay):** Animated expanding circular ring. Same `PulseOverlay` struct with `circular = true`. Uses Euclidean distance annulus (`r² > (sz-1)² && r² ≤ sz²`) for clean ring geometry. Available as both tap effect and chaos sub-type.
 
-**Screen Wipe:** Vertical column of GlitchTrails sweeping horizontally from tap point. Direction auto-detected (left of center → sweep right, right → sweep left). Chaos version picks random position and random direction. Available as both tap effect and chaos sub-type.
+**Screen Wipe:** Vertical column of GlitchTrails sweeping horizontally from tap point. Direction auto-detected (left of center → sweep right, right → sweep left). Chaos version picks random position and random direction. Available as both tap effect and chaos sub-type. *(2026-11-03: each streak lived `length + 6` ticks, so a wipe covered a quarter to a third of the width, and only the middle 40 rows got one. Both wipes now sweep edge to edge at full height (`GlitchEngine::spawnWipe`): the tap wipe from the edge on the tapped side, the chaos wipe from a random edge. See the 2026-11-03 Session.)*
 
 **PulseOverlay Architecture:**
 ```cpp
@@ -1688,9 +1688,9 @@ Architecture is two-tier, documented in `BaseTheme.qml`:
 - **Trigger mechanism (critical — 3 iterations to get right)**:
   1. **First attempt — single-shot Timer with `running: someBinding`**: BROKEN. Qt 5.15 footgun — after a single-shot Timer fires, it internally sets `running = false`, which breaks the QML declarative binding on `running`. The Timer never re-arms. Documented in [QML property-binding docs](https://doc.qt.io/qt-5/qtqml-syntax-propertybinding.html) and the [Qt mailing list thread](https://groups.google.com/g/qt-mailing-lists-qt-qml/c/EzypFfhpoC0). Saved as `feedback_single_shot_timer_binding.md` memory for future sessions.
   2. **Second attempt — repeating 200 ms wall-clock poller**: works, but has baseline-drift issues. At cold boot the core's display-off counter starts before `Config.displayTimeout` is populated in QML. On battery-idle open, the core's counter has been running since last user activity while my baseline was popup-open time. Both cause the poller to fire too late (or never).
-  3. **Final approach — event-driven via `Power.powerModeChanged`**: on `Normal → Idle` transition (the core's "display is dimming" signal), a one-shot `dimPhaseDelayTimer` schedules `startScreenOffEffect()` at `(measuredDimPhaseMs - leadMs)` from now. The dim-phase duration is measured empirically on each cycle: record `Date.now()` on Idle entry, subtract on Low_power entry, store in `measuredDimPhaseMs` (seeded at 3000 ms, clamped 500–30000). First cycle uses the seed; cycle 2+ lands the animation exactly at the Low_power moment with zero drift. The 200 ms poller is kept as a fallback guarded by `screenOffEffectActive`.
+  3. **Final approach — event-driven via `Power.powerModeChanged`**: on `Normal → Idle` transition (the core's "display is dimming" signal), a one-shot `dimPhaseDelayTimer` schedules `startScreenOffEffect()` at `(measuredDimPhaseMs - leadMs)` from now. The dim-phase duration is measured empirically on each cycle: record `Date.now()` on Idle entry, subtract on Low_power entry, store in `measuredDimPhaseMs` (seeded at 3000 ms, clamped 500–30000). First cycle uses the seed; cycle 2+ lands the animation exactly at the Low_power moment with zero drift. The 200 ms poller is kept as a fallback guarded by `screenOffEffectActive`. *(Superseded 2026-11-03: the 200 ms poller fired `displayTimeout − lead` after its baseline, 0.8–1.9 s before the core's switch-off, so it usually beat this path and left a black, lit screen; and a measurement from the previous cycle is off by the core's one-second tick. `ScreenOffSync` now times the animation from the core's measured schedule and switches the display off when it ends; the poller and the measurement are gone. See the 2026-11-03 Session.)*
 
-- **Empirical dim-phase measurement result**: on a UC3 at default settings, the dim phase is roughly 2.5–4 seconds between `Normal → Idle` and `Idle → Low_power`. The measurement self-corrects per device / per user config.
+- **Empirical dim-phase measurement result**: on a UC3 at default settings, the dim phase is roughly 2.5–4 seconds between `Normal → Idle` and `Idle → Low_power`. The measurement self-corrects per device / per user config. *(Corrected 2026-11-03: the dim phase is half the display-off timeout, at least `T − max(T/2, 3)` s and up to 1 s more: 15–16 s at 30 s on a remote, measured in the core simulator for 5–60 s.)*
 
 - **"Fire when undocked" cascade**: the master toggle alone isn't enough — the screensaver itself has to actually open on battery for the effect to ever play. Added a `root._shouldOpenOnIdle()` helper in `main.qml` that returns `true` if either the legacy `ScreensaverConfig.idleEnabled` or `(screenOffEffectEnabled && screenOffEffectUndocked)` is set. All four call sites (`idleScreensaverTimer.onTriggered`, `onPowerSupplyChanged` fallback, `onPowerModeChanged` reset-on-activity, `onClosed` restart-on-dismiss) use this helper. New `onScreenOffEffectEnabledChanged` / `onScreenOffEffectUndockedChanged` handlers call `_refreshIdleTimer()` for live reactivity.
 
@@ -1720,7 +1720,7 @@ Architecture is two-tier, documented in `BaseTheme.qml`:
 - **Event-driven triggers beat polling** when the signal exists. `Power.powerModeChanged` turned out to be exactly the signal we needed.
 - **Empirical measurement beats guessing** when the signal gives you entry but not "imminent". The dim-phase measurement self-calibrates per device without any hardcoded constants.
 - **Duck-typing protocol pattern extended**: the existing BaseTheme.qml convention (`"themes do NOT inherit from this type. Each theme declares these properties independently"`) is now used for the optional screen-off protocol too. Property checks use `hasOwnProperty`, function checks use the truthy `&&` pattern (following ChargingScreen's existing inconsistency — see lines 30, 31, 75, 76 vs 39, 92, 293, 342).
-- **No C++ API for programmatic display-off exists.** `Power` singleton only has `powerOff()` (full power off) and `reboot()`. The core owns the idle timer and there's no way to force `Low_power` from QML. The empirical dim-phase measurement is the only clean way to sync the animation to the actual blank.
+- **No C++ API for programmatic display-off exists.** `Power` singleton only has `powerOff()` (full power off) and `reboot()`. The core owns the idle timer and there's no way to force `Low_power` from QML. The empirical dim-phase measurement is the only clean way to sync the animation to the actual blank. *(2026-11-03: there is one: `core::Api::setPowerMode(LOW_POWER)`, used by the phantom-wake suppressor since v1.4.20 and now by `ScreenOffSync` at the end of the animation.)*
 
 ### Files changed (commit 7220569)
 
@@ -1850,7 +1850,7 @@ Three-phase shutdown for the Analog clock theme — sweep all 3 hands forward to
 
 **Settings UI**: new `AnalogSettings.qml` panel matching the `TvStaticSettings.qml` shape. Conditionally visible on `theme === "analog"`, plugged into `ChargingScreen.qml` settings page after `TvStaticSettings`. DPAD nav chains updated.
 
-**Bundled fix in same commit**: `measuredDimPhaseMs` moved from a local `ChargingScreen` Popup property to `ScreensaverConfig.measuredDimPhaseMs` (QSettings-backed `SCRN_INT`). The Popup is destroyed on every undock (`main.qml:642` sets `chargingScreenLoader.active = false` in `onClosed`), which previously reset the empirical measurement to its 3000 ms seed on every docking — every dock cycle had a visible "black-but-display-on" gap when the actual dim phase didn't match the seed. Now persists across Popup destruction AND reboots: first dock calibrates against the seed, every subsequent dock reads the accurate measured value. **User confirmed**: dock 2 has no gap.
+**Bundled fix in same commit**: `measuredDimPhaseMs` moved from a local `ChargingScreen` Popup property to `ScreensaverConfig.measuredDimPhaseMs` (QSettings-backed `SCRN_INT`). The Popup is destroyed on every undock (`main.qml:642` sets `chargingScreenLoader.active = false` in `onClosed`), which previously reset the empirical measurement to its 3000 ms seed on every docking — every dock cycle had a visible "black-but-display-on" gap when the actual dim phase didn't match the seed. Now persists across Popup destruction AND reboots: first dock calibrates against the seed, every subsequent dock reads the accurate measured value. **User confirmed**: dock 2 has no gap. *(Removed 2026-11-03, with the measurement: `ScreenOffSync` computes the dim phase from the display-off timeout.)*
 
 **Bundled polish in same commit**: bumped `topMargin` 18 → 34 on the "Fire when undocked" and "Style" labels in `Power.qml` so the toggle switches no longer feel cramped against each other.
 
@@ -2470,3 +2470,127 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 
 - `RainSimulation::tapSpawn` (the "Stream spawn" tap effect) only takes streams that are inactive with no pause left. Outside the screen-off drain such a stream is respawned in the same tick, so the effect may never fire. Not checked on the remote.
 - In the full-app simulator the rain froze once after an IDLE → NORMAL power-mode bounce at start-up (local run `logs/matrix_ab/sim_invalid/P_L0`). Seen once, not reproduced or investigated.
+
+## 2026-11-03 Session: full-screen wipe, screen-off timing, a d-pad direction across a wake
+
+**Status:** implemented, unit-tested, checked in the full-app simulator and, on 2026-11-03, on the remote by the owner (test build `1.6.1-screenfix`): all three work (CHANGELOG "Unreleased"). The owner reported the three problems after testing the Rain layers fix on the remote (2026-11-02); all three are older than that work.
+
+### 1. Screen wipe covered part of the screen
+
+- Both "Screen wipe" effects (tap and Chaos) spawned one `GlitchTrail` per row with `framesLeft = length + 6` (9–13 ticks). Glitch trails move one cell every `100 / glitchDirSpeed` ticks (2 at the default), so a streak travelled 4–6 columns: a quarter to a third of the 19 mid columns at font 30. Only the middle 40 rows got a streak, about half the height at small fonts. The chaos wipe started at a random column (since `f8db51d`).
+- **Now** one spawner, `GlitchEngine::spawnWipe(dir, ctx, colorVariant, colorVariants)`, serves both:
+  - every row (about a quarter skipped at random, as before);
+  - the head starts on the start-edge cell, so it shows on the first frame;
+  - `framesLeft = (cols + length) × tickSkip + tickSkip`, so the tail passes the far edge whatever the phase of the shared tick counter;
+  - with too little room left in the shared 300-trail list, an evenly spaced subset of the rows, so a wipe never loses its bottom.
+- The tap wipe runs from the edge on the tapped side to the other edge, in one colour (as before). The chaos wipe runs from a random edge, with a random colour per streak (as before).
+- `advanceTrails` gets the message state and no longer scrambles message or subliminal cells, the guard stream heads use. It draws the random glyph before the guard, so the random sequence does not depend on where messages are.
+- **Trade-off:** a wipe streak now lives about 2.6 s at font 30. Direction glitches and scatter only append below 200 trails, so they pause while a big wipe runs.
+
+### 2. Screen-off animations ended at the wrong moment
+
+**The core's schedule.** Measured in the core simulator (same core 0.83.1 as the remote, 4 cycles each, `logs/screenoff-timing/measure_dim.{py,tsv}`) and on a remote at 30 s (16/15/16/16/16 s):
+
+| Display off timeout T | Normal → Idle | Idle → Low_power (dim phase) |
+|---|---|---|
+| 5 s | 3.8–4.0 s | 2.0–3.0 s |
+| 10 s | 5.9–6.0 s | 5.0–6.0 s |
+| 15 s | 7.9–8.0 s | 8.0–9.0 s |
+| 30 s | 15.8–16.0 s | 15.0–16.0 s |
+| 45 s | 22.9–23.0 s | 23.0–23.9 s |
+| 60 s | 30.8–31.0 s | 29.9–31.0 s |
+
+- Idle comes `max(⌊T/2⌋, 3) + 1` s after the last activity, and Low_power `T + 1` or `T + 2` s after it: the core ticks in whole seconds.
+- So the dim phase lasts at least `T − max(⌊T/2⌋, 3)` s (`⌈T/2⌉` for the slider's 10–60 s), and up to one second more, varying from cycle to cycle.
+
+**What went wrong** (since `7220569`):
+
+- The 200 ms fallback poller fired `displayTimeout − lead` after its wall-clock baseline, 0.8–1.9 s before the core's switch-off. It usually beat the Idle-triggered path, so the animation ended 1–2 s early, on a black but lit screen.
+- The Idle path scheduled from the previous cycle's measured dim phase (seeded at 3000 ms). That is off by the one-second tick about half the time, which is more than the 800 ms animation: the animation was cut short, or a black, lit second followed it.
+- A wake during the animation (Idle → Normal) only stopped the delay timer. The animation ran to black, then `postAnimationSafetyTimer` set `displayOff`, freezing the screensaver on a lit display.
+
+**Now: `ScreenOffSync`** (`src/hardware/screenOffSync.{h,cpp}`). It is a custom singleton beside the phantom-wake suppressor, registered as QML `ScreenOffSync 1.0`; `src/system/power.{h,cpp}` stays upstream's.
+
+- **Tracking:** it records the Idle entry on a monotonic `QElapsedTimer`, which survives the popup being destroyed, so a screensaver opened mid-Idle gets the remaining time.
+- **Rule:** `dimPhaseMinMs()` applies the rule to the display-off timeout pushed from `Config.displayTimeout`.
+- **Start delay:** `startDelayMs(lead)` = `max(0, dimPhaseMinMs − 250 − lead − msSinceIdle)`, so the animation ends 250 ms before the earliest switch-off.
+- **Switch-off:** `markEffectStart()`, then `requestDisplayOff()` at the animation's end. It sends the phantom-wake suppressor's `set_power_mode LOW_POWER` only if:
+  - the core is still Idle;
+  - no button, touch, touchbar or entity command arrived since the start;
+  - the request could be sent.
+
+**Probe first.** A LOW_POWER requested 250 ms before the earliest switch-off stuck in 24 of 24 simulator cycles (T = 10, 30, 60; `probe_force.py`).
+- Low_power came 10–60 ms after the request, and the core did not go back to Idle or Normal within 5 s.
+- The phantom-wake suppressor's force-backs bounced in the owner's log because the owner was handling the remote.
+
+**`ChargingScreen.qml`:**
+
+- `_scheduleScreenOff()` runs on Idle, on open and on theme load. On Idle it is deferred with `Qt.callLater`: QML handlers of a C++ signal run before its C++ slots, so `ScreenOffSync` only knows about the new dim phase after the emission.
+- One `screenOffEndTimer` (the lead time of the shared overlay or of the theme's own effect) calls `_onScreenOffEffectEnd()`. That requests the switch-off only after a visible effect. The default "theme-native" draws nothing on a theme without its own effect, and there the core keeps its own timing.
+- Idle → Normal during the animation cancels it and resets a theme's own effect (TV Static, Analog). One `_resetScreenOffState()` serves every reset path.
+- These are gone, because the bundle requires firmware ≥ 2.12.0, whose core always passes through Idle:
+  - the poller and `countdownStartTime`;
+  - `_openedViaIdleTimer` and its plumbing in `main.qml`;
+  - `idleEnteredAtMs`, the measurement and `ScreensaverConfig.measuredDimPhaseMs`.
+
+**Logs:**
+- QML (info): `[screen-off] start: <style>, <lead> ms, <n> ms into the dim phase` and `[screen-off] end: display off requested`.
+- C++ (`uc.hw` info):
+  - `ScreenOffSync: screen-off animation ended … LOW_POWER requested`;
+  - `… display off N ms after the request`;
+  - `… the core switched the display off after a dim phase of N ms (shortest expected …)`. A firmware change in the schedule shows up here.
+
+**Effect:** with a visible effect, the display goes dark when the animation ends, 0.25–1.25 s before the core would have. TV Static and Analog end with their own black hold (0.3–0.5 s).
+
+### 3. A d-pad direction turned into Auto-rotate after a wake
+
+- **The wake path.** `MatrixRainItem::setDisplayOff(false)` started auto-rotation whenever gravity mode was on. A d-pad direction runs on gravity mode with `m_interactiveOverride` set, and so does the direction "Remember direction" re-applies when the screensaver opens. `setRunning(true)` already skipped those (since `358f7f2` / v1.2.2); `setDisplayOff(false)` now applies the same rule. `setGravityMode(true)` also skips auto-rotation during an override (defensive).
+- **The QML order.** `MatrixTheme.interactiveInput()` synced `localGravity` before calling C++, so the binding's `setGravityMode(true)` started auto-rotation and `handleDirectionInput` recorded `m_autoRotateWasActive = true`. "restore" then started rotating. It now calls C++ first, and "restore" sets `localGravity` to the Auto-rotate setting instead of `false`.
+
+### Tests
+
+**Matrix suite: 223 → 234** (ASan + UBSan):
+- `tapWipeCrossesScreen` (font 16/30 × tap left/right);
+- `tapWipeKeepsFullHeightWhenNearlyFull`;
+- `chaosWipeCrossesScreen`;
+- `wipeSkipsMessageCells`;
+- `wakeKeepsDpadDirection`, `wakeResumesAutoRotate`, `dpadBindingSyncKeepsAutoRotateOff`;
+- a "wipes in flight" row in `layerOcclusionEmitWithinCount`.
+
+**Mutation testing:** 9 of 9 mutants caught (`logs/matrix_ab/impl/partAC/`).
+- Each old behaviour put back: lifetime, mid-screen start, 40-row band, top-first fill, the wake rotation.
+- Each new rule broken: no message guard, one chaos colour, wrong tap direction, no rotation after a wake.
+
+**New `test/hardware/screenoff_test`** (25 tests, in the CI hardware job, mock core):
+- the rule against the measured table;
+- delays from the Idle entry, mid-Idle, and floored at 0;
+- LOW_POWER with the `mode` body field, once per dim phase;
+- nothing sent outside Idle, after input, without `markEffectStart()`, or without a connection.
+
+**Other builds:**
+- All 5 hardware test binaries pass (ASan + UBSan, `logs/screenoff-timing/hwtest/`).
+- The CMake matrix build passes 234 and the integration tests 41.
+- cpplint: 0 findings.
+
+### Full-app simulator (`logs/screenoff-timing/sim_*`)
+
+- **Wipe style** (the owner's Matrix settings, T = 10 s, 6 cycles):
+  - start 3.95 s into the dim phase, request at 4.74 s, display off 4–9 ms later and still off 3 s on;
+  - mid-animation shots show the curtain 52–61 % down.
+- **Matrix + "theme-native"** (draws nothing): no request; the core switched off at 5.0–6.0 s, as before.
+- **TV Static** (lead 1300 ms): start at 3.45 s, request at 4.73–4.74 s, off 2–6 ms later.
+- **Wake at 4.3 s into the dim phase:**
+  - cancelled in 3 of 3 cycles, with no request;
+  - 2 s later the rain fills the whole screen;
+  - frames 0.7 s apart differ by 180–240k px, so it is not frozen.
+- **Live timeout change:** `ScreenOffSync` followed the display-off timeout from 10 to 60 s.
+- **D-pad Right, screen-off, wake:**
+  - the rain still ran right (horizontal rows, 4 s of shots);
+  - with Auto-rotate on and no d-pad press, it rotated after the wake;
+  - with Auto-rotate on and a d-pad press, the d-pad direction held, as designed.
+- **Tap Screen wipe** (sparse rain, font 30, tap near the left edge): a full-height band of streaks entered at the left edge, crossed the screen and left at the right edge.
+
+### On the remote (2026-11-03)
+
+- Test build `1.6.1-screenfix` (pinned 5.15.19 toolchain) installed at 18:39 CET; start-up log clean apart from the usual EGLConfig warning. The owner checked the three behaviours: all work.
+- **Known limit:** a UI that starts while the core is already in IDLE (a custom-UI install or a UI restart with the remote left alone) learns the mode from Power's start-up query, which Power reports as a change from Normal. `ScreenOffSync` then counts that dim phase from the UI's start: its animation is late or skipped, and the log shows a too-short dim phase (`… dim phase of 5504 ms (shortest expected 15000 ms)` right after the test install). Harmless, because `finalizeScreenOffEffect()` stops the pending start when the display goes off. A fix would take the Idle start from `core::Api::powerModeChanged` (live events only; the query answers through `respPowerMode`), after checking in the simulator whether the core sends a `power_mode_change` on connect.

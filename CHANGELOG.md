@@ -26,6 +26,22 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
     streams are spread over the whole screen instead of crowding the left side (or the top). With Rainbow, Rainbow+
     or Neon and Color layers off, the colours belong to the columns, so a stream that moves takes its new column's
     colour.
+- **Screen wipe crosses the whole screen.** The "Screen wipe" tap effect and the Chaos "Screen wipe" sent out short
+  streaks that faded after a quarter to a third of the screen width, and only over the middle 40 rows (about half the
+  screen at small font sizes). Now a wipe sweeps edge to edge over the full height: the tap effect from the edge on
+  the side you tapped to the other edge, the Chaos wipe from a random side. Its speed still follows "Trail speed"
+  (Direction glitches). Glitch streaks no longer scramble the characters of a message on screen.
+- **Screen-off animations play to the end, and the screen goes off right after them.** The animation started up to
+  two seconds too early or too late, because it was timed from a guess at when the remote would switch the screen
+  off: sometimes the screen stayed black but lit for a second or two after the animation, sometimes the switch-off cut
+  the animation short (a Wipe stopped halfway). Now the animation ends just before the remote's own switch-off, and
+  the remote switches the screen off the moment it has ended, up to about a second earlier than it would have. Waking
+  the remote during the animation now stops it; before, the screensaver could freeze on a black screen.
+  - With the "Theme" style on a theme that has no animation of its own (Matrix, Starfield, Minimal) nothing is drawn
+    and the screen goes off at its usual time, as before.
+- **The rain no longer starts rotating after a wake.** A d-pad direction (and the direction "Remember direction"
+  brings back) turned into Auto-rotate after every screen-off, so the rain started rotating when you woke the remote.
+  Broken since v1.2.2. With Auto-rotate on, the rain still rotates after a wake.
 
 ### Changed
 
@@ -46,6 +62,15 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
   count, `-` for diagonal rain and gravity mode); with Rain layers on, `Layer occlusion: theta 0.3 …` after every
   rebuild and `Layer occlusion first frame …` with the characters drawn and hidden per grid.
 - Tests: matrix rain 106 → 223 (95 rows for the columns and rows, 22 for the hiding), passing under ASan and UBSan.
+- New `src/hardware/screenOffSync.{h,cpp}` (QML singleton `ScreenOffSync`): when the core's dim phase began, its
+  shortest length (`T − max(T/2, 3)` s for a display-off timeout of T s, measured in the core simulator for 5–60 s and
+  on a remote at 30 s), and the switch-off at the end of the animation (`set_power_mode LOW_POWER`, the phantom-wake
+  suppressor's call, only from Idle and only with no input during the animation). Info log lines:
+  `ScreenOffSync: screen-off animation ended … LOW_POWER requested`, `… display off N ms after the request`, and
+  `… the core switched the display off after a dim phase of N ms` when the core was first. ChargingScreen's
+  wall-clock fallback poller and its dim-phase measurement (`charging/measuredDimPhaseMs`) are gone.
+- Tests: matrix rain 223 → 234 (wipes, message cells, the d-pad direction across a wake); new hardware test
+  `screenoff_test` (25), in the CI hardware job.
 
 ## v1.6.1 — 2026-11-01 — built with UC's Qt 5.15.19 toolchain; diagnostics at info
 

@@ -3,7 +3,7 @@
 Tracks every file that is custom (added by madalone) or modified from the upstream `unfoldedcircle/remote-ui` codebase. If a file is not listed here, it is upstream and should not be modified without explicit justification.
 
 **Upstream base:** `v0.84.0` (merged 2026-10-31 in v1.6.0, merge commit `94c4006`, upstream commit `781882a`; before: `v0.73.5` at v1.5.2, `v0.73.4` at v1.5.0, `v0.72.0` at v1.4.0, `v0.71.1`).  
-**Last updated:** 2026-11-02 (Unreleased — Matrix rain in every column and row; Rain layers hide the rain behind them, new `src/ui/matrixrain/layerocclusion.{h,cpp}`)
+**Last updated:** 2026-11-03 (Unreleased — Matrix rain in every column and row; Rain layers hide the rain behind them, new `src/ui/matrixrain/layerocclusion.{h,cpp}`; full-screen wipe, screen-off timing with the new `src/hardware/screenOffSync.{h,cpp}`, a d-pad direction across a wake)
 
 > **Note on currency:** the per-Mod sections below reflect state through v1.4.11, then refined by the v1.5.0 upstream merge (see "v1.5.0: upstream v0.73.4 merge — reshapes" below). Full per-file detail for v1.4.12 → v1.4.43 lives in CHANGELOG.md and the "Mod 4 (WiFi UX)" + "Mod 5 (Active Session Keeper)" + "Mod 6 (Phantom-Wake Suppressor)" sections in `CLAUDE.md`. Quick summary at the bottom of this file ("v1.4.12+ deltas").
 
@@ -44,7 +44,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | File | Purpose | Lines |
 |------|---------|-------|
 | `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 603 |
-| `src/ui/matrixrain.cpp` | QSG rendering orchestrator, vertex buffer, atlas upload, multi-layer dispatch. Single-layer rendering, input dispatch, and ScreensaverConfig wiring delegated to helper classes (v1.4.36) | 746 |
+| `src/ui/matrixrain.cpp` | QSG rendering orchestrator, vertex buffer, atlas upload, multi-layer dispatch. Single-layer rendering, input dispatch, and ScreensaverConfig wiring delegated to helper classes (v1.4.36) | 749 |
 | `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 272 |
 | `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (Unreleased) | 809 |
 | `src/ui/matrixrain/layerocclusion.h` | `LayerOcclusion` (Unreleased) — Rain layers: nearer grids hide the farther grids' characters. Per-grid facts and occluder masks, `OCCLUDER_MIN_TRAIL_BRIGHTNESS`, `LAYER_FAR_BAND_SHIFT`. Pure C++, by-value member of LayerPipeline. | 141 |
@@ -58,15 +58,15 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/matrixrain/bindinghelper.h` | `BindingHelper` (all-static utility class) — 8 ScreensaverConfig binding helpers (extracted in v1.4.36 Phase C): bindAppearance, bindDirectionAndGravity, bindGlitch, bindChaos, bindTap, bindMessages, bindSubliminal, bindDepthAndLayers. Mirrors AtlasBuilder shape (no instances, no QObject). | 38 |
 | `src/ui/matrixrain/bindinghelper.cpp` | 8 binding helper implementations. Wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to empty TU. Caller (`MatrixRainItem::bindToScreensaverConfig`) owns QSignalBlocker batching scope. | 199 |
 | `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 432 |
-| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (Unreleased) | 746 |
-| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow | 197 |
-| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control | 394 |
+| `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (Unreleased) | 735 |
+| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow; `spawnWipe()` for both screen wipes (Unreleased) | 205 |
+| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control; edge-to-edge wipes, message cells kept by trails (Unreleased) | 430 |
 | `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | 168 |
 | `src/ui/messageengine.cpp` | Text layout, character placement | 358 |
 | `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate (most logic now inline in header — `.cpp` is a near-empty shell after the inline-implementation refactor) | 50 |
 | `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math (most code moved into the header during a prior refactor; this `.cpp` is now a thin shell) | 28 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations) | 313 |
-| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 142 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations; counts as of v1.4.28, `measuredDimPhaseMs` removed in Unreleased) | 317 |
+| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 307 |
 | `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | 58 |
 
 ### Custom QML Files
@@ -192,6 +192,33 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 **Intentionally preserved:** `Config.showVolumeOverlay` (v1.4.2 — `src/config/config.{h,cpp}`, `Settings → UI` toggle in `Ui.qml`). Per-entity `hideVolumeOverlay` is an ADDITIVE layer, not a replacement. Owner confirmed: global master stays as a catch-all coarse control; per-entity flag is for surgical control when only specific devices should skip the OSD (e.g., Kodi has its own on-screen OSD while Sonos/LG want UC's).
 
 ---
+
+## Unreleased: full-screen wipe, screen-off timing, a d-pad direction across a wake
+
+**Wipe.** Both "Screen wipe" effects (tap, Chaos) now sweep edge to edge over the full height (`GlitchEngine::spawnWipe`),
+and glitch trails no longer scramble message cells. **Screen-off timing.** The new `ScreenOffSync` knows when the core's
+dim phase began and how short it can be, the screensaver starts its animation so it ends just before the earliest
+switch-off, and the display goes off when it ends (`set_power_mode LOW_POWER`, only from Idle, only with no input during
+the animation); the wall-clock poller and the dim-phase measurement are gone. **Direction.** A d-pad (or remembered)
+direction no longer turns into Auto-rotate after a wake. Causes, the measured core schedule, tests and simulator
+results: [SCREENSAVER-IMPLEMENTATION.md](../SCREENSAVER-IMPLEMENTATION.md), section "2026-11-03 Session".
+
+| File | Lines | Change |
+|------|-------|--------|
+| `src/hardware/screenOffSync.h` (new) | 82 | `ScreenOffSync`: the dim-phase rule (`dimPhaseMinMsFor`), `msSinceIdle`, `startDelayMs`, `markEffectStart`, `requestDisplayOff`; QML singleton `ScreenOffSync 1.0`. |
+| `src/hardware/screenOffSync.cpp` (new) | 141 | Idle entry on a monotonic timer, the input veto, the LOW_POWER request and its info log lines. |
+| `src/hardware/hardwareController.{h,cpp}` | 64 / 119 | Builds `ScreenOffSync` next to the phantom-wake suppressor, connects Power and the touchbar, registers the QML singleton. |
+| `src/main.cpp` | 283 | `ScreenOffSync` input (keys, touch, entity commands) and the display-off timeout from `Config`. |
+| `src/qml/components/ChargingScreen.qml` | 891 | `_scheduleScreenOff()` (deferred on Idle), `screenOffEndTimer` + `_onScreenOffEffectEnd()`, the cancel on a wake during the animation, `_resetScreenOffState()`; the fallback poller, `countdownStartTime`, `_openedViaIdleTimer`, `idleEnteredAtMs` and the measurement removed. |
+| `src/qml/main.qml` | 1205 | The `_nextOpenViaIdleTimer` plumbing removed (only the poller used it). |
+| `src/ui/screensaverconfig.{h,cpp}` | 317 / 307 | `measuredDimPhaseMs` removed; the screen-off style comment corrected. |
+| `src/ui/glitchengine.{h,cpp}` | 205 / 430 | `spawnWipe()` (shared by both wipes: every row, from the start edge, a lifetime that crosses the grid, an evenly spaced subset near the cap); `advanceTrails()` takes the message state and skips message and subliminal cells. |
+| `src/ui/rainsimulation.cpp` | 735 | `tapWipe()` uses `spawnWipe()`; `advanceTrails()` gets `&m_message`. |
+| `src/ui/matrixrain.cpp` | 749 | `setDisplayOff(false)` and `setGravityMode(true)` don't start auto-rotation during a d-pad override. |
+| `src/qml/components/themes/MatrixTheme.qml` | 134 | `interactiveInput()`: C++ first, then `localGravity`; "restore" goes back to the Auto-rotate setting. |
+| `test/matrixrain/test_matrixrain.cpp` | 4413 | 11 new rows (223 → 234): wipes, message cells, the d-pad direction across a wake; a "wipes in flight" row in `layerOcclusionEmitWithinCount`. |
+| `test/hardware/screenoff_test/` (new) | 183 | `ScreenOffSync` unit tests (25), mock core; in `test/hardware/hardware_test.pro` and the CI hardware job. |
+| `remote-ui.pro`, `.github/workflows/tidy.yml`, `.github/workflows/test.yml` | — | List `screenOffSync`; run `test_screenOffSync`. |
 
 ## Unreleased: Matrix rain in every column and row; Rain layers hide the rain behind them
 
