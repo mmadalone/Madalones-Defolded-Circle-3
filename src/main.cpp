@@ -235,6 +235,19 @@ int main(int argc, char *argv[]) {
     // real wake-press. Mirrors Mod 5's wiring at line 165-166.
     QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, suppressor,
                      &uc::hw::PhantomWakeSuppressor::onEntityCommandIssued);
+    // madalone: ScreenOffSync input — a button, touch or entity command during the screen-off animation leaves
+    // the display to the core instead of switching it off under the user's hand (Power and TouchSlider are wired in
+    // the hwController ctor).
+    auto* screenOffSync = hwController.getScreenOffSync();
+    QObject::connect(inputController, &uc::ui::InputController::keyPressed, screenOffSync,
+                     &uc::hw::ScreenOffSync::onUserInput);
+    QObject::connect(inputController, &uc::ui::InputController::touchDetected, screenOffSync,
+                     &uc::hw::ScreenOffSync::onUserInput);
+    QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, screenOffSync,
+                     &uc::hw::ScreenOffSync::onUserInput);
+    QObject::connect(&config, &uc::Config::displayTimeoutChanged, screenOffSync,
+                     [screenOffSync](int timeout) { screenOffSync->setDisplayOffSec(timeout); });
+    screenOffSync->setDisplayOffSec(config.getDisplayTimeout());
     // Initial state push — graceMs and inputLookbackMs first so the values are correct
     // when enabled flips on (which triggers the first evaluateSession path).
     suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());

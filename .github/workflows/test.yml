@@ -246,6 +246,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           ASAN_OPTIONS: detect_leaks=0
 
+      - name: Run screen-off sync tests (display off when the screen-off animation ends)
+        working-directory: test/hardware/screenoff_test
+        run: ./test_screenOffSync -v2 -o screenoff_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -256,3 +263,4 @@ jobs:
             test/hardware/suppressor_test/suppressor_results.xml
             test/hardware/entityController_test/entityController_results.xml
             test/hardware/power_test/power_results.xml
+            test/hardware/screenoff_test/screenoff_results.xml

@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) integration.
+// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) + ScreenOffSync integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "hardwareController.h"
@@ -53,6 +53,11 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     // Bridge Power → suppressor — wake-event detection.
     QObject::connect(m_power, &Power::powerModeChanged, m_phantomWakeSuppressor,
                      &PhantomWakeSuppressor::onPowerModeChanged);
+    // Screen-off animation sync: dim-phase timing and the switch-off at the animation's end. QML handlers of a C++
+    // signal run before its C++ slots, so the screensaver asks ScreenOffSync about a new dim phase only after the
+    // emission (Qt.callLater in ChargingScreen.qml).
+    m_screenOffSync = new ScreenOffSync(m_core, this);
+    QObject::connect(m_power, &Power::powerModeChanged, m_screenOffSync, &ScreenOffSync::onPowerModeChanged);
 
     switch (model) {
         case HardwareModel::UCR2:
@@ -77,6 +82,7 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
     // Battery/Power bridges established earlier in the ctor.
     QObject::connect(m_touchSlider, &TouchSlider::touchPressed, m_phantomWakeSuppressor,
                      &PhantomWakeSuppressor::onUserInput);
+    QObject::connect(m_touchSlider, &TouchSlider::touchPressed, m_screenOffSync, &ScreenOffSync::onUserInput);
 
     qmlRegisterSingletonType<Info>("HwInfo", 1, 0, "HwInfo", &Info::qmlInstance);
     qmlRegisterSingletonType<Power>("Power", 1, 0, "Power", &Power::qmlInstance);
@@ -88,6 +94,7 @@ Controller::Controller(HardwareModel::Enum model, core::Api* core, Config* confi
                                                     &ActivitySessionKeeper::qmlInstance);
     qmlRegisterSingletonType<PhantomWakeSuppressor>("PhantomWakeSuppressor", 1, 0, "PhantomWakeSuppressor",
                                                     &PhantomWakeSuppressor::qmlInstance);
+    qmlRegisterSingletonType<ScreenOffSync>("ScreenOffSync", 1, 0, "ScreenOffSync", &ScreenOffSync::qmlInstance);
 
     QObject::connect(m_config, &Config::hapticEnabledChanged, this, &Controller::onHapticEnabledChanged);
 }
@@ -101,6 +108,7 @@ Controller::~Controller() {
     m_touchSlider = nullptr;
     m_activitySessionKeeper = nullptr;
     m_phantomWakeSuppressor = nullptr;
+    m_screenOffSync = nullptr;
 }
 
 void Controller::onHapticEnabledChanged(bool enabled) {

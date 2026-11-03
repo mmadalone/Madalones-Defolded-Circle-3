@@ -10,6 +10,7 @@ import Battery 1.0
 import Config 1.0
 import Power 1.0
 import Power.Modes 1.0
+import ScreenOffSync 1.0
 import ScreensaverConfig 1.0
 import SoundEffects 1.0
 import TouchSlider 1.0
@@ -31,31 +32,14 @@ Popup {
     property bool isClosing: false
     property bool displayOff: false
 
-    // Wall-clock baseline for the shared screen-off countdown. Reset on open,
-    // on interactiveInput dispatch, and on wake (displayOff -> false).
-    property double countdownStartTime: 0.0
     // Lead time for whatever effect is currently active. Shared overlay uses
     // a fixed 800 ms; theme-native themes override via their screenOffLeadMs.
     readonly property int screenOffFallbackLeadMs: 800
     // True while an effect (either shared overlay OR theme-native) is playing.
-    // Covers the theme-native path where screenOffOverlay.progress stays at 0
-    // and the poller would otherwise re-fire every tick, restarting the theme
-    // animation from 0 in a loop. Reset by cancel; NOT cleared by finalize
-    // (finalize means the display is about to blank — no further poll should
-    // re-trigger until the next wake).
+    // Covers the theme-native path where screenOffOverlay.progress stays at 0.
+    // Reset by cancel; NOT cleared by finalize (finalize means the display is
+    // about to blank — nothing should re-trigger until the next wake).
     property bool screenOffEffectActive: false
-
-    // True when the popup opened via the idle-screensaver timer on battery
-    // — a legacy path where `idleTimeout` seconds of inactivity preceded
-    // the open and the core's display-off counter has ALREADY been counting
-    // during that window. When this flag is set, the screen-off countdown
-    // poller subtracts idleTimeout from the effective window to align with
-    // the core's internal counter. Any event that represents fresh user
-    // activity (dock, undock, wake from displayOff) resets this flag — those
-    // events reset the core's idle counter, giving us the full displayTimeout
-    // window ahead. Signalled from main.qml via chargingScreenLoader
-    // .onStatusChanged before item.open() fires.
-    property bool _openedViaIdleTimer: false
 
     // madalone (v1.4.43): pattern B — true when this open() was triggered by an actual user
     // dock event AND Config.dockChimeAfterScreensaver is on. Consumed in onOpened to fire
@@ -87,17 +71,11 @@ Popup {
         }
     }
 
-    // Measured dim-phase duration — how long the core spends in the Idle
-    // power mode (display dimmed) before transitioning to Low_power (display
-    // physically off). Measured empirically on each cycle so we can delay
-    // the animation start to land exactly at the Low_power transition.
-    //
-    // PERSISTED in ScreensaverConfig.measuredDimPhaseMs (QSettings-backed)
-    // so the measurement survives Popup destruction on undock/redock cycles.
-    // Without persistence, every redock would reset to the seeded default
-    // (3000 ms), causing a visible "black screen but display still on" gap
-    // whenever the actual dim phase diverges from the seed. See screensaverconfig.h.
-    property double idleEnteredAtMs: 0.0
+    // madalone (2026-11-03): the timing comes from ScreenOffSync (src/hardware/screenOffSync.h). It knows when
+    // the core's dim phase began (also when this popup opened in the middle of it) and how short it can be, and
+    // it switches the display off when the animation has ended. Before, a wall-clock poller and the previous
+    // cycle's measured dim phase started the animation 1-2 s early or late: a black but lit screen afterwards,
+    // or an animation the switch-off cut short.
 
     // True iff the currently-selected screen-off style needs to sample the
     // underlying theme's rendering (genie, pixelate, dissolve). Used to gate
@@ -118,21 +96,6 @@ Popup {
             themeLoader.item.displayOff = displayOff;
         }
         if (displayOff) {
-            // Measure the dim phase duration for next cycle's timing.
-            // idleEnteredAtMs is set on the Normal -> Idle transition; if we
-            // see Low_power without an Idle entry recorded (rare — direct
-            // Normal -> Low_power transition), skip the measurement.
-            // Writes to ScreensaverConfig.measuredDimPhaseMs persist to
-            // QSettings so the value survives Popup destruction.
-            if (chargingScreenRoot.idleEnteredAtMs > 0) {
-                var dimMs = Date.now() - chargingScreenRoot.idleEnteredAtMs;
-                // Clamp to a sane range so a weird measurement can't poison
-                // the next cycle (minimum 500 ms, maximum 30 s).
-                if (dimMs >= 500 && dimMs <= 30000) {
-                    ScreensaverConfig.measuredDimPhaseMs = dimMs;
-                }
-                chargingScreenRoot.idleEnteredAtMs = 0;
-            }
             chargingScreenRoot.finalizeScreenOffEffect();
         } else {
             // True wake-from-displayOff transition — pass isWakeFromOff=true
@@ -145,11 +108,12 @@ Popup {
     // =====================================================================
     // Screen-off animation dispatch (Tier 1 shared overlay + Tier 2 native)
     // =====================================================================
-    // The poller Timer further down fires startScreenOffEffect() when the
-    // idle threshold is crossed. The three helpers route to the theme's
-    // native protocol functions if the user picked "theme-native" AND the
-    // theme declares providesNativeScreenOff; otherwise they drive the
-    // shared ScreenOffOverlay.progress via screenOffAnim.
+    // _scheduleScreenOff() (on entering the dim phase, or on opening / loading the theme during it) starts
+    // dimPhaseDelayTimer so the animation ends just before the core's earliest switch-off; the timer fires
+    // startScreenOffEffect(). The three helpers route to the theme's native protocol functions if the user
+    // picked "theme-native" AND the theme declares providesNativeScreenOff; otherwise they drive the shared
+    // ScreenOffOverlay.progress via screenOffAnim. When the animation has ended, screenOffEndTimer asks
+    // ScreenOffSync to switch the display off.
     function _themeProvidesNative() {
         return themeLoader.status === Loader.Ready && themeLoader.item
             && themeLoader.item.hasOwnProperty("providesNativeScreenOff")
@@ -167,9 +131,49 @@ Popup {
         return chargingScreenRoot.screenOffFallbackLeadMs;
     }
 
+    // One reset for every path that starts a fresh screen-off cycle (open, theme load, cancel, dock change)
+    function _resetScreenOffState() {
+        chargingScreenRoot.screenOffEffectActive = false;
+        dimPhaseDelayTimer.stop();
+        screenOffEndTimer.stop();
+        postAnimationSafetyTimer.stop();
+        screenOffAnim.stop();
+        screenOffOverlay.progress = 0.0;
+    }
+
+    // Start dimPhaseDelayTimer so the animation ends just before the earliest switch-off of the dim phase the
+    // core is in. Nothing to do outside the dim phase (ScreenOffSync.startDelayMs returns -1).
+    function _scheduleScreenOff() {
+        if (!chargingScreenRoot.opened || chargingScreenRoot.isClosing) return;
+        if (!ScreensaverConfig.screenOffEffectEnabled) return;
+        if (!Battery.powerSupply && !ScreensaverConfig.screenOffEffectUndocked) return;
+        if (chargingScreenRoot.screenOffEffectActive) return;
+        var delay = ScreenOffSync.startDelayMs(chargingScreenRoot._currentLeadMs());
+        if (delay < 0) return;
+        dimPhaseDelayTimer.interval = Math.max(1, delay);
+        dimPhaseDelayTimer.restart();
+    }
+
+    // The animation has ended: switch the display off now instead of leaving a black but lit screen until the
+    // core does it. Only after a visible effect: the default "theme-native" draws nothing on a theme without
+    // its own effect (Matrix, Starfield, Minimal), and there the core keeps its own timing.
+    function _onScreenOffEffectEnd() {
+        if (!chargingScreenRoot.screenOffEffectActive || chargingScreenRoot.displayOff) return;
+        if (!chargingScreenRoot.opened || chargingScreenRoot.isClosing) return;
+        if (!chargingScreenRoot._useNative() && ScreensaverConfig.screenOffEffectStyle === "theme-native") return;
+        var sent = ScreenOffSync.requestDisplayOff();
+        console.info("[screen-off] end: " + (sent ? "display off requested" : "display left to the core"));
+    }
+
     function startScreenOffEffect() {
         if (chargingScreenRoot.screenOffEffectActive) return;   // already playing
         chargingScreenRoot.screenOffEffectActive = true;
+        ScreenOffSync.markEffectStart();
+        var leadMs = chargingScreenRoot._currentLeadMs();
+        console.info("[screen-off] start: " + ScreensaverConfig.screenOffEffectStyle + ", " + leadMs + " ms, "
+                     + ScreenOffSync.msSinceIdle() + " ms into the dim phase");
+        screenOffEndTimer.interval = leadMs;
+        screenOffEndTimer.restart();
         if (chargingScreenRoot._useNative()) {
             if (themeLoader.item && themeLoader.item.startScreenOff) {
                 themeLoader.item.startScreenOff();
@@ -179,35 +183,22 @@ Popup {
             screenOffOverlay.progress = 0.0;
             screenOffAnim.start();
         }
-        // Safety: if the core's Low_power transition never fires (e.g.
-        // on battery the core's idle timer may not reliably transition
-        // Idle → Low_power), the animation ends at shutoffDim=1.0 and
-        // the display stays on rendering a full-screen black overlay
-        // continuously, wasting battery and generating heat. Give the
-        // core a generous grace window past the animation end; if
-        // displayOff is still false by then, close the popup entirely
-        // so the scene graph stops rendering the stuck screensaver.
-        postAnimationSafetyTimer.interval = chargingScreenRoot._currentLeadMs()
-                                          + chargingScreenRoot.safetyGraceMs;
+        // Safety: if the display still isn't off well after the animation
+        // (the switch-off request failed, or the core never leaves Idle),
+        // the display would stay on rendering a full-screen black overlay,
+        // wasting battery and generating heat. Give the core a generous
+        // grace window past the animation end; if displayOff is still false
+        // by then, set it ourselves so the scene graph stops rendering.
+        postAnimationSafetyTimer.interval = leadMs + chargingScreenRoot.safetyGraceMs;
         postAnimationSafetyTimer.restart();
     }
 
     function cancelScreenOffEffect(isWakeFromOff) {
         isWakeFromOff = isWakeFromOff || false;
 
-        // Reset wall-clock baseline so the poller restarts from now.
-        chargingScreenRoot.countdownStartTime = Date.now();
-        chargingScreenRoot.screenOffEffectActive = false;
-        // Wake is fresh user activity — the core's idle counter just reset,
-        // so the next cycle uses the full displayTimeout window.
-        chargingScreenRoot._openedViaIdleTimer = false;
-        // Cancel any pending delayed start from the Idle-entry handler.
-        dimPhaseDelayTimer.stop();
-        // Cancel the stuck-animation safety timer — the user is awake
-        // (or otherwise cancelling), no need to force-close the popup.
-        postAnimationSafetyTimer.stop();
-        screenOffAnim.stop();
-        screenOffOverlay.progress = 0.0;
+        // Pending start, running animation, end request and the stuck-animation safety timer: the user is
+        // awake (or otherwise cancelling)
+        chargingScreenRoot._resetScreenOffState();
 
         // Theme reset (cancelScreenOff + scene-graph refresh) only runs on
         // a true wake-from-displayOff transition. That path needs the
@@ -231,11 +222,13 @@ Popup {
 
     function finalizeScreenOffEffect() {
         // NOTE: leave screenOffEffectActive = true. The display is about to
-        // blank; we don't want the poller re-firing. It will be cleared on
-        // the next wake via cancelScreenOffEffect().
-        // Display is physically blanking — the safety timer is no longer
-        // needed; cancel it so it doesn't fire while the display is off.
+        // blank; nothing should re-trigger. It will be cleared on the next
+        // wake via cancelScreenOffEffect().
+        // Display is physically blanking — the safety and end timers are no
+        // longer needed; cancel them so they don't fire while the display is off.
         postAnimationSafetyTimer.stop();
+        screenOffEndTimer.stop();
+        dimPhaseDelayTimer.stop();
         if (chargingScreenRoot._themeProvidesNative()
                 && themeLoader.item && themeLoader.item.finalizeScreenOff) {
             themeLoader.item.finalizeScreenOff();
@@ -268,6 +261,14 @@ Popup {
                 chargingScreenRoot.displayOff = true;
             }
         }
+    }
+
+    // One-shot: fires when the running screen-off animation has ended (the lead time of the shared overlay or
+    // of the theme's own effect)
+    Timer {
+        id: screenOffEndTimer
+        repeat: false
+        onTriggered: chargingScreenRoot._onScreenOffEffectEnd()
     }
 
     // Persist direction between sessions (gated by dpadPersist setting, works for both DPAD and touch)
@@ -308,15 +309,12 @@ Popup {
     onOpened: {
         isClosing = false;
         themeLoader.active = true;
-        // Belt-and-suspenders: reset the screen-off countdown baseline on
-        // every popup open so each dock cycle starts fresh regardless of
-        // whether the underlying Loader destroyed/recreated the Popup.
-        chargingScreenRoot.countdownStartTime = Date.now();
-        chargingScreenRoot.screenOffEffectActive = false;
-        chargingScreenRoot.idleEnteredAtMs = 0;
-        dimPhaseDelayTimer.stop();
-        screenOffAnim.stop();
-        screenOffOverlay.progress = 0.0;
+        // Belt-and-suspenders: reset the screen-off state on every popup open
+        // so each dock cycle starts fresh regardless of whether the underlying
+        // Loader destroyed/recreated the Popup. Opened in the middle of the dim
+        // phase (idle screensaver, docked re-open): schedule from its real start.
+        chargingScreenRoot._resetScreenOffState();
+        chargingScreenRoot._scheduleScreenOff();
         // Always take button control on open. On first boot, onOpened can
         // fire before the async Loader has realized its child item — gating
         // takeControl() on themeLoader.item was silently skipping the push,
@@ -768,11 +766,10 @@ Popup {
             // cycle can't leave a fresh theme instance inheriting u_tvOff=1.0
             // from whatever the previous sibling was doing.
             if (item.cancelScreenOff) item.cancelScreenOff();
-            // Also reset the shared overlay and the central countdown baseline.
-            chargingScreenRoot.screenOffEffectActive = false;
-            chargingScreenRoot.countdownStartTime = Date.now();
-            screenOffAnim.stop();
-            screenOffOverlay.progress = 0.0;
+            // Also reset the shared overlay and the screen-off timers, and schedule again during the dim phase:
+            // the theme decides the lead time (its own effect or the shared overlay)
+            chargingScreenRoot._resetScreenOffState();
+            chargingScreenRoot._scheduleScreenOff();
             // Restore persisted DPAD direction from previous session
             chargingScreenRoot.restoreDirection();
         }
@@ -831,22 +828,14 @@ Popup {
     }
 
     // Dock / undock are both fresh user activity from the core's perspective
-    // — the core's display-off timer resets on either transition. Follow suit:
-    // reset our countdown baseline and clear the idle-open flag so the next
-    // screen-off cycle aligns with the core's fresh idle counter instead of a
-    // stale pre-transition baseline. Without this, a popup that persists
-    // through undock (via 'Close on wake' toggle OFF) uses a stale baseline
-    // plus the subtracted idleTimeout formula, firing the animation seconds
-    // before the core actually blanks the display.
+    // — the core's display-off timer resets on either transition (back to
+    // Normal). Cancel any in-flight animation from the pre-transition cycle
+    // so it doesn't end with a switch-off the user just interrupted.
     Connections {
         target: Battery
         ignoreUnknownSignals: true
         function onPowerSupplyChanged(value) {
             if (chargingScreenRoot.isClosing) return;
-            chargingScreenRoot.countdownStartTime = Date.now();
-            chargingScreenRoot._openedViaIdleTimer = false;
-            // Cancel any in-flight animation from the pre-transition cycle
-            // so it doesn't finish early against the fresh baseline.
             if (chargingScreenRoot.screenOffEffectActive
                     && !chargingScreenRoot.displayOff) {
                 chargingScreenRoot.cancelScreenOffEffect();
@@ -854,134 +843,49 @@ Popup {
         }
     }
 
-    // ---- Primary trigger: core Power state transition ----
+    // ---- Trigger: core Power state transition ----
     // The core drives its own idle countdown based on system-level activity.
     // When that countdown reaches the display-off point, it transitions:
     //     Normal  -> Idle        (display dimmed, still visible)
     //     Idle    -> Low_power   (display physically off)
     //
-    // We want the animation to play DURING the dim phase and end exactly at
-    // the Low_power transition. To do that we measure the dim phase duration
-    // on each cycle (Idle entry -> Low_power entry) and, on subsequent cycles,
-    // delay the animation start by (measuredDimPhaseMs - leadMs) so it ends
-    // at the measured Low_power moment.
-    //
-    // First cycle uses a seeded default measurement; cycles 2+ are accurate.
+    // The animation plays at the end of the dim phase: it starts so it ends
+    // just before the core's earliest switch-off (ScreenOffSync knows when the
+    // dim phase began and how short it can be), and then the display is
+    // switched off right away. Firmware >= 2.12.0 (the bundle's requirement)
+    // always passes through Idle on its timeout path.
     Connections {
         target: Power
         ignoreUnknownSignals: true
         function onPowerModeChanged(fromPowerMode, toPowerMode) {
             if (toPowerMode === PowerModes.Idle) {
-                // Dim phase just started — record entry time for measurement
-                // and schedule the animation to fire near the end of the dim
-                // phase so it completes exactly as Low_power fires.
-                chargingScreenRoot.idleEnteredAtMs = Date.now();
-                if (!chargingScreenRoot.opened) return;
-                if (chargingScreenRoot.isClosing) return;
-                if (!ScreensaverConfig.screenOffEffectEnabled) return;
-                if (!Battery.powerSupply && !ScreensaverConfig.screenOffEffectUndocked) return;
-                if (chargingScreenRoot.screenOffEffectActive) return;
-                var delay = ScreensaverConfig.measuredDimPhaseMs
-                          - chargingScreenRoot._currentLeadMs();
-                if (delay < 0) delay = 0;
-                dimPhaseDelayTimer.interval = delay;
-                dimPhaseDelayTimer.restart();
+                // Deferred: QML handlers of a C++ signal run before its C++ slots, so ScreenOffSync (a C++ slot
+                // of the same signal) only knows about this dim phase once the emission is over
+                Qt.callLater(chargingScreenRoot._scheduleScreenOff);
             } else if (fromPowerMode === PowerModes.Idle
                        && toPowerMode === PowerModes.Normal) {
-                // User woke the remote during the dim phase (tap/motion).
-                // Cancel any pending delayed animation start.
+                // Woken during the dim phase (touch, motion, a button): stop a pending start, and an animation
+                // already running (the display stays on, so onDisplayOffChanged never fires for this wake). The
+                // non-wake cancel leaves the theme alone (a Matrix reset respawns every stream), so a theme's own
+                // effect (TV Static, Analog) is reset here.
                 dimPhaseDelayTimer.stop();
+                if (chargingScreenRoot.screenOffEffectActive && !chargingScreenRoot.displayOff) {
+                    console.info("[screen-off] woken during the animation: cancelled");
+                    var themeEffect = chargingScreenRoot._useNative();
+                    chargingScreenRoot.cancelScreenOffEffect(false);
+                    if (themeEffect && themeLoader.item && themeLoader.item.cancelScreenOff) {
+                        themeLoader.item.cancelScreenOff();
+                    }
+                }
             }
         }
     }
 
-    // One-shot delay Timer: fires startScreenOffEffect() at
-    // (measuredDimPhaseMs - leadMs) after Normal -> Idle, so the animation
-    // ends at the Low_power transition.
+    // One-shot delay Timer: fires startScreenOffEffect() so the animation ends
+    // just before the core's earliest switch-off (see _scheduleScreenOff).
     Timer {
         id: dimPhaseDelayTimer
         repeat: false
         onTriggered: chargingScreenRoot.startScreenOffEffect()
     }
-
-    // ---- Idle countdown poller (200 ms wall-clock tick) — FALLBACK ----
-    // Central gate: effect master switch + (dock OR undocked-override) + live
-    // display-off timeout sanity check. Polls elapsed wall-clock time against
-    // the dynamic threshold (displayTimeout - leadMs) and fires the shared
-    // dispatch when crossed. Repeating Timer with binding — the single-shot
-    // + binding combo is broken per Qt QML property-binding rules.
-    Timer {
-        id: screenOffCountdownPoller
-        interval: 200
-        repeat: true
-        running: chargingScreenRoot.opened
-                 && !chargingScreenRoot.isClosing
-                 && !chargingScreenRoot.displayOff
-                 && ScreensaverConfig.screenOffEffectEnabled
-                 && (Battery.powerSupply || ScreensaverConfig.screenOffEffectUndocked)
-                 && Config.displayTimeout >= 5
-        onRunningChanged: {
-            if (running) {
-                // Fresh start (or restart after a condition flip). Reset the
-                // wall-clock baseline and clear any lingering overlay progress
-                // and the active-effect flag.
-                chargingScreenRoot.countdownStartTime = Date.now();
-                chargingScreenRoot.screenOffEffectActive = false;
-                screenOffAnim.stop();
-                screenOffOverlay.progress = 0.0;
-            }
-            // When running -> false (display blanked, popup closed, undock),
-            // state cleanup is handled elsewhere: onDisplayOffChanged fires
-            // cancelScreenOffEffect() on wake, and onOpened re-initialises
-            // on the next popup creation. No action needed here.
-        }
-        onTriggered: {
-            // Guard: don't re-fire while the effect is already in progress.
-            // This single flag covers BOTH the shared overlay path (where
-            // progress would be > 0) AND the theme-native path (where the
-            // shared overlay is bypassed and progress stays at 0).
-            if (chargingScreenRoot.screenOffEffectActive) return;
-
-            // Guard: themeLoader must be fully loaded before we dispatch to
-            // native hooks — onLoaded may fire after a poll tick if a theme
-            // is being reloaded.
-            if (themeLoader.status !== Loader.Ready) return;
-
-            var now = Date.now();
-            // Self-heal: zero / future baseline means state drift — snap and
-            // retry next tick.
-            if (chargingScreenRoot.countdownStartTime <= 0
-                    || chargingScreenRoot.countdownStartTime > now) {
-                chargingScreenRoot.countdownStartTime = now;
-                return;
-            }
-
-            var elapsed = now - chargingScreenRoot.countdownStartTime;
-
-            // Effective remaining window until the core blanks the display.
-            // - On dock / undock / wake / any user activity: the core's idle
-            //   counter just reset, so the full displayTimeout is ahead.
-            // - Opened via idleScreensaverTimer on battery (legacy path): the
-            //   popup opened after `idleTimeout` seconds of inactivity during
-            //   which the core's display-off counter was ALSO running, so
-            //   only (displayTimeout - idleTimeout) remain. Tracked via the
-            //   _openedViaIdleTimer flag (set by main.qml before item.open
-            //   when the idle timer fired the open).
-            var effectiveTimeoutMs = Config.displayTimeout * 1000;
-            if (chargingScreenRoot._openedViaIdleTimer) {
-                effectiveTimeoutMs -= ScreensaverConfig.idleTimeout * 1000;
-            }
-
-            // Floor to 500 ms so a mid-countdown slider drop or an idleTimeout
-            // that exceeds displayTimeout can never produce a negative lead
-            // window (which would either fire immediately or never fire).
-            var threshold = Math.max(500,
-                effectiveTimeoutMs - chargingScreenRoot._currentLeadMs());
-
-            if (elapsed >= threshold) {
-                chargingScreenRoot.startScreenOffEffect();
-            }
-        }
-    }
-
 }

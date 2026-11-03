@@ -139,6 +139,7 @@ jobs:
             src/ui/matrixrain/inputhandler.cpp
             src/hardware/activitySessionKeeper.cpp
             src/hardware/phantomWakeSuppressor.cpp
+            src/hardware/screenOffSync.cpp
             src/ui/devDockToggle.cpp
           )
 

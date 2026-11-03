@@ -227,20 +227,15 @@ public:
 
     // === Screen-off animation system (shared across all themes) ===
     // Master on/off + "fire when undocked" gate + shared-overlay style selector.
-    // Style values: "fade", "flash", "vignette", "wipe", "theme-native".
-    // "theme-native" defers to theme.startScreenOff()/cancelScreenOff()/finalizeScreenOff()
-    // when the theme declares providesNativeScreenOff: true; otherwise behaves as "fade".
+    // Style values: "fade", "flash", "vignette", "wipe", "sleepwave", "genie", "pixelate", "dissolve",
+    // "theme-native". "theme-native" defers to theme.startScreenOff()/cancelScreenOff()/finalizeScreenOff()
+    // when the theme declares providesNativeScreenOff: true; on a theme without its own effect it draws
+    // nothing and the core switches the display off at its own time.
+    // The timing (when the dim phase began, the switch-off at the end) lives in ScreenOffSync
+    // (src/hardware/screenOffSync.h). The old charging/measuredDimPhaseMs key is no longer read (2026-11-03).
     SCRN_BOOL  (screenOffEffectEnabled,  "charging/screenOffEffectEnabled",  true)
     SCRN_BOOL  (screenOffEffectUndocked, "charging/screenOffEffectUndocked", false)
     SCRN_STRING(screenOffEffectStyle,    "charging/screenOffEffectStyle",    "theme-native")
-
-    // Empirically-measured dim-phase duration (ms between Normal->Idle
-    // and Idle->Low_power). Persisted to QSettings so the measurement
-    // survives Popup destruction on undock/redock cycles (otherwise a
-    // local Popup property would reset to the 3000 ms seed on every
-    // docking, causing a visible "black but on" gap between animation
-    // end and the core's actual display-off transition).
-    SCRN_INT   (measuredDimPhaseMs,      "charging/measuredDimPhaseMs",      3000)
 
     // === TV Static theme ===
     SCRN_INT(tvStaticIntensity,         "charging/tvStaticIntensity",         70)

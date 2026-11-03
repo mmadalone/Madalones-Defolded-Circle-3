@@ -652,13 +652,6 @@ ApplicationWindow {
             }
         }
 
-        // One-shot: set true when the next chargingScreenLoader.active = true
-        // is triggered by idleScreensaverTimer firing (legacy idle-open path).
-        // Consumed by chargingScreenLoader.onStatusChanged when the popup
-        // becomes Ready, propagated to the popup's _openedViaIdleTimer flag
-        // to drive the screen-off countdown's subtraction rule.
-        property bool _nextOpenViaIdleTimer: false
-
         // madalone (v1.4.43): one-shot — set true when the next open is triggered by an
         // actual user dock event (not boot-while-docked, not idle-open, not wake). When
         // Config.dockChimeAfterScreensaver is on, ChargingScreen.qml's onOpened uses this
@@ -701,7 +694,6 @@ ApplicationWindow {
             onTriggered: {
                 var undocked = !Battery.powerSupply || HwInfo.modelNumber === "DEV";
                 if (root._shouldOpenOnIdle() && undocked && !chargingScreenLoader.active) {
-                    root._nextOpenViaIdleTimer = true;
                     chargingScreenLoader.active = true;
                 }
             }
@@ -794,12 +786,6 @@ ApplicationWindow {
 
             onStatusChanged: {
                 if (status == Loader.Ready) {
-                    // Propagate "open reason" to the popup so the screen-off
-                    // countdown knows whether to subtract idleTimeout. AND
-                    // with Battery state to cover the race where the user
-                    // docks while the async loader is still loading.
-                    item._openedViaIdleTimer = root._nextOpenViaIdleTimer && !Battery.powerSupply;
-                    root._nextOpenViaIdleTimer = false;
                     // madalone (v1.4.43): propagate dock-event flag for pattern B (chime fires
                     // in popup.onOpened). Gated on Battery.powerSupply so a stale flag from
                     // a quick dock-then-undock during the load doesn't fire the chime.

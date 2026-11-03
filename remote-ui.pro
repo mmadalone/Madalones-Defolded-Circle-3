@@ -103,6 +103,7 @@ HEADERS += \
     src/hardware/haptic.h \
     src/hardware/hardwareController.h \
     src/hardware/phantomWakeSuppressor.h \
+    src/hardware/screenOffSync.h \
     src/hardware/touchSlider.h \
     src/hardware/ucr2/hapticUCR2.h \
     src/hardware/ucr2/hapticUCR3.h \
@@ -193,6 +194,7 @@ SOURCES += \
         src/hardware/haptic.cpp \
         src/hardware/hardwareController.cpp \
         src/hardware/phantomWakeSuppressor.cpp \
+        src/hardware/screenOffSync.cpp \
         src/hardware/touchSlider.cpp \
         src/hardware/ucr2/hapticUCR2.cpp \
         src/hardware/ucr2/hapticUCR3.cpp \

@@ -276,7 +276,6 @@ void ScreensaverConfig::resetDefaults() {
     emit screenOffEffectEnabledChanged();
     emit screenOffEffectUndockedChanged();
     emit screenOffEffectStyleChanged();
-    emit measuredDimPhaseMsChanged();
 
     emit tvStaticIntensityChanged();
     emit tvStaticSnowSizeChanged();
