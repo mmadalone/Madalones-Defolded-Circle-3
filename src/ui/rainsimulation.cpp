@@ -420,7 +420,7 @@ void RainSimulation::advanceSimulation(const GlyphAtlas &atlas) {
         }
     }
 
-    m_glitch.advanceTrails(ctx, atlas.glyphCount());
+    m_glitch.advanceTrails(ctx, atlas.glyphCount(), &m_message);
     m_glitch.precomputeBrightness(m_streams, atlas.brightnessMap(), atlas.brightnessLevels(),
                                   ctx, m_invertTrail);
     m_glitch.advancePulses(ctx, m_message.messageBrightMut(), atlas.glyphCount());
@@ -633,23 +633,12 @@ void RainSimulation::tapRipple(int col, int row, int colorVariants) {
 
 void RainSimulation::tapWipe(int col, int row, int colorVariants) {
     Q_UNUSED(row);
-    // Spawn a vertical column of short trails all traveling right (or left if tap is right of center)
+    // A screen wipe away from the tapped side: from the edge on that side to the other edge, full height
     int dir = (col < m_gridCols / 2) ? 1 : -1;
     int tapCV = (m_depthVariantBase > 0) ? m_depthVariantBase
               : (colorVariants > 1) ? randomInt(colorVariants) : 0;
-    int height = qMin(m_gridRows, 40);
-    int startRow = qMax(0, (m_gridRows - height) / 2);
-    for (int r = startRow; r < startRow + height && m_glitch.trailCount() < 300; ++r) {
-        if (randomInt(4) == 0) continue;  // skip ~25% for organic look
-        GlitchTrail gt;
-        gt.col = col;
-        gt.row = r;
-        gt.dx = dir; gt.dy = 0;
-        gt.length = 3 + randomInt(5);
-        gt.framesLeft = gt.length + 6;
-        gt.colorVariant = tapCV;
-        m_glitch.appendTrail(gt);
-    }
+    SimContext ctx(m_charGrid, m_gridCols, m_gridRows, m_rng);
+    m_glitch.spawnWipe(dir, ctx, tapCV, colorVariants);
 }
 
 void RainSimulation::tapFlash(int col, int row, int radius) {

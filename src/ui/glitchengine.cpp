@@ -4,6 +4,7 @@
 
 #include "glitchengine.h"
 
+#include "messageengine.h"   // message / subliminal cells a trail must not scramble
 #include "rainsimulation.h"  // for StreamState, ChaosType
 
 // --- Named constants (moved from rainsimulation.cpp) ---
@@ -27,6 +28,11 @@ static constexpr int    CHAOS_SCATTER_FRAMES  = 8;     // scatter trail extra li
 static constexpr int    CHAOS_INTERVAL_MAX    = 2400;  // max ticks between events (freq=1, ~120s)
 static constexpr int    CHAOS_INTERVAL_MIN    = 50;    // min ticks between events (freq=100, ~2.5s)
 static constexpr int    CHAOS_COMBINE_CHANCE  = 15;    // % chance of combined event (two types)
+// Screen wipe (tap effect and chaos event)
+static constexpr int    WIPE_TRAIL_CAP        = 300;   // shared trail-list cap the tap effects respect
+static constexpr int    WIPE_SKIP_ONE_IN      = 4;     // about a quarter of the rows get no streak (organic look)
+static constexpr int    WIPE_LENGTH_MIN       = 3;     // streak length 3-7
+static constexpr int    WIPE_LENGTH_RANGE     = 5;
 
 // Direction vector table for glitch trail spawning
 struct DirVec { int dx; int dy; };
@@ -126,7 +132,7 @@ void GlitchEngine::advanceChaos(QVector<StreamState> &streams, SimContext &ctx,
     }
 }
 
-void GlitchEngine::advanceTrails(SimContext &ctx, int glyphCount) {
+void GlitchEngine::advanceTrails(SimContext &ctx, int glyphCount, const MessageEngine *msg) {
     // Speed-based tick skipping: speed 100 = every tick, 50 = every 2, 10 = every 10
     int tickSkip = qMax(1, 100 / m_glitchDirSpeed);
     m_dirTrailTickCounter++;
@@ -142,8 +148,13 @@ void GlitchEngine::advanceTrails(SimContext &ctx, int glyphCount) {
             gt.row += gt.dy;
             if (gt.col >= 0 && gt.col < ctx.gridCols && gt.row >= 0 && gt.row < ctx.gridRows) {
                 int gridIdx = gt.col * ctx.gridRows + gt.row;
-                if (gridIdx >= 0 && gridIdx < ctx.charGrid.size())
-                    ctx.charGrid[gridIdx] = charDist(ctx.rng);
+                if (gridIdx >= 0 && gridIdx < ctx.charGrid.size()) {
+                    // Drawn before the guard so the random sequence does not depend on where messages are
+                    const int glyph = charDist(ctx.rng);
+                    const bool messageCell = msg && (msg->messageBrightAt(gridIdx) != 0 ||
+                                                     msg->isSubliminalCell(gt.col, gt.row, ctx.gridRows));
+                    if (!messageCell) ctx.charGrid[gridIdx] = glyph;
+                }
             }
         }
         gt.framesLeft--;
@@ -151,6 +162,43 @@ void GlitchEngine::advanceTrails(SimContext &ctx, int glyphCount) {
             m_glitchTrails[i] = m_glitchTrails.last();
             m_glitchTrails.removeLast();
         }
+    }
+}
+
+void GlitchEngine::spawnWipe(int dir, SimContext &ctx, int colorVariant, int colorVariants) {
+    if (ctx.gridCols <= 0 || ctx.gridRows <= 0) return;
+    dir = (dir < 0) ? -1 : 1;
+
+    // The rows that get a streak: every row, about a quarter skipped at random
+    QVector<int> rows;
+    rows.reserve(ctx.gridRows);
+    for (int r = 0; r < ctx.gridRows; ++r) {
+        if (static_cast<int>(ctx.rng() % WIPE_SKIP_ONE_IN) == 0) continue;
+        rows.append(r);
+    }
+    // All or nothing against the shared cap: with too little room, keep an evenly spaced subset so the wipe
+    // still covers the whole height instead of filling the top and dropping the bottom
+    const int room = WIPE_TRAIL_CAP - m_glitchTrails.size();
+    if (room <= 0 || rows.isEmpty()) return;
+    const int count = qMin(room, rows.size());
+
+    // A streak moves one cell every tickSkip ticks (the glitch trail speed) and is drawn back from its head.
+    // Starting on the edge cell, it needs (cols + length - 1) moves until its tail has left the far edge;
+    // (cols + length) * tickSkip ticks give at least that many whatever the phase of the shared tick
+    // counter, plus one move of slack.
+    const int tickSkip = qMax(1, 100 / m_glitchDirSpeed);
+    for (int i = 0; i < count; ++i) {
+        const int r = rows[static_cast<int>(static_cast<qint64>(i) * rows.size() / count)];
+        GlitchTrail gt;
+        gt.col = (dir > 0) ? 0 : ctx.gridCols - 1;
+        gt.row = r;
+        gt.dx = dir;
+        gt.dy = 0;
+        gt.length = WIPE_LENGTH_MIN + static_cast<int>(ctx.rng() % WIPE_LENGTH_RANGE);
+        gt.framesLeft = (ctx.gridCols + gt.length) * tickSkip + tickSkip;
+        gt.colorVariant = (colorVariant >= 0) ? colorVariant
+                        : (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
+        m_glitchTrails.append(gt);
     }
 }
 
@@ -318,21 +366,9 @@ void GlitchEngine::triggerChaosEvent(QVector<StreamState> &streams, SimContext &
     }
 
     if (m_chaosActiveType & ChaosWipe) {
-        // Spawn a vertical column of trails sweeping horizontally
-        int col = static_cast<int>(ctx.rng() % qMax(1, ctx.gridCols));
+        // A screen wipe from a random side, edge to edge, with a random colour per streak
         int dir = (static_cast<int>(ctx.rng() % 2) == 0) ? 1 : -1;
-        int height = qMin(ctx.gridRows, 40);
-        int startRow = qMax(0, (ctx.gridRows - height) / 2);
-        for (int r = startRow; r < startRow + height && m_glitchTrails.size() < 300; ++r) {
-            if (static_cast<int>(ctx.rng() % 4) == 0) continue;
-            GlitchTrail gt;
-            gt.col = col; gt.row = r;
-            gt.dx = dir; gt.dy = 0;
-            gt.length = 3 + static_cast<int>(ctx.rng() % 5);
-            gt.framesLeft = gt.length + 6;
-            gt.colorVariant = (colorVariants > 1) ? static_cast<int>(ctx.rng() % colorVariants) : 0;
-            m_glitchTrails.append(gt);
-        }
+        spawnWipe(dir, ctx, -1, colorVariants);
     }
 
     Q_UNUSED(glyphCount);

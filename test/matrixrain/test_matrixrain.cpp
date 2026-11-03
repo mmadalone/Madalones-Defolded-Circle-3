@@ -8,9 +8,12 @@
 #include <QtTest>
 #include <QGuiApplication>
 #include <QHash>
+#include <QMap>
 #include <QPointF>
+#include <QSet>
 #include <QSignalSpy>
 #include <QtMath>
+#include <algorithm>
 #include <cstring>
 #include <limits>
 #include <random>
@@ -3169,7 +3172,8 @@ class MatrixRainTest : public QObject {
         QTest::addColumn<qreal>("density");
         QTest::addColumn<int>("trail");
         QTest::addColumn<bool>("colorLayers");
-        QTest::addColumn<int>("effects");  // 0 none, 1 glitch (app default), 2 glitch + chaos + messages + subliminal
+        // 0 none, 1 glitch (app default), 2 glitch + chaos + messages + subliminal, 3 glitch + chaos wipes + tap wipes
+        QTest::addColumn<int>("effects");
         QTest::addColumn<bool>("cascade");  // screen-off cascade (drain mode 1) from tick 150
         QTest::newRow("defaults") << QString("ascii") << 16 << 0.7 << 83 << false << 1 << false;
         QTest::newRow("owner, color layers off") << QString("ascii") << 30 << 2.1 << 180 << false << 0 << false;
@@ -3178,6 +3182,8 @@ class MatrixRainTest : public QObject {
         QTest::newRow("glitch + chaos + messages") << QString("ascii") << 16 << 1.5 << 83 << false << 2 << false;
         QTest::newRow("digits + messages, color layers") << QString("digits") << 16 << 1.5 << 120 << true << 2
                                                          << false;
+        // Full-screen wipes (long-lived overlays) in flight over the owner's settings
+        QTest::newRow("owner + wipes in flight") << QString("katakana") << 30 << 2.1 << 180 << false << 3 << false;
     }
 
     void layerOcclusionEmitWithinCount() {
@@ -3197,7 +3203,17 @@ class MatrixRainTest : public QObject {
         RainSimulation primary;
         setupPrimary(primary, in, density, trail);
         if (effects >= 1) primary.setGlitch(true);
-        if (effects >= 2) {
+        if (effects == 3) {
+            primary.setGlitchChaos(true);
+            primary.setGlitchChaosFrequency(100);
+            primary.setGlitchChaosSurge(false);
+            primary.setGlitchChaosScramble(false);
+            primary.setGlitchChaosFreeze(false);
+            primary.setGlitchChaosSquareBurst(false);
+            primary.setGlitchChaosRipple(false);
+            primary.setGlitchChaosWipe(true);
+        }
+        if (effects == 2) {
             primary.setGlitchChaos(true);
             primary.setGlitchChaosFrequency(100);
             primary.setMessagesEnabled(true);
@@ -3222,6 +3238,10 @@ class MatrixRainTest : public QObject {
                 pipe.applySpawnSuppress(true);
                 pipe.applyDrainSpeedMultiplier(3.0f);
                 pipe.applyDrainMode(1);
+            }
+            if (effects == 3 && t % 20 == 0) {  // a tap wipe from alternating sides on top of the chaos wipes
+                RainSimulation &mid = pipe.midSim();
+                mid.tapWipe((t / 20) % 2 ? 1 : mid.gridCols() - 2, mid.gridRows() / 2, pipe.midAtlas().colorVariants());
             }
             if (t % 10 != 0) continue;
             const LayerFrame f = renderLayerFrame(pipe, in);
@@ -4144,6 +4164,182 @@ class MatrixRainTest : public QObject {
                  qPrintable(QString("far columns %1; far in the full-width but not the half-width box of a near digit "
                                     "%2, a mid message glyph %3 (stay), of a kana %4 (hidden): %5").arg(farPlaced)
                                 .arg(besideNearDigit).arg(besideMidLetter).arg(kanaBand).arg(err)));
+    }
+
+    // ─────────────────────────────────────────
+    // Screen wipe, edge to edge (2026-11-03). Before, a streak lived length + 6 ticks (4-6 columns at the default
+    // glitch speed) from the tapped (or a random) column, and only the middle 40 rows got one.
+    // ─────────────────────────────────────────
+
+    // advanceSimulation's glitch-trail step alone, so direction glitches and chaos don't add trails
+    static void advanceTrailsOnly(RainSimulation &sim, int glyphCount) {
+        SimContext ctx(sim.m_charGrid, sim.gridCols(), sim.gridRows(), sim.m_rng);
+        sim.m_glitch.advanceTrails(ctx, glyphCount, &sim.m_message);
+    }
+
+    void tapWipeCrossesScreen_data() {
+        QTest::addColumn<int>("font");
+        QTest::addColumn<bool>("tapLeft");
+        QTest::newRow("font 30, tap left") << 30 << true;
+        QTest::newRow("font 30, tap right") << 30 << false;
+        QTest::newRow("font 16, tap left") << 16 << true;
+        QTest::newRow("font 16, tap right") << 16 << false;
+    }
+
+    void tapWipeCrossesScreen() {
+        // Every row gets a streak (about a quarter skipped), each starts on the edge cell of the tapped side, sweeps
+        // away from it and is gone only after its tail has reached the far edge.
+        QFETCH(int, font);
+        QFETCH(bool, tapLeft);
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, font, 0.7, "down", 850);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        sim.m_glitch.m_glitchTrails.clear();
+        sim.m_glitch.m_dirTrailTickCounter = 0;
+        const int dir = tapLeft ? 1 : -1;
+        sim.tapWipe(tapLeft ? 2 : cols - 3, rows / 2, atlas.colorVariants());
+        const auto &trails = sim.m_glitch.m_glitchTrails;
+
+        QVector<int> spawnedRows;
+        QMap<int, int> lengthOfRow, farthest;  // row -> streak length, farthest head column along dir
+        QSet<int> colours;
+        int wrongStart = 0, maxLife = 0;
+        for (const GlitchTrail &gt : trails) {
+            if (gt.dx != dir || gt.dy != 0 || gt.col != (tapLeft ? 0 : cols - 1)) ++wrongStart;
+            spawnedRows.append(gt.row);
+            lengthOfRow[gt.row] = gt.length;
+            farthest[gt.row] = gt.col;
+            colours.insert(gt.colorVariant);
+            maxLife = qMax(maxLife, gt.framesLeft);
+        }
+        std::sort(spawnedRows.begin(), spawnedRows.end());
+        const bool unique = std::adjacent_find(spawnedRows.begin(), spawnedRows.end()) == spawnedRows.end();
+        int maxGap = 0;
+        for (int i = 1; i < spawnedRows.size(); ++i) maxGap = qMax(maxGap, spawnedRows[i] - spawnedRows[i - 1]);
+        const bool fullHeight = spawnedRows.size() >= rows / 2 && !spawnedRows.isEmpty() && spawnedRows.first() <= 3
+                                && spawnedRows.last() >= rows - 4 && maxGap <= 6;
+
+        int ticks = 0;
+        while (!trails.isEmpty() && ticks <= maxLife + 2) {
+            advanceTrailsOnly(sim, atlas.glyphCount());
+            ++ticks;
+            for (const GlitchTrail &gt : trails)
+                farthest[gt.row] = tapLeft ? qMax(farthest[gt.row], gt.col) : qMin(farthest[gt.row], gt.col);
+        }
+        int notAcross = 0;
+        for (auto it = farthest.cbegin(); it != farthest.cend(); ++it) {
+            const int tail = it.value() - dir * (lengthOfRow.value(it.key()) - 1);
+            if (tapLeft ? tail < cols - 1 : tail > 0) ++notAcross;
+        }
+        QVERIFY2(wrongStart == 0 && unique && fullHeight && colours.size() == 1 && notAcross == 0 && trails.isEmpty(),
+                 qPrintable(QString("%1x%2 grid: %3 streaks, %4 off the start edge or direction, rows %5..%6 (gap %7, "
+                                    "unique %8), %9 colours, %10 did not cross, %11 left after %12 ticks")
+                                .arg(cols).arg(rows).arg(spawnedRows.size()).arg(wrongStart)
+                                .arg(spawnedRows.value(0, -1)).arg(spawnedRows.value(spawnedRows.size() - 1, -1))
+                                .arg(maxGap).arg(unique).arg(colours.size()).arg(notAcross).arg(trails.size())
+                                .arg(ticks)));
+    }
+
+    void tapWipeKeepsFullHeightWhenNearlyFull() {
+        // With little room left in the shared 300-trail list the wipe keeps an evenly spaced subset of its rows, so it
+        // still spans the whole height (before, it filled the top rows and dropped the rest); with no room, nothing.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int rows = sim.gridRows();
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        auto fill = [&trails](int n) {
+            trails.clear();
+            const GlitchTrail parked{-50, 0, 0, 1, 1, 1000, 0};  // off the grid, never drawn
+            for (int i = 0; i < n; ++i) trails.append(parked);
+        };
+        fill(290);
+        sim.tapWipe(2, rows / 2, atlas.colorVariants());
+        QVector<int> added;
+        for (int i = 290; i < trails.size(); ++i) added.append(trails[i].row);
+        std::sort(added.begin(), added.end());
+        const bool spans = !added.isEmpty() && added.first() <= rows / 6 && added.last() >= rows - 1 - rows / 6;
+        fill(300);
+        sim.tapWipe(2, rows / 2, atlas.colorVariants());
+        const int whenFull = trails.size();
+        QVERIFY2(added.size() == 10 && spans && whenFull == 300,
+                 qPrintable(QString("room 10 of %1 rows: %2 added, rows %3..%4; list full: %5 trails")
+                                .arg(rows).arg(added.size()).arg(added.value(0, -1))
+                                .arg(added.value(added.size() - 1, -1)).arg(whenFull)));
+    }
+
+    void chaosWipeCrossesScreen() {
+        // The Chaos "Screen wipe": the same full-height sweep, from a random edge, with a random colour per streak.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850, "rainbow");
+        sim.setGlitch(true);
+        sim.setGlitchChaos(true);
+        sim.setGlitchChaosSurge(false);
+        sim.setGlitchChaosScramble(false);
+        sim.setGlitchChaosFreeze(false);
+        sim.setGlitchChaosSquareBurst(false);
+        sim.setGlitchChaosRipple(false);
+        sim.setGlitchChaosWipe(true);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        int empty = 0, wrong = 0, fromLeft = 0, fromRight = 0, mixedColours = 0, fewestRows = rows;
+        for (int e = 0; e < 12; ++e) {
+            sim.m_glitch.m_glitchTrails.clear();
+            SimContext ctx(sim.m_charGrid, cols, rows, sim.m_rng);
+            sim.m_glitch.triggerChaosEvent(sim.m_streams, ctx, atlas.glyphCount(), atlas.colorVariants());
+            const auto &trails = sim.m_glitch.m_glitchTrails;
+            if (trails.isEmpty()) {
+                ++empty;
+                continue;
+            }
+            const int dir = trails.first().dx;
+            QSet<int> colours, rowsSeen;
+            for (const GlitchTrail &gt : trails) {
+                if (gt.dx != dir || gt.dy != 0 || gt.col != (dir > 0 ? 0 : cols - 1)) ++wrong;
+                colours.insert(gt.colorVariant);
+                rowsSeen.insert(gt.row);
+            }
+            ++(dir > 0 ? fromLeft : fromRight);
+            if (colours.size() > 1) ++mixedColours;
+            fewestRows = qMin(fewestRows, rowsSeen.size());
+        }
+        QVERIFY2(empty == 0 && wrong == 0 && fromLeft > 0 && fromRight > 0 && mixedColours == 12
+                     && fewestRows >= rows / 2,
+                 qPrintable(QString("12 chaos wipes on %1x%2: %3 empty, %4 streaks off their edge, %5 from the left "
+                                    "%6 from the right, %7 with several colours, fewest rows %8")
+                                .arg(cols).arg(rows).arg(empty).arg(wrong).arg(fromLeft).arg(fromRight)
+                                .arg(mixedColours).arg(fewestRows)));
+    }
+
+    void wipeSkipsMessageCells() {
+        // A streak scrambles the glyphs it crosses, but not a message or a subliminal cell (the guard stream heads
+        // use), so a full-screen wipe cannot garble a message.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        sim.m_glitch.m_dirTrailTickCounter = 0;
+        const int row = rows / 2;
+        trails.append(GlitchTrail{0, row, 1, 0, 4, (cols + 4) * 2 + 2, 0});
+        const int msgIdx = (cols / 3) * rows + row, subIdx = (2 * cols / 3) * rows + row;
+        sim.m_message.m_messageBright[msgIdx] = 5;
+        sim.m_message.m_subliminalSet.insert(subIdx);
+        sim.m_charGrid[msgIdx] = 7;
+        sim.m_charGrid[subIdx] = 9;
+        const QVector<int> before = sim.m_charGrid;
+        for (int t = 0; t < 200 && !trails.isEmpty(); ++t) advanceTrailsOnly(sim, atlas.glyphCount());
+        int changed = 0;
+        for (int c = 0; c < cols; ++c) {
+            const int idx = c * rows + row;
+            if (idx != msgIdx && idx != subIdx && sim.m_charGrid[idx] != before[idx]) ++changed;
+        }
+        QVERIFY2(sim.m_charGrid[msgIdx] == 7 && sim.m_charGrid[subIdx] == 9 && changed > cols / 2 && trails.isEmpty(),
+                 qPrintable(QString("message cell %1 (was 7), subliminal cell %2 (was 9), %3 of %4 other cells "
+                                    "scrambled, %5 trails left").arg(sim.m_charGrid[msgIdx]).arg(sim.m_charGrid[subIdx])
+                                .arg(changed).arg(cols - 2).arg(trails.size())));
     }
 };
 

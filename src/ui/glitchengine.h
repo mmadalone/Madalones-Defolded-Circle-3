@@ -11,6 +11,7 @@
 
 // Forward declarations — StreamState and ChaosType live in rainsimulation.h
 struct StreamState;
+class MessageEngine;
 
 /// @brief Animated expanding pulse overlay (square or circle).
 /// Grows 1 cell per tick from center, highlighting cells at the perimeter.
@@ -45,7 +46,14 @@ class GlitchEngine {
     void advanceChaos(QVector<StreamState> &streams, SimContext &ctx,
                       int glyphCount, int colorVariants);
     /// @brief Advance direction-glitch overlay trails (move heads, decrement lifetimes, cull expired).
-    void advanceTrails(SimContext &ctx, int glyphCount);
+    /// A head scrambles the glyph of the cell it enters, except a message or subliminal cell of @p msg
+    /// (the guard stream heads use), so a trail cannot garble a message. @p msg may be null (no guard).
+    void advanceTrails(SimContext &ctx, int glyphCount, const MessageEngine *msg = nullptr);
+    /// @brief Spawn a screen wipe: one streak per row (about a quarter skipped at random) that starts on the
+    /// edge cell and sweeps across the whole grid. @p dir +1 = left edge to right edge, -1 = right to left.
+    /// @p colorVariant >= 0 colours every streak alike; -1 picks a random colour per streak among @p colorVariants.
+    /// When the trail list has no room for every streak, an evenly spaced subset of the rows is kept.
+    void spawnWipe(int dir, SimContext &ctx, int colorVariant, int colorVariants);
     /// @brief Advance square pulse overlays (grow size, cull expired). Writes brightness to messageBright
     /// and glyphs to charGrid so perimeter cells render even without stream trails.
     void advancePulses(SimContext &ctx, QVector<int> &messageBright, int glyphCount);
