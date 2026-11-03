@@ -236,9 +236,13 @@ public:
     // nothing and the core switches the display off at its own time.
     // The timing (when the dim phase began, the switch-off at the end) lives in ScreenOffSync
     // (src/hardware/screenOffSync.h). The old charging/measuredDimPhaseMs key is no longer read (2026-11-03).
+    // screenOffEffectLengthMs: how long the shared-overlay styles play (settings slider 300-4500 ms). A theme's
+    // own effect (TV Static, Analog) keeps its own length. ChargingScreen shortens it at run time so the
+    // animation still ends before the switch-off (ScreenOffSync::fitLeadMs).
     SCRN_BOOL  (screenOffEffectEnabled,  "charging/screenOffEffectEnabled",  true)
     SCRN_BOOL  (screenOffEffectUndocked, "charging/screenOffEffectUndocked", false)
     SCRN_STRING(screenOffEffectStyle,    "charging/screenOffEffectStyle",    "theme-native")
+    SCRN_INT   (screenOffEffectLengthMs, "charging/screenOffEffectLengthMs", 800)
 
     // === TV Static theme ===
     SCRN_INT(tvStaticIntensity,         "charging/tvStaticIntensity",         70)

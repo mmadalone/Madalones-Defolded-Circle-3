@@ -379,6 +379,8 @@ Settings.Page {
             Components.SettingRow {
                 title: qsTr("Style")
                 controlBelow: true
+                // The Animation length row below closes the section unless the style is "Theme"
+                showDivider: ScreensaverConfig.screenOffEffectStyle === "theme-native"
 
                 // 9 chips in 3 columns. LEFT/RIGHT walk round the styles, a tap picks one.
                 Components.ChipPicker {
@@ -403,7 +405,42 @@ Settings.Page {
 
                     /** KEYBOARD NAVIGATION **/
                     KeyNavigation.up: screenOffUndockedSwitch
+                    KeyNavigation.down: ScreensaverConfig.screenOffEffectStyle !== "theme-native"
+                                        ? screenOffLengthSlider : sleepTimeoutSlider
+                }
+            }
+
+            // madalone (2026-11-03): how long the drawn styles play; "Theme" keeps a theme's own effect length
+            Components.SettingRow {
+                visible: ScreensaverConfig.screenOffEffectStyle !== "theme-native"
+                //: How long the screen-off animation plays, in milliseconds
+                title: qsTr("Animation length")
+                value: ScreensaverConfig.screenOffEffectLengthMs + " ms"
+                help: qsTr("How long the animation plays. It is shortened when the display turns off sooner.")
+                controlBelow: true
+                controlBottomSpace: 40
+
+                Components.Slider {
+                    id: screenOffLengthSlider
+                    enabled: ScreensaverConfig.screenOffEffectEnabled
+                    opacity: enabled ? 1.0 : 0.4
+                    height: 60
+                    from: 300
+                    to: 4500
+                    stepSize: 100
+                    live: true
+                    showLiveValue: false
+                    value: ScreensaverConfig.screenOffEffectLengthMs
+                    lowValueText: from + " ms"
+                    highValueText: to + " ms"
+
+                    onMoved: { ScreensaverConfig.screenOffEffectLengthMs = value; }
+                    onUserInteractionEnded: { ScreensaverConfig.screenOffEffectLengthMs = value; }
+
+                    /** KEYBOARD NAVIGATION **/
+                    KeyNavigation.up: screenOffStyleRow
                     KeyNavigation.down: sleepTimeoutSlider
+                    highlight: activeFocus && ui.keyNavigationActive
                 }
             }
 
@@ -436,7 +473,8 @@ Settings.Page {
                     }
 
                     /** KEYBOARD NAVIGATION **/
-                    KeyNavigation.up: screenOffStyleRow
+                    KeyNavigation.up: ScreensaverConfig.screenOffEffectStyle !== "theme-native"
+                                      ? screenOffLengthSlider : screenOffStyleRow
                     highlight: activeFocus && ui.keyNavigationActive
                 }
             }

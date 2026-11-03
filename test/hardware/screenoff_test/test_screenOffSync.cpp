@@ -5,6 +5,8 @@
 // 2. startDelayMs: from the Idle entry and from the middle of the dim phase, the floor at 0, -1 outside Idle.
 // 3. requestDisplayOff: LOW_POWER with the "mode" body field, only in Idle, only after markEffectStart() and with no
 //    input since, once per dim phase, and not when the request cannot be sent.
+// 4. fitLeadMs: the "Animation length" shortened so the animation still ends END_MARGIN_MS before the earliest
+//    switch-off (also for a screensaver opened during the dim phase), unchanged outside Idle (2026-11-03).
 
 #include <QtTest>
 #include <QCoreApplication>
@@ -176,6 +178,58 @@ class ScreenOffSyncTest : public QObject {
         sync.onPowerModeChanged(PowerMode::Normal, PowerMode::Idle);
         sync.markEffectStart();
         QVERIFY(!sync.requestDisplayOff());
+    }
+
+    // 4. fitLeadMs
+    void test_fitUnchangedOutsideIdle() {
+        QCOMPARE(m_sync->fitLeadMs(800), 800);
+        QCOMPARE(m_sync->fitLeadMs(4500), 4500);
+        m_sync->onPowerModeChanged(PowerMode::Normal, PowerMode::Low_power);
+        QCOMPARE(m_sync->fitLeadMs(4500), 4500);
+    }
+
+    void test_fitFromIdleEntry_data() {
+        QTest::addColumn<int>("seconds");
+        QTest::addColumn<int>("lead");
+        QTest::addColumn<int>("expected");  // the room from the Idle entry is dimPhaseMin - 250
+        QTest::newRow("30 s, 800 fits") << 30 << 800 << 800;
+        QTest::newRow("30 s, 4500 fits") << 30 << 4500 << 4500;
+        QTest::newRow("30 s, 20000 cut to 14750") << 30 << 20000 << 14750;
+        QTest::newRow("10 s (slider minimum), 4500 fits") << 10 << 4500 << 4500;
+        QTest::newRow("10 s, 5000 cut to 4750") << 10 << 5000 << 4750;
+        QTest::newRow("5 s (web configurator), 4000 cut to 1750") << 5 << 4000 << 1750;
+        QTest::newRow("4 s, 800 cut to 750") << 4 << 800 << 750;
+        QTest::newRow("3 s: no room") << 3 << 800 << 0;
+        QTest::newRow("0 (behaves like 3 s): no room") << 0 << 800 << 0;
+    }
+    void test_fitFromIdleEntry() {
+        QFETCH(int, seconds);
+        QFETCH(int, lead);
+        QFETCH(int, expected);
+        m_sync->setDisplayOffSec(seconds);
+        enterIdle();
+        const int fitted = m_sync->fitLeadMs(lead);
+        // A cut length loses the few ms elapsed since enterIdle(); one that fits is returned as it is
+        const bool ok = (expected == lead) ? fitted == lead : (fitted <= expected && fitted >= qMax(0, expected - 30));
+        QVERIFY2(ok, qPrintable(QString("T = %1 s, %2 ms -> %3 ms (expected %4)").arg(seconds).arg(lead).arg(fitted)
+                                    .arg(expected)));
+        // A shortened animation starts at once and ends END_MARGIN_MS before the earliest switch-off
+        if (fitted < lead) QCOMPARE(m_sync->startDelayMs(fitted), 0);
+    }
+
+    void test_fitMidIdle() {
+        // A screensaver opened during the dim phase gets only the time left
+        m_sync->setDisplayOffSec(10);  // dim phase at least 5000 ms: room 4750 ms from the Idle entry
+        enterIdle();
+        QTest::qWait(300);
+        const int since = m_sync->msSinceIdle(), fitted = m_sync->fitLeadMs(4700);
+        QVERIFY2(since >= 290 && fitted <= 4750 - since && fitted >= 4750 - since - 30,
+                 qPrintable(QString("%1 ms into Idle: 4700 -> %2").arg(since).arg(fitted)));
+    }
+
+    void test_fitNegativeLead() {
+        enterIdle();
+        QCOMPARE(m_sync->fitLeadMs(-5), 0);
     }
 };
 

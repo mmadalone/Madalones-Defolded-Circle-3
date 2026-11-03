@@ -17,9 +17,10 @@ namespace uc {
 namespace hw {
 
 /// The core's schedule after the last activity, with T = Config.displayTimeout (display_off_sec), measured in the core
-/// simulator for T = 5..60 s and on a remote at T = 30 s (2026-11-02, core 0.83.1): Normal -> Idle (display dimmed)
-/// after max(T/2, 3) + 1 s, Idle -> Low_power (display off) after T + 1 or T + 2 s. The core ticks in whole seconds,
-/// so the dim phase lasts T - max(T/2, 3) s, or one second more, and which one varies from cycle to cycle.
+/// simulator for T = 5..60 s and on a remote at T = 30 s (2026-11-02, core 0.83.1; unchanged in UC's core 0.83.2
+/// simulator, 2026-11-03): Normal -> Idle (display dimmed) after max(T/2, 3) + 1 s, Idle -> Low_power (display off)
+/// after T + 1 or T + 2 s. The core ticks in whole seconds, so the dim phase lasts T - max(T/2, 3) s, or one second
+/// more, and which one varies from cycle to cycle.
 class ScreenOffSync : public QObject {
     Q_OBJECT
 
@@ -27,7 +28,8 @@ class ScreenOffSync : public QObject {
     /// The animation ends this long before the earliest switch-off (about 4x the measured jitter).
     static constexpr int END_MARGIN_MS = 250;
 
-    /// Shortest dim phase for a display-off timeout of @p displayOffSec seconds (0 when the display never goes off).
+    /// Shortest dim phase for a display-off timeout of @p displayOffSec seconds. 0 for 3 s or less: there the core
+    /// dims after about 4 s and switches off up to a second later (a timeout of 0 behaves the same, 2026-11-03).
     static int dimPhaseMinMsFor(int displayOffSec);
 
     /// Starts in Normal: Power reports the core's actual mode after the connection, through powerModeChanged.
@@ -47,6 +49,10 @@ class ScreenOffSync : public QObject {
     /// Delay from now that makes an animation of @p leadMs end END_MARGIN_MS before the earliest switch-off
     /// (0 when that moment has passed, -1 when the core is not in Idle).
     Q_INVOKABLE int startDelayMs(int leadMs) const;
+    /// @p leadMs, shortened so an animation started now still ends END_MARGIN_MS before the earliest switch-off
+    /// (0 when no time is left); unchanged when the core is not in Idle. For the shared-overlay styles, whose
+    /// length is a setting; a theme's own effect keeps its fixed length.
+    Q_INVOKABLE int fitLeadMs(int leadMs) const;
     /// The screen-off animation starts now: input from here on vetoes requestDisplayOff().
     Q_INVOKABLE void markEffectStart();
     /// The animation has ended: switch the display off (set_power_mode LOW_POWER, the call the phantom-wake suppressor

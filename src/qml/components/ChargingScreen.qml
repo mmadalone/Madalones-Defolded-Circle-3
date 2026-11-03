@@ -32,9 +32,10 @@ Popup {
     property bool isClosing: false
     property bool displayOff: false
 
-    // Lead time for whatever effect is currently active. Shared overlay uses
-    // a fixed 800 ms; theme-native themes override via their screenOffLeadMs.
-    readonly property int screenOffFallbackLeadMs: 800
+    // Shortest shared-overlay animation (the "Animation length" slider's minimum). With less of the dim phase
+    // left than this, the screensaver plays none and the core switches the display off by itself. The length
+    // itself is ScreensaverConfig.screenOffEffectLengthMs; a theme's own effect has its screenOffLeadMs.
+    readonly property int screenOffMinLeadMs: 300
     // True while an effect (either shared overlay OR theme-native) is playing.
     // Covers the theme-native path where screenOffOverlay.progress stays at 0.
     // Reset by cancel; NOT cleared by finalize (finalize means the display is
@@ -123,12 +124,17 @@ Popup {
         return ScreensaverConfig.screenOffEffectStyle === "theme-native"
             && chargingScreenRoot._themeProvidesNative();
     }
+    // A theme's own effect keeps its fixed length. The shared overlay plays the "Animation length" setting,
+    // shortened so it still ends before the switch-off when less of the dim phase is left (ScreenOffSync.fitLeadMs)
     function _currentLeadMs() {
         if (chargingScreenRoot._useNative()
                 && themeLoader.item.hasOwnProperty("screenOffLeadMs")) {
             return themeLoader.item.screenOffLeadMs;
         }
-        return chargingScreenRoot.screenOffFallbackLeadMs;
+        return ScreenOffSync.fitLeadMs(chargingScreenRoot._sharedLengthMs());
+    }
+    function _sharedLengthMs() {
+        return Math.max(chargingScreenRoot.screenOffMinLeadMs, ScreensaverConfig.screenOffEffectLengthMs);
     }
 
     // One reset for every path that starts a fresh screen-off cycle (open, theme load, cancel, dock change)
@@ -148,8 +154,15 @@ Popup {
         if (!ScreensaverConfig.screenOffEffectEnabled) return;
         if (!Battery.powerSupply && !ScreensaverConfig.screenOffEffectUndocked) return;
         if (chargingScreenRoot.screenOffEffectActive) return;
-        var delay = ScreenOffSync.startDelayMs(chargingScreenRoot._currentLeadMs());
+        var lead = chargingScreenRoot._currentLeadMs();
+        var delay = ScreenOffSync.startDelayMs(lead);
         if (delay < 0) return;
+        // Too little of the dim phase left for the shared animation (opened at its very end, or a display-off
+        // timeout of 3 s or less): none, the core switches the display off by itself
+        if (!chargingScreenRoot._useNative() && lead < chargingScreenRoot.screenOffMinLeadMs) {
+            console.info("[screen-off] skipped: " + lead + " ms left before the switch-off");
+            return;
+        }
         dimPhaseDelayTimer.interval = Math.max(1, delay);
         dimPhaseDelayTimer.restart();
     }
@@ -169,18 +182,22 @@ Popup {
         if (chargingScreenRoot.screenOffEffectActive) return;   // already playing
         chargingScreenRoot.screenOffEffectActive = true;
         ScreenOffSync.markEffectStart();
+        var themeEffect = chargingScreenRoot._useNative();
         var leadMs = chargingScreenRoot._currentLeadMs();
-        console.info("[screen-off] start: " + ScreensaverConfig.screenOffEffectStyle + ", " + leadMs + " ms, "
-                     + ScreenOffSync.msSinceIdle() + " ms into the dim phase");
+        var lengthNote = themeEffect ? "" : " (set " + ScreensaverConfig.screenOffEffectLengthMs + " ms)";
+        console.info("[screen-off] start: " + ScreensaverConfig.screenOffEffectStyle + ", " + leadMs + " ms"
+                     + lengthNote + ", " + ScreenOffSync.msSinceIdle() + " ms into the dim phase");
         screenOffEndTimer.interval = leadMs;
         screenOffEndTimer.restart();
-        if (chargingScreenRoot._useNative()) {
+        if (themeEffect) {
             if (themeLoader.item && themeLoader.item.startScreenOff) {
                 themeLoader.item.startScreenOff();
             }
         } else {
             screenOffAnim.stop();
             screenOffOverlay.progress = 0.0;
+            // The same length as the end timer and the safety timer
+            screenOffAnim.duration = Math.max(1, leadMs);
             screenOffAnim.start();
         }
         // Safety: if the display still isn't off well after the animation
@@ -821,9 +838,10 @@ Popup {
         property: "progress"
         from: 0.0
         to: 1.0
-        // Duration matches the shared-overlay fallback lead time so the
-        // animation completes exactly as the display actually blanks.
-        duration: chargingScreenRoot.screenOffFallbackLeadMs
+        // Set from the fitted "Animation length" in startScreenOffEffect(), the same number the end timer
+        // uses, so the overlay is complete when the display is switched off. Linear: the styles' phases are
+        // fractions of the progress.
+        duration: 800
         easing.type: Easing.Linear
     }
 

@@ -22,14 +22,17 @@
 // ============================================================================
 // OPTIONAL: Screen-off animation protocol (Tier 2 native override)
 // ============================================================================
-// ChargingScreen owns a shared countdown + ScreenOffOverlay system. By default,
-// any theme inherits the user-selected shared overlay style (fade / flash /
-// vignette / wipe) from ScreensaverConfig.screenOffEffectStyle.
+// ChargingScreen owns the shared ScreenOffOverlay system; ScreenOffSync (C++) times it
+// from the core's dim phase and switches the display off when the animation ends. By
+// default, any theme inherits the user-selected shared overlay style (fade, flash,
+// vignette, wipe, sleepwave, genie, pixelate, dissolve) from
+// ScreensaverConfig.screenOffEffectStyle, played for ScreensaverConfig.screenOffEffectLengthMs
+// ("Animation length"; shortened when the dim phase leaves less time).
 //
 // A theme can OPT IN to provide its own native shutdown animation by declaring:
 //
 //   readonly property bool providesNativeScreenOff: true
-//   readonly property int  screenOffLeadMs: 800   // ms — how early to start
+//   readonly property int  screenOffLeadMs: 1300  // ms — the effect's fixed length (TV Static, Analog)
 //
 //   function startScreenOff()    { /* begin the animation */ }
 //   function cancelScreenOff()   { /* reset on wake. ALSO the wake-refresh hook for any
@@ -43,7 +46,7 @@
 //
 // When providesNativeScreenOff === true AND the user-selected effect style is
 // "theme-native", ChargingScreen will:
-//   - Call startScreenOff() when the idle poller crosses (displayTimeout - leadMs)
+//   - Call startScreenOff() screenOffLeadMs before the end of the dim phase (ScreenOffSync)
 //   - Call cancelScreenOff() on any interactiveInput and on displayOff → false (wake)
 //   - Call finalizeScreenOff() on displayOff → true (hardware display blanked)
 //
@@ -51,7 +54,7 @@
 // user explicitly picks a shared style like "fade", in which case the theme's
 // native hooks are bypassed and the overlay animates instead).
 //
-// Themes that do NOT declare these (Matrix, Starfield, Minimal, Analog today)
+// Themes that do NOT declare these (Matrix, Starfield, Minimal)
 // automatically inherit the shared overlay behaviour when the user picks a
 // shared style, and get no animation when "theme-native" is selected (since
 // they have no native implementation).

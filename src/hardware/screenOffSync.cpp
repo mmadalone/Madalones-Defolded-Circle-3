@@ -30,7 +30,7 @@ const char *modeName(Power::PowerMode mode) {
 }  // namespace
 
 int ScreenOffSync::dimPhaseMinMsFor(int displayOffSec) {
-    if (displayOffSec <= 0) return 0;  // 0 = the display never goes off
+    if (displayOffSec <= 0) return 0;  // behaves like 3 s in the core (dims at ~4 s, off up to 1 s later)
     return qMax(0, displayOffSec - qMax(displayOffSec / 2, 3)) * 1000;
 }
 
@@ -64,6 +64,13 @@ int ScreenOffSync::startDelayMs(int leadMs) const {
     qCDebug(lcHw()) << "ScreenOffSync: a" << leadMs << "ms animation starts in" << delay << "ms (" << since
                     << "ms into the dim phase)";
     return delay;
+}
+
+int ScreenOffSync::fitLeadMs(int leadMs) const {
+    const int since = msSinceIdle();
+    if (since < 0) return leadMs;
+    const int room = qMax(0, dimPhaseMinMs() - END_MARGIN_MS - since);
+    return qMin(qMax(0, leadMs), room);
 }
 
 void ScreenOffSync::markEffectStart() {
