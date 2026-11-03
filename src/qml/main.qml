@@ -853,7 +853,9 @@ ApplicationWindow {
                 function onPowerModeChanged(fromPowerMode, toPowerMode) {
                     // Pause screensaver rendering when display is actually off (Low_power/Standby).
                     // Idle = dimmed but still visible — screensaver should keep animating.
-                    if (toPowerMode === PowerModes.Low_power
+                    // madalone (2026-11-03): Suspend too (it was missing): a jump from Idle straight to standby
+                    // left the screen-off timers running, and they fired after the wake on a lit display.
+                    if ((toPowerMode === PowerModes.Low_power || toPowerMode === PowerModes.Suspend)
                             && chargingScreenLoader.active && chargingScreenLoader.item) {
                         chargingScreenLoader.item.displayOff = true;
                     }

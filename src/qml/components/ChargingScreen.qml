@@ -845,21 +845,11 @@ Popup {
         easing.type: Easing.Linear
     }
 
-    // Dock / undock are both fresh user activity from the core's perspective
-    // — the core's display-off timer resets on either transition (back to
-    // Normal). Cancel any in-flight animation from the pre-transition cycle
-    // so it doesn't end with a switch-off the user just interrupted.
-    Connections {
-        target: Battery
-        ignoreUnknownSignals: true
-        function onPowerSupplyChanged(value) {
-            if (chargingScreenRoot.isClosing) return;
-            if (chargingScreenRoot.screenOffEffectActive
-                    && !chargingScreenRoot.displayOff) {
-                chargingScreenRoot.cancelScreenOffEffect();
-            }
-        }
-    }
+    // madalone (2026-11-03): no cancel on a dock / undock. A charger change does not restart the core's display-off
+    // countdown (the owner's logs: IDLE 12.5 s and 14.2 s after a charger flip at a 30 s timeout, so it was not
+    // counted as activity), and a Qi pad flaps on its own. Cancelling here stopped the switch-off request and, for
+    // TV Static / Analog, left the theme's own effect black on a lit display. A real pickup wakes the core, and the
+    // Idle -> Normal branch below cancels the animation and resets the theme.
 
     // ---- Trigger: core Power state transition ----
     // The core drives its own idle countdown based on system-level activity.
@@ -881,14 +871,15 @@ Popup {
                 // of the same signal) only knows about this dim phase once the emission is over
                 Qt.callLater(chargingScreenRoot._scheduleScreenOff);
             } else if (fromPowerMode === PowerModes.Idle
-                       && toPowerMode === PowerModes.Normal) {
-                // Woken during the dim phase (touch, motion, a button): stop a pending start, and an animation
-                // already running (the display stays on, so onDisplayOffChanged never fires for this wake). The
-                // non-wake cancel leaves the theme alone (a Matrix reset respawns every stream), so a theme's own
-                // effect (TV Static, Analog) is reset here.
+                       && toPowerMode !== PowerModes.Low_power) {
+                // Left the dim phase other than by the display switch-off: woken (touch, motion, a button: Normal),
+                // or straight to standby (Suspend). Stop a pending start, and an animation already running (the
+                // display stays on, so onDisplayOffChanged never fires for this wake). The non-wake cancel leaves the
+                // theme alone (a Matrix reset respawns every stream), so a theme's own effect (TV Static, Analog) is
+                // reset here.
                 dimPhaseDelayTimer.stop();
                 if (chargingScreenRoot.screenOffEffectActive && !chargingScreenRoot.displayOff) {
-                    console.info("[screen-off] woken during the animation: cancelled");
+                    console.info("[screen-off] left the dim phase during the animation: cancelled");
                     var themeEffect = chargingScreenRoot._useNative();
                     chargingScreenRoot.cancelScreenOffEffect(false);
                     if (themeEffect && themeLoader.item && themeLoader.item.cancelScreenOff) {
@@ -904,6 +895,14 @@ Popup {
     Timer {
         id: dimPhaseDelayTimer
         repeat: false
-        onTriggered: chargingScreenRoot.startScreenOffEffect()
+        // A start that outlived its dim phase (the core left Idle without the handlers above stopping this timer)
+        // must not play: the animation would end on a lit display that nothing switches off
+        onTriggered: {
+            if (ScreenOffSync.msSinceIdle() >= 0) {
+                chargingScreenRoot.startScreenOffEffect();
+            } else {
+                console.info("[screen-off] start skipped: no longer in the dim phase");
+            }
+        }
     }
 }
