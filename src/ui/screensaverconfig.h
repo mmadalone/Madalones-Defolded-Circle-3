@@ -137,6 +137,8 @@ public:
     SCRN_INT(glitchChaosSquareBurstSize, "charging/matrixGlitchChaosSquareBurstSize", 5)
     SCRN_BOOL(glitchChaosRipple,   "charging/matrixGlitchChaosRipple", true)
     SCRN_BOOL(glitchChaosWipe,     "charging/matrixGlitchChaosWipe",  false)
+    // Wipe speed in % of the default pace (one cell every 2 ticks); clamped to 50-600 by GlitchEngine
+    SCRN_INT(glitchChaosWipeSpeed, "charging/matrixGlitchChaosWipeSpeed", 100)
     SCRN_INT(glitchChaosIntensity, "charging/matrixGlitchChaosIntensity", 50)
     SCRN_INT(glitchChaosScatterRate, "charging/matrixGlitchChaosScatterRate", 50)
     SCRN_INT(glitchChaosScatterLength, "charging/matrixGlitchChaosScatterLength", 8)
@@ -179,6 +181,7 @@ public:
     SCRN_INT(tapSquareBurstSize,   "charging/matrixTapSquareBurstSize", 5)
     SCRN_BOOL(tapRipple,           "charging/matrixTapRipple",        true)
     SCRN_BOOL(tapWipe,             "charging/matrixTapWipe",          false)
+    SCRN_INT(tapWipeSpeed,         "charging/matrixTapWipeSpeed",     100)   // %, as glitchChaosWipeSpeed
     SCRN_BOOL(tapRandomize,        "charging/matrixTapRandomize",     false)
     SCRN_INT(tapRandomizeChance,   "charging/matrixTapRandomizeChance", 50)
 

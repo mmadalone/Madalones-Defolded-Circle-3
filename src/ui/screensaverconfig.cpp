@@ -200,6 +200,7 @@ void ScreensaverConfig::resetDefaults() {
     emit glitchChaosSquareBurstSizeChanged();
     emit glitchChaosRippleChanged();
     emit glitchChaosWipeChanged();
+    emit glitchChaosWipeSpeedChanged();
     emit glitchChaosIntensityChanged();
     emit glitchChaosScatterRateChanged();
     emit glitchChaosScatterLengthChanged();
@@ -238,6 +239,7 @@ void ScreensaverConfig::resetDefaults() {
     emit tapSquareBurstSizeChanged();
     emit tapRippleChanged();
     emit tapWipeChanged();
+    emit tapWipeSpeedChanged();
     emit tapRandomizeChanged();
     emit tapRandomizeChanceChanged();
 

@@ -217,6 +217,29 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Screen wipe"
             KeyNavigation.up: chaosRippleSwitch
+            KeyNavigation.down: ScreensaverConfig.glitchChaosWipe ? chaosWipeSpeedSlider : chaosScatterSwitch
+        }
+    }
+
+    Components.SettingRow {
+        visible: root.eventsShown && ScreensaverConfig.glitchChaosWipe
+        title: qsTr("Wipe speed")
+        value: ScreensaverConfig.glitchChaosWipeSpeed + "%"
+        help: qsTr("How fast the wipe crosses the screen. 100% is the normal speed.")
+        controlBelow: true
+        showDivider: false
+
+        Components.Slider {
+            id: chaosWipeSpeedSlider
+            objectName: "chaosWipeSpeedSlider"
+            height: 60
+            from: 50; to: 600; stepSize: 25; live: true; showLiveValue: false
+            value: ScreensaverConfig.glitchChaosWipeSpeed
+            onMoved: ScreensaverConfig.glitchChaosWipeSpeed = value
+            onUserInteractionEnded: ScreensaverConfig.glitchChaosWipeSpeed = value
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Wipe speed " + value + "%"
+            KeyNavigation.up: chaosWipeSwitch
             KeyNavigation.down: chaosScatterSwitch
         }
     }
@@ -234,7 +257,7 @@ ColumnLayout {
             trigger: function() { ScreensaverConfig.glitchChaosScatter = !ScreensaverConfig.glitchChaosScatter; }
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Scatter (burst)"
-            KeyNavigation.up: chaosWipeSwitch
+            KeyNavigation.up: ScreensaverConfig.glitchChaosWipe ? chaosWipeSpeedSlider : chaosWipeSwitch
             KeyNavigation.down: ScreensaverConfig.glitchChaosScatter ? chaosScatterRateSlider : root.navDownTarget
         }
     }

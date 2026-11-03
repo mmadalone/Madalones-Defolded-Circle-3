@@ -292,6 +292,7 @@ void LayerPipeline::syncLayerConfig(const RainSimulation &primarySim, int autoRo
             ls.setGlitchChaosSquareBurstSize(primarySim.glitchChaosSquareBurstSize());
             ls.setGlitchChaosRipple(primarySim.glitchChaosRipple());
             ls.setGlitchChaosWipe(primarySim.glitchChaosWipe());
+            ls.setGlitchChaosWipeSpeed(primarySim.glitchChaosWipeSpeed());
             ls.setGlitchChaosIntensity(primarySim.glitchChaosIntensity());
             ls.setGlitchChaosScatterRate(primarySim.glitchChaosScatterRate());
             ls.setGlitchChaosScatterLength(primarySim.glitchChaosScatterLength());
@@ -313,6 +314,7 @@ void LayerPipeline::syncLayerConfig(const RainSimulation &primarySim, int autoRo
             ls.setTapSpawnCount(primarySim.tapSpawnCount());
             ls.setTapSpawnLength(primarySim.tapSpawnLength());
             ls.setTapSquareBurstSize(primarySim.tapSquareBurstSize());
+            ls.setTapWipeSpeed(primarySim.tapWipeSpeed());
         } else {
             // Non-interactive layers: disable glitch, messages, subliminal
             ls.setGlitch(false);

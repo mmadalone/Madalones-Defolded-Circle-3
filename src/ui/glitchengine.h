@@ -31,6 +31,9 @@ struct GlitchTrail {
     int  length;        // trail length (short: 3-8 cells)
     int  framesLeft;    // countdown to expiry
     int  colorVariant;  // inherit from source stream
+    // Appended with defaults so positional initialisers of the first seven fields stay valid
+    int  pace{0};       // 0 = the shared Trail-speed clock; > 0 = a wipe's own speed in % (100 = 1 cell / 2 ticks)
+    int  paceAcc{0};    // progress towards the next cell, 0 .. GlitchEngine::WIPE_PACE_PER_CELL - 1
 };
 
 /// @brief Glitch and chaos effect engine for Matrix rain.
@@ -40,20 +43,31 @@ struct GlitchTrail {
 /// overrides. Pure C++ -- no Qt object system. Extracted from RainSimulation.
 class GlitchEngine {
  public:
+    // Screen wipe speed, in percent of the default pace (one cell every 2 ticks). A streak gains its pace each
+    // tick and moves one cell per WIPE_PACE_PER_CELL gained, so 600 % = 3 cells per tick: never more than the
+    // shortest streak (3 cells), so a fast streak leaves no gap between two frames (static_assert in the .cpp).
+    static constexpr int WIPE_SPEED_MIN     = 50;
+    static constexpr int WIPE_SPEED_MAX     = 600;
+    static constexpr int WIPE_SPEED_DEFAULT = 100;
+    static constexpr int WIPE_PACE_PER_CELL = 200;
+
     GlitchEngine() = default;
 
     /// @brief Advance chaos event timers and apply active chaos effects to streams.
     void advanceChaos(QVector<StreamState> &streams, SimContext &ctx,
                       int glyphCount, int colorVariants);
     /// @brief Advance direction-glitch overlay trails (move heads, decrement lifetimes, cull expired).
-    /// A head scrambles the glyph of the cell it enters, except a message or subliminal cell of @p msg
-    /// (the guard stream heads use), so a trail cannot garble a message. @p msg may be null (no guard).
+    /// A trail with pace 0 moves one cell when the shared Trail-speed clock fires; a wipe streak (pace > 0)
+    /// moves at its own pace, one cell at a time. A head scrambles the glyph of the cell it enters, except a
+    /// message or subliminal cell of @p msg (the guard stream heads use), so a trail cannot garble a message.
+    /// @p msg may be null (no guard).
     void advanceTrails(SimContext &ctx, int glyphCount, const MessageEngine *msg = nullptr);
     /// @brief Spawn a screen wipe: one streak per row (about a quarter skipped at random) that starts on the
     /// edge cell and sweeps across the whole grid. @p dir +1 = left edge to right edge, -1 = right to left.
     /// @p colorVariant >= 0 colours every streak alike; -1 picks a random colour per streak among @p colorVariants.
     /// When the trail list has no room for every streak, an evenly spaced subset of the rows is kept.
-    void spawnWipe(int dir, SimContext &ctx, int colorVariant, int colorVariants);
+    /// @p speedPct is the wipe speed in % (clamped to WIPE_SPEED_MIN..WIPE_SPEED_MAX), stored per streak at spawn.
+    void spawnWipe(int dir, SimContext &ctx, int colorVariant, int colorVariants, int speedPct);
     /// @brief Advance square pulse overlays (grow size, cull expired). Writes brightness to messageBright
     /// and glyphs to charGrid so perimeter cells render even without stream trails.
     void advancePulses(SimContext &ctx, QVector<int> &messageBright, int glyphCount);
@@ -98,6 +112,7 @@ class GlitchEngine {
     int     glitchChaosSquareBurstSize() const { return m_glitchChaosSquareBurstSize; }
     bool    glitchChaosRipple()          const { return m_glitchChaosRipple; }
     bool    glitchChaosWipe()            const { return m_glitchChaosWipe; }
+    int     glitchChaosWipeSpeed()       const { return m_glitchChaosWipeSpeed; }
     int     glitchChaosIntensity()    const { return m_glitchChaosIntensity; }
     int     glitchChaosScatterRate()   const { return m_glitchChaosScatterRate; }
     int     glitchChaosScatterLength() const { return m_glitchChaosScatterLength; }
@@ -138,6 +153,12 @@ class GlitchEngine {
     bool setGlitchChaosWipe(bool v)        { if (m_glitchChaosWipe == v) { return false; } m_glitchChaosWipe = v; return true; }
     bool setGlitchChaosSquareBurstSize(int v) {
         v = qBound(2, v, 10); if (m_glitchChaosSquareBurstSize == v) { return false; } m_glitchChaosSquareBurstSize = v; return true;
+    }
+    bool setGlitchChaosWipeSpeed(int v) {
+        v = qBound(WIPE_SPEED_MIN, v, WIPE_SPEED_MAX);
+        if (m_glitchChaosWipeSpeed == v) { return false; }
+        m_glitchChaosWipeSpeed = v;
+        return true;
     }
     bool setGlitchChaosIntensity(int v) {
         v = qBound(1, v, 100); if (m_glitchChaosIntensity == v) { return false; } m_glitchChaosIntensity = v; return true;
@@ -195,6 +216,7 @@ class GlitchEngine {
     int     m_glitchChaosSquareBurstSize{5};
     bool    m_glitchChaosRipple{true};
     bool    m_glitchChaosWipe{false};
+    int     m_glitchChaosWipeSpeed{WIPE_SPEED_DEFAULT};
     int     m_glitchChaosIntensity{50};
     int     m_glitchChaosScatterRate{50};
     int     m_glitchChaosScatterLength{8};

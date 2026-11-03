@@ -3172,7 +3172,8 @@ class MatrixRainTest : public QObject {
         QTest::addColumn<qreal>("density");
         QTest::addColumn<int>("trail");
         QTest::addColumn<bool>("colorLayers");
-        // 0 none, 1 glitch (app default), 2 glitch + chaos + messages + subliminal, 3 glitch + chaos wipes + tap wipes
+        // 0 none, 1 glitch (app default), 2 glitch + chaos + messages + subliminal, 3 glitch + chaos wipes + tap wipes,
+        // 4 the same with both Wipe speeds at 600 %, 5 at 50 %
         QTest::addColumn<int>("effects");
         QTest::addColumn<bool>("cascade");  // screen-off cascade (drain mode 1) from tick 150
         QTest::newRow("defaults") << QString("ascii") << 16 << 0.7 << 83 << false << 1 << false;
@@ -3184,6 +3185,10 @@ class MatrixRainTest : public QObject {
                                                          << false;
         // Full-screen wipes (long-lived overlays) in flight over the owner's settings
         QTest::newRow("owner + wipes in flight") << QString("katakana") << 30 << 2.1 << 180 << false << 3 << false;
+        QTest::newRow("owner + fast wipes in flight") << QString("katakana") << 30 << 2.1 << 180 << false << 4
+                                                    << false;
+        QTest::newRow("font 16 + slow wipes in flight") << QString("ascii") << 16 << 0.7 << 83 << false << 5
+                                                      << false;
     }
 
     void layerOcclusionEmitWithinCount() {
@@ -3203,7 +3208,7 @@ class MatrixRainTest : public QObject {
         RainSimulation primary;
         setupPrimary(primary, in, density, trail);
         if (effects >= 1) primary.setGlitch(true);
-        if (effects == 3) {
+        if (effects >= 3) {
             primary.setGlitchChaos(true);
             primary.setGlitchChaosFrequency(100);
             primary.setGlitchChaosSurge(false);
@@ -3212,6 +3217,10 @@ class MatrixRainTest : public QObject {
             primary.setGlitchChaosSquareBurst(false);
             primary.setGlitchChaosRipple(false);
             primary.setGlitchChaosWipe(true);
+            if (effects >= 4) {  // forwarded to the mid layer by syncLayerConfig every tick
+                primary.setGlitchChaosWipeSpeed(effects == 4 ? 600 : 50);
+                primary.setTapWipeSpeed(effects == 4 ? 600 : 50);
+            }
         }
         if (effects == 2) {
             primary.setGlitchChaos(true);
@@ -3239,7 +3248,7 @@ class MatrixRainTest : public QObject {
                 pipe.applyDrainSpeedMultiplier(3.0f);
                 pipe.applyDrainMode(1);
             }
-            if (effects == 3 && t % 20 == 0) {  // a tap wipe from alternating sides on top of the chaos wipes
+            if (effects >= 3 && t % 20 == 0) {  // a tap wipe from alternating sides on top of the chaos wipes
                 RainSimulation &mid = pipe.midSim();
                 mid.tapWipe((t / 20) % 2 ? 1 : mid.gridCols() - 2, mid.gridRows() / 2, pipe.midAtlas().colorVariants());
             }
@@ -4401,6 +4410,301 @@ class MatrixRainTest : public QObject {
                                     "rotating %5, direction %6").arg(rotating).arg(wasActive)
                                 .arg(item.m_interactiveOverride).arg(item.m_sim.gravityMode())
                                 .arg(item.m_gravity.isAutoRotating()).arg(item.m_sim.direction())));
+    }
+
+    // ─────────────────────────────────────────
+    // Wipe speed (2026-11-03): the Tap and the Chaos "Screen wipe" have their own speed, 50-600 % of one cell every
+    // 2 ticks, instead of the shared Trail-speed clock (Direction glitches). A streak keeps the pace it spawned with.
+    // ─────────────────────────────────────────
+
+    static int ceilDivInt(int a, int b) { return (a + b - 1) / b; }
+
+    // The wipe streak of row `row`, looked up again every tick: swap-removes reorder the trail list
+    static const GlitchTrail *wipeStreakOfRow(const QVector<GlitchTrail> &trails, int row) {
+        for (const GlitchTrail &gt : trails)
+            if (gt.row == row && gt.pace > 0) return &gt;
+        return nullptr;
+    }
+
+    void wipeDefaultSpeedMovesWithSharedClock_data() {
+        QTest::addColumn<int>("phase");
+        QTest::newRow("shared clock at 0") << 0;
+        QTest::newRow("shared clock at 1") << 1;
+    }
+
+    void wipeDefaultSpeedMovesWithSharedClock() {
+        // At 100 % and the default Trail speed (50: the shared clock moves trails every 2 ticks) a wipe streak moves
+        // on the same ticks as a shared-clock trail, whatever the clock's phase at the tap, and lives
+        // (cols + length) * 2 + 2 ticks: exactly what it did before it had its own speed.
+        QFETCH(int, phase);
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int cols = sim.gridCols();
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        sim.m_glitch.m_dirTrailTickCounter = phase;
+        QCOMPARE(sim.tapWipeSpeed(), GlitchEngine::WIPE_SPEED_DEFAULT);
+        QCOMPARE(sim.m_glitch.glitchDirSpeed(), 50);
+        sim.tapWipe(2, sim.gridRows() / 2, atlas.colorVariants());
+        QVERIFY(!trails.isEmpty());
+        const int row = trails.first().row, length = trails.first().length, life = trails.first().framesLeft;
+        // A shared-clock trail from the same column, off the grid: it scrambles nothing and draws no random numbers
+        trails.append(GlitchTrail{0, -100, 1, 0, 3, 100000, 0});
+        int ticks = 0, offClock = 0, firstOff = -1;
+        while (const GlitchTrail *w = wipeStreakOfRow(trails, row)) {
+            int refCol = -1000;
+            for (const GlitchTrail &gt : trails)
+                if (gt.row == -100) refCol = gt.col;
+            if (refCol != w->col && offClock++ == 0) firstOff = ticks;
+            if (ticks > life + 2) break;
+            advanceTrailsOnly(sim, atlas.glyphCount());
+            ++ticks;
+        }
+        QVERIFY2(life == (cols + length) * 2 + 2 && offClock == 0 && ticks == life,
+                 qPrintable(QString("clock phase %1: lifetime %2 (before: %3), alive %4 ticks, %5 ticks off the shared "
+                                    "clock (first at %6)").arg(phase).arg(life).arg((cols + length) * 2 + 2).arg(ticks)
+                                .arg(offClock).arg(firstOff)));
+    }
+
+    void wipeSpeedCrossesScreen_data() {
+        QTest::addColumn<int>("speed");
+        QTest::addColumn<bool>("tapLeft");
+        QTest::newRow("50 %, tap left") << 50 << true;
+        QTest::newRow("100 %, tap right") << 100 << false;
+        QTest::newRow("300 %, tap left") << 300 << true;
+        QTest::newRow("600 %, tap left") << 600 << true;
+        QTest::newRow("600 %, tap right") << 600 << false;
+    }
+
+    void wipeSpeedCrossesScreen() {
+        // At every Wipe speed a streak keeps its pace, moves at most ceil(speed / 200) cells per tick (never more than
+        // the shortest streak, 3), enters every cell of its row one at a time (each gets a new glyph), lives
+        // ceil((cols + length) * 200 / speed) + ceil(200 / speed) ticks and is gone only after its tail has passed
+        // the far edge.
+        QFETCH(int, speed);
+        QFETCH(bool, tapLeft);
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        sim.m_glitch.m_dirTrailTickCounter = 0;
+        sim.setTapWipeSpeed(speed);
+        QCOMPARE(sim.tapWipeSpeed(), speed);
+        const int dir = tapLeft ? 1 : -1, startCol = tapLeft ? 0 : cols - 1;
+        sim.tapWipe(tapLeft ? 2 : cols - 3, rows / 2, atlas.colorVariants());
+        constexpr int kUnwritten = -7;  // no glyph index is negative
+        sim.m_charGrid.fill(kUnwritten);
+        QMap<int, int> lastCol, lengthOfRow, farthest;
+        int wrongPace = 0, wrongLife = 0, maxLife = 0;
+        for (const GlitchTrail &gt : trails) {
+            if (gt.pace != speed) ++wrongPace;
+            if (gt.framesLeft != ceilDivInt((cols + gt.length) * 200, speed) + ceilDivInt(200, speed)) ++wrongLife;
+            lastCol[gt.row] = gt.col;
+            lengthOfRow[gt.row] = gt.length;
+            farthest[gt.row] = gt.col;
+            maxLife = qMax(maxLife, gt.framesLeft);
+        }
+        int ticks = 0, maxStep = 0, backwards = 0;
+        while (!trails.isEmpty() && ticks <= maxLife + 2) {
+            advanceTrailsOnly(sim, atlas.glyphCount());
+            ++ticks;
+            for (const GlitchTrail &gt : trails) {
+                const int step = (gt.col - lastCol[gt.row]) * dir;
+                if (step < 0) ++backwards;
+                maxStep = qMax(maxStep, step);
+                lastCol[gt.row] = gt.col;
+                farthest[gt.row] = tapLeft ? qMax(farthest[gt.row], gt.col) : qMin(farthest[gt.row], gt.col);
+            }
+        }
+        int notAcross = 0, unwritten = 0;
+        for (auto it = farthest.cbegin(); it != farthest.cend(); ++it) {
+            const int tail = it.value() - dir * (lengthOfRow.value(it.key()) - 1);
+            if (tapLeft ? tail < cols - 1 : tail > 0) ++notAcross;
+            for (int c = 0; c < cols; ++c)  // the head starts on the edge cell, so that one is never entered
+                if (c != startCol && sim.m_charGrid[c * rows + it.key()] == kUnwritten) ++unwritten;
+        }
+        const int expectedStep = qMax(1, ceilDivInt(speed, 200));
+        QVERIFY2(!farthest.isEmpty() && wrongPace == 0 && wrongLife == 0 && backwards == 0 && maxStep == expectedStep
+                     && maxStep <= 3 && notAcross == 0 && unwritten == 0 && trails.isEmpty(),
+                 qPrintable(QString("%1%: %2 streaks, %3 with another pace, %4 with another lifetime, at most %5 cells "
+                                    "per tick (expected %6), %7 steps backwards, %8 did not cross, %9 cells never "
+                                    "entered, %10 left after %11 ticks")
+                                .arg(speed).arg(farthest.size()).arg(wrongPace).arg(wrongLife).arg(maxStep)
+                                .arg(expectedStep).arg(backwards).arg(notAcross).arg(unwritten).arg(trails.size())
+                                .arg(ticks)));
+    }
+
+    void wipeSkipsMessageCellsAtFullSpeed() {
+        // At 600 % (3 cells per tick) a streak still steps one cell at a time, so it skips every message and
+        // subliminal cell it crosses, also the ones in the middle of a tick's move, and scrambles the others.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        const int cols = sim.gridCols(), rows = sim.gridRows();
+        QVERIFY(cols >= 12);
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        const int row = rows / 2, pace = GlitchEngine::WIPE_SPEED_MAX;
+        trails.append(GlitchTrail{0, row, 1, 0, 4, ceilDivInt((cols + 4) * 200, pace) + 1, 0, pace, 0});
+        // From column 0 at 3 cells per tick the head lands on 3, 6, 9...: columns 4 and 5 are crossed mid-move
+        QVector<int> guarded;
+        for (int c : {4, 5, cols / 2 + 1}) {
+            const int idx = c * rows + row;
+            sim.m_message.m_messageBright[idx] = 5;
+            sim.m_charGrid[idx] = 7;
+            guarded.append(idx);
+        }
+        const int subIdx = (cols - 2) * rows + row;
+        sim.m_message.m_subliminalSet.insert(subIdx);
+        sim.m_charGrid[subIdx] = 9;
+        const QVector<int> before = sim.m_charGrid;
+        for (int t = 0; t < 200 && !trails.isEmpty(); ++t) advanceTrailsOnly(sim, atlas.glyphCount());
+        int guardedChanged = 0, changed = 0;
+        for (int idx : guarded)
+            if (sim.m_charGrid[idx] != 7) ++guardedChanged;
+        for (int c = 1; c < cols; ++c) {
+            const int idx = c * rows + row;
+            if (!guarded.contains(idx) && idx != subIdx && sim.m_charGrid[idx] != before[idx]) ++changed;
+        }
+        QVERIFY2(guardedChanged == 0 && sim.m_charGrid[subIdx] == 9 && changed > cols / 2 && trails.isEmpty(),
+                 qPrintable(QString("%1 of 3 message cells changed, subliminal cell %2 (was 9), %3 of %4 other cells "
+                                    "scrambled, %5 trails left").arg(guardedChanged).arg(sim.m_charGrid[subIdx])
+                                .arg(changed).arg(cols - 5).arg(trails.size())));
+    }
+
+    void wipeSpeedChangeKeepsStreaksInFlight() {
+        // A new Wipe speed applies from the next wipe: the streaks already crossing keep the pace they spawned with,
+        // so none is stranded mid-screen or lingers off it.
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        sim.tapWipe(2, sim.gridRows() / 2, atlas.colorVariants());  // at the default 100 %
+        const int firstWipe = trails.size();
+        for (int t = 0; t < 5; ++t) advanceTrailsOnly(sim, atlas.glyphCount());
+        const bool changedSetting = sim.setTapWipeSpeed(600);
+        sim.tapWipe(sim.gridCols() - 3, sim.gridRows() / 2, atlas.colorVariants());
+        int atDefault = 0, atNew = 0, other = 0;
+        for (const GlitchTrail &gt : trails) {
+            if (gt.pace == GlitchEngine::WIPE_SPEED_DEFAULT) ++atDefault;
+            else if (gt.pace == 600) ++atNew;
+            else ++other;
+        }
+        QVERIFY2(changedSetting && firstWipe > 0 && atDefault == firstWipe && atNew > 0 && other == 0,
+                 qPrintable(QString("first wipe %1 streaks; after the change %2 at 100 %, %3 at 600 %, %4 other")
+                                .arg(firstWipe).arg(atDefault).arg(atNew).arg(other)));
+    }
+
+    void wipeSpeedWithoutWipeKeepsRandomSequence() {
+        // The Wipe speed settings change nothing while no wipe is in flight: two simulations seeded alike, with
+        // direction glitches, one at 50 % and one at 600 %, stay identical (glyphs and trails) over 300 ticks.
+        RainSimulation a, b;
+        GlyphAtlas atlasA, atlasB;
+        setupLayerSim(a, atlasA, 1, 16, 1.0, "down", 850);
+        setupLayerSim(b, atlasB, 1, 16, 1.0, "down", 850);
+        for (RainSimulation *s : {&a, &b}) {
+            s->setGlitch(true);
+            s->setGlitchDirection(true);
+            s->setGlitchDirRate(100);
+            s->setGlitchChaos(false);
+        }
+        a.setTapWipeSpeed(50);
+        a.setGlitchChaosWipeSpeed(50);
+        b.setTapWipeSpeed(600);
+        b.setGlitchChaosWipeSpeed(600);
+        int mostTrails = 0;
+        for (int t = 0; t < 300; ++t) {
+            a.advanceSimulation(atlasA);
+            b.advanceSimulation(atlasB);
+            mostTrails = qMax(mostTrails, a.m_glitch.m_glitchTrails.size());
+        }
+        const auto &ta = a.m_glitch.m_glitchTrails, &tb = b.m_glitch.m_glitchTrails;
+        bool sameTrails = ta.size() == tb.size();
+        for (int i = 0; sameTrails && i < ta.size(); ++i) {
+            sameTrails = ta[i].col == tb[i].col && ta[i].row == tb[i].row && ta[i].dx == tb[i].dx && ta[i].dy == tb[i].dy
+                         && ta[i].length == tb[i].length && ta[i].framesLeft == tb[i].framesLeft
+                         && ta[i].colorVariant == tb[i].colorVariant && ta[i].pace == 0 && tb[i].pace == 0;
+        }
+        QVERIFY2(mostTrails > 0 && a.m_charGrid == b.m_charGrid && sameTrails,
+                 qPrintable(QString("up to %1 direction-glitch trails; glyphs equal %2, trails equal %3 (%4 / %5)")
+                                .arg(mostTrails).arg(a.m_charGrid == b.m_charGrid).arg(sameTrails).arg(ta.size())
+                                .arg(tb.size())));
+    }
+
+    void wipeSpeedPlumbing() {
+        // The settings clamp to 50-600 %; MatrixRainItem forwards them to its simulation with one change signal per
+        // change; syncLayerConfig forwards both to the mid layer, where the wipes run with Rain layers on; and a
+        // layered tap wipe there uses mid's value.
+        RainSimulation s;
+        s.setTapWipeSpeed(10);
+        const int tapLow = s.tapWipeSpeed();
+        s.setTapWipeSpeed(9999);
+        const int tapHigh = s.tapWipeSpeed();
+        s.setGlitchChaosWipeSpeed(0);
+        const int chaosLow = s.glitchChaosWipeSpeed();
+        s.setGlitchChaosWipeSpeed(700);
+        const int chaosHigh = s.glitchChaosWipeSpeed();
+
+        MatrixRainItem item;
+        QSignalSpy tapSpy(&item, &MatrixRainItem::tapWipeSpeedChanged);
+        QSignalSpy chaosSpy(&item, &MatrixRainItem::glitchChaosWipeSpeedChanged);
+        item.setTapWipeSpeed(250);
+        item.setTapWipeSpeed(250);  // unchanged: no second signal
+        item.setGlitchChaosWipeSpeed(175);
+
+        const AtlasInputs in = pipelineInputs(QStringLiteral("ascii"), 16, false);
+        RainSimulation primary;
+        setupPrimary(primary, in, 0.7, 83);
+        primary.setTapWipeSpeed(350);
+        primary.setGlitchChaosWipeSpeed(150);
+        LayerPipeline pipe;
+        setupPipeline(pipe, primary, in);
+        RainSimulation &mid = pipe.midSim();
+        mid.m_glitch.m_glitchTrails.clear();
+        mid.tapWipe(1, mid.gridRows() / 2, pipe.midAtlas().colorVariants());
+        int wrongPace = 0;
+        for (const GlitchTrail &gt : mid.m_glitch.m_glitchTrails)
+            if (gt.pace != 350) ++wrongPace;
+        QVERIFY2(tapLow == 50 && tapHigh == 600 && chaosLow == 50 && chaosHigh == 600 && item.tapWipeSpeed() == 250
+                     && tapSpy.count() == 1 && item.glitchChaosWipeSpeed() == 175 && chaosSpy.count() == 1
+                     && mid.tapWipeSpeed() == 350 && mid.glitchChaosWipeSpeed() == 150
+                     && !mid.m_glitch.m_glitchTrails.isEmpty() && wrongPace == 0,
+                 qPrintable(QString("clamps tap %1..%2 chaos %3..%4; item %5 (%6 signals) / %7 (%8 signals); mid %9 / "
+                                    "%10; layered tap wipe: %11 streaks, %12 at another pace")
+                                .arg(tapLow).arg(tapHigh).arg(chaosLow).arg(chaosHigh).arg(item.tapWipeSpeed())
+                                .arg(tapSpy.count()).arg(item.glitchChaosWipeSpeed()).arg(chaosSpy.count())
+                                .arg(mid.tapWipeSpeed()).arg(mid.glitchChaosWipeSpeed())
+                                .arg(mid.m_glitch.m_glitchTrails.size()).arg(wrongPace)));
+    }
+
+    void chaosWipeUsesChaosWipeSpeed() {
+        // A Chaos "Screen wipe" moves at the Chaos Wipe speed, not the tap one
+        RainSimulation sim;
+        GlyphAtlas atlas;
+        setupLayerSim(sim, atlas, 1, 30, 0.7, "down", 850);
+        sim.setGlitch(true);
+        sim.setGlitchChaos(true);
+        sim.setGlitchChaosSurge(false);
+        sim.setGlitchChaosScramble(false);
+        sim.setGlitchChaosFreeze(false);
+        sim.setGlitchChaosSquareBurst(false);
+        sim.setGlitchChaosRipple(false);
+        sim.setGlitchChaosWipe(true);
+        sim.setGlitchChaosWipeSpeed(450);
+        sim.setTapWipeSpeed(150);
+        auto &trails = sim.m_glitch.m_glitchTrails;
+        trails.clear();
+        SimContext ctx(sim.m_charGrid, sim.gridCols(), sim.gridRows(), sim.m_rng);
+        sim.m_glitch.triggerChaosEvent(sim.m_streams, ctx, atlas.glyphCount(), atlas.colorVariants());
+        int wrongPace = 0;
+        for (const GlitchTrail &gt : trails)
+            if (gt.pace != 450) ++wrongPace;
+        QVERIFY2(!trails.isEmpty() && wrongPace == 0,
+                 qPrintable(QString("%1 chaos wipe streaks, %2 not at 450 %").arg(trails.size()).arg(wrongPace)));
     }
 };
 

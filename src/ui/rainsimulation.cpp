@@ -638,7 +638,7 @@ void RainSimulation::tapWipe(int col, int row, int colorVariants) {
     int tapCV = (m_depthVariantBase > 0) ? m_depthVariantBase
               : (colorVariants > 1) ? randomInt(colorVariants) : 0;
     SimContext ctx(m_charGrid, m_gridCols, m_gridRows, m_rng);
-    m_glitch.spawnWipe(dir, ctx, tapCV, colorVariants);
+    m_glitch.spawnWipe(dir, ctx, tapCV, colorVariants, m_tapWipeSpeed);
 }
 
 void RainSimulation::tapFlash(int col, int row, int radius) {

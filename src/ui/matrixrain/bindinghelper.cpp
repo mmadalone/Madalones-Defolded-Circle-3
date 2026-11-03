@@ -108,6 +108,7 @@ void BindingHelper::bindChaos(MatrixRainItem* item, uc::ScreensaverConfig* sc) {
     item->setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize());
     item->setGlitchChaosRipple(sc->glitchChaosRipple());
     item->setGlitchChaosWipe(sc->glitchChaosWipe());
+    item->setGlitchChaosWipeSpeed(sc->glitchChaosWipeSpeed());
     item->setGlitchChaosIntensity(sc->glitchChaosIntensity());
     item->setGlitchChaosScatterRate(sc->glitchChaosScatterRate());
     item->setGlitchChaosScatterLength(sc->glitchChaosScatterLength());
@@ -123,6 +124,7 @@ void BindingHelper::bindChaos(MatrixRainItem* item, uc::ScreensaverConfig* sc) {
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosSquareBurstSizeChanged, item, [item, sc]() { item->setGlitchChaosSquareBurstSize(sc->glitchChaosSquareBurstSize()); });
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosRippleChanged,          item, [item, sc]() { item->setGlitchChaosRipple(sc->glitchChaosRipple()); });
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosWipeChanged,            item, [item, sc]() { item->setGlitchChaosWipe(sc->glitchChaosWipe()); });
+    QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosWipeSpeedChanged,       item, [item, sc]() { item->setGlitchChaosWipeSpeed(sc->glitchChaosWipeSpeed()); });
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosIntensityChanged,       item, [item, sc]() { item->setGlitchChaosIntensity(sc->glitchChaosIntensity()); });
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosScatterRateChanged,     item, [item, sc]() { item->setGlitchChaosScatterRate(sc->glitchChaosScatterRate()); });
     QObject::connect(sc, &uc::ScreensaverConfig::glitchChaosScatterLengthChanged,   item, [item, sc]() { item->setGlitchChaosScatterLength(sc->glitchChaosScatterLength()); });
@@ -135,6 +137,7 @@ void BindingHelper::bindTap(MatrixRainItem* item, uc::ScreensaverConfig* sc) {
     item->setTapSpawnCount(sc->tapSpawnCount());
     item->setTapSpawnLength(sc->tapSpawnLength());
     item->setTapSquareBurstSize(sc->tapSquareBurstSize());
+    item->setTapWipeSpeed(sc->tapWipeSpeed());
 
     // Live binding
     QObject::connect(sc, &uc::ScreensaverConfig::tapBurstCountChanged,      item, [item, sc]() { item->setTapBurstCount(sc->tapBurstCount()); });
@@ -142,6 +145,7 @@ void BindingHelper::bindTap(MatrixRainItem* item, uc::ScreensaverConfig* sc) {
     QObject::connect(sc, &uc::ScreensaverConfig::tapSpawnCountChanged,      item, [item, sc]() { item->setTapSpawnCount(sc->tapSpawnCount()); });
     QObject::connect(sc, &uc::ScreensaverConfig::tapSpawnLengthChanged,     item, [item, sc]() { item->setTapSpawnLength(sc->tapSpawnLength()); });
     QObject::connect(sc, &uc::ScreensaverConfig::tapSquareBurstSizeChanged, item, [item, sc]() { item->setTapSquareBurstSize(sc->tapSquareBurstSize()); });
+    QObject::connect(sc, &uc::ScreensaverConfig::tapWipeSpeedChanged,       item, [item, sc]() { item->setTapWipeSpeed(sc->tapWipeSpeed()); });
 }
 
 void BindingHelper::bindMessages(MatrixRainItem* item, uc::ScreensaverConfig* sc) {

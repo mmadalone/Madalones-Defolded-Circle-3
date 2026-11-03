@@ -59,6 +59,7 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(int glitchChaosSquareBurstSize READ glitchChaosSquareBurstSize WRITE setGlitchChaosSquareBurstSize NOTIFY glitchChaosSquareBurstSizeChanged)
     Q_PROPERTY(bool glitchChaosRipple READ glitchChaosRipple WRITE setGlitchChaosRipple NOTIFY glitchChaosRippleChanged)
     Q_PROPERTY(bool glitchChaosWipe READ glitchChaosWipe WRITE setGlitchChaosWipe NOTIFY glitchChaosWipeChanged)
+    Q_PROPERTY(int glitchChaosWipeSpeed READ glitchChaosWipeSpeed WRITE setGlitchChaosWipeSpeed NOTIFY glitchChaosWipeSpeedChanged)
     Q_PROPERTY(int glitchChaosIntensity READ glitchChaosIntensity WRITE setGlitchChaosIntensity NOTIFY glitchChaosIntensityChanged)
     Q_PROPERTY(int glitchChaosScatterRate READ glitchChaosScatterRate WRITE setGlitchChaosScatterRate NOTIFY glitchChaosScatterRateChanged)
     Q_PROPERTY(int glitchChaosScatterLength READ glitchChaosScatterLength WRITE setGlitchChaosScatterLength NOTIFY glitchChaosScatterLengthChanged)
@@ -96,6 +97,7 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(int tapSquareBurstSize READ tapSquareBurstSize WRITE setTapSquareBurstSize NOTIFY tapSquareBurstSizeChanged)
     Q_PROPERTY(bool tapRipple READ tapRipple WRITE setTapRipple NOTIFY tapRippleChanged)
     Q_PROPERTY(bool tapWipe READ tapWipe WRITE setTapWipe NOTIFY tapWipeChanged)
+    Q_PROPERTY(int tapWipeSpeed READ tapWipeSpeed WRITE setTapWipeSpeed NOTIFY tapWipeSpeedChanged)
     Q_PROPERTY(bool tapRandomize READ tapRandomize WRITE setTapRandomize NOTIFY tapRandomizeChanged)
     Q_PROPERTY(int tapRandomizeChance READ tapRandomizeChance WRITE setTapRandomizeChance NOTIFY tapRandomizeChanceChanged)
     Q_PROPERTY(bool tapToClose READ tapToClose WRITE setTapToClose NOTIFY tapToCloseChanged)
@@ -243,6 +245,8 @@ class MockScreensaverConfig : public QObject {
     void setGlitchChaosRipple(bool v) { if (m_glitchChaosRipple == v) return; m_glitchChaosRipple = v; emit glitchChaosRippleChanged(); }
     bool glitchChaosWipe() const { return m_glitchChaosWipe; }
     void setGlitchChaosWipe(bool v) { if (m_glitchChaosWipe == v) return; m_glitchChaosWipe = v; emit glitchChaosWipeChanged(); }
+    int glitchChaosWipeSpeed() const { return m_glitchChaosWipeSpeed; }
+    void setGlitchChaosWipeSpeed(int v) { if (m_glitchChaosWipeSpeed == v) return; m_glitchChaosWipeSpeed = v; emit glitchChaosWipeSpeedChanged(); }
     int glitchChaosIntensity() const { return m_glitchChaosIntensity; }
     void setGlitchChaosIntensity(int v) { if (m_glitchChaosIntensity == v) return; m_glitchChaosIntensity = v; emit glitchChaosIntensityChanged(); }
     int glitchChaosScatterRate() const { return m_glitchChaosScatterRate; }
@@ -315,6 +319,8 @@ class MockScreensaverConfig : public QObject {
     void setTapRipple(bool v) { if (m_tapRipple == v) return; m_tapRipple = v; emit tapRippleChanged(); }
     bool tapWipe() const { return m_tapWipe; }
     void setTapWipe(bool v) { if (m_tapWipe == v) return; m_tapWipe = v; emit tapWipeChanged(); }
+    int tapWipeSpeed() const { return m_tapWipeSpeed; }
+    void setTapWipeSpeed(int v) { if (m_tapWipeSpeed == v) return; m_tapWipeSpeed = v; emit tapWipeSpeedChanged(); }
     bool tapRandomize() const { return m_tapRandomize; }
     void setTapRandomize(bool v) { if (m_tapRandomize == v) return; m_tapRandomize = v; emit tapRandomizeChanged(); }
     int tapRandomizeChance() const { return m_tapRandomizeChance; }
@@ -454,6 +460,7 @@ class MockScreensaverConfig : public QObject {
         setGlitchChaosSquareBurstSize(5);
         setGlitchChaosRipple(true);
         setGlitchChaosWipe(false);
+        setGlitchChaosWipeSpeed(100);
         setGlitchChaosIntensity(50);
         setGlitchChaosScatterRate(50);
         setGlitchChaosScatterLength(8);
@@ -490,6 +497,7 @@ class MockScreensaverConfig : public QObject {
         setTapSquareBurstSize(5);
         setTapRipple(true);
         setTapWipe(false);
+        setTapWipeSpeed(100);
         setTapRandomize(false);
         setTapRandomizeChance(50);
         setTapToClose(true);
@@ -582,6 +590,7 @@ class MockScreensaverConfig : public QObject {
     void glitchChaosSquareBurstSizeChanged();
     void glitchChaosRippleChanged();
     void glitchChaosWipeChanged();
+    void glitchChaosWipeSpeedChanged();
     void glitchChaosIntensityChanged();
     void glitchChaosScatterRateChanged();
     void glitchChaosScatterLengthChanged();
@@ -618,6 +627,7 @@ class MockScreensaverConfig : public QObject {
     void tapSquareBurstSizeChanged();
     void tapRippleChanged();
     void tapWipeChanged();
+    void tapWipeSpeedChanged();
     void tapRandomizeChanged();
     void tapRandomizeChanceChanged();
     void tapToCloseChanged();
@@ -715,6 +725,7 @@ class MockScreensaverConfig : public QObject {
     int m_glitchChaosSquareBurstSize{5};
     bool m_glitchChaosRipple{true};
     bool m_glitchChaosWipe{false};
+    int m_glitchChaosWipeSpeed{100};
     int m_glitchChaosIntensity{50};
     int m_glitchChaosScatterRate{50};
     int m_glitchChaosScatterLength{8};
@@ -751,6 +762,7 @@ class MockScreensaverConfig : public QObject {
     int m_tapSquareBurstSize{5};
     bool m_tapRipple{true};
     bool m_tapWipe{false};
+    int m_tapWipeSpeed{100};
     bool m_tapRandomize{false};
     int m_tapRandomizeChance{50};
     bool m_tapToClose{true};

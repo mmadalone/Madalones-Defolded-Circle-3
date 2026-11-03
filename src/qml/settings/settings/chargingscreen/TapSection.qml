@@ -309,6 +309,29 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Screen wipe"
             KeyNavigation.up: tapRippleSwitch
+            KeyNavigation.down: ScreensaverConfig.tapWipe ? tapWipeSpeedSlider : tapRandomizeSwitch
+        }
+    }
+
+    Components.SettingRow {
+        visible: ScreensaverConfig.tapEnabled && ScreensaverConfig.tapWipe
+        title: qsTr("Wipe speed")
+        value: ScreensaverConfig.tapWipeSpeed + "%"
+        help: qsTr("How fast the wipe crosses the screen. 100% is the normal speed.")
+        controlBelow: true
+        showDivider: false
+
+        Components.Slider {
+            id: tapWipeSpeedSlider
+            objectName: "tapWipeSpeedSlider"
+            height: 60
+            from: 50; to: 600; stepSize: 25; live: true; showLiveValue: false
+            value: ScreensaverConfig.tapWipeSpeed
+            onMoved: ScreensaverConfig.tapWipeSpeed = value
+            onUserInteractionEnded: ScreensaverConfig.tapWipeSpeed = value
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Wipe speed " + value + "%"
+            KeyNavigation.up: tapWipeSwitch
             KeyNavigation.down: tapRandomizeSwitch
         }
     }
@@ -327,7 +350,7 @@ ColumnLayout {
             trigger: function() { ScreensaverConfig.tapRandomize = !ScreensaverConfig.tapRandomize; }
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Randomize"
-            KeyNavigation.up: tapWipeSwitch
+            KeyNavigation.up: ScreensaverConfig.tapWipe ? tapWipeSpeedSlider : tapWipeSwitch
             KeyNavigation.down: ScreensaverConfig.tapRandomize ? tapRandomizeChanceSlider : root.navDownTarget
         }
     }
