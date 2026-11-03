@@ -917,16 +917,26 @@
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="226"/>
+        <source>Wipe speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="228"/>
+        <source>How fast the wipe crosses the screen. 100% is the normal speed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="249"/>
         <source>Scatter (burst)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="244"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="267"/>
         <source>Scatter frequency</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="265"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/ChaosSection.qml" line="288"/>
         <source>Scatter trail length</source>
         <translation type="unfinished"></translation>
     </message>
@@ -3507,7 +3517,7 @@ Climate fan</extracomment>
         <location filename="../../src/qml/settings/settings/Power.qml" line="251"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="319"/>
         <location filename="../../src/qml/settings/settings/Power.qml" line="320"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="427"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="464"/>
         <source>%1 seconds</source>
         <translation>%1 seconds</translation>
     </message>
@@ -3590,59 +3600,70 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="391"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="393"/>
         <source>Fade</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="392"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="394"/>
         <source>Flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="393"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="395"/>
         <source>Iris</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="394"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="396"/>
         <source>Wipe</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="395"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="397"/>
         <source>Wave</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="396"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="398"/>
         <source>Genie</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="397"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="399"/>
         <source>Pixels</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="398"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="400"/>
         <source>Dissolve</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="399"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="401"/>
         <source>Theme</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="414"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="417"/>
+        <source>Animation length</source>
+        <extracomment>How long the screen-off animation plays, in milliseconds</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="419"/>
+        <source>How long the animation plays. It is shortened when the display turns off sooner.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="451"/>
         <source>Sleep timeout</source>
         <extracomment>How much time the remote will enter sleep mode after</extracomment>
         <translation>Sleep timeout</translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/Power.qml" line="182"/>
-        <location filename="../../src/qml/settings/settings/Power.qml" line="428"/>
+        <location filename="../../src/qml/settings/settings/Power.qml" line="465"/>
         <source>%1 minutes</source>
         <translation>%1 minutes</translation>
     </message>
@@ -4786,17 +4807,27 @@ the Web Configurator</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="319"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="318"/>
+        <source>Wipe speed</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="320"/>
+        <source>How fast the wipe crosses the screen. 100% is the normal speed.</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="342"/>
         <source>Randomize</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="337"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="360"/>
         <source>Chance</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="339"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TapSection.qml" line="362"/>
         <source>How likely each effect is to play on a tap.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5957,7 +5988,7 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="1112"/>
+        <location filename="../../src/qml/main.qml" line="1098"/>
         <source>Done</source>
         <translation>Done</translation>
     </message>
