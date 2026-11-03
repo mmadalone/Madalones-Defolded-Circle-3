@@ -17,7 +17,8 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 - **Wipe speed for the Screen wipe.** Tap effects and Chaos events each have a "Wipe speed" slider under their
   "Screen wipe" switch, shown while the switch is on: from 50% (half the speed) to 600% (six times as fast);
-  100% is the speed the wipe had. It still follows the rain's Speed setting, like the other glitch effects.
+  100% is the speed it had at the default Trail speed (50). It still follows the rain's Speed setting, like the other
+  glitch effects.
 - **Animation length for the screen-off animations.** Power Saving → Screen off animations has an "Animation
   length" slider for all the drawn styles, from 300 ms to 4500 ms (800 ms, as before, until you move it). It is
   hidden for "Theme": TV Static and Analog keep their own timing. When the display turns off sooner than the
@@ -48,7 +49,9 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
   off: sometimes the screen stayed black but lit for a second or two after the animation, sometimes the switch-off cut
   the animation short (a Wipe stopped halfway). Now the animation ends just before the remote's own switch-off, and
   the remote switches the screen off the moment it has ended, up to about a second earlier than it would have. Waking
-  the remote during the animation now stops it; before, the screensaver could freeze on a black screen.
+  the remote during the animation now stops it; before, the screensaver could freeze on a black screen. A charger
+  change during the animation (a dock change, a Qi pad flickering) no longer stops it, since the remote's own
+  countdown keeps running; before, TV Static and Analog could stay black on a lit screen.
   - With the "Theme" style on a theme that has no animation of its own (Matrix, Starfield, Minimal) nothing is drawn
     and the screen goes off at its usual time, as before.
 - **The rain no longer starts rotating after a wake.** A d-pad direction (and the direction "Remember direction"
@@ -86,12 +89,19 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 - Wipe speed: `charging/matrixTapWipeSpeed` and `charging/matrixGlitchChaosWipeSpeed` (%, default 100 = one cell
   every 2 ticks, clamped to 50–600 by `GlitchEngine`). A wipe streak (`GlitchTrail::pace`) moves at the pace it
   was spawned with, one cell at a time and at most 3 cells per tick (the shortest streak, a `static_assert`); at
-  100 % its first move lines up with the shared Trail-speed clock, so it moves and lives exactly as before.
-  Direction glitches and scatter keep the shared clock.
+  100 % and a Trail speed of 35–50 (default 50) its first move lines up with the shared Trail-speed clock, so it
+  moves on the same ticks and lives as long as the edge-to-edge wipe did before it had its own speed; at other Trail
+  speeds it is faster or slower than before, since it no longer follows Trail speed. A short streak that would jump
+  over its edge cell on the first move (possible above 400 %) starts just behind it. Direction glitches and scatter keep
+  the shared clock.
 - Animation length: `charging/screenOffEffectLengthMs` (default 800). `ScreenOffSync::fitLeadMs()` shortens it so
   the animation still ends 250 ms before the earliest switch-off; ChargingScreen skips it below 300 ms (info log
   `[screen-off] skipped: N ms left before the switch-off`), and the start line shows the played and the set length.
-- Tests: matrix rain 234 → 248, `screenoff_test` 25 → 37, QML 212 → 219 (new `tst_wipe_speed_rows.qml`: the
+- Screen-off hardening (pre-release review): no cancel on a charger change; leaving the dim phase other than by the
+  switch-off (to Normal or straight to Suspend) cancels a pending start or a running animation; Suspend counts as
+  display-off in `main.qml` like Low_power; a delayed start that outlived its dim phase is skipped (info log
+  `[screen-off] start skipped: no longer in the dim phase`).
+- Tests: matrix rain 234 → 260, `screenoff_test` 25 → 37, QML 212 → 219 (new `tst_wipe_speed_rows.qml`: the
   keypad chain through the two new rows).
 
 ## v1.6.1 — 2026-11-01 — built with UC's Qt 5.15.19 toolchain; diagnostics at info

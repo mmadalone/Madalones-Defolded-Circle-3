@@ -2528,7 +2528,7 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 
 - `_scheduleScreenOff()` runs on Idle, on open and on theme load. On Idle it is deferred with `Qt.callLater`: QML handlers of a C++ signal run before its C++ slots, so `ScreenOffSync` only knows about the new dim phase after the emission.
 - One `screenOffEndTimer` (the lead time of the shared overlay or of the theme's own effect) calls `_onScreenOffEffectEnd()`. That requests the switch-off only after a visible effect. The default "theme-native" draws nothing on a theme without its own effect, and there the core keeps its own timing.
-- Idle → Normal during the animation cancels it and resets a theme's own effect (TV Static, Analog). One `_resetScreenOffState()` serves every reset path.
+- Idle → Normal during the animation cancels it and resets a theme's own effect (TV Static, Analog). One `_resetScreenOffState()` serves every reset path. *(Since the pre-release review, Session 3: any exit from the dim phase except the switch-off, and no cancel on a charger change.)*
 - These are gone, because the bundle requires firmware ≥ 2.12.0, whose core always passes through Idle:
   - the poller and `countdownStartTime`;
   - `_openedViaIdleTimer` and its plumbing in `main.qml`;
@@ -2620,7 +2620,7 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 - `GlitchTrail` gains `pace` and `paceAcc`, appended with defaults.
 - `pace 0` is the shared clock, so direction glitches, scatter and tap bursts keep exactly the old path and random draws.
 - A wipe streak adds its pace every tick and takes one-cell steps, one per `WIPE_PACE_PER_CELL` (200) gained. It never jumps: a jump would skip the scramble and the message guard of the cells in between.
-- 600 % is 3 cells per tick, the shortest streak, so no gap opens between two frames. A `static_assert` enforces this.
+- 600 % is 3 cells per tick, the shortest streak, so no gap opens between two frames. A `static_assert` enforces this. *(The first move could still jump over the edge cell; fixed in Session 3.)*
 - The pace is stored when the streak spawns, so moving the slider mid-wipe can't strand a streak.
 
 **At 100 % nothing changes.**
@@ -2660,7 +2660,7 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
 
 ### Tests
 
-**Matrix suite: 234 → 248**, ASan + UBSan.
+**Matrix suite: 234 → 248**, ASan + UBSan (260 after the pre-release review below).
 - `wipeDefaultSpeedMovesWithSharedClock`: at both clock phases, the same ticks and lifetime as a shared-clock trail.
 - `wipeSpeedCrossesScreen` at 50, 100, 300 and 600 %, from both sides. It checks:
   - pace and the lifetime formula;
@@ -2737,3 +2737,55 @@ A frame at the default speed is 50 ms. **The cost on the remote's ARM is not mea
     - the core's known `hass.main.assist`, dangling `hass.main.switch.tv_plug` and session-cookie warnings;
     - `Activity.qml` null-property TypeErrors from that dangling entity;
     - the Kodi integration's bool repeat mode, logged before the update too.
+
+## 2026-11-03 Session 3: pre-release review fixes (v1.6.2)
+
+A review of everything going into v1.6.2 found two screen-off bugs, one wipe bug and two doc errors. All five are fixed.
+
+### 1. A charger change stopped the screen-off animation
+
+`ChargingScreen.qml` cancelled the animation on `Battery.onPowerSupplyChanged`. A charger change does not restart the core's display-off countdown: in the owner's logs the core went to Idle 12.5 s and 14.2 s after a charger flip, at a 30 s timeout. So the cancel only dropped the switch-off request, and the core switched the display off later by itself. With TV Static or Analog the theme's own effect stayed black on a lit display until then, because the theme is reset only on a wake. A Qi pad also flaps on its own.
+
+**Fix:** no cancel on a charger change. A real pickup wakes the core, and the Idle → Normal path cancels the animation and resets the theme.
+
+### 2. A jump to standby left the screen-off timers running
+
+`main.qml` paused the screensaver (`displayOff`) on Low_power only, though its comment said "Low_power/Standby", and `ChargingScreen.qml` stopped a pending start only on Idle → Normal. After a jump from Idle straight to Suspend (a standby request) the start and end timers kept running, so after the wake the animation could start on a lit display that nothing switched off.
+
+**Fix:**
+- `main.qml` treats Suspend like Low_power. Setting `displayOff` finalises the animation and stops its timers (`finalizeScreenOffEffect()`); the wake resets it as after Low_power.
+- `ChargingScreen.qml` stops a pending start, and cancels a running animation, on any exit from the dim phase except the switch-off (Idle → Normal or Idle → Suspend). On Suspend `main.qml`'s handler runs first, so this is a second line of defence there.
+- A start timer that fires outside the dim phase skips the start: `[screen-off] start skipped: no longer in the dim phase`.
+
+### 3. A fast wipe streak never drew its edge column
+
+A streak is drawn as its head and the `length − 1` cells behind it. The rain repaints at the end of its tick, after the trails have moved, and neither a tap nor a chaos event repaints in between. Above 400 % a 3-cell streak can move 3 cells on its first tick, so a streak that started on the edge cell never drew or scrambled the edge column.
+
+**Fix:** such a streak starts `behind = max(0, firstMoves − (length − 1))` cells behind the edge, and its lifetime grows by the same number of cells. Up to 400 % nothing changes. Above it, the edge cell now gets its scramble too, so such a streak takes one more random glyph, like every other cell it enters.
+
+### 4. User guide (`SCREENSAVER-README.md`)
+
+It still described the per-cycle dim-phase measurement and the 200 ms poller, both removed in Session 1, and named TV Static as the only theme with its own effect (Analog has one too).
+
+### 5. The 100 % wipe claim (CHANGELOG, `docs/CUSTOM_FILES.md`)
+
+Both said a 100 % wipe "moves and lives exactly as before". That holds only at a Trail speed of 35–50 (default 50), where the shared clock also moves one cell every 2 ticks; the wipe no longer follows Trail speed.
+
+### Tests
+
+- Matrix suite 248 → 260, ASan + UBSan clean.
+  - New `wipeLightsItsEdgeColumnAtFullSpeed`: 500 / 575 / 600 %, clock phases 0 and 1, both edges. Every streak must draw its edge column; only frames after an advance count.
+  - `wipeSpeedCrossesScreen` also checks the start column and the longer lifetime.
+- Mutants: all 16 are caught (`bad_speed_max_too_fast` doesn't build, the `static_assert`). The new `bad_no_edge_offset` fails 10 rows.
+- QML suite 219/219, no QML warnings.
+
+### Full-app simulator (build `1.6.2-sim4`; `logs/screenoff-timing/sim_ev_*`)
+
+- **Charger flips during TV Static** (F12 at 3.8 s and 4.0 s into the dim phase, 2 cycles): the effect finished and requested the switch-off; the display went off 44–54 ms later.
+- **Charger flips, then a wake at 4.3 s:** `[screen-off] left the dim phase during the animation: cancelled`, and the snow was back 2 s later.
+- **Standby.** The simulator core holds an internal "suspend not supported" standby inhibitor that cannot be removed, so a standby request does nothing there. A relay between the UI and the core (`logs/sim/relay/ws_relay.py`; the UI started with `UC_SOCKET_URL=ws://ucsim-relay:8080/ws`) sent the UI a SUSPEND event while the core stayed in Idle, and then the core was woken. 2 cycles each:
+  - before the start (2.0 s into the dim phase): the screen stayed black and still while suspended (two shots 0.4 s apart were identical); nothing started after the wake, and the rain moved again;
+  - during the Wipe (4.2 s): no end and no switch-off request; the rain moved after the wake;
+  - during TV Static (3.9 s): the same, and the snow was back after the wake.
+  - These checks show the new behaviour; they were not run against the old build.
+- **Relay gotcha:** an event's payload is under `msg_data`, not `data`, and `Power::setPowerMode` ignores a repeat of the current mode, so an event with the wrong key does nothing at all.

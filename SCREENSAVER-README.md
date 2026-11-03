@@ -206,7 +206,7 @@ Clock and battery overlay controls — show/hide, font, color, size, charging-on
 
 A shared pre-display-off animation system. When the core decides it's time to dim and blank the display, a short animation plays right before the hardware powers off.
 
-**How it's triggered:** event-driven via the core's `Normal → Idle` power-mode transition (the moment the display actually starts dimming). The system then measures the real duration of the dim phase on each cycle and times the animation so it ends exactly at `Idle → Low_power` (the hardware blank). No baseline drift, no guessing — dim-phase duration is self-calibrating across dock states and config changes. A 200 ms polling fallback remains in place in case the `Idle` signal is missed.
+**How it's triggered:** the core's `Normal → Idle` power-mode transition starts the dim phase (the display dims). Its shortest length follows from the Display off timeout T: `T − max(T/2, 3)` seconds, measured on the core. The animation starts so it ends 250 ms before the earliest switch-off; an Animation length that doesn't fit is shortened, and with under 300 ms left the animation is skipped. When it ends, the screensaver switches the display off itself, so no black but lit screen lingers. Waking the remote during the animation cancels it. There is no polling fallback: firmware 2.12.0 and later always pass through `Idle`. *(Rewritten 2026-11-03: the earlier per-cycle measurement and 200 ms poller are gone.)*
 
 **Tier 1 — Shared overlay (any theme)**, 8 styles:
 
@@ -224,9 +224,9 @@ A shared pre-display-off animation system. When the core decides it's time to di
 
 The sampling-based styles use a single `ShaderEffectSource` to capture the active theme into an offscreen FBO so the overlay shaders can sample it. The FBO is only allocated when one of the sampling styles is actually playing — non-sampling styles and the theme-native mode keep zero GPU cost.
 
-**Tier 2 — Theme-native animations**: themes can opt in with their own tightly-integrated shutdown effect via an optional protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`). Currently **TV Static** uses this for a classic **CRT collapse** — the snow and scanlines collapse vertically into a bright horizontal line, then the line shrinks horizontally to a single dot, then the dot fades to black. 800 ms collapse + 500 ms black hold so it finishes synchronized with the real hardware display-off.
+**Tier 2 — Theme-native animations**: themes can opt in with their own tightly-integrated shutdown effect via an optional protocol (`providesNativeScreenOff`, `screenOffLeadMs`, `startScreenOff() / cancelScreenOff() / finalizeScreenOff()`). Two themes use it: **TV Static**, a classic **CRT collapse** (the snow and scanlines collapse vertically into a bright horizontal line, the line shrinks to a single dot, the dot fades to black; 800 ms collapse + 500 ms black hold), and **Analog**, whose hands sweep to 12 and fall to 6 (1300 ms). Both play with the "Theme" style and keep their own length.
 
-All other themes (Matrix, Starfield, Analog, Minimal) use the Tier 1 shared overlay exclusively. Matrix briefly had a native cascade prototype in earlier builds; it was rolled back in v1.2.1 because the running-binding pause/resume race on wake left the rain area black across multiple cycles. The shared styles are architecturally simpler, work reliably on every theme, and don't fight Qt's scene graph lifecycle.
+The other themes (Matrix, Starfield, Minimal) use the Tier 1 shared overlay only; with "Theme" selected they draw nothing and the screen goes off at its usual time. Matrix briefly had a native cascade prototype in earlier builds; it was rolled back in v1.2.1 because the running-binding pause/resume race on wake left the rain area black across multiple cycles. The shared styles are architecturally simpler, work reliably on every theme, and don't fight Qt's scene graph lifecycle.
 
 **Controls:** `Settings → Power saving → Screen off animations`:
 - **Enabled** — master on/off (default on)

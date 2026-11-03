@@ -43,10 +43,10 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ### Custom C++ Files
 | File | Purpose | Lines |
 |------|---------|-------|
-| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 603 |
+| `src/ui/matrixrain.h` | `MatrixRainItem` QQuickItem — GPU-accelerated matrix rain renderer | 611 |
 | `src/ui/matrixrain.cpp` | QSG rendering orchestrator, vertex buffer, atlas upload, multi-layer dispatch. Single-layer rendering, input dispatch, and ScreensaverConfig wiring delegated to helper classes (v1.4.36) | 749 |
 | `src/ui/matrixrain/layerpipeline.h` | `LayerPipeline` — multi-layer rain pipeline (3 depth planes), shared render primitives (`MatrixRainVertex`, `emitQuad`, `packColor`, etc.) | 272 |
-| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (Unreleased) | 809 |
+| `src/ui/matrixrain/layerpipeline.cpp` | LayerPipeline build/sync/render implementation, multi-layer atlas cache; marks the occluders in the count pass and skips hidden characters in the render pass (Unreleased) | 811 |
 | `src/ui/matrixrain/layerocclusion.h` | `LayerOcclusion` (Unreleased) — Rain layers: nearer grids hide the farther grids' characters. Per-grid facts and occluder masks, `OCCLUDER_MIN_TRAIL_BRIGHTNESS`, `LAYER_FAR_BAND_SHIFT`. Pure C++, by-value member of LayerPipeline. | 141 |
 | `src/ui/matrixrain/layerocclusion.cpp` | `configure`, `beginFrame`, `isHidden` / `isCellHidden` (ink-box test against the nearer cells in reach), `levelThreshold` | 136 |
 | `src/ui/matrixrain/atlasbuilder.h` | `AtlasBuilder` — single-layer atlas builder + canonical SHA-1 cache-key hashing (deduped across single + multi-layer paths). Defines shared `AtlasInputs` struct. | 65 |
@@ -56,17 +56,17 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/matrixrain/inputhandler.h` | `InputHandler` (QObject) — input dispatch + enter-button state machine (extracted in v1.4.36 Phase B). Owns 2 QTimers (300 ms double-tap, 500 ms hold). Friend of MatrixRainItem. Forwards `enterAction(QString)` signal to parent for QML contract preservation. | 74 |
 | `src/ui/matrixrain/inputhandler.cpp` | EnterIdle/Pressed/Held state machine + interactiveInput dispatch + handleDirection/Enter/Slow/Restore/Tap implementations. | 254 |
 | `src/ui/matrixrain/bindinghelper.h` | `BindingHelper` (all-static utility class) — 8 ScreensaverConfig binding helpers (extracted in v1.4.36 Phase C): bindAppearance, bindDirectionAndGravity, bindGlitch, bindChaos, bindTap, bindMessages, bindSubliminal, bindDepthAndLayers. Mirrors AtlasBuilder shape (no instances, no QObject). | 38 |
-| `src/ui/matrixrain/bindinghelper.cpp` | 8 binding helper implementations. Wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to empty TU. Caller (`MatrixRainItem::bindToScreensaverConfig`) owns QSignalBlocker batching scope. | 199 |
-| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 432 |
+| `src/ui/matrixrain/bindinghelper.cpp` | 8 binding helper implementations. Wrapped in `#ifndef MATRIX_RAIN_TESTING` so test builds compile to empty TU. Caller (`MatrixRainItem::bindToScreensaverConfig`) owns QSignalBlocker batching scope. | 203 |
+| `src/ui/rainsimulation.h` | `RainSimulation` — stream-based rain simulation engine | 444 |
 | `src/ui/rainsimulation.cpp` | Stream lifecycle, head advance, float movement, density management, lanes (Unreleased) | 735 |
-| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow; `spawnWipe()` for both screen wipes (Unreleased) | 205 |
-| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control; edge-to-edge wipes, message cells kept by trails (Unreleased) | 430 |
+| `src/ui/glitchengine.h` | `GlitchEngine` — char swap, brightness flash, column flash, stutter, reverse glow; `spawnWipe()` for both screen wipes, each streak at its own pace (Unreleased) | 228 |
+| `src/ui/glitchengine.cpp` | Per-tick glitch application, rate control; edge-to-edge wipes, message cells kept by trails (Unreleased) | 462 |
 | `src/ui/messageengine.h` | `MessageEngine` — on-screen text rendering in character grid | 168 |
 | `src/ui/messageengine.cpp` | Text layout, character placement | 358 |
 | `src/ui/gravitydirection.h` | `GravityDirection` — direction system, auto-rotate (most logic now inline in header — `.cpp` is a near-empty shell after the inline-implementation refactor) | 50 |
 | `src/ui/gravitydirection.cpp` | Angle sweep, per-stream lerp, travel/spread axis math (most code moved into the header during a prior refactor; this `.cpp` is now a thin shell) | 28 |
-| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations; counts as of v1.4.28, `measuredDimPhaseMs` removed in Unreleased) | 317 |
-| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 307 |
+| `src/ui/screensaverconfig.h` | `ScreensaverConfig` singleton — owns QSettings, SCRN_* macros, **136 properties total** (60 `SCRN_BOOL` + 47 `SCRN_INT` + 18 `SCRN_STRING` macros = 125 macro-emitted Q_PROPERTYs, plus 5 hand-written raw-int dual-emit setters and 6 transformed read-only properties = 11 explicit `Q_PROPERTY` declarations; counts as of v1.4.28, `measuredDimPhaseMs` removed in Unreleased) | 324 |
+| `src/ui/screensaverconfig.cpp` | QSettings init, transformed getters, Battery deferred connect | 310 |
 | `src/ui/screensaverconfig_macros.h` | SCRN_BOOL/INT/STRING read-write property macros | 58 |
 
 ### Custom QML Files
@@ -196,26 +196,28 @@ Three coupled behavior changes: full hardware-button coverage in MediaBrowser, s
 ## Unreleased: Wipe speed (Tap and Chaos screen wipes), Animation length (screen-off styles)
 
 **Wipe speed.** The Tap effects and Chaos events "Screen wipe" each get a "Wipe speed" slider (50-600 %, default 100 =
-the speed before). A wipe streak moves at the pace it was spawned with, one cell at a time, at most 3 cells per tick;
-at 100 % it moves and lives exactly as before. It no longer follows "Trail speed". **Animation length.** The drawn
+the speed at the default Trail speed). A wipe streak moves at the pace it was spawned with, one cell at a time, at most
+3 cells per tick; at 100 % and the default Trail speed it moves and lives exactly as the full-screen wipe below. It
+no longer follows "Trail speed". **Animation length.** The drawn
 screen-off styles get an "Animation length" slider (300-4500 ms, default 800), shortened at run time so the animation
 still ends before the switch-off (`ScreenOffSync::fitLeadMs`); skipped below 300 ms. Design, tests and results:
 [SCREENSAVER-IMPLEMENTATION.md](../SCREENSAVER-IMPLEMENTATION.md), section "2026-11-03 Session 2".
 
 | File | Lines | Change |
 |------|-------|--------|
-| `src/ui/glitchengine.{h,cpp}` | 227 / 457 | `GlitchTrail::pace` / `paceAcc`; `WIPE_SPEED_MIN/MAX/DEFAULT`, `WIPE_PACE_PER_CELL` (+ `static_assert`); `advanceTrails()` steps wipe streaks at their own pace, one cell at a time; `spawnWipe(…, speedPct)` stores the pace, lines up the first move with the shared clock and sets the lifetime from the pace; the Chaos Wipe speed. |
+| `src/ui/glitchengine.{h,cpp}` | 228 / 462 | `GlitchTrail::pace` / `paceAcc`; `WIPE_SPEED_MIN/MAX/DEFAULT`, `WIPE_PACE_PER_CELL` (+ `static_assert`); `advanceTrails()` steps wipe streaks at their own pace, one cell at a time; `spawnWipe(…, speedPct)` stores the pace, lines up the first move with the shared clock and sets the lifetime from the pace; the Chaos Wipe speed. |
 | `src/ui/rainsimulation.{h,cpp}` | 443 / 735 | The tap Wipe speed (clamped setter), the chaos one forwarded to `GlitchEngine`; `tapWipe()` passes the tap speed. |
 | `src/ui/matrixrain.h` | 611 | `tapWipeSpeed` and `glitchChaosWipeSpeed` Q_PROPERTYs. |
 | `src/ui/matrixrain/bindinghelper.cpp` | 203 | Both speeds bound to `ScreensaverConfig` (initial sync + live connect). |
 | `src/ui/matrixrain/layerpipeline.cpp` | 811 | `syncLayerConfig` forwards both speeds to the mid layer (where wipes run with Rain layers on). |
 | `src/ui/screensaverconfig.{h,cpp}` | 324 / 310 | `tapWipeSpeed`, `glitchChaosWipeSpeed`, `screenOffEffectLengthMs` (+ `resetDefaults` emits). |
 | `src/hardware/screenOffSync.{h,cpp}` | 88 / 148 | `fitLeadMs()`; the dim-phase comment corrected (a timeout of 0 behaves like 3 s, not "never"). |
-| `src/qml/components/ChargingScreen.qml` | 909 | The shared length from the setting, fitted; the 300 ms skip in `_scheduleScreenOff()`; `screenOffAnim.duration` set from the fitted length; the fixed `screenOffFallbackLeadMs` removed. |
+| `src/qml/components/ChargingScreen.qml` | 908 | The shared length from the setting, fitted; the 300 ms skip in `_scheduleScreenOff()`; `screenOffAnim.duration` set from the fitted length; the fixed `screenOffFallbackLeadMs` removed. Pre-release review: no cancel on a charger change, a cancel on any exit from the dim phase except the switch-off, a delayed start that outlived its dim phase is skipped. |
+| `src/qml/main.qml` | 1207 | Suspend counts as display-off for the screensaver, like Low_power (pre-release review). |
 | `src/qml/settings/settings/Power.qml` | 483 | The "Animation length" row under Style (hidden for "Theme", dimmed with its siblings) and its key links. |
 | `src/qml/settings/settings/chargingscreen/TapSection.qml` | 379 | The "Wipe speed" row under "Screen wipe" and its key links. |
 | `src/qml/settings/settings/chargingscreen/ChaosSection.qml` | 305 | The same for the Chaos "Screen wipe". |
-| `test/matrixrain/test_matrixrain.cpp` | 4717 | 14 new rows (234 → 248): pace, lifetime, single steps, message guard at full speed, mid-flight change, random sequence, plumbing, the chaos speed; fast and slow wipes in `layerOcclusionEmitWithinCount`. |
+| `test/matrixrain/test_matrixrain.cpp` | 4772 | 26 new rows (234 → 260): pace, lifetime, single steps, message guard at full speed, mid-flight change, random sequence, plumbing, the chaos speed, the edge column at 500-600 %; fast and slow wipes in `layerOcclusionEmitWithinCount`. |
 | `test/hardware/screenoff_test/test_screenOffSync.cpp` | 237 | 12 new rows (25 → 37) for `fitLeadMs`. |
 | `test/qml/MockScreensaverConfig.h`, `test/qml/tst_wipe_speed_rows.qml` (new) | 813 / 129 | The two speeds in the mock; the keypad chain through both new rows (QML 212 → 219). |
 
