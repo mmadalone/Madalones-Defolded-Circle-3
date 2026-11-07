@@ -23,10 +23,10 @@ git fetch upstream refs/tags/vX.Y.Z:refs/upstream-public/vX.Y.Z   # the upstream
 git diff --name-status refs/upstream-public/vX.Y.Z HEAD
 ```
 
-As of v1.6.2 (upstream v0.84.0): 63 upstream files modified, 3 removed (`.github/dependabot.yml`,
-`.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours. The
-unreleased Messages settings modify four more for the first time (`src/ui/notification.{h,cpp}`,
-`src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`), 67 in all.
+As of v1.6.3 (upstream v0.84.0): 67 upstream files modified, 3 removed (`.github/dependabot.yml`,
+`.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours. v1.6.3's
+Messages settings modified four of them for the first time (`src/ui/notification.{h,cpp}`,
+`src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`).
 
 | Area | Upstream files | What we keep | Conflict risk |
 |---|---|---|---|
@@ -52,7 +52,7 @@ Upstream describes what the app does in `openspec/specs/`. This section lists wh
 behave differently from a requirement there, so a merge can check whether upstream changed that requirement in the
 meantime.
 
-### Messages settings (unreleased)
+### Messages settings (v1.6.3)
 
 With the defaults ("Show error pop-ups" on, "Show offline banners" on, "Other banner duration" 4 s)
 the app does what upstream's specs say. Only a changed setting departs from them:

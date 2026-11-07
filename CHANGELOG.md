@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
-## Unreleased
+## v1.6.3 — 2026-11-07 — Messages settings: error pop-ups can make way for a banner
+
+Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1.
 
 ### Added
 

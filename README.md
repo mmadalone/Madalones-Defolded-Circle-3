@@ -48,9 +48,9 @@ Controls live under `Settings → Power saving → Screen off animations`: maste
 - Touch zones: 4-corner direction, double-tap to close, long-press to slow
 - Tap effects: burst, flash, scramble, spawn, square burst, ripple, wipe with its own speed (all togglable, optional randomize)
 
-**UI chrome beyond the screensaver (v1.3.0 → v1.6.0):**
+**UI chrome beyond the screensaver (v1.3.0 → v1.6.3):**
 
-- **Messages settings** (unreleased) — a new section at the bottom of `Settings → User interface`. Turn off "Show error pop-ups" and a failed command, the touch slider's "not available" warning or an integration that could not connect no longer opens a pop-up you have to close before the buttons work again: a short banner at the top of the screen says the same thing and closes by itself (or nothing is shown, if you turn the banner off as well). To try again, press the button again. The banner gets a duration slider (1–30 s, default 5), and so do all the other banners ("Other banner duration", default 4 s, as before). Turning off "Show offline banners" hides just the "… is unavailable" message you get when you press a tile or button for a device that is unavailable; every other banner, such as a setting the remote refused, always shows. Other pop-ups, such as low battery, always show, and with the default settings everything behaves as before.
+- **Messages settings** (v1.6.3) — a new section at the bottom of `Settings → User interface`. Turn off "Show error pop-ups" and a failed command, the touch slider's "not available" warning or an integration that could not connect no longer opens a pop-up you have to close before the buttons work again: a short banner at the top of the screen says the same thing and closes by itself (or nothing is shown, if you turn the banner off as well). To try again, press the button again. The banner gets a duration slider (1–30 s, default 5), and so do all the other banners ("Other banner duration", default 4 s, as before). Turning off "Show offline banners" hides just the "… is unavailable" message you get when you press a tile or button for a device that is unavailable; every other banner, such as a setting the remote refused, always shows. Other pop-ups, such as low battery, always show, and with the default settings everything behaves as before.
 - **On Unfolded Circle's current UI** (v1.6.0) — the fork is merged with UC's UI v0.84.0, the one in firmware 2.12.0: the d-pad works on every screen, holding HOME opens the page menu, and no text is smaller than 22 px. Our own screens follow UC's design system: the Screensaver settings (setting rows, short help texts, one chip picker for every grid of choices, every control reachable with the d-pad), the dock-chime and screen-off-style pickers, and WiFi Diagnostics, which now also holds the link details UC's new WiFi sheet dropped. The album-art preview from the media browser runs on UC's new artwork code, and "Keep awake while watching" follows only the players on your pages, groups and activities. Replaced by UC's own versions: the Wake-replay HUD and our battery chip.
 - **Tap-to-close semantics fix + "Chime after screensaver" toggle (pattern B)** (v1.4.43) — Two screensaver-UX fixes layered on v1.4.42. Single-tap now dismisses the screensaver when "Double-tap to close" is OFF (was: tap had no effect in normal mode + a 300 ms delayed Matrix tap-effect glitch fired via the doubleTapTimer's onTriggered handler — bug fixed for free since the timer no longer starts when tapToClose is off). Plus a new **`Settings → Sound → "Chime after screensaver"`** toggle (default ON): screensaver opens immediately on dock, chime fires from `ChargingScreen.qml::onOpened` once the popup is fully shown. By that point all heavy QML/GPU init is done, so the audio thread has clean CPU and chimes play without ALSA buffer underruns. Dock-to-audio latency goes from 0 ms (legacy) to ~450 ms (pattern B), but visual + audio synchronize at ~450 ms instead of waiting up to 3 s for long chimes (Pwr Up 1 etc) to finish first. Toggle OFF preserves v1.4.42's chime-first + variant-aware-grace path. Boot-while-docked unchanged regardless of toggle. Wiring: `Config.dockChimeAfterScreensaver` Q_PROPERTY, `_nextOpenViaDock` flag in `main.qml` propagated through `Loader.onStatusChanged → ChargingScreen.qml::_openedViaDock`. Refreshed `tos_bridge_loss_power_shorter.wav` source (1.86 → 1.24 s, RMS 0.122 → 0.432 through pipeline); `_chimeDurationsMs[10]` updated to match.
 - **Dock chime picker expanded to 12 variants + variant-aware grace duration** (v1.4.42) — 6 user-curated wavs added to the existing 6 synth chimes (`Pwr Down`, `Pwr Hold`, `Pwr Up 1`, `Pwr Up 2`, `TOS`, `TOS Long`). Picker grid grows from 2×3 to 4×3. Source files in `chimes/` stay pristine; `tools/gen_sounds.py` processes copies through a louder pipeline (`pre_gain=1.5, drive=3.5` vs synth's `1.2, 2.2`) for ~3 dB more perceived RMS on the user wavs. Variant-aware dock-chime grace duration in `main.qml`: short synth chimes keep the 350 ms floor, longer user wavs (up to 2.93 s) get `max(350, chimeMs + 100)` so they play through cleanly before the screensaver async-load hits the audio thread. Trade-off the user picks when picking the variant: short = snappy screensaver, long = clean chime + delayed screensaver. Boot-while-docked behavior unchanged.
@@ -95,16 +95,16 @@ Quick version for anyone who's already set up. v1.6.0 and later need firmware 2.
 
 ```bash
 # 1. Download the release tarball, its signature and the checksums
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.2/remote-ui-v1.6.2-UCR3-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.2/remote-ui-v1.6.2-UCR3-static.tar.gz.asc
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.2/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.3/remote-ui-v1.6.3-UCR3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.3/remote-ui-v1.6.3-UCR3-static.tar.gz.asc
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.3/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG signature, see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.6.2-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.2-UCR3-static.tar.gz.asc
+./scripts/verify-release.sh remote-ui-v1.6.3-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.3-UCR3-static.tar.gz.asc
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.6.2-UCR3-static.tar.gz" \
+    --form "file=@remote-ui-v1.6.3-UCR3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -175,9 +175,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.6.2-UCR3-static.tar.gz \
+    remote-ui-v1.6.3-UCR3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.6.2-UCR3-static.tar.gz.asc
+    remote-ui-v1.6.3-UCR3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -227,7 +227,7 @@ The codebase has been through a full industry-standard audit ("brutally honest, 
 
 ### Testing discipline
 
-- **Over 600 automated test cases** (2026-11-03): 260 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 143 for keep awake, the phantom-wake suppressor, power, the entity controller and the screen-off sync (`test/hardware/`), 219 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics, the Wipe speed rows) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
+- **Over 750 automated test cases** (2026-11-07): 260 C++ unit tests for the Matrix renderer (`test/matrixrain/`), 161 for keep awake, the phantom-wake suppressor, power, the entity controller (with the Messages settings' banners) and the screen-off sync (`test/hardware/`), 290 QML tests (`test/qml/`: settings bindings, visibility, d-pad navigation, the chip picker, WiFi diagnostics, the Wipe speed rows, the Messages section and the banners) and 41 integration tests (`test/integration/`: theme lifecycles), plus upstream's own unit-test suite (31 programs).
 - **Five CI workflows** on every push — `build.yml` (ARM64 cross-compile + release + GPG signing), `test.yml` (all the suites above), `tidy.yml` (clang-tidy baseline), `code_guidelines.yml` (cpplint, design check, icon font), `docs-links.yml` (Markdown links).
 - **On-device verification for every Batch 0 bug fix** — 5 dock→idle→Low_power→wake cycles per theme, 10-cycle rapid churn test, 10-minute sustained dock for thermal, docked AND undocked paths for the wake-black fix.
 - **Visual Docker VNC preview** — renders the actual `QSGGeometryNode` scene graph via Mesa software OpenGL in a disposable container, for when the macOS native build can't exercise the code path (Qt 5.15 OpenGL 2.1 limitation).
@@ -262,6 +262,8 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 See [`SCREENSAVER-README.md`](SCREENSAVER-README.md) for the full release log and [`CHANGELOG.md`](CHANGELOG.md) for upstream UC changes.
+
+**v1.6.3** (2026-11-07) — **Messages settings: error pop-ups can make way for a banner.** A new Messages section at the bottom of Settings → User interface. With "Show error pop-ups" off, a failed command, the touch slider's "not available" warning or an integration that could not connect shows a short banner at the top of the screen that closes by itself and leaves the buttons working, instead of a pop-up you have to close first (or nothing at all, with "Show a banner" off too); to try again, press the button again. The error banner and the other banners each get a duration slider (1–30 s; 5 s and 4 s by default), and "Show offline banners" can hide the "… is unavailable" banner of a tile or button pressed for an unavailable device. With the default settings the remote behaves as before. Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. See [`CHANGELOG.md`](CHANGELOG.md) for the details.
 
 **v1.6.2** (2026-11-03) — **Screensaver fixes and two new sliders.** Matrix rain reaches every column and row, and with Rain layers the nearer rain hides the rain behind it, so columns no longer squeeze into solid strips. The Screen wipe crosses the whole screen, and Tap effects and Chaos events each get a Wipe speed slider. Screen-off animations play to the end and the screen goes off right after them, with an Animation length slider for the drawn styles. A d-pad direction no longer turns into Auto-rotate after a wake. Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.0 and 2.12.1. See [`CHANGELOG.md`](CHANGELOG.md) for the details.
 

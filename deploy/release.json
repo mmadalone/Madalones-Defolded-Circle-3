@@ -1,10 +1,10 @@
 {
-  "version": "1.6.2",
+  "version": "1.6.3",
   "name": {
     "en": "Madalone's Custom UI Mods"
   },
   "description": {
-    "en": "Custom UI for the UC Remote 3, built on Unfolded Circle's UI 0.84 (firmware 2.12.0), so the d-pad, the page menu on a long HOME press and the larger text are all there. Adds a GPU screensaver for the charger with five themes (Matrix rain, Starfield, Minimal, Analog, TV Static), clock and battery overlays, screen-off animations and a choice of dock chimes. Keep awake while watching: the remote stays awake while a player on your pages plays. Phantom-wake suppressor: a wake-up without a button press goes straight back to sleep, which saves battery. WiFi tools: signal indicator everywhere, Reconnect, and a Diagnostics sheet with signal history and link details. Album art from the media browser shows on the player at once. Changes, source and issues: github.com/mmadalone/Madalones-Defolded-Circle-3"
+    "en": "Custom UI for the UC Remote 3, built on Unfolded Circle's UI 0.84 (firmware 2.12.0), so the d-pad, the page menu on a long HOME press and the larger text are all there. Adds a GPU screensaver for the charger with five themes (Matrix rain, Starfield, Minimal, Analog, TV Static), clock and battery overlays, screen-off animations and a choice of dock chimes. Keep awake while watching: the remote stays awake while a player on your pages plays. Phantom-wake suppressor: a wake-up without a button press goes straight back to sleep, which saves battery. WiFi tools: signal indicator everywhere, Reconnect, and a Diagnostics sheet with signal history and link details. Messages: a failed command can show a short banner instead of a pop-up you have to close, and you can set how long banners stay. Album art from the media browser shows on the player at once. Changes, source and issues: github.com/mmadalone/Madalones-Defolded-Circle-3"
   },
   "developer": {
     "name": "madalone",
