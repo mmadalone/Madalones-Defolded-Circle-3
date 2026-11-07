@@ -304,75 +304,79 @@
 <context>
     <name>Base</name>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="119"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="120"/>
         <source>Set the state of %1. No command is sent to the devices.</source>
         <extracomment>Popup title when fixing the state of an activity. %1 is the activity name</extracomment>
         <translation>Set the state of %1. No command is sent to the devices.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="123"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="124"/>
         <source>Activity is on</source>
         <extracomment>Button. Mark the activity as running without sending any command</extracomment>
         <translation>Activity is on</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="133"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="134"/>
         <source>Activity is off</source>
         <extracomment>Button. Mark the activity as stopped without sending any command</extracomment>
         <translation>Activity is off</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="139"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="140"/>
         <source>Fix device states…</source>
         <extracomment>Button. Opens the list of the activity&apos;s devices whose on/off state can be corrected</extracomment>
         <translation>Fix device states…</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="145"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="146"/>
         <source>Back</source>
         <extracomment>Footer of a popup menu that sits one level below another one: return to it</extracomment>
         <translation>Back</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="153"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="154"/>
         <source>%1 failed. What do you want to do?</source>
         <extracomment>Popup title when an activity&apos;s start or stop sequence failed. %1 is the activity name</extracomment>
         <translation>%1 failed. What do you want to do?</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="157"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="158"/>
         <source>Turn activity on</source>
         <extracomment>Button. Imperative: start the activity.</extracomment>
         <translation>Turn activity on</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="167"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="168"/>
         <source>Turn activity off</source>
         <extracomment>Button. Imperative: stop the activity.</extracomment>
         <translation>Turn activity off</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="177"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="178"/>
         <source>Fix state without sending commands</source>
         <extracomment>Button. Opens the menu to correct the recorded state of the activity or its devices</extracomment>
         <translation>Fix state without sending commands</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="183"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="184"/>
         <source>Open activity</source>
         <extracomment>Button. Imperative: open the activity screen.</extracomment>
         <translation>Open activity</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="210"/>
-        <location filename="../../src/qml/components/entities/Base.qml" line="226"/>
-        <location filename="../../src/qml/components/entities/Base.qml" line="253"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="64"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="64"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="79"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="65"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="212"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="229"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="257"/>
         <source>%1 is unavailable</source>
         <extracomment>Notification when a command was not sent because the device is unavailable. %1 is the entity name</extracomment>
         <translation>%1 is unavailable</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/entities/Base.qml" line="450"/>
+        <location filename="../../src/qml/components/entities/Base.qml" line="454"/>
         <location filename="../../src/qml/components/group/Base.qml" line="186"/>
         <source>Profile is restricted</source>
         <translation>Profile is restricted</translation>
@@ -3178,6 +3182,69 @@ Climate fan</extracomment>
     </message>
 </context>
 <context>
+    <name>MessagesSection</name>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="70"/>
+        <source>Messages</source>
+        <extracomment>Heading in the user interface settings, above the settings for error pop-ups and banners</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="76"/>
+        <source>Show error pop-ups</source>
+        <extracomment>Switch in the user interface settings: whether errors open a full-screen pop-up that has to be dismissed before the buttons work again</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="78"/>
+        <source>For failed commands, an unavailable touch slider and integration connection errors. Other pop-ups, such as low battery, always show.</source>
+        <extracomment>Help text of the &quot;Show error pop-ups&quot; switch</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="99"/>
+        <source>Show a banner</source>
+        <extracomment>Switch in the user interface settings, shown when &quot;Show error pop-ups&quot; is off: a banner in place of the pop-up. Keep it short, the switch sits on the same line</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="101"/>
+        <source>Instead of the pop-up: a short message at the top of the screen that closes by itself and leaves the buttons working. To try again, press the button again.</source>
+        <extracomment>Help text of the &quot;Show a banner&quot; switch</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="120"/>
+        <source>Error banner duration</source>
+        <extracomment>Slider in the user interface settings: how long the banner shown in place of an error pop-up stays</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="144"/>
+        <source>Show offline banners</source>
+        <extracomment>Switch in the user interface settings: whether a short message says so when a tile or button is pressed for a device that is offline (unavailable). Keep it short, the switch sits on the same line</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="146"/>
+        <source>A short message at the top of the screen when you press a tile or button for a device that is unavailable. Banners about settings and setup always show.</source>
+        <extracomment>Help text of the &quot;Show offline banners&quot; switch</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="164"/>
+        <source>Other banner duration</source>
+        <extracomment>Slider in the user interface settings: how long the remote&apos;s banners other than the error banner stay on screen</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/userinterface/MessagesSection.qml" line="166"/>
+        <source>For every banner except the error banner, such as a tile pressed for an unavailable device or a setting that could not be changed.</source>
+        <extracomment>Help text of the &quot;Other banner duration&quot; slider</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+</context>
+<context>
     <name>MinimalSettings</name>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/MinimalSettings.qml" line="28"/>
@@ -5011,12 +5078,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderBrightness</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="62"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="70"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="63"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="71"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5024,12 +5091,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderPosition</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="62"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="70"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="63"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="71"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5037,12 +5104,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderSeek</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="77"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="85"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="78"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="86"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5050,12 +5117,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderVolume</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="63"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="71"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="64"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="72"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5172,133 +5239,133 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>Ui</name>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="45"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="47"/>
         <source>Inverted button behavior</source>
         <extracomment>Switch in the user interface settings: swaps what a short and a long press do on the main screen.</extracomment>
         <translation>Inverted button behavior</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="46"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="48"/>
         <source>Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.</source>
         <translation>Inverts button functions on the main screen: short press to open the control screen, long press to quick toggle.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="64"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="66"/>
         <source>Show battery percentage</source>
         <translation>Show battery percentage</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="65"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="67"/>
         <source>Always show the battery percentage next to the icon.</source>
         <translation>Always show the battery percentage next to the icon.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="84"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="86"/>
         <source>Show battery indicator everywhere</source>
         <translation>Show battery indicator everywhere</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="85"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="87"/>
         <source>Shows the battery level indicator on all pages and activities.</source>
         <translation>Shows the battery level indicator on all pages and activities.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="104"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="106"/>
         <source>Show WiFi indicator everywhere</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="105"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="107"/>
         <source>Shows the WiFi signal indicator on all pages and activities. Replaces the warning-only icon.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="124"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="126"/>
         <source>Activities on pages</source>
         <translation>Activities on pages</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="125"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="127"/>
         <source>Show the running activities and playing media players in the page header.</source>
         <translation>Show the running activities and playing media players in the page header.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="144"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="146"/>
         <source>Open activities started with the API</source>
         <translation>Open activities started with the API</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="145"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="147"/>
         <source>Open the activity screen when an activity is started outside of the remote, replacing whatever is on screen.</source>
         <translation>Open the activity screen when an activity is started outside of the remote, replacing whatever is on screen.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="164"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="166"/>
         <source>Zoom media image</source>
         <translation>Zoom media image</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="165"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="167"/>
         <source>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</source>
         <translation>Zoom &amp; crop artwork in media player widgets instead of scaling to fit.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="184"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="186"/>
         <source>Coverflow in media browser</source>
         <translation>Coverflow in media browser</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="185"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="187"/>
         <source>Use coverflow as the default view when opening the media browser.</source>
         <translation>Use coverflow as the default view when opening the media browser.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="204"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="206"/>
         <source>Show volume overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="205"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="207"/>
         <source>Display volume indicator overlay when volume keys are pressed.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="224"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="226"/>
         <source>Show shuffle button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="225"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="227"/>
         <source>Show the shuffle toggle on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="244"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="246"/>
         <source>Show repeat button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="245"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="247"/>
         <source>Show the repeat-mode toggle on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="264"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="266"/>
         <source>Show media browser button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="265"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="267"/>
         <source>Show the media browser shortcut on the media player controls row. Does not affect the press-and-hold gesture on album art.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="285"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="286"/>
         <source>Show source picker button</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/Ui.qml" line="286"/>
+        <location filename="../../src/qml/settings/settings/Ui.qml" line="287"/>
         <source>Show the source picker button on the media player controls row.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5988,7 +6055,7 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="1098"/>
+        <location filename="../../src/qml/main.qml" line="1100"/>
         <source>Done</source>
         <translation>Done</translation>
     </message>
@@ -5996,179 +6063,179 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>uc::Config</name>
     <message>
-        <location filename="../../src/config/config.cpp" line="76"/>
+        <location filename="../../src/config/config.cpp" line="78"/>
         <source>Error setting language: %1</source>
         <extracomment>Notification: the interface language could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting language: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="104"/>
+        <location filename="../../src/config/config.cpp" line="106"/>
         <source>Error setting country: %1</source>
         <extracomment>Notification: the country could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting country: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="130"/>
+        <location filename="../../src/config/config.cpp" line="132"/>
         <source>Error setting timezone: %1</source>
         <extracomment>Notification: the time zone could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting timezone: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="160"/>
+        <location filename="../../src/config/config.cpp" line="162"/>
         <source>Error setting unit system: %1</source>
         <extracomment>Notification: the unit system could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting unit system: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="181"/>
+        <location filename="../../src/config/config.cpp" line="183"/>
         <source>Error setting clock: %1</source>
         <extracomment>Notification: the 12/24-hour clock could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting clock: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="200"/>
+        <location filename="../../src/config/config.cpp" line="202"/>
         <source>Error setting device name: %1</source>
         <extracomment>Notification: the name of the remote could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting device name: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="220"/>
+        <location filename="../../src/config/config.cpp" line="222"/>
         <source>Error changing haptic settings: %1</source>
         <extracomment>Notification: haptic feedback could not be switched. %1 is the core&apos;s error message</extracomment>
         <translation>Error changing haptic settings: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="241"/>
+        <location filename="../../src/config/config.cpp" line="243"/>
         <source>Error setting microphone config: %1</source>
         <extracomment>Notification: the microphone could not be switched. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting microphone config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="259"/>
+        <location filename="../../src/config/config.cpp" line="261"/>
         <source>Error setting voice assistant config: %1</source>
         <extracomment>Notification: the voice assistant could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting voice assistant config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="275"/>
-        <location filename="../../src/config/config.cpp" line="294"/>
+        <location filename="../../src/config/config.cpp" line="277"/>
+        <location filename="../../src/config/config.cpp" line="296"/>
         <source>Error setting voice assistant profile config: %1</source>
         <extracomment>Notification: a voice assistant option could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting voice assistant profile config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="314"/>
+        <location filename="../../src/config/config.cpp" line="316"/>
         <source>Error setting sound config: %1</source>
         <extracomment>Notification: sound effects could not be switched. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting sound config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="334"/>
+        <location filename="../../src/config/config.cpp" line="336"/>
         <source>Error setting sound volume: %1</source>
         <extracomment>Notification: the sound effect volume could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting sound volume: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="384"/>
-        <location filename="../../src/config/config.cpp" line="404"/>
+        <location filename="../../src/config/config.cpp" line="386"/>
+        <location filename="../../src/config/config.cpp" line="406"/>
         <source>Error setting display config: %1</source>
         <extracomment>Notification: the display brightness could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting display config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="424"/>
-        <location filename="../../src/config/config.cpp" line="444"/>
+        <location filename="../../src/config/config.cpp" line="426"/>
+        <location filename="../../src/config/config.cpp" line="446"/>
         <source>Error setting button backlight: %1</source>
         <extracomment>Notification: the button backlight could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting button backlight: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="721"/>
+        <location filename="../../src/config/config.cpp" line="791"/>
         <source>Error setting wakeup sensitivity: %1</source>
         <extracomment>Notification: the wakeup sensitivity could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting wakeup sensitivity: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="741"/>
+        <location filename="../../src/config/config.cpp" line="811"/>
         <source>Error setting sleep timeout: %1</source>
         <extracomment>Notification: the sleep timeout could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting sleep timeout: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="761"/>
+        <location filename="../../src/config/config.cpp" line="831"/>
         <source>Error setting display sleep timeout: %1</source>
         <extracomment>Notification: the display timeout could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting display sleep timeout: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="781"/>
-        <location filename="../../src/config/config.cpp" line="801"/>
+        <location filename="../../src/config/config.cpp" line="851"/>
+        <location filename="../../src/config/config.cpp" line="871"/>
         <source>Error setting update config: %1</source>
         <extracomment>Notification: a software update setting could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting update config: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="821"/>
+        <location filename="../../src/config/config.cpp" line="891"/>
         <source>Error setting Bluetooth: %1</source>
         <extracomment>Notification: Bluetooth could not be switched on or off. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting Bluetooth: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="841"/>
+        <location filename="../../src/config/config.cpp" line="911"/>
         <source>Error setting WiFi: %1</source>
         <extracomment>Notification: WiFi could not be switched on or off. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting WiFi: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="861"/>
+        <location filename="../../src/config/config.cpp" line="931"/>
         <source>Error setting WiFi in standby: %1</source>
         <extracomment>Notification: &quot;Keep WiFi connected in standby&quot; could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting WiFi in standby: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="880"/>
+        <location filename="../../src/config/config.cpp" line="950"/>
         <source>Error setting WiFi band: %1</source>
         <extracomment>Notification: the WiFi band could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting WiFi band: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="899"/>
+        <location filename="../../src/config/config.cpp" line="969"/>
         <source>Error setting WiFi scan interval: %1</source>
         <extracomment>Notification: the WiFi scan interval could not be changed. %1 is the core&apos;s error message</extracomment>
         <translation>Error setting WiFi scan interval: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="936"/>
+        <location filename="../../src/config/config.cpp" line="1006"/>
         <source>Error getting country list: %1</source>
         <extracomment>Notification: the list of countries could not be loaded. %1 is the core&apos;s error message</extracomment>
         <translation>Error getting country list: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="953"/>
+        <location filename="../../src/config/config.cpp" line="1023"/>
         <source>Error getting timezones: %1</source>
         <extracomment>Notification: the list of time zones could not be loaded. %1 is the core&apos;s error message</extracomment>
         <translation>Error getting timezones: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="996"/>
+        <location filename="../../src/config/config.cpp" line="1066"/>
         <source>Could not set the admin PIN: %1</source>
         <extracomment>Notification: the administrator PIN could not be set. %1 is the core&apos;s error message</extracomment>
         <translation>Could not set the admin PIN: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="1016"/>
+        <location filename="../../src/config/config.cpp" line="1086"/>
         <source>Error enabling the web configurator</source>
         <extracomment>Notification: the state of the web configurator could not be read</extracomment>
         <translation>Error enabling the web configurator</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="1064"/>
+        <location filename="../../src/config/config.cpp" line="1134"/>
         <source>Error enabling the web configurator: %1</source>
         <extracomment>Notification: the web configurator could not be switched on or off. %1 is the core&apos;s error message</extracomment>
         <translation>Error enabling the web configurator: %1</translation>
     </message>
     <message>
-        <location filename="../../src/config/config.cpp" line="1142"/>
+        <location filename="../../src/config/config.cpp" line="1212"/>
         <source>Error while loading configuration. Trying again.</source>
         <translation>Error while loading configuration. Trying again.</translation>
     </message>
@@ -6526,69 +6593,70 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>uc::ui::Controller</name>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="310"/>
+        <location filename="../../src/ui/uiController.cpp" line="311"/>
         <source>Error adding profile: %1</source>
         <extracomment>Notification: a profile could not be created. %1 is the core&apos;s error message</extracomment>
         <translation>Error adding profile: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="329"/>
+        <location filename="../../src/ui/uiController.cpp" line="330"/>
         <source>Error</source>
         <translation>Error</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="330"/>
+        <location filename="../../src/ui/uiController.cpp" line="331"/>
         <source>Deleting a current profile is not permitted. Please switch to another profile and try again.</source>
         <translation>Deleting a current profile is not permitted. Please switch to another profile and try again.</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="347"/>
+        <location filename="../../src/ui/uiController.cpp" line="348"/>
         <source>Error deleting profile: %1</source>
         <extracomment>Notification: a profile could not be deleted. %1 is the core&apos;s error message</extracomment>
         <translation>Error deleting profile: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="367"/>
+        <location filename="../../src/ui/uiController.cpp" line="368"/>
         <source>Error adding page: %1</source>
         <extracomment>Notification: a page could not be created. %1 is the core&apos;s error message</extracomment>
         <translation>Error adding page: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="390"/>
+        <location filename="../../src/ui/uiController.cpp" line="391"/>
         <source>Error renaming page: %1</source>
         <extracomment>Notification: a page could not be renamed. %1 is the core&apos;s error message</extracomment>
         <translation>Error renaming page: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="409"/>
+        <location filename="../../src/ui/uiController.cpp" line="410"/>
         <source>Error deleting page: %1</source>
         <extracomment>Notification: a page could not be deleted. %1 is the core&apos;s error message</extracomment>
         <translation>Error deleting page: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="508"/>
+        <location filename="../../src/ui/uiController.cpp" line="509"/>
         <source>Error during factory reset: %1</source>
         <extracomment>Notification: the factory reset failed. %1 is the core&apos;s error message</extracomment>
         <translation>Error during factory reset: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="652"/>
+        <location filename="../../src/ui/uiController.cpp" line="653"/>
         <source>Profile update error</source>
         <translation>Profile update error</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="713"/>
+        <location filename="../../src/ui/uiController.cpp" line="714"/>
         <source>Error updating page: %1</source>
         <extracomment>Notification: a change to a page could not be saved. %1 is the core&apos;s error message</extracomment>
         <translation>Error updating page: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="779"/>
+        <location filename="../../src/ui/uiController.cpp" line="787"/>
         <source>%1 error</source>
         <translation>%1 error</translation>
     </message>
     <message>
-        <location filename="../../src/ui/uiController.cpp" line="779"/>
+        <location filename="../../src/ui/uiController.cpp" line="782"/>
+        <location filename="../../src/ui/uiController.cpp" line="787"/>
         <source>Error while connecting to %1, with id %2</source>
         <translation>Error while connecting to %1, with id %2</translation>
     </message>
@@ -6601,91 +6669,93 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>uc::ui::EntityController</name>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="293"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="295"/>
         <source>Could not configure the entity: %1</source>
         <extracomment>Error while configuring an entity. %1 is an error message from the remote</extracomment>
         <translation>Could not configure the entity: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="318"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="320"/>
         <source>Could not rename the entity: %1</source>
         <extracomment>Error while renaming an entity. %1 is an error message from the remote</extracomment>
         <translation>Could not rename the entity: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="327"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="329"/>
         <source>Could not change the entity state: not connected</source>
         <translation>Could not change the entity state: not connected</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="347"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="349"/>
         <source>The state cannot be changed while the entity is unavailable or the activity is running</source>
         <extracomment>Error while fixing an entity state</extracomment>
         <translation>The state cannot be changed while the entity is unavailable or the activity is running</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="351"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="353"/>
         <source>The state of this entity type cannot be changed</source>
         <extracomment>Error while fixing an entity state</extracomment>
         <translation>The state of this entity type cannot be changed</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="355"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="357"/>
         <source>Not allowed to change the entity state</source>
         <extracomment>Error while fixing an entity state</extracomment>
         <translation>Not allowed to change the entity state</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="359"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="361"/>
         <source>Could not change the entity state: %1</source>
         <extracomment>Error while fixing an entity state. %1 is an error message from the remote</extracomment>
         <translation>Could not change the entity state: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="378"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="380"/>
         <source>Could not change the entity icon: %1</source>
         <extracomment>Error while changing the icon of an entity. %1 is an error message from the remote</extracomment>
         <translation>Could not change the entity icon: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="455"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="457"/>
         <source>Could not delete the entities: %1</source>
         <extracomment>Error while deleting entities. %1 is an error message from the remote</extracomment>
         <translation>Could not delete the entities: %1</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="936"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="939"/>
         <source>%1 is unavailable</source>
         <extracomment>Notification when a command was not sent because the device is unavailable. %1 is the entity name</extracomment>
         <translation>%1 is unavailable</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1135"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1138"/>
         <source>The device</source>
         <translation>The device</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1155"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1154"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1173"/>
         <source>%1 is not responding</source>
         <translation>%1 is not responding</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1156"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1174"/>
         <source>The command did not reach the device. Would you like to try again?</source>
         <translation>The command did not reach the device. Would you like to try again?</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1187"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1205"/>
         <source>Try again</source>
         <translation>Try again</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1193"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1155"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1211"/>
         <source>%1 is not responding. Error code: %2</source>
         <translation>%1 is not responding. Error code: %2</translation>
     </message>
     <message>
-        <location filename="../../src/ui/entity/entityController.cpp" line="1193"/>
+        <location filename="../../src/ui/entity/entityController.cpp" line="1211"/>
         <source>Error sending the command</source>
         <translation>Error sending the command</translation>
     </message>
