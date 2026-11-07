@@ -23,25 +23,56 @@ git fetch upstream refs/tags/vX.Y.Z:refs/upstream-public/vX.Y.Z   # the upstream
 git diff --name-status refs/upstream-public/vX.Y.Z HEAD
 ```
 
-As of v1.6.0 (upstream v0.84.0): 62 upstream files modified, 3 removed (`.github/dependabot.yml`,
-`.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours.
+As of v1.6.2 (upstream v0.84.0): 63 upstream files modified, 3 removed (`.github/dependabot.yml`,
+`.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours. The
+unreleased Messages settings modify four more for the first time (`src/ui/notification.{h,cpp}`,
+`src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`), 67 in all.
 
 | Area | Upstream files | What we keep | Conflict risk |
 |---|---|---|---|
 | Build | `remote-ui.pro`, `resources/qrc/main.qrc`, `.gitignore` | Our sources and QML in HEADERS / SOURCES / qrc; `VERSION` in sync with `deploy/release.json`; extra warning flags; ignore entries (incl. `CLAUDE.md`) | High |
 | CI | `.github/workflows/build.yml` | Version-sync + CHANGELOG gates, UCR3 install-bundle staging (every file of `deploy/config/`, no sub-dirs), GPG signing, digest-pinned 5.15.19 toolchain (upstream uses the same image unpinned) | Medium |
-| Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `DevDockToggle` in DEV | High |
-| Settings store | `src/config/config.{h,cpp}` | Our Q_PROPERTYs: phantom wake, keep awake, dock chime, media buttons (v1.4.8), volume overlay, WiFi chip, ... | High |
+| Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `ScreenOffSync` input; `DevDockToggle` in DEV; the Messages switches pushed into `Notification::setErrorFeedback` and `Notification::setUnavailableBanners` before the UI loads and on every change | High |
+| Settings store | `src/config/config.{h,cpp}` | Our Q_PROPERTYs: phantom wake, keep awake, dock chime, media buttons (v1.4.8), volume overlay, WiFi chip, Messages (`showErrorPopups`, `showErrorBanner`, `errorBannerSec`, `showUnavailableBanners`, `otherBannerSec`, keys `ui/<name>`) | High |
 | Core API | `src/core/core.{h,cpp}`, `src/core/structs.h` | `setPowerMode` (Mod 6, body field `mode`), REST helpers + standby-inhibitor calls (Mod 5), `Inhibitor` struct. Keep our declarations above upstream's `private:` | High |
 | Hardware | `src/hardware/hardwareController.{h,cpp}`, `src/system/battery.h`, `src/system/wifi.{h,cpp}` | Keeper / suppressor construction and wiring; `Battery::instance()`; WiFi W1 (WoWLAN shown), W2 link fields, W4 reassociate, W6 30 s poll, W13 diagnostics | High: upstream reworks Wi-Fi often |
-| Entities | `src/ui/entity/entityController.{h,cpp}`, `src/ui/entity/mediaPlayer.{h,cpp}` | Mod 5 hook in `connectLazySignals` (only players a screen asked for), `entityCommandIssued`, `LOW_POWER` in the wake flag; `hide_volume_overlay`; browse-thumbnail preview on the artwork pipeline | **High: conflicted on every merge so far.** Upstream keeps reworking wake/standby and artwork |
-| Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; `lcScreensaver` | Medium |
+| Entities | `src/ui/entity/entityController.{h,cpp}`, `src/ui/entity/mediaPlayer.{h,cpp}` | Mod 5 hook in `connectLazySignals` (only players a screen asked for), `entityCommandIssued`, `LOW_POWER` in the wake flag; `hide_volume_overlay`; browse-thumbnail preview on the artwork pipeline; the Messages block in `handleCommandFailure` (after the wake-up resend, the `voice_start` hand-off, the repeat drop and the entity-name lookup, just before `switch (code)`: with the pop-ups off, remove the pending command and show the error banner instead); in `refuseUnavailableEntity` (an activity's button mapping to an unavailable entity) `Notification::createUnavailableBanner` instead of `createNotification`, so "Show offline banners" can hide the "%1 is unavailable" toast | **High: conflicted on every merge so far.** Upstream keeps reworking wake/standby and artwork; the failure path is where upstream would land non-blocking command errors (see below) |
+| Notifications | `src/ui/notification.{h,cpp}`, `src/qml/components/Notification.qml` | Messages: static `setErrorFeedback` / `errorPopupsEnabled` / `createErrorBanner` and the `errorBannerCreated` signal, `Q_INVOKABLE bannerInsteadOfPopUp()` for QML; static `setUnavailableBanners` / `createUnavailableBanner` (the "%1 is unavailable" toast through `createNotification`, only while its switch is on) and `Q_INVOKABLE showUnavailableBanner()` for QML; the toast's handler moved into `show(message, warning, durationMs)` with a per-message `displayMs` (was a fixed 4000): `onNotificationCreated` with "Other banner duration", the new `onErrorBannerCreated` with "Error banner duration". No filter in QML: whether a toast is created is decided in C++ | Medium: our hunks replace upstream's whole toast handler |
+| Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; the Messages block in `onIntegrationError` (the error banner instead of the "%1 error" pop-up); `lcScreensaver` | Medium |
 | Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | Screensaver loader flags, boot grace, dock chime, docked rearm, `hostContainer` binding; the screensaver popup is a full replacement | Very high |
-| Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons | High: upstream restyles settings |
-| Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-bar guards, title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium |
+| Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons; in `Ui.qml` the Messages section as the last item (our `settings/settings/userinterface/MessagesSection.qml`), reached with DPAD_DOWN from `mediaSourceButtonSwitch`. The section reveals the focused row with `Qt.callLater` so it runs after `ButtonNavigation`'s own synchronous `onWindowFocusItemChanged` reveal of the control: if upstream defers that reveal, re-check the row reveal (`test/qml/tst_messages_reveal_order.qml`) | High: upstream restyles settings |
+| Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/Base.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-bar guards and the Messages error banner for an unavailable entity (inserted before upstream's untouched "Touch slider is not available." block), Messages in `entities/Base.qml`: its 3 "%1 is unavailable" calls through `ui.notification.showUnavailableBanner()` instead of `ui.createNotification()` (two in `handleActivityOpen()`, one in `commandAllowed()`), title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium; higher for `entities/Base.qml`: 11 upstream commits after v0.74.5, 3 of them on the "%1 is unavailable" lines our calls replace |
 | Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
 
 For the authoritative custom-file manifest (purely custom, not modified upstream), see [CUSTOM_FILES.md](CUSTOM_FILES.md).
+
+## Divergence from upstream's specs
+
+Upstream describes what the app does in `openspec/specs/`. This section lists where one of our settings makes the app
+behave differently from a requirement there, so a merge can check whether upstream changed that requirement in the
+meantime.
+
+### Messages settings (unreleased)
+
+With the defaults ("Show error pop-ups" on, "Show offline banners" on, "Other banner duration" 4 s)
+the app does what upstream's specs say. Only a changed setting departs from them:
+
+| Spec | Requirement | With the setting changed |
+|---|---|---|
+| [`entity-commands`](../openspec/specs/entity-commands/spec.md) | "Command failure feedback": 408 / 503 show the prompt "%1 is not responding" with "Try again" and "Cancel"; any other code shows the warning notification "Error sending the command" | "Show error pop-ups" off: the error banner, "%1 is not responding" (neutral) or "%1 is not responding. Error code: %2" (warning), or nothing with "Show a banner" off. Removing the failed command from the pending commands first, the `voice_start` hand-off and the silent drop of a failed repeat are unchanged. |
+| `entity-commands` | "Try again"; "Identical prompts are not stacked" | No prompt, so no "Try again": the failed command is no longer pending, so pressing the control again sends it ("An earlier failure never blocks the next press" still holds). Banners replace each other instead of stacking. |
+| `entity-commands` | "No commands to an unavailable entity from its controls": a command refused there (an entity tile, an activity's button mapping) shows the warning notification "%1 is unavailable" naming the entity; the same in the scenarios "Unavailable entity on an awake remote" and "Retry after wakeup disabled" of "Commands are accepted while the remote is waking up". The same notification is required by [`activities`](../openspec/specs/activities/spec.md) ("Turning an activity on from its tile", "Physical button mapping in an activity"), [`entity-detail-controls`](../openspec/specs/entity-detail-controls/spec.md) ("Opening an entity control screen", "Inverted button behaviour setting") and [`pages`](../openspec/specs/pages/spec.md) ("Tile selection by d-pad"), and `notifications` lists it under "Which events produce which kind" | "Show offline banners" off: the command is still refused and no screen opens, without the notification (`EntityController::refuseUnavailableEntity` and the 3 calls in `entities/Base.qml` go through `Notification::createUnavailableBanner`). Every other toast these specs require still shows. |
+| [`notifications`](../openspec/specs/notifications/spec.md) | "Which events produce which kind": entity command errors (408 / 503 "%1 is not responding", other codes "Error sending the command"), "Touch slider is not available." and integration connection errors ("%1 error") are actionable notifications | "Show error pop-ups" off: toasts (the error banner) instead, or nothing. |
+| `notifications` | "Toast presentation and duration"; "Toasts replace each other without a queue": a toast closes 4000 ms after it opened, and a replacement restarts the 4000 ms | Each toast closes after its own duration: "Other banner duration" (1–30 s, default 4) or "Error banner duration" (1–30 s, default 5); a replacement restarts the timer with its own duration. |
+| [`touch-slider`](../openspec/specs/touch-slider/spec.md) | "Unavailable entity": the actionable notification "Touch slider is not available." / "%1 is not available. Please check your configuration." once | "Show error pop-ups" off: the warning toast "%1 is unavailable" (the tiles' text) once, with the same latch, or nothing. |
+
+Upstream's tracker has two open feature requests in this area:
+[#783](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/783) "Non-blocking error feedback for failed
+commands in a running activity", which is what "Show error pop-ups" off does for single commands, and
+[#802](https://github.com/unfoldedcircle/feature-and-bug-tracker/issues/802) "Error feedback and recovery options when
+an activity sequence fails", for failed sequences, which our switch leaves alone. If upstream ships non-blocking
+command errors, drop or revisit this block: take upstream's behaviour and keep only what it doesn't cover (the banner
+durations, "Show offline banners").
 
 ## Merge rehearsal procedure
 
@@ -113,6 +144,10 @@ After the merge, before merging the rehearsal branch back into `main`:
   - settings: Screensaver, Power, Sound, User interface, WiFi pages walked with the d-pad
   - first button press after a wake works (no backlight blinking); keep awake holds during playback
   - media browser: play an item, its artwork shows at once
+  - Messages (Settings → User interface): with the defaults a failed command opens upstream's pop-up; with "Show
+    error pop-ups" off it shows the banner for the "Error banner duration" and the buttons keep working; with "Show
+    offline banners" off a tile of an unavailable device shows no banner, while other banners (a wrong admin PIN,
+    for one) still show; walked with the d-pad, each row's title and help text are fully on screen
 - [ ] **Translations**: `en_US.ts` updated with lupdate; the other `.ts` files keep upstream's text (ADR 0006)
 
 ## Rollback procedure
@@ -157,6 +192,8 @@ This disables our custom UI and the device reverts to the stock UC firmware — 
 
 Update this doc whenever:
 - A new upstream file is modified for a new mod (add row to the table)
+- A mod makes the app behave differently from a requirement in upstream's specs (add it to "Divergence from
+  upstream's specs")
 - A custom file is deleted or replaced (remove/update row)
 - The validation checklist changes (new regression tests, new features)
 - The rollback procedure changes (new API endpoint, new branch structure)

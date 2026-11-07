@@ -11,6 +11,56 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
 
+## Unreleased
+
+### Added
+
+- **Messages settings: error pop-ups can make way for a banner.** A new Messages section at the bottom of Settings →
+  User interface. Until you change something there, the remote behaves exactly as before.
+  - **Show error pop-ups** (on by default). Turned off, these errors no longer open a pop-up that has to be closed
+    before the buttons work again: a command that failed (it did not reach the device, or the device or its
+    integration refused it with an error code), the touch slider's "Touch slider is not available.", and an
+    integration that could not connect. All other pop-ups stay as they are: low battery, software update, connection
+    lost, the confirmations before something is removed or reset, media browser errors, and the activity screen that
+    reports a failed sequence.
+  - **Show a banner** (on by default, shown while "Show error pop-ups" is off). The error appears as a short
+    message at the top of the screen that closes by itself and leaves the buttons working. It keeps the pop-up's
+    text, with the device's name: "… is not responding" when a command did not reach the device, the same in red
+    with the error code when it was refused, "… is unavailable" (red) from the touch slider, and the integration's
+    connection error (red). With this switch off too, these errors show nothing.
+  - **Error banner duration** (shown while "Show error pop-ups" is off and "Show a banner" is on): 1 to 30 seconds,
+    5 by default.
+  - **Show offline banners** (on by default): the "… is unavailable" banner that appears when you
+    press a tile or button for a device that is unavailable. Turned off, that press still sends nothing, now without
+    the banner. It hides only this banner: every other banner always shows, for example a setting the remote refused,
+    a wrong admin PIN, WiFi, setup, profiles, pages and the remote's own messages. The touch slider's "… is
+    unavailable" follows the error settings above.
+  - **Other banner duration** (always shown): 1 to 30 seconds, 4 by default, the fixed time banners had before. It
+    applies to every banner except the error banner.
+  - With the pop-ups off there is no "Try again": press the button again. No pop-up holds the buttons after a
+    failure, so that press goes to the device straight away.
+
+### Developer notes
+
+- Config keys `ui/showErrorPopups`, `ui/showErrorBanner`, `ui/errorBannerSec`, `ui/showUnavailableBanners` and
+  `ui/otherBannerSec`. `main.cpp` pushes the two error switches into `Notification::setErrorFeedback` and the
+  unavailable-devices switch into `Notification::setUnavailableBanners`, at start-up and on every change.
+  `Notification::createErrorBanner` shows the error banner (info log `Error banner instead of a pop-up: …`); the
+  guards are in `EntityController::handleCommandFailure`, `Controller::onIntegrationError` and, through
+  `Notification::bannerInsteadOfPopUp()`, the four `TouchSlider*.qml`. The "… is unavailable" banner of a refused
+  press goes through `Notification::createUnavailableBanner` (an ordinary banner while the switch is on, otherwise
+  only the info log `Offline banners off, not shown: …`), called by
+  `EntityController::refuseUnavailableEntity` (an activity's button mapping) and, through
+  `Q_INVOKABLE Notification::showUnavailableBanner()`, the 3 call sites in `src/qml/components/entities/Base.qml`
+  (the tiles). Every other banner keeps `Notification::createNotification`. `Notification.qml` gives each banner its
+  duration and filters nothing. The section is the new
+  `src/qml/settings/settings/userinterface/MessagesSection.qml`; with the keypad it reveals the focused row with
+  `Qt.callLater`, so it runs after `ButtonNavigation`'s own reveal of the control and the whole row (title and help
+  text) stays on screen.
+- Tests: hardware suites 161 (entityController 31, from 11 test functions to 23), QML 290 (from 219: the new
+  `tst_messages_section.qml`, `tst_notification_banner.qml` and `tst_messages_reveal_order.qml`), UC's CMake suites
+  unchanged (836 passed in 31 programs); 0 QWARN beyond the two known entityController lines.
+
 ## v1.6.2 — 2026-11-03 — Rain layers without strips; full-screen wipes with a speed; screen-off animations end with the screen
 
 Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.0 and 2.12.1.
