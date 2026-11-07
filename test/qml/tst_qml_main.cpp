@@ -220,6 +220,100 @@ class MockInputController : public QObject {
     QPointer<QObject>        m_baseOwner;
 };
 
+// ── Mock notification (ui.notification, uc::ui::Notification) ─────
+// What the banner (components/Notification.qml), the touch sliders and the tiles (components/entities/Base.qml) use
+// of src/ui/notification.h: the two banner signals and the QML entry points bannerInsteadOfPopUp() and
+// showUnavailableBanner(). The tests emit the signals through emitNotificationCreated() / emitErrorBannerCreated(),
+// as Notification::createNotification() and createErrorBanner() do in production. bannerInsteadOfPopUp() records the
+// call and answers like production from the mock-only popUpsOn switch (false while the pop-ups are on); whether
+// production then emits errorBannerCreated is driven by a test directly. showUnavailableBanner() only records the
+// call: production decides in C++ whether it becomes a banner (notificationCreated, only while "Show offline banners"
+// is on), so a test that wants the banner emits notificationCreated itself.
+class MockNotification : public QObject {
+    Q_OBJECT
+    Q_PROPERTY(bool popUpsOn READ popUpsOn WRITE setPopUpsOn NOTIFY popUpsOnChanged)
+    Q_PROPERTY(int bannerInsteadCalls READ bannerInsteadCalls NOTIFY bannerInsteadCalled)
+    Q_PROPERTY(QString lastBannerInsteadMessage READ lastBannerInsteadMessage NOTIFY bannerInsteadCalled)
+    Q_PROPERTY(bool lastBannerInsteadWarning READ lastBannerInsteadWarning NOTIFY bannerInsteadCalled)
+    Q_PROPERTY(int unavailableBannerCalls READ unavailableBannerCalls NOTIFY unavailableBannerCalled)
+    Q_PROPERTY(QString lastUnavailableBannerMessage READ lastUnavailableBannerMessage NOTIFY unavailableBannerCalled)
+    Q_PROPERTY(bool lastUnavailableBannerWarning READ lastUnavailableBannerWarning NOTIFY unavailableBannerCalled)
+
+ public:
+    explicit MockNotification(QObject *parent = nullptr) : QObject(parent) {}
+
+    // mock only: production answers from the "Show error pop-ups" switch that main.cpp pushes
+    bool popUpsOn() const { return m_popUpsOn; }
+    void setPopUpsOn(bool v) {
+        if (m_popUpsOn == v) return;
+        m_popUpsOn = v;
+        emit popUpsOnChanged();
+    }
+
+    int     bannerInsteadCalls() const { return m_bannerInsteadCalls; }
+    QString lastBannerInsteadMessage() const { return m_lastBannerInsteadMessage; }
+    bool    lastBannerInsteadWarning() const { return m_lastBannerInsteadWarning; }
+
+    // production: false while the error pop-ups are on, otherwise Notification::createErrorBanner() and true
+    Q_INVOKABLE bool bannerInsteadOfPopUp(const QString &message, bool warning) {
+        m_bannerInsteadCalls++;
+        m_lastBannerInsteadMessage = message;
+        m_lastBannerInsteadWarning = warning;
+        emit bannerInsteadCalled();
+        return !m_popUpsOn;
+    }
+
+    int     unavailableBannerCalls() const { return m_unavailableBannerCalls; }
+    QString lastUnavailableBannerMessage() const { return m_lastUnavailableBannerMessage; }
+    bool    lastUnavailableBannerWarning() const { return m_lastUnavailableBannerWarning; }
+
+    // production: Notification::createUnavailableBanner(), the banner of a tile or button pressed for an unavailable
+    // device, shown only while "Show offline banners" is on. Recorded here, see the class comment.
+    Q_INVOKABLE void showUnavailableBanner(const QString &message, bool warning) {
+        m_unavailableBannerCalls++;
+        m_lastUnavailableBannerMessage = message;
+        m_lastUnavailableBannerWarning = warning;
+        emit unavailableBannerCalled();
+    }
+
+    // test drivers for the banner's two signals
+    Q_INVOKABLE void emitNotificationCreated(const QString &message, bool warning) {
+        emit notificationCreated(message, warning);
+    }
+    Q_INVOKABLE void emitErrorBannerCreated(const QString &message, bool warning) {
+        emit errorBannerCreated(message, warning);
+    }
+
+    Q_INVOKABLE void resetDefaults() {
+        setPopUpsOn(true);
+        m_bannerInsteadCalls = 0;
+        m_lastBannerInsteadMessage.clear();
+        m_lastBannerInsteadWarning = false;
+        emit bannerInsteadCalled();
+        m_unavailableBannerCalls = 0;
+        m_lastUnavailableBannerMessage.clear();
+        m_lastUnavailableBannerWarning = false;
+        emit unavailableBannerCalled();
+    }
+
+ signals:
+    void notificationCreated(QString message, bool warning);
+    void errorBannerCreated(QString message, bool warning);
+    // mock only
+    void popUpsOnChanged();
+    void bannerInsteadCalled();
+    void unavailableBannerCalled();
+
+ private:
+    bool    m_popUpsOn = true;
+    int     m_bannerInsteadCalls = 0;
+    QString m_lastBannerInsteadMessage;
+    bool    m_lastBannerInsteadWarning = false;
+    int     m_unavailableBannerCalls = 0;
+    QString m_lastUnavailableBannerMessage;
+    bool    m_lastUnavailableBannerWarning = false;
+};
+
 // ── Mock C++ object for ui context property ───────────────────────
 // Mirrors uc::ui::UiController — the subset referenced by settings components
 class MockUi : public QObject {
@@ -235,10 +329,14 @@ class MockUi : public QObject {
     Q_PROPERTY(bool keyNavigationActive READ keyNavigationActive WRITE setKeyNavigationActive
                    NOTIFY keyNavigationActiveChanged)
     Q_PROPERTY(int warningNotifications READ warningNotifications NOTIFY warningNotificationsChanged)
+    // the banner's signals and the QML entry points of uc::ui::Notification
+    Q_PROPERTY(QObject *notification READ notification CONSTANT)
 
  public:
     explicit MockUi(QObject *parent = nullptr)
-        : QObject(parent), m_inputController(new MockInputController(this)) {}
+        : QObject(parent),
+          m_inputController(new MockInputController(this)),
+          m_notification(new MockNotification(this)) {}
 
     int width() const { return 480; }
     int height() const { return 850; }
@@ -260,6 +358,7 @@ class MockUi : public QObject {
         m_warningNotifications++;
         emit warningNotificationsChanged();
     }
+    QObject *notification() const { return m_notification; }
 
  signals:
     void keyNavigationActiveChanged();
@@ -267,6 +366,7 @@ class MockUi : public QObject {
 
  private:
     QObject *m_inputController;
+    QObject *m_notification;
     bool     m_keyNavigationActive = true;
     int      m_warningNotifications = 0;
 };

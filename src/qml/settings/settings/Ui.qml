@@ -1,5 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. WiFi indicator everywhere, volume overlay and media-control button toggles.
+// Copyright (c) 2026 madalone. WiFi indicator everywhere, volume overlay and media-control button toggles; the
+// Messages section (error pop-ups and banners).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -11,6 +12,7 @@ import Config 1.0
 
 import "qrc:/settings" as Settings
 import "qrc:/components" as Components
+import "qrc:/settings/settings/userinterface" as UserInterfaceComponents
 
 Settings.Page {
     id: uiPageContent
@@ -281,7 +283,6 @@ Settings.Page {
 
             /** SHOW SOURCE PICKER BUTTON (madalone) **/
             Components.SettingRow {
-                showDivider: false
                 title: qsTr("Show source picker button")
                 help: qsTr("Show the source picker button on the media player controls row.")
 
@@ -296,7 +297,16 @@ Settings.Page {
                     /** KEYBOARD NAVIGATION **/
                     highlight: activeFocus && ui.keyNavigationActive
                     KeyNavigation.up: mediaBrowserButtonSwitch
+                    KeyNavigation.down: messagesSection.firstFocusItem
                 }
+            }
+
+            /** MESSAGES: ERROR POP-UPS AND BANNERS (madalone, v1.6.3) **/
+            UserInterfaceComponents.MessagesSection {
+                id: messagesSection
+                Layout.fillWidth: true
+                settingsPage: uiPageContent
+                navUpTarget: mediaSourceButtonSwitch
             }
         }
     }

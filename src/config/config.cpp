@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Settings of the fork's mods: keep awake, phantom wake, dock chime, UI toggles, error
+// pop-ups and banners.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "config.h"
@@ -611,6 +613,74 @@ void Config::setShowMediaSourceButton(bool value)
 {
     m_settings->setValue("ui/showMediaSourceButton", value);
     emit showMediaSourceButtonChanged();
+}
+
+// madalone (v1.6.3): Settings → User interface → Messages, local QSettings only.
+// - "Show error pop-ups": failed entity commands, the touch slider's "not available" and integration errors open
+//   upstream's pop-up, which takes the input until it is dismissed. Off: the error banner instead, or nothing with
+//   "Show a banner" off. Notification decides; main.cpp passes the switches to it.
+// - "Show offline banners": the "%1 is unavailable" banner of a tile or button pressed for an
+//   unavailable device. Every other banner (settings, setup, the remote itself) always shows.
+// - Banner durations: the error banner and the remote's other banners, 1-30 s each. The other banners keep
+//   upstream's 4 s by default, so nothing changes until the slider is moved.
+static constexpr int kBannerSecMin = 1;
+static constexpr int kBannerSecMax = 30;
+
+bool Config::getShowErrorPopups() {
+    return m_settings->value("ui/showErrorPopups", true).toBool();
+}
+
+void Config::setShowErrorPopups(bool value) {
+    if (value != getShowErrorPopups()) {
+        m_settings->setValue("ui/showErrorPopups", value);
+        emit showErrorPopupsChanged(value);
+    }
+}
+
+bool Config::getShowErrorBanner() {
+    return m_settings->value("ui/showErrorBanner", true).toBool();
+}
+
+void Config::setShowErrorBanner(bool value) {
+    if (value != getShowErrorBanner()) {
+        m_settings->setValue("ui/showErrorBanner", value);
+        emit showErrorBannerChanged(value);
+    }
+}
+
+int Config::getErrorBannerSec() {
+    return std::clamp(m_settings->value("ui/errorBannerSec", 5).toInt(), kBannerSecMin, kBannerSecMax);
+}
+
+void Config::setErrorBannerSec(int seconds) {
+    seconds = std::clamp(seconds, kBannerSecMin, kBannerSecMax);
+    if (seconds != getErrorBannerSec()) {
+        m_settings->setValue("ui/errorBannerSec", seconds);
+        emit errorBannerSecChanged(seconds);
+    }
+}
+
+bool Config::getShowUnavailableBanners() {
+    return m_settings->value("ui/showUnavailableBanners", true).toBool();
+}
+
+void Config::setShowUnavailableBanners(bool value) {
+    if (value != getShowUnavailableBanners()) {
+        m_settings->setValue("ui/showUnavailableBanners", value);
+        emit showUnavailableBannersChanged(value);
+    }
+}
+
+int Config::getOtherBannerSec() {
+    return std::clamp(m_settings->value("ui/otherBannerSec", 4).toInt(), kBannerSecMin, kBannerSecMax);
+}
+
+void Config::setOtherBannerSec(int seconds) {
+    seconds = std::clamp(seconds, kBannerSecMin, kBannerSecMax);
+    if (seconds != getOtherBannerSec()) {
+        m_settings->setValue("ui/otherBannerSec", seconds);
+        emit otherBannerSecChanged(seconds);
+    }
 }
 
 bool Config::getEnableActivityBar() {

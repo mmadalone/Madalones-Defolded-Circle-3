@@ -59,6 +59,14 @@ Item {
 
             // if entity is unavalable we do nothing, but only warn once
             if (!entityObj.enabled) {
+                // madalone (v1.6.3): Settings → User interface → Messages → "Show error pop-ups" off: the banner the
+                // tiles show for an unavailable entity instead of the pop-up below, which takes the input (nothing,
+                // with "Show a banner" off). Notification decides.
+                const unavailableText = qsTranslate("Base", "%1 is unavailable").arg(entityObj.name);
+                if (!sliderContainer.unavailableWarningShown && ui.notification.bannerInsteadOfPopUp(unavailableText, true)) {
+                    sliderContainer.unavailableWarningShown = true;
+                }
+
                 if (!sliderContainer.unavailableWarningShown) {
                     ui.createActionableNotification(qsTr("Touch slider is not available."),
                                                     qsTr("%1 is not available. Please check your configuration.").arg(entityObj.name),

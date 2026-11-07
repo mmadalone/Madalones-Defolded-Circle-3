@@ -1,5 +1,7 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. Mod 5 session-keeper hooks; v1.4.19 LOW_POWER counts as sleep for the wake-up retry.
+// Copyright (c) 2026 madalone. Mod 5 session-keeper hooks; v1.4.19 LOW_POWER counts as sleep for the wake-up retry;
+// v1.6.3 a failed command can show the error banner instead of the pop-up, and the unavailable-device banner can be
+// switched off.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "entityController.h"
@@ -932,8 +934,9 @@ bool EntityController::refuseUnavailableEntity(const QString& entityId, const QS
     }
 
     qCDebug(lcEntityController()) << "Entity is unavailable, command refused:" << entityId << command;
+    // madalone (v1.6.3): shown only while "Show offline banners" is on (Settings → User interface)
     //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
-    Notification::createNotification(tr("%1 is unavailable").arg(e->getName()), true);
+    Notification::createUnavailableBanner(tr("%1 is unavailable").arg(e->getName()), true);
     return true;
 }
 
@@ -1137,6 +1140,21 @@ void EntityController::handleCommandFailure(const QString& commandId, int reques
 
     if (e) {
         entityName = e->getName();
+    }
+
+    // madalone (v1.6.3): Settings → User interface → Messages → "Show error pop-ups" off. The pop-ups below take the
+    // input until they are dismissed; the error banner leaves the keys to the screen (or nothing is shown, with "Show
+    // a banner" off), so the next press reaches the device at once and pressing the button again stands in for "Try
+    // again". The banner keeps the pop-ups' translated texts, and their colours: neutral when the command
+    // did not reach the device, warning when it was refused.
+    if (!Notification::errorPopupsEnabled()) {
+        removePendingCommand(commandId);
+        const bool notDelivered = code == 408 || code == 503;
+        Notification::createErrorBanner(notDelivered
+                                            ? tr("%1 is not responding").arg(entityName)
+                                            : tr("%1 is not responding. Error code: %2").arg(entityName).arg(code),
+                                        !notDelivered);
+        return;
     }
 
     switch (code) {

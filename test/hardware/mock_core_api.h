@@ -122,6 +122,26 @@ class MockCoreRecorder {
     static void pushNextListResponse(int httpCode, const QList<uc::core::Inhibitor>& inhibitors,
                                      const QString& errorMessage = QString());
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // v1.6.3 (error pop-ups or banner): EntityController's entity commands.
+    // ──────────────────────────────────────────────────────────────────────────
+    // Api::entityCommand is stubbed to record the call and return a request id
+    // without sending anything. By default it returns -1, which EntityController
+    // treats like production's "not connected": it reports the failure at once, as
+    // a 503, inside onEntityCommand(). A test that wants an answer the core sends
+    // later gives the next call an id and then emits the response itself:
+    //
+    //   MockCoreRecorder::setNextEntityCommandId(42);
+    //   controller.onEntityCommand(entityId, "media_player.play_pause", {});
+    //   emit api.respResult(42, 400, "Bad request");  // the signal Api::onResult() listens to
+    static int     entityCommandCallCount();
+    static QString lastEntityCommandEntityId();  // empty if entityCommand was never called
+    static QString lastEntityCommandName();      // e.g. "media_player.play_pause"
+
+    // The id the NEXT entityCommand call returns. Used once: the call after it
+    // returns -1 again, unless the test sets another id. reset() restores -1.
+    static void setNextEntityCommandId(int requestId);
+
  private:
     MockCoreRecorder() = delete;
 };

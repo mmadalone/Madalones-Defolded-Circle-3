@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Wiring of the fork's mods: keep awake, phantom wake, screen-off sync, error pop-ups and
+// banners.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QGuiApplication>
@@ -253,6 +255,20 @@ int main(int argc, char *argv[]) {
     suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());
     suppressor->setInputLookbackMs(config.getPhantomWakeSuppressInputLookbackMs());
     suppressor->setEnabled(config.getPhantomWakeSuppressEnabled());
+
+    // madalone (v1.6.3): Settings → User interface → Messages. Notification decides between an error pop-up, the
+    // error banner and nothing, for failed commands, the touch slider and integration errors, and whether the banners
+    // for unavailable devices show. Config's NOTIFY signals don't fire at start-up, so the stored switches are pushed
+    // once here, before the UI loads.
+    auto pushErrorFeedback = [&config] {
+        uc::ui::Notification::setErrorFeedback(config.getShowErrorPopups(), config.getShowErrorBanner());
+    };
+    QObject::connect(&config, &uc::Config::showErrorPopupsChanged, &uiController, pushErrorFeedback);
+    QObject::connect(&config, &uc::Config::showErrorBannerChanged, &uiController, pushErrorFeedback);
+    QObject::connect(&config, &uc::Config::showUnavailableBannersChanged, &uiController,
+                     [](bool show) { uc::ui::Notification::setUnavailableBanners(show); });
+    pushErrorFeedback();
+    uc::ui::Notification::setUnavailableBanners(config.getShowUnavailableBanners());
 
     const QUrl url(QStringLiteral("qrc:/main.qml"));
 

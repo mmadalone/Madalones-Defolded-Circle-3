@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Settings of the fork's mods: keep awake, phantom wake, dock chime, UI toggles, error
+// pop-ups and banners.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -117,6 +119,15 @@ class Config : public QObject {
     Q_PROPERTY(bool showRepeatButton READ getShowRepeatButton WRITE setShowRepeatButton NOTIFY showRepeatButtonChanged)
     Q_PROPERTY(bool showMediaBrowserButton READ getShowMediaBrowserButton WRITE setShowMediaBrowserButton NOTIFY showMediaBrowserButtonChanged)
     Q_PROPERTY(bool showMediaSourceButton READ getShowMediaSourceButton WRITE setShowMediaSourceButton NOTIFY showMediaSourceButtonChanged)
+    // madalone (v1.6.3): Settings → User interface → Messages. The error pop-ups (failed commands, the touch slider's
+    // "not available", integration errors) can give way to a banner that does not take the input; the banners for
+    // unavailable devices can be hidden; the error banner and the other banners get a duration each.
+    Q_PROPERTY(bool showErrorPopups READ getShowErrorPopups WRITE setShowErrorPopups NOTIFY showErrorPopupsChanged)
+    Q_PROPERTY(bool showErrorBanner READ getShowErrorBanner WRITE setShowErrorBanner NOTIFY showErrorBannerChanged)
+    Q_PROPERTY(int errorBannerSec READ getErrorBannerSec WRITE setErrorBannerSec NOTIFY errorBannerSecChanged)
+    Q_PROPERTY(bool showUnavailableBanners READ getShowUnavailableBanners WRITE setShowUnavailableBanners NOTIFY
+                   showUnavailableBannersChanged)
+    Q_PROPERTY(int otherBannerSec READ getOtherBannerSec WRITE setOtherBannerSec NOTIFY otherBannerSecChanged)
 
     Q_PROPERTY(
         bool enableActivityBar READ getEnableActivityBar WRITE setEnableActivityBar NOTIFY enableActivityBarChanged)
@@ -245,6 +256,18 @@ class Config : public QObject {
 
     bool getShowMediaSourceButton();
     void setShowMediaSourceButton(bool value);
+
+    // madalone (v1.6.3): Settings → User interface → Messages
+    bool getShowErrorPopups();
+    void setShowErrorPopups(bool value);
+    bool getShowErrorBanner();
+    void setShowErrorBanner(bool value);
+    int  getErrorBannerSec();
+    void setErrorBannerSec(int seconds);
+    bool getShowUnavailableBanners();
+    void setShowUnavailableBanners(bool value);
+    int  getOtherBannerSec();
+    void setOtherBannerSec(int seconds);
 
     bool getEnableActivityBar();
     void setEnableActivityBar(bool value);
@@ -447,6 +470,12 @@ class Config : public QObject {
     void showRepeatButtonChanged();
     void showMediaBrowserButtonChanged();
     void showMediaSourceButtonChanged();
+    // madalone (v1.6.3): Settings → User interface → Messages
+    void showErrorPopupsChanged(bool value);
+    void showErrorBannerChanged(bool value);
+    void errorBannerSecChanged(int seconds);
+    void showUnavailableBannersChanged(bool value);
+    void otherBannerSecChanged(int seconds);
     void enableActivityBarChanged();
     void openActivityOnApiStartChanged();
     void fillMediaArtworkChanged();

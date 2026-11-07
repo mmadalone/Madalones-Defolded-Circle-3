@@ -1,6 +1,7 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
 // Copyright (c) 2026 madalone. Sound effects path fallback to $UC_CONFIG_HOME/sounds when
-// UC_SOUND_EFFECTS_PATH is empty (firmware 2.9.2 dropped the env var; bundled wavs restore audio).
+// UC_SOUND_EFFECTS_PATH is empty (firmware 2.9.2 dropped the env var; bundled wavs restore audio);
+// v1.6.3 an integration error can show the error banner instead of the pop-up.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "uiController.h"
@@ -775,6 +776,13 @@ void Controller::onIntegrationIsConnecting(bool value) {
 
 void Controller::onIntegrationError(QString name, QString id) {
     if (!m_isOnboarding) {
+        // madalone (v1.6.3): Settings → User interface → Messages → "Show error pop-ups" off: the error banner (or
+        // nothing), which does not take the input, with the pop-up's message
+        if (!Notification::errorPopupsEnabled()) {
+            Notification::createErrorBanner(tr("Error while connecting to %1, with id %2").arg(name).arg(id), true);
+            return;
+        }
+
         m_notification.createActionableWarningNotification(
             tr("%1 error").arg(name), tr("Error while connecting to %1, with id %2").arg(name).arg(id), "uc:triangle-exclamation");
     }

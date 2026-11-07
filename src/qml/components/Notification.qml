@@ -1,4 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Banner durations and the error banner (Settings → User interface → Messages).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 /**
@@ -9,6 +10,7 @@ import QtQuick 2.15
 import QtQuick.Controls 2.15
  
 import Haptic 1.0
+import Config 1.0
 
 Popup {
     id: notification
@@ -19,21 +21,38 @@ Popup {
     closePolicy: Popup.CloseOnPressOutside
     padding: 0
 
+    // madalone (v1.6.3): how long the banner on screen stays. Set per banner from Settings → User interface →
+    // Messages: the error banner (in place of an error pop-up) and the other banners have a duration each.
+    property int displayMs: 4000
+
+    // madalone (v1.6.3): upstream's handler, shared by both kinds of banner
+    function show(message, warning, durationMs) {
+        notificationMessage.text = message;
+        notificationBg.color = warning ? colors.red : colors.buttonPrimary
+        notification.displayMs = durationMs;
+
+        // a message replacing one that is already showing gets the full display time instead of
+        // whatever is left of the previous one, which made it flash by
+        if (notification.opened) {
+            displayTimer.restart();
+        }
+
+        notification.open();
+    }
+
     Connections {
         target: ui.notification
         ignoreUnknownSignals: true
 
+        // madalone (v1.6.3): every banner but the error banner, with "Other banner duration" (whether a banner for an
+        // unavailable device is created at all is Notification's decision, in C++)
         function onNotificationCreated(message, warning) {
-            notificationMessage.text = message;
-            notificationBg.color = warning ? colors.red : colors.buttonPrimary
+            notification.show(message, warning, Config.otherBannerSec * 1000);
+        }
 
-            // a message replacing one that is already showing gets the full display time instead of
-            // whatever is left of the previous one, which made it flash by
-            if (notification.opened) {
-                displayTimer.restart();
-            }
-
-            notification.open();
+        // madalone (v1.6.3): the banner in place of an error pop-up ("Show error pop-ups" off)
+        function onErrorBannerCreated(message, warning) {
+            notification.show(message, warning, Config.errorBannerSec * 1000);
         }
     }
 
@@ -82,7 +101,7 @@ Popup {
     Timer {
         id: displayTimer
         repeat: false
-        interval: 4000
+        interval: notification.displayMs
         onTriggered: notification.close()
     }
 }

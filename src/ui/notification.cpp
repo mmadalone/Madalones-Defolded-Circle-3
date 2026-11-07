@@ -1,4 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. Error pop-ups or the error banner, and the banners for unavailable devices
+// (Settings → User interface → Messages).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "notification.h"
@@ -224,6 +226,68 @@ void Notification::createActionableNotification(const QString &title, const QStr
 
     //    s_instance->m_notifications.append(notificationItem);
     emit s_instance->actionableNotificationCreated(notificationItem);
+}
+
+// madalone (v1.6.3): Settings → User interface → Messages
+void Notification::setErrorFeedback(bool popups, bool banner) {
+    if (!s_instance || (s_instance->m_errorPopups == popups && s_instance->m_errorBanner == banner)) {
+        return;
+    }
+
+    s_instance->m_errorPopups = popups;
+    s_instance->m_errorBanner = banner;
+    qCInfo(lcNotification()) << "Error pop-ups" << (popups ? "on," : "off,") << "error banner"
+                             << (banner ? "on" : "off");
+}
+
+bool Notification::errorPopupsEnabled() {
+    return s_instance ? s_instance->m_errorPopups : true;
+}
+
+bool Notification::bannerInsteadOfPopUp(const QString &message, bool warning) {
+    if (m_errorPopups) {
+        return false;
+    }
+
+    createErrorBanner(message, warning);
+    return true;
+}
+
+void Notification::setUnavailableBanners(bool show) {
+    if (!s_instance || s_instance->m_unavailableBanners == show) {
+        return;
+    }
+
+    s_instance->m_unavailableBanners = show;
+    qCInfo(lcNotification()) << "Offline banners" << (show ? "on" : "off");
+}
+
+void Notification::createUnavailableBanner(const QString &message, bool warning) {
+    if (!s_instance) {
+        return;
+    }
+
+    if (!s_instance->m_unavailableBanners) {
+        qCInfo(lcNotification()) << "Offline banners off, not shown:" << message;
+        return;
+    }
+
+    createNotification(message, warning);
+}
+
+void Notification::createErrorBanner(const QString &message, bool warning) {
+    if (!s_instance) {
+        return;
+    }
+
+    // the failure itself is logged by the caller; this records what the user was shown instead of the pop-up
+    if (!s_instance->m_errorBanner) {
+        qCInfo(lcNotification()) << "Error pop-ups and banner off, nothing shown:" << message;
+        return;
+    }
+
+    qCInfo(lcNotification()) << "Error banner instead of a pop-up:" << message;
+    emit s_instance->errorBannerCreated(message, warning);
 }
 
 QObject *Notification::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {

@@ -1,4 +1,5 @@
 ﻿// Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
+// Copyright (c) 2026 madalone. The unavailable-device banner can be switched off (Settings → User interface).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 import QtQuick 2.15
@@ -206,8 +207,9 @@ Rectangle {
                     break;
                 case ActivityStates.On:
                     if (!activityObj.enabled) {
+                        // madalone (v1.6.3): shown only while "Show offline banners" is on (Settings → User interface)
                         //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
-                        ui.createNotification(qsTr("%1 is unavailable").arg(activityObj.name), true);
+                        ui.notification.showUnavailableBanner(qsTr("%1 is unavailable").arg(activityObj.name), true);
                     } else {
                         loadSecondContainer(EntityController.screenUrl(activityObj), { "entityId": entityId, "entityObj": activityObj, "integrationObj": integrationObj });
                     }
@@ -222,8 +224,9 @@ Rectangle {
             return false;
         case ActivityStates.On:
             if (!currentEntityObj.enabled) {
+                // madalone (v1.6.3): shown only while "Show offline banners" is on (Settings → User interface)
                 //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
-                ui.createNotification(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
+                ui.notification.showUnavailableBanner(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
                 return false;
             } else {
                 return true;
@@ -249,8 +252,9 @@ Rectangle {
 
         // an entity that could not be loaded has no name to report, the tile shows its placeholder
         if (currentEntityObj !== entityBaseContainer.entityObjDummy) {
+            // madalone (v1.6.3): shown only while "Show offline banners" is on (Settings → User interface)
             //: Notification when a command was not sent because the device is unavailable. %1 is the entity name
-            ui.createNotification(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
+            ui.notification.showUnavailableBanner(qsTr("%1 is unavailable").arg(currentEntityObj.name), true);
         }
 
         return false;
