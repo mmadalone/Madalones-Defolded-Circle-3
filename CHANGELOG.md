@@ -11,9 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
 
-## Unreleased — Close on wake: Never, Undocked or Always
+## Unreleased — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
-Needs firmware 2.12.0 or newer, like v1.6.0. Checked in the desktop simulator; not yet tried on a remote.
+Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the desktop simulator, the touch slider fix in the QML tests; neither has been tried on a remote yet.
 
 ### Added
 
@@ -57,6 +57,22 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Checked in the desktop simulator; n
 
 ### Fixed
 
+- **The touch slider no longer keeps driving your device under the screensaver.** When the screensaver appeared
+  while a finger was on the touch slider (most likely on the dock, when "Run after dismissal while docked" brought
+  it back), that slide never ended. From v1.4.7 on it kept putting the device back to the slider's value within a
+  fifth of a second of any other change: the volume buttons, the TV's own remote or Home Assistant were undone,
+  and on a seek slider playback jumped back every second. From v1.6.0 on, while it hung, every further slide under
+  the screensaver changed the device as well. It lasted until the touch slider was next used outside the
+  screensaver, or until you left the screen the slider belonged to. Now the slide ends the moment the screensaver
+  appears, as if you had taken your finger off: the value the slider showed is sent once (unless the device
+  already has it), nothing after it, and the slider's overlay closes. Slides under the screensaver no longer
+  reach the device; they change the screensaver (the Matrix speed, the Starfield star density). The Remote Two
+  has no touch slider.
+- **A lift with no slide under way sends nothing.** Taking your finger off the touch slider sent the slider's last
+  value to the device, or 0 if it had none, although no slide was under way: after a press the slider refused
+  (the device was unavailable and came back before the lift, or the screensaver was showing and closed before
+  the lift), and when the slider got ready only after your finger was down (for example while the remote was
+  still fetching the device's details). Now such a lift sends nothing.
 - **The dock chime no longer plays at a later, unrelated open.** With "Chime after screensaver" on (the default),
   putting the remote on the dock while the screensaver was already showing left the chime waiting for the next time
   the screensaver opened (it played then if the remote was on the charger), for example when "Run after dismissal
@@ -107,6 +123,34 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Checked in the desktop simulator; n
   (CMake)" job builds 32 programs (31 before). The matrix (260), hardware (161) and integration (41) suites are not
   touched by the change and were not rerun.
 - The simulator checks, and what still needs a remote: `SCREENSAVER-IMPLEMENTATION.md`, "2026-11-11 Session".
+- Touch slider (`src/qml/components/TouchSlider{Volume,Seek,Brightness,Position}.qml`, upstream files): a
+  `Connections { target: applicationWindow }` whose `onScreensaverActiveChanged` ends a slide that is under way
+  when the screensaver opens: it stops `updateDataTimer`, sends the target once if it differs and the entity is
+  enabled (what a release sends), sets `touchSliderActive` to false and closes the overlay. No
+  `ignoreUnknownSignals`, so a renamed `screensaverActive` warns. After the release's screensaver guard comes a
+  no-slide guard: with `!sliderContainer.touchSliderActive` the release sends nothing and only starts
+  `releaseTimer`, so an overlay that is showing still closes 1 s later. Upstream's release sent the last target
+  there (0 on a fresh overlay): after a refused press, and from an overlay loaded after the press (the entity's
+  features arriving late, a screen opened with the keys while the finger stays down). The v1.6.0 merge had
+  dropped v1.4.7's move guard; it stays out, because upstream's move handler needs an active slide and none can be
+  active under the screensaver now. Upstream's `Math.rodun` in the brightness overlay's `onBrightnessChanged` (a
+  TypeError each time a light changed while no slide was under way) is `Math.round`. The decision stays in QML, a
+  deviation from ADR 0012 listed in `docs/UPSTREAM_MERGE.md`.
+- New `tools/check_touchslider_guards.py`, run by the new CI job "Touch slider screensaver guards" in `test.yml`
+  (no Qt, a few seconds): it names each guard a merge drops, file by file (`screensaverActive` in `main.qml`, the
+  press guard, the release's screensaver and no-slide guards, the handler's early return and its four steps,
+  that is the timer stop, the send with its availability and difference check, `touchSliderActive` false and
+  `close()`, without `ignoreUnknownSignals`, and no `Math.rodun`). Only live code at the start of a line counts,
+  so a commented-out guard is reported as missing. It fails on v1.6.3's files (9 findings) and passes now; 14
+  seeded drifts were each caught with one finding.
+- Tests: QML 343 (from 304: the new `tst_touch_slider_screensaver.qml`, 39 results: nine cases for each of the
+  four overlays and the brightness typo, plus `initTestCase` / `cleanupTestCase`), no QWARN. v1.6.3's overlay files
+  fail 29 of the 39, and each of 11 mutants of the fix (a step taken out or changed) makes 1 to 16 fail. New in the
+  QML harness: `MockTouchSlider.h` (the `TouchSliderProcessor` singleton), `TestLog.typeErrors()` in `tst_qml_main.cpp` (it
+  counts logged TypeErrors; Qt 5.15's Quick Test has no failOnWarning), the four touch slider gains in
+  `MockConfig.h`, `Haptic.Bump` and `ui.createActionableNotification()`. The desktop simulator can't show the fix:
+  its touch slider never produces input. Design and the check to run on a remote: `SCREENSAVER-IMPLEMENTATION.md`,
+  "2026-11-12 Session".
 
 ## v1.6.3 — 2026-11-07 — Messages settings: error pop-ups can make way for a banner
 

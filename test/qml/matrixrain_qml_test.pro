@@ -16,7 +16,7 @@ macx {
 SOURCES += tst_qml_main.cpp
 HEADERS += MockScreensaverConfig.h MockHaptic.h \
            MockSignalStrength.h MockBattery.h MockWifi.h \
-           MockEntityController.h MockConfig.h
+           MockEntityController.h MockConfig.h MockTouchSlider.h
 
 # Pull in the project QRC so Components.Switch, Components.Slider etc. resolve.
 # images.qrc bundles loader_small.png + others — without it, a component's

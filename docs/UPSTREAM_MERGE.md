@@ -43,15 +43,15 @@ modifies none for the first time: its upstream files (`src/qml/main.qml`, `remot
 | Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; the Messages block in `onIntegrationError` (the error banner instead of the "%1 error" pop-up); `lcScreensaver` | Medium |
 | Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | The screensaver Loader block: dock chime (`_nextOpenViaDock`, set only while no screensaver item exists; `dockChimeGraceTimer` / `_chimeGraceForVariant`), boot grace, docked rearm (`dockedRearmTimer`), the idle screensaver (`idleScreensaverTimer` and its touch / key / touch-slider resets), Close on wake (where upstream closes the charging screen on every charger loss, ours asks `ScreensaverConfig.closesOnChargerLoss()`; while the screensaver is active a wake to Normal asks `closesOnWake()` first, and upstream's re-open on a wake on the charger became its `else` branch; both close through `_closeScreensaverNow()`, which also cancels a screensaver still loading and clears `_nextOpenViaDock`), `displayOff` on Low_power / Suspend, `screensaverActive`, the `hostContainer` binding; the screensaver popup is a full replacement | Very high |
 | Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons; in `Ui.qml` the Messages section as the last item (our `settings/settings/userinterface/MessagesSection.qml`), reached with DPAD_DOWN from `mediaSourceButtonSwitch`. The section reveals the focused row with `Qt.callLater` so it runs after `ButtonNavigation`'s own synchronous `onWindowFocusItemChanged` reveal of the control: if upstream defers that reveal, re-check the row reveal (`test/qml/tst_messages_reveal_order.qml`) | High: upstream restyles settings |
-| Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/Base.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-bar guards and the Messages error banner for an unavailable entity (inserted before upstream's untouched "Touch slider is not available." block), Messages in `entities/Base.qml`: its 3 "%1 is unavailable" calls through `ui.notification.showUnavailableBanner()` instead of `ui.createNotification()` (two in `handleActivityOpen()`, one in `commandAllowed()`), title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium; higher for `entities/Base.qml`: 11 upstream commits after v0.74.5, 3 of them on the "%1 is unavailable" lines our calls replace |
+| Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/Base.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-slider guards (press and release; Unreleased, `v1.6.4` in the code: a handler that ends a slide under way when the screensaver opens, and a no-slide guard on the release; `tools/check_touchslider_guards.py` names a dropped one) plus `Math.round` for upstream's `Math.rodun` in `TouchSliderBrightness.qml`, and the Messages error banner for an unavailable entity (inserted before upstream's untouched "Touch slider is not available." block), Messages in `entities/Base.qml`: its 3 "%1 is unavailable" calls through `ui.notification.showUnavailableBanner()` instead of `ui.createNotification()` (two in `handleActivityOpen()`, one in `commandAllowed()`), title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium; higher for `entities/Base.qml`: 11 upstream commits after v0.74.5, 3 of them on the "%1 is unavailable" lines our calls replace |
 | Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
 
 For the authoritative custom-file manifest (purely custom, not modified upstream), see [CUSTOM_FILES.md](CUSTOM_FILES.md).
 
 ## Divergence from upstream's specs
 
-Upstream describes what the app does in `openspec/specs/`. This section lists, for the Messages settings and the
-screensaver, where our app behaves differently from a requirement there, by default or only with one of our settings
+Upstream describes what the app does in `openspec/specs/`. This section lists, for the Messages settings, the
+screensaver and the touch slider, where our app behaves differently from a requirement there, by default or only with one of our settings
 changed, so a merge can check whether upstream changed that requirement in the meantime. Not listed yet: LOW_POWER in
 the wake flag of "Command retry window after wakeup" (the spec says Suspend; see the Entities row above), and the Power
 Saving page ("Power saving settings"): "Keep WiFi connected in standby" shown on a Remote 3 without `UC_WOWLAN=true`,
@@ -101,6 +101,32 @@ requirement "Charging screen". It departs from it with the default settings too:
 
 Not checked: whether a key that closes the screensaver also reaches the screen underneath (scenario "Key press on the
 charging screen").
+
+### Touch slider (v1.2.0, v1.4.7, Unreleased)
+
+Upstream's [`touch-slider`](../openspec/specs/touch-slider/spec.md) spec knows no screensaver. With the defaults
+the screensaver opens on the dock, so this applies with the default settings:
+
+| Requirement | Ours |
+|---|---|
+| "Gesture to value mapping": while pressed the target is sent every 200 ms if it differs from the entity's value; on release once more if it still differs. "Slider overlay": it opens on press and closes 1 s after release | While the screensaver shows (`applicationWindow.screensaverActive`, from the moment its Loader is active), the touch slider belongs to it (the Matrix speed, the Starfield star density). A press there starts no gesture: nothing is sent and no overlay opens (v1.4.7). A gesture under way when the screensaver opens ends at once: the target is sent once if it differs and the entity is available, the 200 ms sending stops, and the overlay closes without the 1 s wait (Unreleased). |
+| "Gesture to value mapping": on release the target is sent once more if it still differs | Only for a gesture that is still under way (Unreleased). The release sends nothing after a gesture the screensaver ended, after a refused press (an entity that was unavailable at the press and available at the release, or a press under the screensaver that closed before the release), and in an overlay loaded after the press (the entity's features arriving late); the overlay still closes 1 s after the release. Upstream's code sends the slider's last target then (0 if the slider never had one). |
+
+Checks after merging `TouchSlider{Volume,Seek,Brightness,Position}.qml`: `python3 tools/check_touchslider_guards.py`
+and `test/qml/tst_touch_slider_screensaver.qml` (see the validation checklist).
+
+## Deviations from upstream's ADRs
+
+Upstream records its architecture decisions in [`docs/adr/`](adr/). Where our code departs from one, as listed so far.
+Not listed yet: [0005](adr/0005-core-api-over-websocket-ui-holds-no-business-logic.md) (Mod 5's REST calls to
+`/api/system/power/standby_inhibitors`), [0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md)
+(`activitySessionKeeper`, `phantomWakeSuppressor` and `screenOffSync` in `src/hardware/`), and 0012 for the
+screensaver's own decisions in `main.qml` and `ChargingScreen.qml`.
+
+| ADR | Ours | Why |
+|---|---|---|
+| [0012](adr/0012-qml-is-presentation-only-logic-and-models-in-cpp.md) QML is presentation only | The touch slider's screensaver rules decide in QML: the press guard (since v1.2.0), the release guards (since v1.4.7; the no-slide guard Unreleased) and the handler that ends a slide under way when the screensaver opens (Unreleased), in the 4 `TouchSlider{Volume,Seek,Brightness,Position}.qml` | They extend upstream's own slider logic, which lives in those 4 upstream QML files; moving it to C++ would rewrite them and conflict at every upstream change to them. Pinned by `test/qml/tst_touch_slider_screensaver.qml` and `tools/check_touchslider_guards.py`. Better offered upstream. |
+| [0011](adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md) CMake builds the tests | `test/qml` (the QML suite), `test/integration` and our five `test/hardware/*_test` programs build with qmake; `test/matrixrain` builds with both (qmake in our job, CMake in the upstream job) | Their qmake projects predate the ADR (2026-09-24). Programs and tests added since joined them: `power_test` (v1.5.3), `screenoff_test` (v1.6.2) and new QML tests such as `tst_touch_slider_screensaver.qml`. CI builds them with qmake as before (`test.yml`). `test/screensaver` is our only suite built with CMake alone. |
 
 ## Merge rehearsal procedure
 
@@ -162,7 +188,8 @@ After the merge, before merging the rehearsal branch back into `main`:
       (delete the `qrc` caches of an incremental build first)
 - [ ] **Tests**, all in a Qt 5.15 container (`test.yml` has the commands): `test/hardware` (keeper, suppressor,
       entity controller, power, screen-off sync), `test/matrixrain`, `test/integration`, `test/qml`, and the CMake
-      suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`)
+      suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`); CI's two quick text
+      checks, `python3 tools/check_setPowerMode_drift.py` and `python3 tools/check_touchslider_guards.py`
 - [ ] **Code guidelines** as CI runs them: `python3 tools/design-check.py --self-test && python3 tools/design-check.py`,
       `python3 tools/icon-font.py check --require-free`, `python3 tools/icon-font.py check-mapping`, cpplint
       (filters in `code_guidelines.yml`); the docs link check (`docs-links.yml`)
@@ -175,6 +202,8 @@ After the merge, before merging the rehearsal branch back into `main`:
     wake; all five themes render
   - settings: Screensaver, Power, Sound, User interface, WiFi pages walked with the d-pad
   - first button press after a wake works (no backlight blinking); keep awake holds during playback
+  - touch slider: on the dock, with "Run after dismissal while docked" at 5 s, slide slowly until the screensaver
+    comes back: the device stops changing as it appears, and slides under it change only the screensaver
   - media browser: play an item, its artwork shows at once
   - Messages (Settings → User interface): with the defaults a failed command opens upstream's pop-up; with "Show
     error pop-ups" off it shows the banner for the "Error banner duration" and the buttons keep working; with "Show

@@ -92,6 +92,7 @@ Items discovered in prior batches that should stay verified:
 - [ ] **AnalogTheme first-wake-from-fresh-boot** — with "Close on wake" set to Never (the default) or Undocked, the remote on the dock and woken without lifting it: the Qt.binding pre-conversion workaround still holds after a cold reboot. Clock hands are visible on first wake, not black.
 - [ ] **Dock chime** — with "Chime after screensaver" on, docking plays the chime once, after the screensaver has faded in. With "Close on wake" set to Never, lift the remote (the screensaver stays), put it back and wait a few seconds for the charger report: no chime. Then close the screensaver on the dock; when "Run after dismissal while docked" brings it back, no chime either (up to v1.6.3 the chime played then).
 - [ ] **Run after dismissal while docked** — on the dock, close the screensaver and keep using the remote: it comes back after the set time anyway (not when the time runs out while a page is being reordered); lifting the remote off the dock cancels it.
+- [ ] **Touch slider under the screensaver** — Matrix chosen, "Run after dismissal while docked" at 5 s, the remote on the dock, on a page whose touch slider sets a volume: close the screensaver and slide slowly until it comes back. The volume stops changing as it appears and keeps the value the slider showed. Take your finger off and slide again: only the Matrix speed changes. Close it: no slider overlay is left, and the volume buttons work as usual.
 
 ---
 

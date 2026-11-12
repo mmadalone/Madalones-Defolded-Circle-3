@@ -12,6 +12,7 @@
 #include <QFont>
 #include <QJSValue>
 #include <QPointer>
+#include <cstdio>
 
 #include "MockScreensaverConfig.h"
 #include "MockHaptic.h"
@@ -20,6 +21,7 @@
 #include "MockWifi.h"
 #include "MockEntityController.h"
 #include "MockConfig.h"
+#include "MockTouchSlider.h"
 
 // ── Mock objects (singleton lifetime) ──────────────────────────────
 static MockScreensaverConfig *s_config = nullptr;
@@ -28,6 +30,7 @@ static MockBattery *s_battery = nullptr;
 static MockWifi *s_wifi = nullptr;
 static MockEntityController *s_entityController = nullptr;
 static MockConfig *s_appConfig = nullptr;
+static MockTouchSlider *s_touchSlider = nullptr;
 
 static QObject *configProvider(QQmlEngine *, QJSEngine *) {
     // QtQuick tests destroy/recreate the engine — prevent double-delete
@@ -53,6 +56,10 @@ static QObject *entityControllerProvider(QQmlEngine *, QJSEngine *) {
 static QObject *appConfigProvider(QQmlEngine *, QJSEngine *) {
     QQmlEngine::setObjectOwnership(s_appConfig, QQmlEngine::CppOwnership);
     return s_appConfig;
+}
+static QObject *touchSliderProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_touchSlider, QQmlEngine::CppOwnership);
+    return s_touchSlider;
 }
 
 // ── Mock C++ object for fonts context property ────────────────────
@@ -329,6 +336,7 @@ class MockUi : public QObject {
     Q_PROPERTY(bool keyNavigationActive READ keyNavigationActive WRITE setKeyNavigationActive
                    NOTIFY keyNavigationActiveChanged)
     Q_PROPERTY(int warningNotifications READ warningNotifications NOTIFY warningNotificationsChanged)
+    Q_PROPERTY(int actionableNotifications READ actionableNotifications NOTIFY actionableNotificationsChanged)
     // the banner's signals and the QML entry points of uc::ui::Notification
     Q_PROPERTY(QObject *notification READ notification CONSTANT)
 
@@ -352,6 +360,13 @@ class MockUi : public QObject {
         emit keyNavigationActiveChanged();
     }
     int warningNotifications() const { return m_warningNotifications; }
+    int actionableNotifications() const { return m_actionableNotifications; }
+    // records the call (the touch slider overlays' pop-up for an unavailable device); the action is not run
+    Q_INVOKABLE void createActionableNotification(const QString &, const QString &, const QString & = QString(),
+                                                  const QJSValue & = QJSValue(), const QString & = QString()) {
+        m_actionableNotifications++;
+        emit actionableNotificationsChanged();
+    }
     // records the call; the action is not run (nothing confirms it in a test)
     Q_INVOKABLE void createActionableWarningNotification(const QString &, const QString &, const QString &,
                                                          const QJSValue &, const QString & = QString()) {
@@ -363,12 +378,14 @@ class MockUi : public QObject {
  signals:
     void keyNavigationActiveChanged();
     void warningNotificationsChanged();
+    void actionableNotificationsChanged();
 
  private:
     QObject *m_inputController;
     QObject *m_notification;
     bool     m_keyNavigationActive = true;
     int      m_warningNotifications = 0;
+    int      m_actionableNotifications = 0;
 };
 
 // ── Mock keyboard (keyboard / keyboardInputField context properties) ─
@@ -389,6 +406,45 @@ class MockResource : public QObject {
     Q_INVOKABLE QString getIcon(const QString &, const QString & = QString()) { return ""; }
 };
 
+// ── TestLog: TypeError counter ─────────────────────────────────────
+// TestLog.typeErrors() returns how many messages containing "TypeError" were logged so far: a JavaScript error in a
+// signal handler is only logged, and Qt 5.15's Quick Test has no failOnWarning. QtTest installs its own message
+// handler when it starts logging and does not chain to an earlier one, so the counter installs itself in front of
+// whatever handler is current each time a test asks, and forwards every message to it (QWARN lines still print).
+// A test reads the count before and after the step it checks.
+static int s_typeErrors = 0;
+static QtMessageHandler s_previousHandler = nullptr;
+
+static void countingMessageHandler(QtMsgType type, const QMessageLogContext &context, const QString &message) {
+    if (message.contains(QLatin1String("TypeError"))) {
+        ++s_typeErrors;
+    }
+    if (s_previousHandler) {
+        s_previousHandler(type, context, message);
+    } else {
+        fprintf(stderr, "%s\n", qPrintable(qFormatLogMessage(type, context, message)));
+    }
+}
+
+class TestLog : public QObject {
+    Q_OBJECT
+
+ public:
+    explicit TestLog(QObject *parent = nullptr) : QObject(parent) {}
+
+    Q_INVOKABLE int typeErrors() const {
+        const QtMessageHandler current = qInstallMessageHandler(countingMessageHandler);
+        if (current != countingMessageHandler) {
+            s_previousHandler = current;
+        }
+        return s_typeErrors;
+    }
+};
+
+static QObject *testLogProvider(QQmlEngine *engine, QJSEngine *) {
+    return new TestLog(engine);
+}
+
 // ── Setup class for QUICK_TEST_MAIN_WITH_SETUP ────────────────────
 class Setup : public QObject {
     Q_OBJECT
@@ -401,12 +457,16 @@ class Setup : public QObject {
         s_wifi = new MockWifi;
         s_entityController = new MockEntityController;
         s_appConfig = new MockConfig;
+        s_touchSlider = new MockTouchSlider;
         qmlRegisterSingletonType<MockScreensaverConfig>("ScreensaverConfig", 1, 0, "ScreensaverConfig", configProvider);
         qmlRegisterSingletonType<MockHaptic>("Haptic", 1, 0, "Haptic", hapticProvider);
         qmlRegisterSingletonType<MockBattery>("Battery", 1, 0, "Battery", batteryProvider);
         qmlRegisterSingletonType<MockWifi>("Wifi", 1, 0, "Wifi", wifiProvider);
         qmlRegisterSingletonType<MockEntityController>("Entity.Controller", 1, 0, "EntityController", entityControllerProvider);
         qmlRegisterSingletonType<MockConfig>("Config", 1, 0, "Config", appConfigProvider);
+        qmlRegisterSingletonType<MockTouchSlider>("TouchSlider", 1, 0, "TouchSliderProcessor", touchSliderProvider);
+        // test only: TestLog.typeErrors(), see the class comment
+        qmlRegisterSingletonType<TestLog>("TestLog", 1, 0, "TestLog", testLogProvider);
         // SignalStrength Q_GADGET — registered separately under its own URI to match
         // production wifi.cpp:32 registration. WifiStatusChip imports `Wifi.SignalStrength 1.0`
         // and uses the enum values (NONE/WEAK/OK/GOOD/EXCELLENT) in switch cases.
@@ -452,6 +512,7 @@ class Setup : public QObject {
         delete s_wifi; s_wifi = nullptr;
         delete s_entityController; s_entityController = nullptr;
         delete s_appConfig; s_appConfig = nullptr;
+        delete s_touchSlider; s_touchSlider = nullptr;
     }
 };
 

@@ -10,6 +10,7 @@ on:
       - 'src/**'
       - 'test/**'
       - 'remote-ui.pro'
+      - 'tools/check_touchslider_guards.py'
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
@@ -144,6 +145,22 @@ jobs:
 
       - name: Run drift check
         run: python3 tools/check_setPowerMode_drift.py
+
+  touchslider-guards:
+    name: "Touch slider screensaver guards"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed). The four touch slider overlays
+    # (src/qml/components/TouchSlider{Volume,Brightness,Position,Seek}.qml) are upstream files that carry our
+    # screensaver guards; the v1.6.0 merge dropped one without anyone noticing. Names each guard a merge drops,
+    # file by file (tools/check_touchslider_guards.py). The behaviour itself is tested by the QML job
+    # (test/qml/tst_touch_slider_screensaver.qml).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run guard check
+        run: python3 tools/check_touchslider_guards.py
 
   upstream-unit-tests:
     name: "Upstream unit tests (CMake)"

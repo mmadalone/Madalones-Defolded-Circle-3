@@ -1,7 +1,8 @@
 // Copyright (c) 2026 madalone. Mock Config singleton for QML tests.
 // Production Config (src/config/config.h) has 100+ Q_PROPERTYs. Mock has exactly the
-// minimum the tested components read: the chips, and Settings → User interface → Messages
-// (MessagesSection.qml, Notification.qml). Expand only when a future test needs more —
+// minimum the tested components read: the chips, Settings → User interface → Messages
+// (MessagesSection.qml, Notification.qml) and the touch slider gains (TouchSlider*.qml).
+// Expand only when a future test needs more —
 // pre-mirroring the full surface buys nothing.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -24,8 +25,20 @@ class MockConfig : public QObject {
                    showUnavailableBannersChanged)
     Q_PROPERTY(int otherBannerSec READ getOtherBannerSec WRITE setOtherBannerSec NOTIFY otherBannerSecChanged)
 
+    // the touch slider overlays (TouchSlider*.qml) read how much of the range a full swipe covers;
+    // constant here, at the production defaults (src/config/config.cpp)
+    Q_PROPERTY(double touchSliderGainVolume READ touchSliderGainVolume CONSTANT)
+    Q_PROPERTY(double touchSliderGainBrightness READ touchSliderGainBrightness CONSTANT)
+    Q_PROPERTY(double touchSliderGainPosition READ touchSliderGainPosition CONSTANT)
+    Q_PROPERTY(double touchSliderGainSeek READ touchSliderGainSeek CONSTANT)
+
  public:
     explicit MockConfig(QObject *parent = nullptr) : QObject(parent) {}
+
+    double touchSliderGainVolume() const { return 0.4; }
+    double touchSliderGainBrightness() const { return 1.2; }
+    double touchSliderGainPosition() const { return 1.2; }
+    double touchSliderGainSeek() const { return 1.0; }
 
     static constexpr int kBannerSecMin = 1;
     static constexpr int kBannerSecMax = 30;

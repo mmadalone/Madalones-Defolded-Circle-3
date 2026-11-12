@@ -62,6 +62,27 @@ Item {
         }
     }
 
+    // madalone (v1.6.4): the screensaver takes the touch slider over. A slide that is under way when it opens
+    // ends there, as a release would: the value reached is sent once, the 200 ms updates stop and the overlay
+    // closes. The release guard below can't: that slide's release comes while the screensaver shows.
+    // No ignoreUnknownSignals: a renamed screensaverActive must warn, not silently disable this.
+    Connections {
+        target: applicationWindow
+
+        function onScreensaverActiveChanged() {
+            if (!applicationWindow.screensaverActive || !sliderContainer.touchSliderActive) {
+                return;
+            }
+
+            updateDataTimer.stop();
+            if (entityObj.enabled && entityObj.mediaPosition != sliderContainer.targetPosition) {
+                entityObj.seek(sliderContainer.targetPosition);
+            }
+            sliderContainer.touchSliderActive = false;
+            sliderContainer.close();
+        }
+    }
+
     Connections {
         target: TouchSliderProcessor
         ignoreUnknownSignals: true
@@ -154,6 +175,15 @@ Item {
 
             // Suppress during screensaver (touchbar owned by theme for density/speed)
             if (applicationWindow.screensaverActive) return;
+
+            // madalone (v1.6.4): no slide under way: the press was refused (device unavailable, or the screensaver
+            // showed and has closed since), this overlay was loaded after the press, or the screensaver ended the
+            // slide. Send nothing (upstream's release sent the last target again, 0 if none), but close the
+            // overlay 1 s after the lift, as a release does.
+            if (!sliderContainer.touchSliderActive) {
+                releaseTimer.start();
+                return;
+            }
 
             // if entity is unavalable we do nothing
             if (!entityObj.enabled) {

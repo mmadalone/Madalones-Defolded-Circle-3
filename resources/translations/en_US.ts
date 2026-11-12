@@ -364,10 +364,10 @@
         <translation>Open activity</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="64"/>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="64"/>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="79"/>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="65"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="85"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="85"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="100"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="86"/>
         <location filename="../../src/qml/components/entities/Base.qml" line="212"/>
         <location filename="../../src/qml/components/entities/Base.qml" line="229"/>
         <location filename="../../src/qml/components/entities/Base.qml" line="257"/>
@@ -5116,12 +5116,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderBrightness</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="70"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="91"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="71"/>
+        <location filename="../../src/qml/components/TouchSliderBrightness.qml" line="92"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5129,12 +5129,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderPosition</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="70"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="91"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="71"/>
+        <location filename="../../src/qml/components/TouchSliderPosition.qml" line="92"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5142,12 +5142,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderSeek</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="85"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="106"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="86"/>
+        <location filename="../../src/qml/components/TouchSliderSeek.qml" line="107"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>
@@ -5155,12 +5155,12 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>TouchSliderVolume</name>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="71"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="92"/>
         <source>Touch slider is not available.</source>
         <translation>Touch slider is not available.</translation>
     </message>
     <message>
-        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="72"/>
+        <location filename="../../src/qml/components/TouchSliderVolume.qml" line="93"/>
         <source>%1 is not available. Please check your configuration.</source>
         <translation>%1 is not available. Please check your configuration.</translation>
     </message>

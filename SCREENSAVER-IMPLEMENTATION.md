@@ -1426,7 +1426,7 @@ Swipe up/down on touchscreen to adjust speed when tap direction is on.
 
 ### Interaction Fixes
 
-**Touchbar idle timer** — `TouchSliderProcessor.onTouchPressed` resets `idleScreensaverTimer` in main.qml. Prevents screensaver from activating during touchbar use.
+**Touchbar idle timer** — `TouchSliderProcessor.onTouchPressed` restarts `idleScreensaverTimer` (while it runs) in main.qml. Only the press does: a slide that lasts longer than Idle timeout can still open the idle screensaver under the finger, and nothing on the slider holds back the docked re-open ("Run after dismissal while docked"). Since the Unreleased touch-slider fix (`v1.6.4` in the code), a screensaver that opens mid-slide ends the slide (2026-11-12 Session).
 
 **Hold-tap slow + pause** — Touch and hold: 0.5s = 3× slowdown (relative, no cap), 1.5s = complete pause, release = resume. Fixed: finger drift no longer cancels hold (guard `holdStage > 0`), pause uses property assignment (`matrixRainRef.running = false`), release properly restores `m_running = true`.
 
@@ -1534,7 +1534,7 @@ New file: `screensaverconfig_macros.h` — SCRN_BOOL/INT/STRING read-write macro
 - `isInteractiveTheme` (matrix only): swipe speed, direction zones, hold-to-slow, tap effects
 - `isSwipeableTheme` (matrix + starfield): swipe-to-adjust-speed
 - Minimal/Analog: only double-tap-to-close
-- Touchbar suppression: `applicationWindow.screensaverActive` property gates all 4 upstream TouchSlider variants + base TouchSlider.startSetup()
+- Touchbar suppression: `applicationWindow.screensaverActive` gates the 4 upstream TouchSlider variants (press and release; since the Unreleased touch-slider fix also a handler that ends a slide under way when the screensaver opens, and a no-slide guard on the release). The base `TouchSlider.qml` carried a guard in `startSetup()` until v1.6.0, which took upstream's file back.
 
 ### Settings UX
 
@@ -2873,3 +2873,43 @@ F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the co
 
 - With "DPAD interactive" on (its default) the d-pad, OK, volume and channel keys never close the screensaver on any theme, but its switch is shown only for Matrix: on Starfield, Minimal and Analog these keys do nothing visible, and on TV Static the direction keys flash it (with "Flash on tap" on, the default). Left for a separate change.
 - In the simulator captures the "Run after dismissal while docked" title wraps to two lines next to its value (`docs/screenshots/close-on-wake-*.png`).
+
+## 2026-11-12 Session: the touch slider when the screensaver opens mid-slide
+
+**Status:** implemented and tested (QML suite, guard check), and reviewed through three lenses (correctness on the remote, tests and tooling, the truth of the docs) with a refutation pass, every finding fixed (`logs/bugfix-plan/b6/impl/review_findings.txt`); not released yet and not yet installed on a remote. The code comments say "v1.6.4", like Close on wake's. Plan: `logs/bugfix-plan/PLAN.md`, item 1; evidence in `logs/bugfix-plan/b6/impl/` (local and gitignored, like every `logs/` path below).
+
+### 1. What went wrong
+
+- The four overlays (`TouchSlider{Volume,Seek,Brightness,Position}.qml`) return early in `onTouchPressed` (since v1.2.0) and `onTouchReleased` (since v1.4.7) while `applicationWindow.screensaverActive` is true (`main.qml`: `chargingScreenLoader.active`). Nothing reacted to the screensaver opening. A slide under way at that moment kept `touchSliderActive` true and `updateDataTimer` (200 ms) running, and its release, which came under the screensaver, returned before the cleanup. The timer kept sending the slide's target whenever the device's value differed: any other change was undone within 200 ms, and on a seek slider the 1 s position ticks made playback jump back every second. It lasted until the next slide outside the screensaver, or until the overlay went with its screen (an activity or device screen closed; on the home page, another page or activity, or a screen opened on top).
+- The v1.6.0 merge (`94c4006`) kept the press and release guards but not v1.4.7's `onTouchXChanged` guard: upstream's reworked handler gates moves on `touchSliderActive` only. While a slide hung, every further slide under the screensaver moved its target too.
+- When it happens: the screensaver must open while a finger is on the slider. On the dock, "Run after dismissal while docked" reopens it while the remote is in use (no input restarts `dockedRearmTimer`), and docking mid-slide opens it. The idle screensaver needs a slide longer than Idle timeout, because only the press restarts `idleScreensaverTimer`. From the code: a wake to Normal from Low_power or Suspend while charging reopens it too (upstream's "Wake on charger", `main.qml` `onPowerModeChanged`), which can come mid-slide when the remote fell asleep on the dock before the docked re-open fired; whether a touch of the slider itself wakes the remote is not known.
+- Upstream's release also sent with no slide under way, the slider's last target (`targetVolume` and the others start at 0): after a press refused for an unavailable entity that was available again at the release, and from an overlay loaded after the press (the entity's features arriving after the press, or a screen opened with the keys while the finger stays down; a touch on the screen would close the overlay first). In the fork also after a press refused under the screensaver when the screensaver closed before the lift.
+- Upstream's `Math.rodun` (brightness overlay, `onBrightnessChanged`): a TypeError each time a light's brightness changed while no slide was under way. The bar width is set before it; the percentage text is set again at the next press.
+
+### 2. The fix (QML, in the 4 upstream overlay files)
+
+- A `Connections { target: applicationWindow }` before upstream's `Connections { target: TouchSliderProcessor }`. Its `onScreensaverActiveChanged`, when the screensaver opens while a slide is active, stops `updateDataTimer`, sends the target once if the entity is enabled and the value differs (what a release sends), sets `touchSliderActive` to false and calls `close()` (no 1 s wait: the screensaver covers the overlay). No `ignoreUnknownSignals`: a renamed `screensaverActive` must warn.
+- The release keeps its screensaver guard and gets a no-slide guard after it: with `!sliderContainer.touchSliderActive` it sends nothing and only starts `releaseTimer`. A release with no slide under way has nothing to finish: after the handler ended the slide (the screensaver may close again before the finger lifts, for example when Close on wake's Undocked stops a load), after a refused press, and in an overlay loaded after the press. `releaseTimer` still closes an overlay that is showing 1 s later, as after a release: when the same host loads a new overlay during one gesture (keys open and close a screen while the finger stays down), the pop-up the first overlay opened would otherwise stay up until a tap.
+- The move guard is not restored: no slide can be active under the screensaver any more, and upstream's `touchSliderActive` check already ignores moves without one.
+- `Math.round` for `Math.rodun`.
+- Why QML: these rules extend upstream's slider logic in upstream files, and moving them to C++ would rewrite the 4 files. It is listed as a deviation from ADR 0012 in `docs/UPSTREAM_MERGE.md`; the test and the guard check pin it.
+- Not changed: the idle countdown and the docked re-open still don't wait for a finger on the slider. With the slide ending, there is no need.
+- Not changed: upstream's Settings → Touch Slider page (`settings/settings/TouchSlider.qml`, byte-identical to v0.84.0) has a live test that listens to `TouchSliderProcessor` without a screensaver check. With that page under the screensaver, a slide also moves its test value, plays the Bump haptic and opens its "Test – …" pop-up. No device is touched. Left for a separate change if wanted.
+
+### Tests
+
+- New `test/qml/tst_touch_slider_screensaver.qml`, 39 results (`logs/bugfix-plan/b6/impl/out/r2/b6_fixed.log`). For each overlay: a slide under way when the screensaver opens (the value the slider showed is sent exactly once and kept, nothing more is sent under the screensaver, a change by other means stays, the overlay closes, and the slider works again afterwards); the same opening when the device already has the value (nothing sent); a slide started under the screensaver; the device unavailable mid-slide; the screensaver opening and closing before the finger lifts; the screensaver opening with no slide; a release after a press refused for an unavailable device, after a press refused under the screensaver, and in an overlay loaded after the press (nothing sent, the overlay still asks to close 1 s later). Plus the brightness typo, counted by `TestLog.typeErrors()`.
+- Against v1.6.3's overlay files 29 of the 39 fail (`b6_head.log`). With one step of the fix taken out or changed (`logs/bugfix-plan/b6/impl/make_mutants.py`): no timer stop 12 fail, no last send 4, the send without its difference check 4, the send twice 4, no availability check 4, the early return without its slide check 12, `touchSliderActive` left true 16, no `close()` 12, no no-slide guard 16, the no-slide guard without `releaseTimer.start()` 4, `Math.rodun` back 1.
+- The whole QML suite: 343 passed, 0 failed, no QWARN (`suite.log`; 304 before).
+- `tools/check_touchslider_guards.py` passes on the tree, fails on v1.6.3's files (9 findings) and catches 14 seeded drifts with one finding each (`logs/bugfix-plan/b6/impl/seed_drifts.py`, output `seed_drifts.out`): `ignoreUnknownSignals` added, `close()` removed, the release's or the press's screensaver guard removed, `screensaverActive` renamed or commented out in `main.qml`, the no-slide guard removed, without `releaseTimer.start()` or with a send, the handler's early return without its slide check, its send removed or without the availability check, the press guard commented out, and `Math.rodun` back.
+- The desktop simulator can't show it: there the touch slider never produces input (`openspec/specs/touch-slider/spec.md`, "Touch slider availability").
+
+### Still to verify on a remote
+
+- With the test build `v1.6.3-closeonwake-slider2` (Close on wake plus this fix; built from this tree with the pinned 5.15.19 toolchain, no warnings, not installed yet): Matrix chosen, "Run after dismissal while docked" at 5 s, the remote on the dock, a page whose touch slider sets a volume: close the screensaver and slide slowly until it comes back. The volume should stop changing as it appears. Take your finger off and slide again: only the Matrix speed should change. Close it: no slider overlay should be left, and the volume buttons should work.
+
+### For upstream (a report for the owner to file, not posted)
+
+- `Math.rodun` in `TouchSliderBrightness.qml`, still in v0.84.0.
+- A release with no slide under way sends the slider's last target (0 before any slide): after a refused press, and from an overlay loaded after the press (the entity's features arriving after the press).
+- From the code, not tried: when the entity becomes unavailable mid-slide, the release returns before `updateDataTimer.stop()`, so that slide never ends either.
