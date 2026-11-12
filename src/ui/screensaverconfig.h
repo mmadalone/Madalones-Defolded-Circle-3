@@ -187,10 +187,22 @@ public:
 
     // === General behavior ===
     SCRN_BOOL(tapToClose,          "charging/tapToClose",             true)
-    SCRN_BOOL(motionToClose,       "charging/motionToClose",          false)
+
+    // madalone (v1.6.4): "Close on wake", 0 Never / 1 Undocked / 2 Always (uc::ui::CloseOnWake in
+    // screensaverClosePolicy.h, which also describes the two keys it is stored in; up to v1.6.3 a bool
+    // `motionToClose` over the first of them). Hand-written because it is one property over two keys; the setter
+    // emits closeOnWakeChanged itself, like the five hand-written blocks above.
+    Q_PROPERTY(int closeOnWake READ closeOnWake WRITE setCloseOnWake NOTIFY closeOnWakeChanged)
+public:
+    int closeOnWake() const;
+    void setCloseOnWake(int choice);
+signals:
+    void closeOnWakeChanged();
+public:
     SCRN_BOOL(idleEnabled,         "charging/idleEnabled",            false)
     SCRN_INT(idleTimeout,          "charging/idleTimeout",            45)
-    // madalone (v1.4.15): rearm screensaver after tap-dismiss while docked. UI slider 30-120s, default 60.
+    // madalone (v1.4.15): "Run after dismissal while docked": the screensaver reopens this many seconds after it
+    // closes on the charger (main.qml dockedRearmTimer). UI slider 5-120 s, default 60.
     SCRN_INT(reopenWhileDockedSec, "charging/reopenWhileDockedSec",   60)
     SCRN_BOOL(dpadEnabled,         "charging/matrixDpadEnabled",      true)
     SCRN_BOOL(dpadPersist,         "charging/matrixDpadPersist",      true)
@@ -302,6 +314,18 @@ public:
     /// engine->retranslate-equivalent (`emit Changed()` for every property)
     /// so QML bindings re-read after the wipe.
     Q_INVOKABLE void resetDefaults();
+
+    /// @name "Close on wake" for main.qml
+    /// main.qml asks these instead of deciding itself (upstream ADR 0012); the rule is in screensaverClosePolicy.h.
+    /// Both log the decision at info (uc.ui.screensaver) unless the choice is Never.
+    /// @{
+    /// true if a wake to Normal closes the open or still-loading screensaver. onCharger: Battery.powerSupply;
+    /// loaded: the screensaver has finished loading.
+    Q_INVOKABLE bool closesOnWake(bool onCharger, bool loaded) const;
+    /// true if the core's report that the charger is gone (a lift, or on a Qi pad also charging that stopped)
+    /// closes the open or still-loading screensaver
+    Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
+    /// @}
 
 signals:
     void colorChanged();

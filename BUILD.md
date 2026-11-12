@@ -93,7 +93,7 @@ DEV mode: the arrow keys are the d-pad, Return is OK, Escape is BACK, Home is HO
 qmake runs lupdate, which rewrites every tracked `resources/translations/*.ts`: keep `en_US.ts`, revert the others
 (ADR 0006).
 
-A dynamic desktop build with a local Qt 5.15 kit still works (`qmake && make`); on macOS the screensaver renders black
+A dynamic desktop build with a local Qt 5.15 kit still works (`make linux` or `make macos`, then `make run-linux` or `make run-macos`; don't run `qmake` in the repository root, it overwrites the repository's Makefile); on macOS the screensaver renders black
 (OpenGL 2.1 limitation of Qt 5.15 there).
 
 ## Run tests

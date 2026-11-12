@@ -412,7 +412,7 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-53 | ⚠️ | Trusting `qgetenv("UC_*")` to return a non-empty value without a fallback. Only `UC_CONFIG_HOME` and `UC_DATA_HOME` are contractually documented for custom-UI installs; everything else is a de-facto runtime convention the firmware can change between releases. v1.4.41 case study: firmware 2.9.2 ships with `UC_SOUND_EFFECTS_PATH` empty for custom-UI launches, silencing all UI sound effects. Mitigation: provide a fallback to `$UC_CONFIG_HOME` for any env that gates a feature. | §13.7 |
 | AP-UC-54 | ❌ | Calling `SoundEffects.play()` on the same JS tick as a heavy QML/GPU operation (Loader async load, large Repeater instantiation, shader compile, large texture upload). The main thread saturates and starves the audio thread, producing audible ALSA buffer underruns. v1.4.40 dock chime case study. Mitigation: defer the heavy operation by ≥ 250 ms via single-shot Timer, OR use AP-UC-56's pattern (audio fires from popup.onOpened after heavy work is done). | §13.8, §13.10 |
 | AP-UC-55 | ❌ | Auto-opening a Popup in response to firmware-pushed initial state during the first 1-2 s of QML load — Popup parent attachment, InputController, and ButtonNavigation aren't fully wired yet, so the popup opens but is undismissible. v1.4.41 boot-while-docked case study. Mitigation: 3 s startup grace flag + 2 s deferred activation during the grace window. | §13.9 |
-| AP-UC-56 | ℹ️ | Reverse pattern of AP-UC-54 — fire audio from `Popup.onOpened` instead of before/during the popup load. Eliminates contention without requiring a grace-timer-tuned-per-chime; trade-off is dock-to-first-audio latency rises from 0 ms to ~450 ms (popup transition duration). v1.4.43 reference implementation: `Config.dockChimeAfterScreensaver` toggle. Use when (a) audio is bound to a popup-opening trigger, AND (b) audio's exact timing relative to the physical event isn't critical. | §13.10 |
+| AP-UC-56 | ℹ️ | Reverse pattern of AP-UC-54 — fire audio from `Popup.onOpened` instead of before/during the popup load. Eliminates contention without requiring a grace-timer-tuned-per-chime; trade-off is dock-to-first-audio latency rises from 0 ms to the screensaver's load plus its 300 ms fade-in: about 450 ms in the v1.4.43 measurement (firmware 2.9.2), longer when the Matrix glyph atlas has to be built first (3.7 s from the Matrix item's creation to its first frame in the heaviest of four setups measured on 2026-04-14: Rainbow+, Kana, font size 39, Rain layers on). v1.4.43 reference implementation: `Config.dockChimeAfterScreensaver` toggle; the dock flag is set only while no screensaver item exists yet (Unreleased Close on wake change, §13.10). Use when (a) audio is bound to a popup-opening trigger, AND (b) audio's exact timing relative to the physical event isn't critical. | §13.10 |
 
 ### Renderer / GPU
 
@@ -1087,7 +1087,9 @@ function onPowerSupplyChanged(value) {
 ```qml
 Timer {
     id: dockChimeGraceTimer
-    interval: 350    // covers all 6 chime durations except Bell's tail (exponentially-decayed by then)
+    interval: 350    // v1.4.41: covers all 6 chime durations except Bell's tail (exponentially-decayed by then).
+                     // Since v1.4.42 main.qml sets _chimeGraceForVariant() = max(350, chime length + 100 ms) for its
+                     // 12 chimes, and since v1.4.43 only with "Chime after screensaver" off (§13.10)
     repeat: false
     running: false
     onTriggered: { if (Battery.powerSupply && !chargingScreenLoader.active) chargingScreenLoader.active = true; }
@@ -1133,7 +1135,8 @@ function onPowerSupplyChanged(value) {
             dockChimeGraceTimer.interval = 2000;       // 2 s instead of 350 ms
             dockChimeGraceTimer.restart();
         } else {
-            // Normal runtime event — full chime + 350 ms screensaver grace.
+            // Normal runtime event — full chime + 350 ms screensaver grace (v1.4.41 form). Today main.qml has two
+            // branches here: "Chime after screensaver" on (§13.10, no chime here) or off (chime + _chimeGraceForVariant()).
             SoundEffects.play(SoundEffects.BatteryCharge);
             dockChimeGraceTimer.interval = 350;
             dockChimeGraceTimer.restart();
@@ -1154,16 +1157,16 @@ Companion / refinement of §13.8. When you must combine audio playback with a po
 - Glyph atlas / GPU buffer upload: complete (first paint)
 - Popup transition animation: complete (this is what `onOpened` actually signals — Qt docs)
 
-After `onOpened`, the renderer is in steady-state per-frame mode (~2-5 ms main-thread cost per frame on UCR3), which leaves plenty of CPU for the audio thread to refill its ALSA buffer.
+After `onOpened`, the renderer is in steady-state per-frame mode, which leaves CPU for the audio thread to refill its ALSA buffer (no per-frame cost has been measured on UCR3; the v1.4.43 on-device check heard no chopping).
 
 **Comparison to §13.8's grace-timer fix:**
 
 | Pattern | Audio timing | Visual timing | Trade-off |
 |---|---|---|---|
-| §13.8 grace timer | Plays at t=0 (immediate) | Visible at t = chimeMs+100 (delayed for long chimes) | Long chimes → long visual delay |
-| §13.10 onOpened-fire | Plays at t ≈ 450 ms (after popup transitions in) | Visible at t = 200-450 ms | Audio confirmation slightly delayed; visual + audio synchronized |
+| §13.8 grace timer ("Chime after screensaver" off) | Plays at t=0 (immediate) | Starts loading at t = max(350 ms, chime length + 100 ms), then loads and fades in over 300 ms | Long chimes → long visual delay |
+| §13.10 onOpened-fire | Plays when the 300 ms fade-in ends: ≈ 450 ms after the dock in the v1.4.43 measurement (firmware 2.9.2) | Fade-in starts once the screensaver has loaded: ≈ 200 ms after the dock in that measurement. The first time Matrix opens after a UI start, it builds its glyph atlas on the main thread once `open()` has put the popup in the window: 3.7 s from the Matrix item's creation to its first frame in the heaviest of four setups measured on 2026-04-14 (Rainbow+, Kana, font size 39, Rain layers on) | Audio confirmation slightly delayed; visual + audio synchronized |
 
-Reference implementation in v1.4.43 (`Config.dockChimeAfterScreensaver` toggle, default ON):
+Reference implementation (v1.4.43, `Config.dockChimeAfterScreensaver` toggle, default ON; when the flag is set and cleared was tightened in the Unreleased Close on wake change):
 
 ```qml
 // main.qml — set the flag, activate Loader immediately, no chime here
@@ -1172,7 +1175,9 @@ function onPowerSupplyChanged(value) {
     if (value) {
         if (root._bootGraceActive) { /* boot-while-docked grace, see §13.9 */ }
         else if (Config.dockChimeAfterScreensaver) {
-            root._nextOpenViaDock = true;
+            // only while no screensaver item exists yet: none, or one still loading that this dock joins. On a
+            // screensaver already showing nothing would consume the flag, and a later, unrelated open would chime.
+            if (!chargingScreenLoader.item) root._nextOpenViaDock = true;
             chargingScreenLoader.active = true;
         } else { /* legacy §13.8 path */ }
     }
@@ -1183,6 +1188,15 @@ onStatusChanged: {
         item._openedViaDock = root._nextOpenViaDock && Battery.powerSupply;
         root._nextOpenViaDock = false;
         item.open();
+    }
+}
+// a close that stops a load cancels the open the flag was meant for, so it clears the flag too
+function _closeScreensaverNow() {   // used by "Close on wake"
+    if (chargingScreenLoader.item) {
+        chargingScreenLoader.item.close();
+    } else {
+        root._nextOpenViaDock = false;
+        chargingScreenLoader.active = false;   // cancels the load: no Ready, no popup
     }
 }
 
@@ -1199,9 +1213,13 @@ onOpened: {
 
 **Rule:** prefer this pattern when (a) the audio cue is bound to a state transition that triggers heavy popup loading, AND (b) the audio cue's exact timing relative to the physical event isn't critical. If audio cue must be immediate (e.g., haptic + audio confirmation of a button press), use §13.8's grace timer instead.
 
-**Why a flag-and-gate instead of just calling play() in onOpened unconditionally:** popups can open through multiple triggers (idle timer, wake from suspend, dock event). Only some of those should fire the chime. The flag mechanism lets the calling site declare intent ("this open is from a dock event"), which the popup's onOpened consumes. Same pattern as the existing `_openedViaIdleTimer` flag for the screen-off countdown's idle-baseline subtraction rule.
+**Why a flag-and-gate instead of just calling play() in onOpened unconditionally:** the screensaver opens through several triggers (dock, wake on the charger, the idle timer, "Run after dismissal while docked", the start-up grace, DEV's auto-open). Only the dock should fire the chime. The flag lets the calling site declare intent ("this open is from a dock event"), which the popup's onOpened consumes.
 
-**Battery.powerSupply gate at flag propagation** prevents stale flags from quick dock-then-undock during the async load — if the user pulled the remote between `_nextOpenViaDock=true` and `Loader.Ready`, the chime shouldn't fire. The gate is at flag-propagation (in `Loader.onStatusChanged`) rather than at the play() site so the flag isn't carried into a future open() call.
+**Battery.powerSupply gate at flag propagation** drops the chime when the remote left the dock between `_nextOpenViaDock=true` and `Loader.Ready`. Two more rules keep the flag from reaching a later, unrelated open (the first, and the clear in `_closeScreensaverNow()`, came with the Unreleased Close on wake change; the clear at `Loader.Ready` has been there since v1.4.43):
+- Set it only while no screensaver item exists yet (`!chargingScreenLoader.item`). On a screensaver that is already showing nothing consumes it: up to v1.6.3 it stayed set, and the next `Loader.Ready` of any origin (for example "Run after dismissal while docked") played the chime.
+- Clear it where its open uses it or is cancelled: at `Loader.Ready` (it is handed to the popup there) and in `_closeScreensaverNow()`, when a "Close on wake" close stops a load.
+
+Test `item`, not `active`: `active` is already true while a load runs, and a dock that joins a load in progress (the idle screensaver loading off the dock, for example) should still chime. Rule: a one-shot flag is set only by the trigger that starts or joins the open it is meant for, and cleared where that open uses it or is cancelled. Consequence: with "Chime after screensaver" on, docking while the screensaver is already showing plays no chime.
 
 ### §13.11 API version awareness (post-upstream-merge ritual)
 

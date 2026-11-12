@@ -169,6 +169,7 @@ HEADERS += \
     src/ui/matrixrain.h \
     src/ui/screensaverconfig.h \
     src/ui/screensaverconfig_macros.h \
+    src/ui/screensaverClosePolicy.h \
     src/ui/rainsimulation.h \
     src/ui/gravitydirection.h \
     src/ui/glitchengine.h \

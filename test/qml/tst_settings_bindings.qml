@@ -31,7 +31,7 @@ TestCase {
     SignalSpy { id: idleEnabledSpy; target: ScreensaverConfig; signalName: "idleEnabledChanged" }
     SignalSpy { id: idleTimeoutSpy; target: ScreensaverConfig; signalName: "idleTimeoutChanged" }
     SignalSpy { id: tapCloseSpy;    target: ScreensaverConfig; signalName: "tapToCloseChanged" }
-    SignalSpy { id: motionCloseSpy; target: ScreensaverConfig; signalName: "motionToCloseChanged" }
+    SignalSpy { id: closeOnWakeSpy; target: ScreensaverConfig; signalName: "closeOnWakeChanged" }
     SignalSpy { id: chaosSpy;       target: ScreensaverConfig; signalName: "glitchChaosChanged" }
 
     // ── init / cleanup ────────────────────────────────────────
@@ -43,7 +43,7 @@ TestCase {
         fontSizeSpy.clear(); directionSpy.clear(); glowSpy.clear();
         glitchSpy.clear(); glitchRateSpy.clear(); invertTrailSpy.clear();
         messagesSpy.clear(); idleEnabledSpy.clear(); idleTimeoutSpy.clear();
-        tapCloseSpy.clear(); motionCloseSpy.clear(); chaosSpy.clear();
+        tapCloseSpy.clear(); closeOnWakeSpy.clear(); chaosSpy.clear();
     }
 
     // ─────────────────────────────────────────
@@ -111,11 +111,24 @@ TestCase {
         compare(tapCloseSpy.count, 1, "tap to close signal emitted");
     }
 
-    function test_motion_to_close_toggle() {
-        compare(ScreensaverConfig.motionToClose, false, "motion to close off by default");
-        ScreensaverConfig.motionToClose = true;
-        compare(ScreensaverConfig.motionToClose, true, "motion to close toggled on");
-        compare(motionCloseSpy.count, 1, "motion to close signal emitted");
+    // "Close on wake" (v1.6.4): 0 Never, 1 Undocked, 2 Always. Like every test here this runs on the mock
+    // (MockScreensaverConfig.h): the real class's storage in two config.ini keys is tested in test/screensaver.
+    function test_close_on_wake_choices() {
+        compare(ScreensaverConfig.closeOnWake, 0, "Close on wake is Never by default");
+        ScreensaverConfig.closeOnWake = 1;
+        compare(ScreensaverConfig.closeOnWake, 1, "Undocked chosen");
+        compare(closeOnWakeSpy.count, 1, "one signal per change");
+        ScreensaverConfig.closeOnWake = 2;
+        compare(ScreensaverConfig.closeOnWake, 2, "Always chosen");
+        compare(closeOnWakeSpy.count, 2);
+        ScreensaverConfig.closeOnWake = 2;
+        compare(closeOnWakeSpy.count, 2, "the same choice again emits nothing");
+        ScreensaverConfig.closeOnWake = 0;
+        // the mock clamps like ScreensaverConfig::setCloseOnWake (qBound 0-2)
+        ScreensaverConfig.closeOnWake = 7;
+        compare(ScreensaverConfig.closeOnWake, 2, "a value past the end is clamped to Always");
+        ScreensaverConfig.closeOnWake = -3;
+        compare(ScreensaverConfig.closeOnWake, 0, "a value below the start is clamped to Never");
     }
 
     function test_idle_enabled_toggle() {

@@ -9,7 +9,104 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 # Fork releases (Madalone's Defolded Circle 3)
 
-Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.71.1`.
+Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
+
+## Unreleased — Close on wake: Never, Undocked or Always
+
+Needs firmware 2.12.0 or newer, like v1.6.0. Checked in the desktop simulator; not yet tried on a remote.
+
+### Added
+
+- **Close on wake: Never, Undocked or Always** (GitHub issue #3). The "Close on wake" switch in Settings →
+  Screensaver becomes three choices, with a help line for the one you pick:
+  - **Never** (the default): "Stays until you close it." Nothing closes the screensaver by itself, not even lifting
+    the remote off the dock.
+  - **Undocked** (new): "Stays on the dock. Closes a few seconds after you lift the remote, or when it wakes off the
+    dock." A wake on the dock, for example a bump of the nightstand, leaves it showing. It closes when the remote
+    reports that the charger is gone, and when the remote wakes while no charger is reported (for example the idle
+    screensaver, off the dock).
+  - **Always**: "Closes whenever the remote wakes or leaves the dock." Every wake closes it, on the dock too.
+  - Your setting carries over: the old switch off becomes Never, on becomes Always.
+  - Closing it yourself works as before ("Double-tap to close", "Touch directions"). With "DPAD interactive" on (the
+    default), the d-pad, OK, volume and channel keys don't close it, on every theme, although that switch is shown
+    only for Matrix.
+  - Unfolded Circle's own charging screen closes whenever the remote leaves the charger; of the three choices,
+    Undocked comes closest to that.
+- **What to expect from Undocked:**
+  - The remote notices that it left the dock only at its battery check, about every 5 seconds, so the screensaver
+    stays in your hand for a few seconds. On the maintainer's Remote 3 on a Qi pad the report came 2.3 to 4.6
+    seconds after the lift woke the remote (13 lifts, median 3.3 s).
+  - A button pressed in those seconds goes to the screensaver: most buttons just close it, and your button mappings don't run (worked out from the code, not yet tried on a remote). Whether a key also reaches a control that has the key focus on the screen under the screensaver has not been checked.
+  - On a Qi pad the remote also reports the charger gone when the pad stops charging (seen at 80 % and when full,
+    with the remote asleep on the pad). Undocked and Always then close the screensaver as if the remote had been
+    lifted.
+  - Not tried on a Remote Two: the code is the same for both remotes, but how soon a Remote Two reports a lift is not
+    known.
+  - Going back to v1.6.3 shows Undocked as the switch on, which closes on every wake. If you then switch it off and
+    on again there, the next update shows Undocked, not Always.
+
+### Changed
+
+- **Help texts.** "Run after dismissal while docked" now reads "On the dock, the screensaver comes back this many
+  seconds after it closes, even while you use the remote (not while you reorder a page)." It said "of inactivity",
+  but using the remote never held it back. "Touch directions" now reads "Tap screen zones to change direction. Tap
+  the center four times in a row to close." It said triple-tap, but it is the fourth tap that closes the screensaver.
+- **Docs and screenshots refreshed.** The docs were checked against the code for this change. All 54 images in
+  `docs/screenshots` are new captures of the desktop simulator running this version, at 480 × 850 pixels: the 24
+  that were there, retaken under the same names, and 30 new ones.
+
+### Fixed
+
+- **The dock chime no longer plays at a later, unrelated open.** With "Chime after screensaver" on (the default),
+  putting the remote on the dock while the screensaver was already showing left the chime waiting for the next time
+  the screensaver opened (it played then if the remote was on the charger), for example when "Run after dismissal
+  while docked" brought it back. Now such a dock plays no chime at all. Docking while the screensaver is closed plays
+  it as before.
+- **With Undocked, a screensaver still loading when the remote leaves the dock no longer opens afterwards.** Up to
+  v1.6.3 a screensaver that was still loading when the remote left the dock opened anyway, on the lifted remote.
+  Undocked stops the load. Always keeps the v1.6.3 behaviour here.
+
+### Developer notes
+
+- New `src/ui/screensaverClosePolicy.h` (header only: inline free functions in `uc::ui`, the namespace of upstream's
+  `src/ui/entity/commandRetryPolicy.{h,cpp}`): `enum class CloseOnWake { Never = 0, Undocked = 1, Always = 2 }` (the
+  picker's values), `closesOnWake(choice, onCharger, loaded)` and `closesOnChargerLoss(choice, loaded)`. Always
+  returns `loaded` in both, which is v1.6.3's `motionToClose && active && item`; Never returns false. `main.qml` asks
+  `ScreensaverConfig.closesOnWake(Battery.powerSupply, item !== null)` in its wake handler and
+  `closesOnChargerLoss(item !== null)` in its charger-loss handler, both only while the Loader is active (ADR 0012:
+  the rule lives in C++). Upstream's re-open on a wake on the charger stays as the `else` branch of the wake check.
+- Storage: two `config.ini` keys, so no conversion runs: `charging/motionToClose` (v1.6.3's switch, true for Undocked
+  and Always) and the new `charging/closeOnWakeUndockedOnly` (true for Undocked; ignored while the first is false).
+  The header defines both key names and `readCloseOnWake(const QSettings&)` /
+  `writeCloseOnWake(QSettings&, CloseOnWake)`. `ScreensaverConfig`'s `SCRN_BOOL(motionToClose)` becomes the
+  hand-written `Q_PROPERTY(int closeOnWake)` (clamped to 0–2, written and emitted only on a change; `resetDefaults`
+  emits `closeOnWakeChanged`).
+- `main.qml`: both handlers close through the new `_closeScreensaverNow()`: `item.close()`, or, while the screensaver
+  is still loading (no item yet), `_nextOpenViaDock = false` and `chargingScreenLoader.active = false`, which cancels
+  the load (Qt 5.15's `QQuickLoader::setActive(false)` clears the incubator). The "Chime after screensaver" branch of
+  the dock handler sets `_nextOpenViaDock` only while `chargingScreenLoader.item` is null (no screensaver yet, or one
+  still loading that the dock joins). Up to v1.6.3 a dock onto a showing screensaver set it, and the next
+  `Loader.Ready` of any origin consumed it and chimed if the remote was on the charger.
+- Info log lines on `uc.ui.screensaver` (read them with `/api/system/logs?s=custom-ui&p=7`): `Close on wake: <choice>`
+  at start-up, `Close on wake set to <choice>` on a change, and with Undocked or Always one line per decision, for
+  example `Close on wake (Undocked): a wake on the charger keeps the screensaver` or
+  `Close on wake (Undocked): charger gone, closes the screensaver (still loading)`. The lines name the charger, not
+  the dock: the UI only knows the charger report.
+- Settings row: in `GeneralBehavior.qml` the switch becomes a `Components.ChipPicker` (`closeOnWakePicker`) under the
+  help line (`controlBelow`). The help's length changes with the choice and moves the chips, so a keypad pick reveals
+  the row again (`Qt.callLater(root.settingsPage.ensureVisible, closeOnWakeRow)`). `en_US.ts` (lupdate): the 6 new Close
+  on wake strings and the two reworded help texts, with `//:` translator comments on the Close on wake strings (the
+  unchanged title too) and on the "Run after dismissal while docked" help; the other 13 `.ts` files untouched
+  (ADR 0006).
+- Tests: QML 304 (from 290: the new `tst_close_on_wake_row.qml`, two test cases, the row and the keypad reveal after
+  a pick, with 10 test functions, 14 results counting their `initTestCase` / `cleanupTestCase`;
+  `tst_settings_bindings.qml` and `tst_config_defaults.qml` test `closeOnWake` instead of `motionToClose`), no QWARN.
+  New CMake program `testScreensaverClosePolicy` (`test/screensaver/`, links `Qt5::Core` and `Qt5::Test`): 33 passed,
+  every wake and charger loss for each choice, loaded or still loading, the keys, and `config.ini` files as v1.6.3
+  writes them (switch on, off, no key, empty), read and written through `QSettings`. CI's "Upstream unit tests
+  (CMake)" job builds 32 programs (31 before). The matrix (260), hardware (161) and integration (41) suites are not
+  touched by the change and were not rerun.
+- The simulator checks, and what still needs a remote: `SCREENSAVER-IMPLEMENTATION.md`, "2026-11-11 Session".
 
 ## v1.6.3 — 2026-11-07 — Messages settings: error pop-ups can make way for a banner
 

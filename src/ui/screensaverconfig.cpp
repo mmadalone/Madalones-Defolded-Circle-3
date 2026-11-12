@@ -6,9 +6,28 @@
 #include <QCoreApplication>
 #include <QtMath>
 
+#include "../logging.h"
 #include "../system/battery.h"
+#include "screensaverClosePolicy.h"
 
 namespace uc {
+
+namespace {
+
+// the name of a "Close on wake" choice as the settings picker shows it, for the log
+const char *closeOnWakeName(ui::CloseOnWake choice) {
+    switch (choice) {
+        case ui::CloseOnWake::Never:
+            return "Never";
+        case ui::CloseOnWake::Undocked:
+            return "Undocked";
+        case ui::CloseOnWake::Always:
+            return "Always";
+    }
+    return "?";
+}
+
+}  // namespace
 
 ScreensaverConfig *ScreensaverConfig::s_instance = nullptr;
 
@@ -50,6 +69,9 @@ ScreensaverConfig::ScreensaverConfig(QObject *parent)
     Q_ASSERT(batt && "ScreensaverConfig constructed before Battery — check main.cpp order");
     connect(batt, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
     connect(batt, &hw::Battery::isChargingChanged,  this, &ScreensaverConfig::showBatteryChanged);
+
+    // madalone (v1.6.4): the "Close on wake" choice, so that a device log shows it
+    qCInfo(lcScreensaver) << "Close on wake:" << closeOnWakeName(static_cast<ui::CloseOnWake>(closeOnWake()));
 }
 
 QObject *ScreensaverConfig::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
@@ -131,6 +153,45 @@ void ScreensaverConfig::setMatrixTrail(int value) {
     m_settings->setValue("charging/matrixTrail", value);
     emit matrixTrailChanged();
     emit trailLengthChanged();
+}
+
+// --- "Close on wake" (madalone v1.6.4): one property over two keys, see screensaverClosePolicy.h ---
+
+int ScreensaverConfig::closeOnWake() const {
+    return static_cast<int>(ui::readCloseOnWake(*m_settings));
+}
+
+void ScreensaverConfig::setCloseOnWake(int choice) {
+    const auto c = static_cast<ui::CloseOnWake>(qBound(0, choice, 2));
+    if (static_cast<int>(c) == closeOnWake()) return;
+    ui::writeCloseOnWake(*m_settings, c);
+    qCInfo(lcScreensaver) << "Close on wake set to" << closeOnWakeName(c);
+    emit closeOnWakeChanged();
+}
+
+// The log names the charger, not the dock: the UI only knows the charger report, and on a Qi pad the core also
+// reports the charger gone when charging stops (screensaverClosePolicy.h).
+bool ScreensaverConfig::closesOnWake(bool onCharger, bool loaded) const {
+    const auto c = static_cast<ui::CloseOnWake>(closeOnWake());
+    const bool closes = ui::closesOnWake(c, onCharger, loaded);
+    if (c != ui::CloseOnWake::Never) {
+        qCInfo(lcScreensaver).nospace() << "Close on wake (" << closeOnWakeName(c) << "): a wake "
+                                        << (onCharger ? "on the charger " : "off the charger ")
+                                        << (closes ? "closes" : "keeps") << " the screensaver"
+                                        << (loaded ? "" : " (still loading)");
+    }
+    return closes;
+}
+
+bool ScreensaverConfig::closesOnChargerLoss(bool loaded) const {
+    const auto c = static_cast<ui::CloseOnWake>(closeOnWake());
+    const bool closes = ui::closesOnChargerLoss(c, loaded);
+    if (c != ui::CloseOnWake::Never) {
+        qCInfo(lcScreensaver).nospace() << "Close on wake (" << closeOnWakeName(c) << "): charger gone, "
+                                        << (closes ? "closes" : "keeps") << " the screensaver"
+                                        << (loaded ? "" : " (still loading)");
+    }
+    return closes;
 }
 
 // --- resetDefaults: wipe all charging/* keys, then re-broadcast NOTIFY signals so
@@ -244,7 +305,7 @@ void ScreensaverConfig::resetDefaults() {
     emit tapRandomizeChanceChanged();
 
     emit tapToCloseChanged();
-    emit motionToCloseChanged();
+    emit closeOnWakeChanged();
     emit idleEnabledChanged();
     emit idleTimeoutChanged();
     emit reopenWhileDockedSecChanged();

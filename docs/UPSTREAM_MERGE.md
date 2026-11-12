@@ -26,7 +26,9 @@ git diff --name-status refs/upstream-public/vX.Y.Z HEAD
 As of v1.6.3 (upstream v0.84.0): 67 upstream files modified, 3 removed (`.github/dependabot.yml`,
 `.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours. v1.6.3's
 Messages settings modified four of them for the first time (`src/ui/notification.{h,cpp}`,
-`src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`).
+`src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`). The Unreleased "Close on wake" change
+modifies none for the first time: its upstream files (`src/qml/main.qml`, `remote-ui.pro`, `test/CMakeLists.txt`,
+`resources/translations/en_US.ts`, `README.md`, `CHANGELOG.md`) were already on the list.
 
 | Area | Upstream files | What we keep | Conflict risk |
 |---|---|---|---|
@@ -39,7 +41,7 @@ Messages settings modified four of them for the first time (`src/ui/notification
 | Entities | `src/ui/entity/entityController.{h,cpp}`, `src/ui/entity/mediaPlayer.{h,cpp}` | Mod 5 hook in `connectLazySignals` (only players a screen asked for), `entityCommandIssued`, `LOW_POWER` in the wake flag; `hide_volume_overlay`; browse-thumbnail preview on the artwork pipeline; the Messages block in `handleCommandFailure` (after the wake-up resend, the `voice_start` hand-off, the repeat drop and the entity-name lookup, just before `switch (code)`: with the pop-ups off, remove the pending command and show the error banner instead); in `refuseUnavailableEntity` (an activity's button mapping to an unavailable entity) `Notification::createUnavailableBanner` instead of `createNotification`, so "Show offline banners" can hide the "%1 is unavailable" toast | **High: conflicted on every merge so far.** Upstream keeps reworking wake/standby and artwork; the failure path is where upstream would land non-blocking command errors (see below) |
 | Notifications | `src/ui/notification.{h,cpp}`, `src/qml/components/Notification.qml` | Messages: static `setErrorFeedback` / `errorPopupsEnabled` / `createErrorBanner` and the `errorBannerCreated` signal, `Q_INVOKABLE bannerInsteadOfPopUp()` for QML; static `setUnavailableBanners` / `createUnavailableBanner` (the "%1 is unavailable" toast through `createNotification`, only while its switch is on) and `Q_INVOKABLE showUnavailableBanner()` for QML; the toast's handler moved into `show(message, warning, durationMs)` with a per-message `displayMs` (was a fixed 4000): `onNotificationCreated` with "Other banner duration", the new `onErrorBannerCreated` with "Error banner duration". No filter in QML: whether a toast is created is decided in C++ | Medium: our hunks replace upstream's whole toast handler |
 | Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; the Messages block in `onIntegrationError` (the error banner instead of the "%1 error" pop-up); `lcScreensaver` | Medium |
-| Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | Screensaver loader flags, boot grace, dock chime, docked rearm, `hostContainer` binding; the screensaver popup is a full replacement | Very high |
+| Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | The screensaver Loader block: dock chime (`_nextOpenViaDock`, set only while no screensaver item exists; `dockChimeGraceTimer` / `_chimeGraceForVariant`), boot grace, docked rearm (`dockedRearmTimer`), the idle screensaver (`idleScreensaverTimer` and its touch / key / touch-slider resets), Close on wake (where upstream closes the charging screen on every charger loss, ours asks `ScreensaverConfig.closesOnChargerLoss()`; while the screensaver is active a wake to Normal asks `closesOnWake()` first, and upstream's re-open on a wake on the charger became its `else` branch; both close through `_closeScreensaverNow()`, which also cancels a screensaver still loading and clears `_nextOpenViaDock`), `displayOff` on Low_power / Suspend, `screensaverActive`, the `hostContainer` binding; the screensaver popup is a full replacement | Very high |
 | Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons; in `Ui.qml` the Messages section as the last item (our `settings/settings/userinterface/MessagesSection.qml`), reached with DPAD_DOWN from `mediaSourceButtonSwitch`. The section reveals the focused row with `Qt.callLater` so it runs after `ButtonNavigation`'s own synchronous `onWindowFocusItemChanged` reveal of the control: if upstream defers that reveal, re-check the row reveal (`test/qml/tst_messages_reveal_order.qml`) | High: upstream restyles settings |
 | Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/Base.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-bar guards and the Messages error banner for an unavailable entity (inserted before upstream's untouched "Touch slider is not available." block), Messages in `entities/Base.qml`: its 3 "%1 is unavailable" calls through `ui.notification.showUnavailableBanner()` instead of `ui.createNotification()` (two in `handleActivityOpen()`, one in `commandAllowed()`), title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium; higher for `entities/Base.qml`: 11 upstream commits after v0.74.5, 3 of them on the "%1 is unavailable" lines our calls replace |
 | Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
@@ -48,9 +50,12 @@ For the authoritative custom-file manifest (purely custom, not modified upstream
 
 ## Divergence from upstream's specs
 
-Upstream describes what the app does in `openspec/specs/`. This section lists where one of our settings makes the app
-behave differently from a requirement there, so a merge can check whether upstream changed that requirement in the
-meantime.
+Upstream describes what the app does in `openspec/specs/`. This section lists, for the Messages settings and the
+screensaver, where our app behaves differently from a requirement there, by default or only with one of our settings
+changed, so a merge can check whether upstream changed that requirement in the meantime. Not listed yet: LOW_POWER in
+the wake flag of "Command retry window after wakeup" (the spec says Suspend; see the Entities row above), and the Power
+Saving page ("Power saving settings"): "Keep WiFi connected in standby" shown on a Remote 3 without `UC_WOWLAN=true`,
+plus our own rows there.
 
 ### Messages settings (v1.6.3)
 
@@ -75,6 +80,27 @@ commands in a running activity", which is what "Show error pop-ups" off does for
 an activity sequence fails", for failed sequences, which our switch leaves alone. If upstream ships non-blocking
 command errors, drop or revisit this block: take upstream's behaviour and keep only what it doesn't cover (the banner
 durations, "Show offline banners").
+
+### Screensaver (charging screen)
+
+Our screensaver replaces the charging screen of [`power-and-battery`](../openspec/specs/power-and-battery/spec.md),
+requirement "Charging screen". It departs from it with the default settings too:
+
+| Requirement | Ours |
+|---|---|
+| Opens when a power supply becomes connected, playing the BatteryCharge sound (scenario "Docked") | Opens with the "Dock chime" picked in Settings → Sound & Haptic (12 choices). With "Chime after screensaver" on (the default) the chime plays once the screensaver has faded in, and not at all when the screensaver is already showing; with it off the chime plays at the dock and the screensaver starts loading 350 ms to 3.03 s later (`_chimeGraceForVariant`). |
+| "Reboot on charger": the screen appears and the sound plays once | In the first 3 s after the UI starts, a charger report opens the screensaver 2 s later, without a chime (`_bootGraceActive`). |
+| Opens when the power mode changes to Normal from any mode but Idle while charging with a power supply connected (scenario "Wake on charger") | The same while the screensaver is closed. While it is open or loading, "Close on wake" is asked first (`closesOnWake`; the re-open is its `else` branch): Always closes a loaded one at every wake to Normal, on the charger too; Undocked keeps it while a charger is reported; Never always keeps it. In the 13 lifts recorded on the owner's Remote 3 the remote woke 2.3–4.6 s before the core reported the charger gone, so a lift that wakes a charging remote whose display is off opens a closed screensaver; with Never it then stays. |
+| An analogue clock (12 dots, hour, minute and second hands) and a bolt with `<level>% - Charging`, or `<level>%` when supplied without charging | Five themes: Matrix (the default), Starfield, Minimal, Analog (UC's clock as a theme, with its own screen-off effect) and TV Static. A clock overlay on Matrix, Starfield and TV Static, off by default. The battery overlay: a bolt with "%1% - Charging", "100% - Fully charged" or "%1%", shown by default only while a charger is reported ("Charging only"). |
+| Closes when the power supply is removed | Only with "Close on wake" set to Undocked or Always (`closesOnChargerLoss`); Never, the default, keeps it showing. Undocked closes it, one still loading included, so it meets this requirement. Always closes only one that has finished loading; one still loading opens afterwards, as up to v1.6.3. The core also reports the power supply removed when a Qi pad stops charging (seen at 80 % and when full). |
+| Closes when the screen is tapped | "Double-tap to close" on (the default): two taps within 300 ms; off: one tap. On Matrix with "Touch directions" on, the 8 outer zones steer the rain and the fourth quick tap in the centre closes it. |
+| Closes on the press of 24 keys (BACK, HOME, VOICE, VOLUME_UP/DOWN, GREEN, YELLOW, RED, BLUE, DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, CHANNEL_UP/DOWN, MUTE, PREV, PLAY, NEXT, POWER, STOP, RECORD, MENU) | With "DPAD interactive" on (the default; its switch is shown only for the Matrix theme, but the setting applies to every theme) the 9 keys DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, VOLUME_UP/DOWN and CHANNEL_UP/DOWN don't close it: on Matrix the 8 direction keys steer the rain, and DPAD_MIDDLE fires a flash, or a chaos burst with "Chaos events" on (nothing with "Glitch effect" off; pressed twice: back to the set direction; held: slower rain); on TV Static the 8 direction keys flash the screen with "Flash on tap" on, and DPAD_MIDDLE does nothing; on Starfield, Minimal and Analog they do nothing visible (on every theme the 8 direction keys cancel a pending or playing screen-off animation). The other 15 keys close it (`ChargingScreen.qml` `ButtonNavigation`). |
+| (none) | A wake can close it (`closesOnWake` in `src/ui/screensaverClosePolicy.h`): with "Close on wake" set to Always, every wake to Normal closes one that has finished loading; with Undocked, a wake while no charger is reported closes it, one still loading included. |
+| (none) | It opens by itself. On the charger, "Run after dismissal while docked" reopens it that long after it closes (5–120 s, default 60, no off position), even while the remote is in use, unless the time runs out while a page is being reordered. Off the charger, with "Idle screensaver" on (off by default), it opens after "Idle timeout" (15–55 s, default 45) without a key press, a touch or the touch slider. |
+| Open and close fade over 300 ms | Opens over 300 ms, closes in 50 ms (`ChargingScreen.qml` `enter` / `exit`). |
+
+Not checked: whether a key that closes the screensaver also reaches the screen underneath (scenario "Key press on the
+charging screen").
 
 ## Merge rehearsal procedure
 
@@ -135,14 +161,18 @@ After the merge, before merging the rehearsal branch back into `main`:
 - [ ] **ARM64 build** with the digest-pinned toolchain (`BUILD.md`): 0 errors; the QML compiler runs on every file
       (delete the `qrc` caches of an incremental build first)
 - [ ] **Tests**, all in a Qt 5.15 container (`test.yml` has the commands): `test/hardware` (keeper, suppressor,
-      entity controller, power), `test/matrixrain`, `test/integration`, `test/qml`, and upstream's CMake suite in `test/`
+      entity controller, power, screen-off sync), `test/matrixrain`, `test/integration`, `test/qml`, and the CMake
+      suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`)
 - [ ] **Code guidelines** as CI runs them: `python3 tools/design-check.py --self-test && python3 tools/design-check.py`,
       `python3 tools/icon-font.py check --require-free`, `python3 tools/icon-font.py check-mapping`, cpplint
       (filters in `code_guidelines.yml`); the docs link check (`docs-links.yml`)
 - [ ] **Desktop simulator** (`UC_MODEL=DEV`, `docs/static-compile.md`): every settings page walked with the keys,
       top to bottom and back; QML log free of binding loops and TypeErrors from our files
 - [ ] **On the remote** via `scripts/deploy-canary.sh` (auto-revert on failure):
-  - screensaver: dock + chime, BACK/HOME/tap close it, also when the UI starts on the dock; all five themes render
+  - screensaver: docking opens it and plays the dock chime once; a double tap and BACK / HOME close it, also when the
+    UI starts on the dock (it then opens after 2 s, without a chime); "Close on wake": Never keeps it when you lift
+    the remote, Undocked keeps it on a wake on the dock and closes it a few seconds after a lift, Always closes it on a
+    wake; all five themes render
   - settings: Screensaver, Power, Sound, User interface, WiFi pages walked with the d-pad
   - first button press after a wake works (no backlight blinking); keep awake holds during playback
   - media browser: play an item, its artwork shows at once

@@ -41,7 +41,7 @@ For each page, verify each item on a real UC3 device (not Docker preview — it 
 
 - [ ] **Initial focus** is on a visible, non-dead item when the page is opened (not blank, not invisible).
 - [ ] **DPAD Up/Down** traverses every interactive item in a natural top-to-bottom order. No dead ends, no skips.
-- [ ] **DPAD Left/Right** either cycles horizontally between items in the same row OR is a no-op (never triggers an action).
+- [ ] **DPAD Left/Right** act only on the focused control: on a single-choice chip picker they pick the neighbouring choice (the setting changes at once, e.g. "Close on wake"); on a picker of several toggles ("Glitch directions") they move the ring between chips; on a slider they change the value. They never move the focus to another row or change another row.
 - [ ] **DPAD Center (Enter)** activates the focused toggle/slider/button without side effects on neighbors.
 - [ ] **Return** button takes you back one level (not all the way to home, not into a dead screen).
 - [ ] **Key focus indicator** (the highlight ring/border) is visible on the focused item. No focus-without-indicator state.
@@ -72,10 +72,10 @@ For each page, verify each item on a real UC3 device (not Docker preview — it 
 
 ### §2.5 Dynamic overlay bindings
 
-- [ ] **`showClock` toggle off** hides the clock cleanly in every theme (no ghost text, no broken anchor).
+- [ ] **`showClock` ("Show clock") off** hides the clock cleanly on Matrix, Starfield and TV Static (no ghost text, no broken anchor). Minimal and Analog are clocks themselves and don't offer the switch.
 - [ ] **`showBatteryEnabled` toggle off** hides the battery overlay cleanly in every theme.
-- [ ] **Wake from display-off** — the screensaver re-renders immediately with all overlays intact (no race-reset on wake).
-- [ ] **Undock with "Close on wake" OFF** — overlays survive the undock transition.
+- [ ] **Wake from display-off** — with "Close on wake" set to Never (or Undocked, on the dock), let the display go off and wake the remote without lifting it: the screensaver shows again at once with all its overlays (no black frame; on Matrix the rain restarts from fresh streams, by design). With Always (or Undocked, off the dock) the wake closes it instead.
+- [ ] **Lift with "Close on wake" set to Never** — lift the remote off the dock: the screensaver stays; a clock overlay stays unless its "Charging only" is on, and the battery level disappears if its "Charging only" is on (the default).
 
 ---
 
@@ -83,13 +83,15 @@ For each page, verify each item on a real UC3 device (not Docker preview — it 
 
 Items discovered in prior batches that should stay verified:
 
-- [ ] **Bug 1** — "Close on wake" toggle OFF keeps screensaver visible on undock. Toggle ON closes it.
-- [ ] **Bug 2** — Matrix/Starfield wake from display-off shows content instantly (no black stuck frame).
-- [ ] **Bug 2b** — undock-to-display-off gap is < 2 seconds (the 7-second gap bug is fixed).
-- [ ] **Bug 3** — "Idle screensaver" OFF prevents auto-open; ON opens after `idleTimeout`.
+- [ ] **Bug 1 / Close on wake** — **Never** (the default): lifting the remote and waking it leave the screensaver showing. **Undocked:** a wake on the dock (a bump that wakes the remote) leaves it showing; lifting the remote closes it a few seconds later, when the remote reports the charger gone (2.3–4.6 s after the wake in 13 lifts on the maintainer's Remote 3); a wake off the dock (the idle screensaver) closes it. **Always:** every wake closes it, on the dock too, and so does lifting the remote. After an update from v1.6.3 or older the row shows Always if the old switch was on, Never if it was off. On a Qi pad keep the battery well below 80 %: when the maintainer's pad stopped charging (at 80 %, once at 100 %) the remote reported the charger gone, and Undocked and Always then close the screensaver as after a lift.
+- [ ] **Bug 2** — with "Close on wake" set to Never (the default) or Undocked, the remote on the dock and woken without lifting it: Matrix/Starfield wake from display-off shows content instantly (no black stuck frame).
+- [ ] **Bug 2b** — when a drawn screen-off animation ends (pick e.g. Style "Fade"), the display switches off right away, with no black but lit screen (the old 7-second gap); don't touch the remote meanwhile. Check on the dock, and off the dock (the idle screensaver, or a lifted remote with "Close on wake" set to Never) with "Fire when undocked" on.
+- [ ] **Bug 3** — "Idle screensaver" off: off the dock the idle countdown never opens the screensaver; on: off the dock the screensaver opens after the "Idle timeout" (15–55 s) without a touch, a button press or the touch slider. (On the dock "Run after dismissal while docked" reopens it either way.)
 - [ ] **DPAD direction regression** — Matrix rain bends smoothly via gravity lerp on direction input. No respawn.
 - [ ] **Thermal** — 10+ min sustained dock with Matrix theme does not warm the device noticeably.
-- [ ] **AnalogTheme first-wake-from-fresh-boot** — the Qt.binding pre-conversion workaround still holds after a cold reboot. Clock hands are visible on first wake, not black.
+- [ ] **AnalogTheme first-wake-from-fresh-boot** — with "Close on wake" set to Never (the default) or Undocked, the remote on the dock and woken without lifting it: the Qt.binding pre-conversion workaround still holds after a cold reboot. Clock hands are visible on first wake, not black.
+- [ ] **Dock chime** — with "Chime after screensaver" on, docking plays the chime once, after the screensaver has faded in. With "Close on wake" set to Never, lift the remote (the screensaver stays), put it back and wait a few seconds for the charger report: no chime. Then close the screensaver on the dock; when "Run after dismissal while docked" brings it back, no chime either (up to v1.6.3 the chime played then).
+- [ ] **Run after dismissal while docked** — on the dock, close the screensaver and keep using the remote: it comes back after the set time anyway (not when the time runs out while a page is being reordered); lifting the remote off the dock cancels it.
 
 ---
 

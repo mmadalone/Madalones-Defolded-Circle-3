@@ -652,11 +652,12 @@ ApplicationWindow {
             }
         }
 
-        // madalone (v1.4.43): one-shot — set true when the next open is triggered by an
-        // actual user dock event (not boot-while-docked, not idle-open, not wake). When
+        // madalone (v1.4.43): one-shot — set true by a user dock event (not boot-while-docked, not
+        // idle-open, not wake) while no screensaver item exists yet. When
         // Config.dockChimeAfterScreensaver is on, ChargingScreen.qml's onOpened uses this
         // flag to fire the dock chime AFTER the popup is fully visible (pattern B).
-        // Cleared by the popup's onOpened or by a competing trigger before it fires.
+        // Cleared when the Loader becomes Ready (it is handed to the popup there), or when a
+        // 'Close on wake' close stops a screensaver that is still loading (_closeScreensaverNow).
         property bool _nextOpenViaDock: false
 
         // madalone (v1.4.40): startup-grace flag for boot-while-docked detection.
@@ -777,6 +778,18 @@ ApplicationWindow {
             }
         }
 
+        // madalone (v1.6.4): a close that 'Close on wake' decided (ScreensaverConfig.closesOnWake /
+        // closesOnChargerLoss). A screensaver that is still loading has no item yet: switching the Loader off cancels
+        // the load, so that it can't open after the close, and the dock chime it was meant to play is dropped with it.
+        function _closeScreensaverNow() {
+            if (chargingScreenLoader.item) {
+                chargingScreenLoader.item.close();
+            } else {
+                root._nextOpenViaDock = false;
+                chargingScreenLoader.active = false;
+            }
+        }
+
         Loader {
             id: chargingScreenLoader
             anchors.fill: parent
@@ -819,7 +832,13 @@ ApplicationWindow {
                             // _openedViaDock flag and calls SoundEffects.play() then. Net: visual
                             // and audio both arrive at ~450 ms after dock, no contention chopping
                             // because the audio thread fires after all heavy QML/GPU init is done.
-                            root._nextOpenViaDock = true;
+                            // madalone (v1.6.4): only while no screensaver item exists yet, i.e. this dock
+                            // starts the open or joins one that is still loading. On a screensaver that is
+                            // already showing nothing consumed the flag, and it played the chime at a later,
+                            // unrelated open (e.g. "Run after dismissal while docked").
+                            if (!chargingScreenLoader.item) {
+                                root._nextOpenViaDock = true;
+                            }
                             chargingScreenLoader.active = true;
                         } else {
                             // Legacy / opt-out: play chime FIRST (audio thread gets head-start),
@@ -835,9 +854,11 @@ ApplicationWindow {
                     } else {
                         dockedRearmTimer.stop();   // madalone (v1.4.15): undocked → no docked rearm
                         dockChimeGraceTimer.stop(); // madalone (v1.4.40): undocked before grace fired
-                        // Honor 'Close on wake' toggle — keeps undock consistent with motion wake.
-                        if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
-                            chargingScreenLoader.item.close();
+                        // madalone (v1.6.4): 'Close on wake' decides whether the charger loss closes it (a lift,
+                        // or on a Qi pad also charging that stopped)
+                        if (chargingScreenLoader.active
+                                && ScreensaverConfig.closesOnChargerLoss(chargingScreenLoader.item !== null)) {
+                            root._closeScreensaverNow();
                         }
                         if (root._shouldOpenOnIdle()) {
                             idleScreensaverTimer.restart();
@@ -865,11 +886,15 @@ ApplicationWindow {
                         if (chargingScreenLoader.active && chargingScreenLoader.item) {
                             chargingScreenLoader.item.displayOff = false;
                         }
-                        // Motion/pickup detected while screensaver is showing — close it if enabled
-                        if (ScreensaverConfig.motionToClose && chargingScreenLoader.active && chargingScreenLoader.item) {
-                            chargingScreenLoader.item.close();
+                        // madalone (v1.6.4): 'Close on wake' decides whether this wake closes it. With Undocked a
+                        // wake on the charger keeps it: a lift reaches the UI as a wake first and as the charger loss
+                        // 2-5 s later (the core's 5 s battery check), so the charger-loss handler above closes a
+                        // lifted one.
+                        if (chargingScreenLoader.active
+                                && ScreensaverConfig.closesOnWake(Battery.powerSupply, chargingScreenLoader.item !== null)) {
+                            root._closeScreensaverNow();
                         }
-                        // Re-open screensaver when waking from suspend while charging (if not motion-closed)
+                        // Re-open screensaver when waking from suspend while charging (if not closed above)
                         else if (fromPowerMode !== PowerModes.Idle && Battery.isCharging && Battery.powerSupply) {
                             chargingScreenLoader.active = true;
                             dockedRearmTimer.stop();   // madalone (v1.4.15): wake re-opened it; cancel pending rearm

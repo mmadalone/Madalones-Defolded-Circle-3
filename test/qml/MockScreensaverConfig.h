@@ -8,6 +8,8 @@
 #include <QObject>
 #include <QQmlEngine>
 
+#include "ui/screensaverClosePolicy.h"
+
 class MockScreensaverConfig : public QObject {
     Q_OBJECT
 
@@ -101,7 +103,8 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(bool tapRandomize READ tapRandomize WRITE setTapRandomize NOTIFY tapRandomizeChanged)
     Q_PROPERTY(int tapRandomizeChance READ tapRandomizeChance WRITE setTapRandomizeChance NOTIFY tapRandomizeChanceChanged)
     Q_PROPERTY(bool tapToClose READ tapToClose WRITE setTapToClose NOTIFY tapToCloseChanged)
-    Q_PROPERTY(bool motionToClose READ motionToClose WRITE setMotionToClose NOTIFY motionToCloseChanged)
+    // madalone (v1.6.4): "Close on wake", 0 Never / 1 Undocked / 2 Always (uc::ui::CloseOnWake)
+    Q_PROPERTY(int closeOnWake READ closeOnWake WRITE setCloseOnWake NOTIFY closeOnWakeChanged)
     Q_PROPERTY(bool idleEnabled READ idleEnabled WRITE setIdleEnabled NOTIFY idleEnabledChanged)
     Q_PROPERTY(int idleTimeout READ idleTimeout WRITE setIdleTimeout NOTIFY idleTimeoutChanged)
     Q_PROPERTY(bool dpadEnabled READ dpadEnabled WRITE setDpadEnabled NOTIFY dpadEnabledChanged)
@@ -327,8 +330,21 @@ class MockScreensaverConfig : public QObject {
     void setTapRandomizeChance(int v) { if (m_tapRandomizeChance == v) return; m_tapRandomizeChance = v; emit tapRandomizeChanceChanged(); }
     bool tapToClose() const { return m_tapToClose; }
     void setTapToClose(bool v) { if (m_tapToClose == v) return; m_tapToClose = v; emit tapToCloseChanged(); }
-    bool motionToClose() const { return m_motionToClose; }
-    void setMotionToClose(bool v) { if (m_motionToClose == v) return; m_motionToClose = v; emit motionToCloseChanged(); }
+    int closeOnWake() const { return m_closeOnWake; }
+    void setCloseOnWake(int v) {
+        v = qBound(0, v, 2);
+        if (m_closeOnWake == v) return;
+        m_closeOnWake = v;
+        emit closeOnWakeChanged();
+    }
+    // the rule of ScreensaverConfig::closesOnWake / closesOnChargerLoss, without its log line; the mock keeps the
+    // choice in one int, the real class in two config.ini keys (screensaverClosePolicy.h, tested in test/screensaver)
+    Q_INVOKABLE bool closesOnWake(bool onCharger, bool loaded) const {
+        return uc::ui::closesOnWake(static_cast<uc::ui::CloseOnWake>(m_closeOnWake), onCharger, loaded);
+    }
+    Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const {
+        return uc::ui::closesOnChargerLoss(static_cast<uc::ui::CloseOnWake>(m_closeOnWake), loaded);
+    }
     bool idleEnabled() const { return m_idleEnabled; }
     void setIdleEnabled(bool v) { if (m_idleEnabled == v) return; m_idleEnabled = v; emit idleEnabledChanged(); }
     int idleTimeout() const { return m_idleTimeout; }
@@ -501,7 +517,7 @@ class MockScreensaverConfig : public QObject {
         setTapRandomize(false);
         setTapRandomizeChance(50);
         setTapToClose(true);
-        setMotionToClose(false);
+        setCloseOnWake(0);
         setIdleEnabled(false);
         setIdleTimeout(45);
         setDpadEnabled(true);
@@ -631,7 +647,7 @@ class MockScreensaverConfig : public QObject {
     void tapRandomizeChanged();
     void tapRandomizeChanceChanged();
     void tapToCloseChanged();
-    void motionToCloseChanged();
+    void closeOnWakeChanged();
     void idleEnabledChanged();
     void idleTimeoutChanged();
     void dpadEnabledChanged();
@@ -766,7 +782,7 @@ class MockScreensaverConfig : public QObject {
     bool m_tapRandomize{false};
     int m_tapRandomizeChance{50};
     bool m_tapToClose{true};
-    bool m_motionToClose{false};
+    int m_closeOnWake{0};
     bool m_idleEnabled{false};
     int m_idleTimeout{45};
     bool m_dpadEnabled{true};

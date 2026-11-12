@@ -37,20 +37,55 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Double-tap to close"
             KeyNavigation.up: root.navUpTarget
-            KeyNavigation.down: motionToCloseSwitch
+            KeyNavigation.down: closeOnWakePicker
         }
     }
 
+    // CLOSE ON WAKE (madalone v1.6.4, GitHub issue #3): whether a wake, or the charger going away, closes the
+    // screensaver. The values are uc::ui::CloseOnWake (src/ui/screensaverClosePolicy.h): 0 Never, 1 Undocked, 2 Always.
     Components.SettingRow {
+        id: closeOnWakeRow
+        objectName: "closeOnWakeRow"
+        //: Screensaver setting: whether the screensaver closes by itself when the remote wakes up or is lifted off
+        //: its dock. Its three choices are Never, Undocked and Always.
         title: qsTr("Close on wake")
+        help: {
+            switch (ScreensaverConfig.closeOnWake) {
+            case 1:
+                //: Help of "Close on wake" set to Undocked. "A few seconds": the remote notices that it left the dock
+                //: at its battery check, about every 5 seconds.
+                return qsTr("Stays on the dock. Closes a few seconds after you lift the remote, or when it wakes off the dock.");
+            case 2:
+                //: Help of "Close on wake" set to Always
+                return qsTr("Closes whenever the remote wakes or leaves the dock.");
+            default:
+                //: Help of "Close on wake" set to Never: only a tap or a button closes the screensaver
+                return qsTr("Stays until you close it.");
+            }
+        }
+        controlBelow: true
 
-        Components.Switch {
-            id: motionToCloseSwitch
-            objectName: "motionToCloseSwitch"
-            icon: "uc:check"
-            checked: ScreensaverConfig.motionToClose
-            trigger: function() { ScreensaverConfig.motionToClose = !ScreensaverConfig.motionToClose; }
-            highlight: activeFocus && ui.keyNavigationActive
+        Components.ChipPicker {
+            id: closeOnWakePicker
+            objectName: "closeOnWakePicker"
+            model: [
+                //: Choice of "Close on wake": the screensaver never closes by itself. A chip holds about 9 characters.
+                { value: 0, label: qsTr("Never") },
+                //: Choice of "Close on wake": it closes by itself only while the remote is off its dock (lifted, or
+                //: woken away from the dock). A chip holds about 9 characters.
+                { value: 1, label: qsTr("Undocked") },
+                //: Choice of "Close on wake": it closes on every wake, on the dock too. A chip holds about 9 characters.
+                { value: 2, label: qsTr("Always") }
+            ]
+            currentValue: ScreensaverConfig.closeOnWake
+            onPicked: {
+                ScreensaverConfig.closeOnWake = value;
+                // the help line above the chips changes height with the choice and moves them; with the keypad, bring
+                // the row back into view once the layout has followed (a touch is left alone, as in the page's reveal)
+                if (ui.keyNavigationActive && root.settingsPage && root.settingsPage.ensureVisible) {
+                    Qt.callLater(root.settingsPage.ensureVisible, closeOnWakeRow);
+                }
+            }
             Accessible.name: "Close on wake"
             KeyNavigation.up: tapToCloseSwitch
             KeyNavigation.down: root.matrix ? dpadEnabledSwitch : idleEnabledSwitch
@@ -71,7 +106,7 @@ ColumnLayout {
             trigger: function() { ScreensaverConfig.dpadEnabled = !ScreensaverConfig.dpadEnabled; }
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "DPAD interactive"
-            KeyNavigation.up: motionToCloseSwitch
+            KeyNavigation.up: closeOnWakePicker
             KeyNavigation.down: ScreensaverConfig.dpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
         }
     }
@@ -118,7 +153,9 @@ ColumnLayout {
     Components.SettingRow {
         visible: root.matrix
         title: qsTr("Touch directions")
-        help: ScreensaverConfig.tapDirection ? qsTr("Tap screen zones to change direction. Triple-tap center to close.") : ""
+        // madalone (v1.6.4): the fourth tap in the centre closes it (ChargingScreen.qml centerTapCount); this said
+        // "Triple-tap"
+        help: ScreensaverConfig.tapDirection ? qsTr("Tap screen zones to change direction. Tap the center four times in a row to close.") : ""
         showDivider: !ScreensaverConfig.tapDirection
 
         Components.Switch {
@@ -186,7 +223,7 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Idle screensaver"
             KeyNavigation.up: root.matrix ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
-                                          : motionToCloseSwitch
+                                          : closeOnWakePicker
             KeyNavigation.down: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : dockedRearmSlider
         }
     }
@@ -216,7 +253,12 @@ ColumnLayout {
     Components.SettingRow {
         title: qsTr("Run after dismissal while docked")
         value: ScreensaverConfig.reopenWhileDockedSec + "s"
-        help: qsTr("Restart the screensaver after this many seconds of inactivity when on the dock.")
+        // madalone (v1.6.4): the timer starts when the screensaver closes on the charger, input doesn't restart it, and
+        // it gives up when it runs out while a page is being reordered (main.qml dockedRearmTimer); the old text said
+        // "of inactivity"
+        //: Help of the "Run after dismissal while docked" slider. "Reorder" is the main screen's mode for moving
+        //: entities on a page.
+        help: qsTr("On the dock, the screensaver comes back this many seconds after it closes, even while you use the remote (not while you reorder a page).")
         controlBelow: true
         // the last row of the page unless the Matrix profiling switch follows
         showDivider: root.matrix

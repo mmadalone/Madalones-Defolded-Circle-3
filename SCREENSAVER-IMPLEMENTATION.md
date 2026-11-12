@@ -93,7 +93,7 @@ All controlled by `glitchRate` (1-100) — higher = more frequent occurrences.
 
 Menu entry: "Screensaver" in Settings (after "User interface"), icon `uc:bolt`.
 
-**Settings order:**
+**Settings order** (an early version of the page; later sessions added rows, for example DPAD interactive and Touch directions, and the Analog and TV Static themes, so this is not the full page today):
 1. Theme (Matrix / Starfield / Minimal)
 2. Show clock toggle
 3. Show battery toggle
@@ -118,15 +118,16 @@ Menu entry: "Screensaver" in Settings (after "User interface"), icon `uc:bolt`.
 19. Reverse glow sub-toggle (indented) — Matrix only
 20. Tap effects: Scatter burst / Flash shockwave / Character scramble / Stream spawn (4 toggles) — Matrix only
 21. Double-tap to close toggle (all themes)
-22. Close on wake toggle (all themes)
-22. Idle screensaver toggle (all themes)
-23. Idle timeout slider (15-55s, visible when idle on) — all themes
+22. Close on wake: three chips, Never / Undocked / Always, with a help line for the chosen one (all themes; an on/off toggle up to v1.6.3, chips since the Unreleased change, see "2026-11-11 Session")
+23. Idle screensaver toggle (all themes)
+24. Idle timeout slider (15-55s, visible when idle on) — all themes
+25. Run after dismissal while docked slider (5-120 s, default 60, always shown) — all themes
 
 **Scroll-to-focus:** Flickable auto-scrolls to follow DPAD navigation via `ensureVisible()`.
 
 ### Config Properties (QSettings-backed)
 
-All stored in `$UC_CONFIG_HOME/config.ini` via the existing `Config` C++ class (`m_settings->setValue()`).
+All stored in `$UC_CONFIG_HOME/config.ini`, at first via the existing `Config` C++ class (`m_settings->setValue()`), now via `ScreensaverConfig` (`src/ui/screensaverconfig.{h,cpp}`), which opens the same file.
 
 | Property | Type | Default | QSettings Key |
 |----------|------|---------|---------------|
@@ -158,9 +159,10 @@ All stored in `$UC_CONFIG_HOME/config.ini` via the existing `Config` C++ class (
 | chargingMatrixTapScramble | bool | true | charging/matrixTapScramble | tap character scramble toggle
 | chargingMatrixTapSpawn | bool | true | charging/matrixTapSpawn | tap stream spawn toggle
 | chargingTapToClose | bool | true | charging/tapToClose | double-tap to close (was single-tap)
-| chargingMotionToClose | bool | false | charging/motionToClose |
+| closeOnWake ("Close on wake"; up to v1.6.3 a bool: first Config's chargingMotionToClose, from 2026-04-08 (`b09caac`) ScreensaverConfig's `motionToClose`) | int: 0 Never, 1 Undocked, 2 Always | 0 (Never) | charging/motionToClose + charging/closeOnWakeUndockedOnly (Unreleased; both keys and the rule in `src/ui/screensaverClosePolicy.h`) |
 | chargingIdleEnabled | bool | false | charging/idleEnabled |
 | chargingIdleTimeout | int | 45 | charging/idleTimeout |
+| reopenWhileDockedSec ("Run after dismissal while docked") | int | 60 | charging/reopenWhileDockedSec (slider 5-120 s) |
 
 ### Battery Overlay (`src/qml/components/overlays/BatteryOverlay.qml`)
 
@@ -183,7 +185,7 @@ Shows "Fully charged" at 100% when not actively charging.
 
 - `onOpenedChanged`: sets `isClosing = true` immediately, deactivates theme Loader (kills C++ timer + releases GPU texture)
 - Exit animation: 50ms opacity fade
-- Dock timing: ~2s appear (hardware detection), ~3s disappear (matches factory)
+- Dock timing: ~2s appear (hardware detection), ~3s disappear (matches factory). Since v1.2.2 the undock close follows "Close on wake": today only Undocked and Always close the screensaver when the charger goes; Never keeps it
 
 ## Files Modified from Upstream
 
@@ -1105,7 +1107,7 @@ Largest feature session since Session 11. Added touch-zone direction control, sw
 
 ### Touch-Zone Directions
 
-New interaction mode: split the display into a 3×3 grid, each zone maps to a DPAD direction (edges) or enter (center). Mutually exclusive with DPAD interactive — toggling one auto-disables the other via bidirectional `Connections` on Config.
+New interaction mode: split the display into a 3×3 grid, each zone maps to a DPAD direction (edges) or enter (center). Mutually exclusive with DPAD interactive — toggling one auto-disables the other via bidirectional `Connections` on Config. (Note 2026-11-11: those `Connections` are in `ChargingScreen.qml`, which exists only while the screensaver is open or loading, so turning one on in Settings leaves the other on; both can be on.)
 
 **Center zone multi-tap state machine:**
 
@@ -2789,3 +2791,85 @@ Both said a 100 % wipe "moves and lives exactly as before". That holds only at a
   - during TV Static (3.9 s): the same, and the snow was back after the wake.
   - These checks show the new behaviour; they were not run against the old build.
 - **Relay gotcha:** an event's payload is under `msg_data`, not `data`, and `Power::setPowerMode` ignores a repeat of the current mode, so an event with the wrong key does nothing at all.
+
+## 2026-11-11 Session: Close on wake — Never / Undocked / Always (GitHub issue #3)
+
+**Status:** implemented and tested (unit, QML, desktop simulator); not released yet and not yet installed on a remote. The docs call it "Unreleased"; the code comments say "v1.6.4", while `remote-ui.pro` and `deploy/release.json` still say 1.6.3. Design and measurements: `logs/dock-lift/REPORT_close_on_wake_2026-11-11.md` (local and gitignored, like every `logs/` path below).
+
+### 1. Why the switch could not do it
+
+- GitHub issue #3: on a nightstand dock, the screensaver should stay when a bump wakes the remote and close when the remote is lifted.
+- "Close on wake" (`charging/motionToClose`) drove both automatic closes in `main.qml`. With it on, the wake handler closed the screensaver at every wake to Normal; since v1.2.2 (`358f7f2`) the charger-loss handler followed the same switch. Off kept it everywhere; on closed it at every wake, on the dock too. No setting gave "stay on the dock, close when lifted".
+- Unfolded Circle's charging screen closes on every charger loss (`openspec/specs/power-and-battery/spec.md`, requirement "Charging screen"); ours did too until v1.2.2.
+
+### 2. What the UI knows about a lift
+
+- Only the charger: `Battery.powerSupply`, from the core's `battery_status` events (`Api::processBatteryStatusChange`). A wake carries only its power mode (`Api::processPowerModeChange`), so at the wake a lift and a bump look the same.
+- The core reads the battery about every 5 s and reports changes only (`logs/dock-lift/core_charger_2026-11-10.txt`: 22:27:09.58, 22:27:14.59, 22:27:19.59).
+- 13 lifts on the owner's Remote 3 on its Qi pad (2026-08-28 to 2026-11-11, firmware 2.10.1 to 2.12.1): the remote woke first, and the charger loss came 2.33–4.56 s later, median 3.28 s (`logs/dock-lift/paired_events_table.txt`, table B). In 4 of them the charger was back 5 s later, so the remote may only have shifted on the pad.
+- On the Qi pad the core also reports `charger: false` when charging stops, with no wake: at 80 % four times and at 100 % once between 2026-11-05 and 2026-11-10 (`logs/dock-lift/core_charger_2026-11-*.txt`).
+
+### 3. The rule: `src/ui/screensaverClosePolicy.h` (new)
+
+| Choice | Wake, charger reported | Wake, no charger reported | Charger loss |
+|---|---|---|---|
+| Never (v1.6.3's off) | keeps | keeps | keeps |
+| Undocked (new) | keeps | closes; a load in progress is stopped | closes; a load in progress is stopped |
+| Always (v1.6.3's on) | closes | closes | closes |
+
+- Always closes only a screensaver that has finished loading (`loaded`). With `main.qml`'s own `active` check that is v1.6.3's `motionToClose && active && item`, and a still-loading screensaver is left to open, as before. Never and Always therefore close exactly where v1.6.3's off and on did.
+- Undocked waits for the charger report, because at the wake it can't tell a lift from a bump.
+- Header only (inline free functions), in `uc::ui` like upstream's `src/ui/entity/commandRetryPolicy.{h,cpp}`, which is a header plus a `.cpp`. `ScreensaverConfig` exposes it to QML, so `main.qml` asks instead of deciding (ADR 0012).
+
+### 4. Storage: two keys, no conversion
+
+- `charging/motionToClose` (v1.6.3's switch) is true for Undocked and Always; the new `charging/closeOnWakeUndockedOnly` is true for Undocked and is ignored while the first is false. A `config.ini` written by v1.6.3 or older reads unchanged: on → Always, off or no key → Never. Nothing is written until a chip is picked.
+- One 0/1/2 key would have needed a one-time conversion in the constructor; the only earlier conversion, v1.4.0's `migrateLegacySettings()`, never took effect and was removed in v1.6.0.
+- Downgrade to v1.6.3: Undocked shows as the switch on, which closes on every wake. v1.6.3 never touches the second key, so after switching it off and on again there, an upgrade reads Undocked rather than Always.
+- Both key names and `readCloseOnWake(const QSettings&)` / `writeCloseOnWake(QSettings&, CloseOnWake)` live in the header, so the unit test covers the real key strings and a `config.ini` as v1.6.3 writes it.
+
+### 5. `ScreensaverConfig` and `main.qml`
+
+- `SCRN_BOOL(motionToClose)` → the hand-written `Q_PROPERTY(int closeOnWake)`: the setter clamps to 0–2 and writes and emits only on a change; `resetDefaults` removes the whole `charging` group (the new key too) and emits `closeOnWakeChanged`.
+- `Q_INVOKABLE closesOnWake(onCharger, loaded)` / `closesOnChargerLoss(loaded)` wrap the rule and log the decision at info on `uc.ui.screensaver` unless the choice is Never, e.g. `Close on wake (Undocked): a wake on the charger keeps the screensaver` and `Close on wake (Undocked): charger gone, closes the screensaver (still loading)`. They name the charger, not the dock, because a Qi end-of-charge stop reads the same as a lift. At start-up the log shows `Close on wake: <choice>`, on a change `Close on wake set to <choice>`.
+- `main.qml`: the wake handler asks `closesOnWake(Battery.powerSupply, item !== null)`, the charger-loss handler `closesOnChargerLoss(item !== null)`, both only while `chargingScreenLoader` is active. Upstream's re-open on a wake on the charger is the `else` branch of the wake check.
+- `_closeScreensaverNow()` calls `item.close()`, or, before the item exists, clears `_nextOpenViaDock` and sets `chargingScreenLoader.active = false`. Qt 5.15 cancels the incubation there (`QQuickLoader::setActive(false)`: "cancel any current incubation"), so no `Ready`, no popup and no `onClosed` follow. Both handlers restart the idle timer themselves, as `onClosed` would off the charger, and the docked rearm doesn't apply off the charger.
+- Dock chime (pattern B, `STYLE_GUIDE.md` §13.10): `_nextOpenViaDock` is set only while `chargingScreenLoader.item` is null. Up to v1.6.3 a dock onto a showing screensaver set it, and the next `Loader.Ready` of any origin (the docked rearm, a wake re-open) consumed it and chimed if the remote was on the charger. Testing `item` rather than `active` keeps the chime for a dock that joins a load in progress.
+
+### 6. The settings row (`GeneralBehavior.qml`)
+
+- The switch becomes a `Components.ChipPicker` (`closeOnWakePicker`, values 0–2) under the help line (`controlBelow`). The help line runs 1, 3 and 2 lines for Never, Undocked and Always, and all three chips fit (`docs/screenshots/close-on-wake-never.png`, `close-on-wake-undocked.png`, `close-on-wake-always.png`).
+- The help sits above the chips, so a pick that changes its length moves them. With the keypad the page reveals the row again after a pick (`Qt.callLater(root.settingsPage.ensureVisible, closeOnWakeRow)`, once the layout has followed); a touch pick doesn't scroll.
+- Key chain: Double-tap to close ↔ the picker ↔ DPAD interactive (Matrix) or Idle screensaver (the other themes). UP / DOWN leave the picker; LEFT / RIGHT pick and stop at the ends.
+- Two help texts corrected. "Touch directions" now says "Tap screen zones to change direction. Tap the center four times in a row to close." (it said triple-tap; `ChargingScreen.qml` closes on the fourth centre tap). "Run after dismissal while docked" now says "On the dock, the screensaver comes back this many seconds after it closes, even while you use the remote (not while you reorder a page)." (it said "of inactivity", but no input restarts `dockedRearmTimer`, and a timer that runs out in page edit mode is dropped).
+- `en_US.ts` via lupdate, with `//:` translator comments on the Close on wake strings and the rearm help; the 13 other `.ts` files restored (ADR 0006).
+
+### Tests
+
+- New CMake program `testScreensaverClosePolicy` (`test/screensaver/`): 33 passed (`logs/dock-lift/impl/out_policy/policy_test.log`). 12 wake rows (each choice, on or off the charger, loaded or still loading) and 6 charger-loss rows (each choice, loaded or still loading), 4 key rows and their round trip, the picker values, a lift (kept at the wake, closed at the charger loss), the v1.6.3 key name, four `config.ini` files as v1.6.3 writes them read through `QSettings`, each choice written and read back, plus `initTestCase` / `cleanupTestCase`. `test/CMakeLists.txt` adds it, so CI's "Upstream unit tests (CMake)" job runs it; the CMake tree builds 32 programs (`logs/dock-lift/impl/out_policy/all_tests.txt`).
+- QML: 304 passed, 0 failed, no QWARN (`logs/qmltest/out/closeonwake3/qml_test.log`). +14 from the new `tst_close_on_wake_row.qml`: `CloseOnWakeRow` (chips, stored choice, tap, LEFT / RIGHT, help per choice, key chain on Matrix and on Minimal, UP / DOWN keep the choice) and `CloseOnWakeReveal` (a keypad pick brings the chips back into view; a touch pick doesn't scroll), each with `initTestCase` / `cleanupTestCase`. `MockScreensaverConfig.h` answers `closesOnWake` / `closesOnChargerLoss` through the same policy functions.
+- Not rerun, since the change doesn't touch them: matrix rain (260), hardware (161), integration (41).
+- No test loads `main.qml`: its two call sites and `_closeScreensaverNow()` are covered only by the simulator checks below; the chime guard is not covered by any check yet (the rig has no sound; see "Still to verify on a remote").
+- The ARM64 build (pinned 5.15.19 toolchain, `logs/dock-lift/impl/build_device_2.log`): no error, and no warning from the changed files. Not installed.
+
+### Full-app simulator (build `v1.6.3-closeonwake2`)
+
+F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the core simulator always reports a charger). A wake is a REST `PUT` of `power_mode=NORMAL` after the core went to LOW_POWER; Display off timeout 10 s. Logs: `logs/dock-lift/impl/closeonwake_checks_console.log` and `logs/sim/closeonwake_loadrace.log`; shots in `logs/sim/shots/checks/`.
+
+- **Undocked:** a wake on the charger keeps the screensaver (`a wake on the charger keeps the screensaver`), and the charger loss after it closes it. A charger loss while the core sleeps closes it, and the wake after it shows the home screen. With Idle screensaver on, off the charger, a wake closes the idle screensaver (`a wake off the charger closes the screensaver`).
+- **Always:** a wake on the charger closes it.
+- **Never:** a wake and a charger loss both leave it showing (shots; Never logs no decision).
+- **Still loading** (dock and charger loss 1 ms apart, 3 times each): Undocked logs `charger gone, closes the screensaver (still loading)`, and no popup opens afterwards; Always logs `charger gone, keeps the screensaver (still loading)`, and the screensaver opens about 0.3 s later, as in v1.6.3.
+- The rig can't show the rest: it has no sound (the dock-chime fix), DEV skips the docked rearm, F12 flips only `powerSupply` (not `isCharging`), and there is no real lift with its 2–5 s charger report.
+
+### Still to verify on a remote
+
+- Lifts: Undocked should keep the screensaver until the charger report (2–5 s on the owner's Remote 3), Always close it at the wake, Never keep it; with Undocked a bump on the pad should leave it showing.
+- A button pressed in the lift window: the screensaver holds the input, so no button mapping should fire (from the code, not observed). A key also travels the QML focus chain (upstream `openspec/specs/key-navigation/spec.md`, "Every key press travels two independent paths"), so check as well that no control with the key focus on the screen underneath reacts.
+- The dock-chime fix, by ear: with Never, lift the remote, put it back, wait for the charger report, close the screensaver, and let "Run after dismissal while docked" bring it back: no chime.
+- The Qi end-of-charge close (keep the battery well below 80 % for the other checks), and a Remote Two (not measured at all; same code path, its charger also comes from the core's battery report).
+
+### Found on the way (not changed)
+
+- With "DPAD interactive" on (its default) the d-pad, OK, volume and channel keys never close the screensaver on any theme, but its switch is shown only for Matrix: on Starfield, Minimal and Analog these keys do nothing visible, and on TV Static the direction keys flash it (with "Flash on tap" on, the default). Left for a separate change.
+- In the simulator captures the "Run after dismissal while docked" title wraps to two lines next to its value (`docs/screenshots/close-on-wake-*.png`).

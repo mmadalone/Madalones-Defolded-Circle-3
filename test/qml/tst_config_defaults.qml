@@ -56,7 +56,7 @@ TestCase {
     function test_default_tapToClose() { compare(ScreensaverConfig.tapToClose, true); }
     function test_default_idleEnabled() { compare(ScreensaverConfig.idleEnabled, false); }
     function test_default_idleTimeout() { compare(ScreensaverConfig.idleTimeout, 45); }
-    function test_default_motionToClose() { compare(ScreensaverConfig.motionToClose, false); }
+    function test_default_closeOnWake() { compare(ScreensaverConfig.closeOnWake, 0, "Close on wake: Never"); }
     function test_default_batteryDockedOnly() { compare(ScreensaverConfig.batteryDockedOnly, true); }
 
     // ── Reset restores all values ─────────────────────────────
