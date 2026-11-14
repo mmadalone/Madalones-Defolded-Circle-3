@@ -4731,17 +4731,59 @@ the Web Configurator</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="62"/>
-        <source>Star size</source>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="72"/>
+        <source>Touchbar</source>
+        <extracomment>Screensaver setting (Starfield): what sliding along the remote&apos;s touch slider changes while the screensaver shows. Its three choices are Speed, Density and Off.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="79"/>
-        <source>Trail length</source>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="77"/>
+        <source>Sliding along the touch slider changes the Animation speed.</source>
+        <extracomment>Help of &quot;Touchbar&quot; set to Speed. &quot;Animation speed&quot; is the name of the Starfield setting above it.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="80"/>
+        <source>The touch slider does nothing while the screensaver shows.</source>
+        <extracomment>Help of &quot;Touchbar&quot; set to Off</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="83"/>
+        <source>Sliding along the touch slider changes the Star density.</source>
+        <extracomment>Help of &quot;Touchbar&quot; set to Density. &quot;Star density&quot; is the name of the Starfield setting above it.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="94"/>
+        <source>Speed</source>
+        <extracomment>Choice of &quot;Touchbar&quot;: the touch slider changes the Starfield&apos;s Animation speed. A chip holds about 9 characters.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="96"/>
+        <source>Density</source>
+        <extracomment>Choice of &quot;Touchbar&quot;: the touch slider changes the Star density. A chip holds about 9 characters.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="99"/>
+        <source>Off</source>
+        <extracomment>Choice of &quot;Touchbar&quot;: the touch slider does nothing on the screensaver. A chip holds about 9 characters.</extracomment>
+        <translation type="unfinished">Off</translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="118"/>
+        <source>Star size</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="136"/>
+        <source>Trail length</source>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/StarfieldSettings.qml" line="153"/>
         <source>Star color</source>
         <translation type="unfinished"></translation>
     </message>

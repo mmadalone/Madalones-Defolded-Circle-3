@@ -111,7 +111,7 @@ the screensaver opens on the dock, so this applies with the default settings:
 
 | Requirement | Ours |
 |---|---|
-| "Gesture to value mapping": while pressed the target is sent every 200 ms if it differs from the entity's value; on release once more if it still differs. "Slider overlay": it opens on press and closes 1 s after release | While the screensaver shows (`applicationWindow.screensaverActive`, from the moment its Loader is active), the touch slider belongs to it (the Matrix speed, the Starfield star density). A press there starts no gesture: nothing is sent and no overlay opens (v1.4.7). A gesture under way when the screensaver opens ends at once: the target is sent once if it differs and the entity is available, the 200 ms sending stops, and the overlay closes without the 1 s wait (Unreleased). |
+| "Gesture to value mapping": while pressed the target is sent every 200 ms if it differs from the entity's value; on release once more if it still differs. "Slider overlay": it opens on press and closes 1 s after release | While the screensaver shows (`applicationWindow.screensaverActive`, from the moment its Loader is active), the touch slider belongs to it (the Matrix speed; on Starfield the Animation speed, the Star density or nothing, as its Touchbar row picks, Unreleased). A press there starts no gesture: nothing is sent and no overlay opens (v1.4.7). A gesture under way when the screensaver opens ends at once: the target is sent once if it differs and the entity is available, the 200 ms sending stops, and the overlay closes without the 1 s wait (Unreleased). |
 | "Gesture to value mapping": on release the target is sent once more if it still differs | Only for a gesture that is still under way (Unreleased). The release sends nothing after a gesture the screensaver ended, after a refused press (an entity that was unavailable at the press and available at the release, or a press under the screensaver that closed before the release), and in an overlay loaded after the press (the entity's features arriving late); the overlay still closes 1 s after the release. Upstream's code sends the slider's last target then (0 if the slider never had one). |
 
 Checks after merging `TouchSlider{Volume,Seek,Brightness,Position}.qml`: `python3 tools/check_touchslider_guards.py`
@@ -124,8 +124,9 @@ Not listed yet: [0005](adr/0005-core-api-over-websocket-ui-holds-no-business-log
 `/api/system/power/standby_inhibitors`), [0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md)
 (`activitySessionKeeper`, `phantomWakeSuppressor` and `screenOffSync` in `src/hardware/`), and 0012 for the
 screensaver's own decisions in `main.qml` and `ChargingScreen.qml` (among them the touch slider control: the slide
-position and rest, the 10..100 clamp and the switches that enable it; its travel-to-steps rule is in C++,
-`screensaverTouchbar.h`).
+position and rest, the 10..100 clamp, the switches that enable it and Starfield's Touchbar choice of the value it
+changes, where a stored value other than "speed" and "off" counts as "density", as it does in `StarfieldSettings.qml`;
+its travel-to-steps rule is in C++, `screensaverTouchbar.h`).
 
 | ADR | Ours | Why |
 |---|---|---|

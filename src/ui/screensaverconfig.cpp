@@ -184,6 +184,19 @@ bool ScreensaverConfig::closesOnWake(bool onCharger, bool loaded) const {
     return closes;
 }
 
+// --- Starfield "Touchbar" (madalone v1.6.4): what the touch slider changes, see screensaverTouchbar.h ---
+
+QString ScreensaverConfig::starfieldTouchbar() const {
+    return ui::starfieldTouchbarChoice(m_settings->value(QStringLiteral("charging/starfieldTouchbar")).toString());
+}
+
+void ScreensaverConfig::setStarfieldTouchbar(const QString &value) {
+    const QString choice = ui::starfieldTouchbarChoice(value);
+    if (choice == starfieldTouchbar()) return;
+    m_settings->setValue(QStringLiteral("charging/starfieldTouchbar"), choice);
+    emit starfieldTouchbarChanged();
+}
+
 QVariantMap ScreensaverConfig::touchbarSteps(int remainder, int travel) const {
     return ui::touchbarStepsMap(remainder, travel);
 }
@@ -338,6 +351,7 @@ void ScreensaverConfig::resetDefaults() {
     emit starfieldColorChanged();
     emit starfieldStarSizeChanged();
     emit starfieldTrailLengthChanged();
+    emit starfieldTouchbarChanged();
 
     emit analogShutoffHandsChanged();
 

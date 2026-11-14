@@ -5,7 +5,7 @@
 
 History
 -------
-While the screensaver shows, the touch slider belongs to it (Matrix speed, Starfield density). The overlays that send
+While the screensaver shows, the touch slider belongs to it (Matrix speed, Starfield speed or density). The overlays that send
 a slide to a device, src/qml/components/TouchSlider{Volume,Brightness,Position,Seek}.qml, are upstream files that
 carry our guards for that:
 

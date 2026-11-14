@@ -47,6 +47,7 @@ ColumnLayout {
 
         Components.Slider {
             id: starfieldDensitySlider
+            objectName: "starfieldDensitySlider"
             height: 60
             from: 10; to: 100; stepSize: 5
             value: ScreensaverConfig.starfieldDensity; live: true
@@ -54,6 +55,61 @@ ColumnLayout {
             onUserInteractionEnded: ScreensaverConfig.starfieldDensity = value
             highlight: activeFocus && ui.keyNavigationActive
             KeyNavigation.up: starfieldSpeedSlider
+            KeyNavigation.down: starfieldTouchbarPicker
+        }
+    }
+
+    // TOUCHBAR (madalone v1.6.4): what a slide along the remote's touch slider changes while the Starfield screensaver
+    // shows (ScreensaverConfig.starfieldTouchbar, read by components/ChargingScreen.qml): the Animation speed, the Star
+    // density (the default, and what a slide always changed up to v1.6.3) or nothing. The property only ever reads as
+    // "speed", "density" or "off" (src/ui/screensaverTouchbar.h), so the row binds it as it is. Matrix keeps its own
+    // "Touchbar speed" switch under General behavior.
+    Components.SettingRow {
+        id: starfieldTouchbarRow
+        objectName: "starfieldTouchbarRow"
+        //: Screensaver setting (Starfield): what sliding along the remote's touch slider changes while the screensaver
+        //: shows. Its three choices are Speed, Density and Off.
+        title: qsTr("Touchbar")
+        help: {
+            switch (ScreensaverConfig.starfieldTouchbar) {
+            case "speed":
+                //: Help of "Touchbar" set to Speed. "Animation speed" is the name of the Starfield setting above it.
+                return qsTr("Sliding along the touch slider changes the Animation speed.");
+            case "off":
+                //: Help of "Touchbar" set to Off
+                return qsTr("The touch slider does nothing while the screensaver shows.");
+            default:
+                //: Help of "Touchbar" set to Density. "Star density" is the name of the Starfield setting above it.
+                return qsTr("Sliding along the touch slider changes the Star density.");
+            }
+        }
+        controlBelow: true
+
+        Components.ChipPicker {
+            id: starfieldTouchbarPicker
+            objectName: "starfieldTouchbarPicker"
+            model: [
+                //: Choice of "Touchbar": the touch slider changes the Starfield's Animation speed. A chip holds about
+                //: 9 characters.
+                { value: "speed", label: qsTr("Speed") },
+                //: Choice of "Touchbar": the touch slider changes the Star density. A chip holds about 9 characters.
+                { value: "density", label: qsTr("Density") },
+                //: Choice of "Touchbar": the touch slider does nothing on the screensaver. A chip holds about
+                //: 9 characters.
+                { value: "off", label: qsTr("Off") }
+            ]
+            currentValue: ScreensaverConfig.starfieldTouchbar
+            onPicked: {
+                ScreensaverConfig.starfieldTouchbar = value;
+                // the help line above the chips follows the choice (in English each of the three wraps to two lines, a
+                // translation may not); with the keypad, bring the row back into view once the layout has followed (a
+                // touch is left alone, as in the page's reveal)
+                if (ui.keyNavigationActive && root.settingsPage && root.settingsPage.ensureVisible) {
+                    Qt.callLater(root.settingsPage.ensureVisible, starfieldTouchbarRow);
+                }
+            }
+            Accessible.name: "Touchbar"
+            KeyNavigation.up: starfieldDensitySlider
             KeyNavigation.down: starfieldStarSizeSlider
         }
     }
@@ -64,13 +120,14 @@ ColumnLayout {
 
         Components.Slider {
             id: starfieldStarSizeSlider
+            objectName: "starfieldStarSizeSlider"
             height: 60
             from: 10; to: 100; stepSize: 5
             value: ScreensaverConfig.starfieldStarSize; live: true
             onMoved: ScreensaverConfig.starfieldStarSize = value
             onUserInteractionEnded: ScreensaverConfig.starfieldStarSize = value
             highlight: activeFocus && ui.keyNavigationActive
-            KeyNavigation.up: starfieldDensitySlider
+            KeyNavigation.up: starfieldTouchbarPicker
             KeyNavigation.down: starfieldTrailSlider
         }
     }

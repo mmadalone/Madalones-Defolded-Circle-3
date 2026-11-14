@@ -1,4 +1,5 @@
-// Copyright (c) 2026 madalone. v1.6.4 — the touch slider on the screensaver: Matrix speed and Starfield star density
+// Copyright (c) 2026 madalone. v1.6.4 — the touch slider on the screensaver: Matrix speed, and on Starfield the
+// Animation speed, the Star density or nothing, as its "Touchbar" setting picks (ScreensaverConfig.starfieldTouchbar)
 // (ChargingScreen.qml, the rule in src/ui/screensaverTouchbar.h). Runs the REAL ChargingScreen.qml, loaded
 // asynchronously like main.qml's chargingScreenLoader, with the real seek overlay (TouchSliderSeek.qml) on a fake Kodi
 // player behind it, and drives the slider through MockTouchSlider (press, move, release). Every raw unit of travel
@@ -60,6 +61,8 @@ Item {
 
     SignalSpy { id: labelSpy; signalName: "visibleChanged" }
     SignalSpy { id: speedSpy; target: ScreensaverConfig; signalName: "matrixSpeedChanged" }
+    SignalSpy { id: starSpeedSpy; target: ScreensaverConfig; signalName: "starfieldSpeedChanged" }
+    SignalSpy { id: densitySpy; target: ScreensaverConfig; signalName: "starfieldDensityChanged" }
 
     TestCase {
         name: "TouchbarSpeed"
@@ -124,11 +127,16 @@ Item {
             var typeErrorsBefore = TestLog.typeErrors();
             labelSpy.clear();
             speedSpy.clear();
+            starSpeedSpy.clear();
+            densitySpy.clear();
             TouchSliderProcessor.press(pressX);
             moveSeq(xs);
             rec.speedAfter = ScreensaverConfig.matrixSpeed;
             rec.densityAfter = ScreensaverConfig.starfieldDensity;
+            rec.starSpeedAfter = ScreensaverConfig.starfieldSpeed;
             rec.speedWrites = speedSpy.count;
+            rec.starSpeedWrites = starSpeedSpy.count;
+            rec.densityWrites = densitySpy.count;
             rec.labelShown = labelShown();
             rec.labelText = label.text;
             TouchSliderProcessor.release();
@@ -272,6 +280,82 @@ Item {
             var r = slide(200, path(200, [10], 6));
             compare(r.touchbarSpeedActive, false);
             compare(r.densityAfter, 50);
+        }
+
+        // Starfield's "Touchbar" setting (v1.6.4) picks what a slide changes. 60 raw units toward a higher slider value
+        // are 20 steps down: the picked value goes from 50 to 30 with one write per step, and nothing else is written.
+        // With Off the touch slider does nothing at all: the screensaver ignores it and the seek overlay behind it
+        // sends nothing. Up to v1.6.3 a slide on Starfield always changed the Star density.
+        function test_starfield_touchbar_choice_data() {
+            return [
+                { tag: "Speed", choice: "speed", active: true, starSpeed: 30, density: 50, label: "Speed: 30" },
+                { tag: "Density", choice: "density", active: true, starSpeed: 50, density: 30, label: "Density: 30" },
+                { tag: "Off", choice: "off", active: false, starSpeed: 50, density: 50, label: "" },
+                { tag: "an unknown stored value acts as Density", choice: "warp", active: true, starSpeed: 50,
+                  density: 30, label: "Density: 30" }
+            ];
+        }
+        function test_starfield_touchbar_choice(data) {
+            ScreensaverConfig.theme = "starfield";
+            ScreensaverConfig.starfieldTouchbar = data.choice;
+            openScreensaver();
+            var r = slide(200, path(200, [1], 60));
+            wait(250);
+            compare(r.touchbarSpeedActive, data.active, "the screensaver takes the slide");
+            compare(r.starSpeedAfter, data.starSpeed, "Animation speed");
+            compare(r.densityAfter, data.density, "Star density");
+            compare(r.starSpeedWrites, data.starSpeed === 50 ? 0 : 20, "Animation speed: one write per step if picked");
+            compare(r.densityWrites, data.density === 50 ? 0 : 20, "Star density: one write per step if picked");
+            compare(r.speedAfter, 50, "Matrix speed untouched");
+            compare(r.speedWrites, 0, "no Matrix speed write");
+            compare(r.labelShown, data.label !== "", "the value label shown");
+            compare(r.labelText, data.label);
+            compare(kodi.sent, 0, "no seek under the screensaver");
+        }
+
+        // Starfield "Speed": toward the volume-down end is faster, and the speed stays within 10..100
+        function test_starfield_speed_direction_and_ends() {
+            ScreensaverConfig.theme = "starfield";
+            ScreensaverConfig.starfieldTouchbar = "speed";
+            ScreensaverConfig.starfieldSpeed = 95;
+            openScreensaver();
+            var faster = slide(260, path(260, [-1], 30));
+            compare(faster.starSpeedAfter, 100, "10 steps faster from 95: pinned at 100");
+            compare(faster.labelText, "Speed: 100");
+            ScreensaverConfig.starfieldSpeed = 15;
+            var slower = slide(200, path(200, [1], 30));
+            compare(slower.starSpeedAfter, 10, "10 steps slower from 15: pinned at 10");
+            compare(slower.labelText, "Speed: 10");
+            compare(slower.densityAfter, 50, "Star density untouched");
+        }
+
+        // the global "Touch slider" switch off also turns off Starfield's speed control
+        function test_touch_slider_off_starfield_speed() {
+            ScreensaverConfig.theme = "starfield";
+            ScreensaverConfig.starfieldTouchbar = "speed";
+            Config.touchSliderEnabled = false;
+            openScreensaver();
+            var r = slide(200, path(200, [10], 6));
+            compare(r.touchbarSpeedActive, false);
+            compare(r.starSpeedAfter, 50);
+            compare(r.densityAfter, 50);
+            compare(r.starSpeedWrites + r.densityWrites, 0, "nothing written");
+            compare(r.labelShown, false);
+        }
+
+        // Starfield's setting leaves Matrix alone: Matrix keeps its own switches (test_switches_turn_it_off)
+        function test_matrix_ignores_starfield_touchbar_data() {
+            return [ { tag: "Starfield Touchbar off", choice: "off" },
+                     { tag: "Starfield Touchbar speed", choice: "speed" } ];
+        }
+        function test_matrix_ignores_starfield_touchbar(data) {
+            ScreensaverConfig.starfieldTouchbar = data.choice;
+            openScreensaver();
+            var r = slide(200, path(200, [1], 60));
+            compare(r.touchbarSpeedActive, true);
+            compare(r.speedAfter, 30);
+            compare(r.labelText, "Speed: 30");
+            compare(r.starSpeedWrites + r.densityWrites, 0, "no Starfield value written");
         }
 
         // a slide that began before the screensaver opened stays ended (the seek overlay sends nothing more); a new

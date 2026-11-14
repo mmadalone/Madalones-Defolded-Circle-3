@@ -58,6 +58,9 @@ TestCase {
     function test_default_idleTimeout() { compare(ScreensaverConfig.idleTimeout, 45); }
     function test_default_closeOnWake() { compare(ScreensaverConfig.closeOnWake, 0, "Close on wake: Never"); }
     function test_default_batteryDockedOnly() { compare(ScreensaverConfig.batteryDockedOnly, true); }
+    function test_default_starfieldTouchbar() {
+        compare(ScreensaverConfig.starfieldTouchbar, "density", "Starfield Touchbar: Density, as up to v1.6.3");
+    }
 
     // ── Reset restores all values ─────────────────────────────
 
@@ -77,5 +80,12 @@ TestCase {
         compare(ScreensaverConfig.glitch, true, "glitch reset");
         compare(ScreensaverConfig.messages, "", "messages reset");
         compare(ScreensaverConfig.idleEnabled, false, "idle reset");
+    }
+
+    function test_reset_restores_starfieldTouchbar() {
+        ScreensaverConfig.starfieldTouchbar = "off";
+        compare(ScreensaverConfig.starfieldTouchbar, "off", "Off stored");
+        ScreensaverConfig.resetDefaults();
+        compare(ScreensaverConfig.starfieldTouchbar, "density", "reset to Density");
     }
 }

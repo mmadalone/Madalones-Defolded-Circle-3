@@ -130,6 +130,8 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(QString starfieldColor READ starfieldColor WRITE setStarfieldColor NOTIFY starfieldColorChanged)
     Q_PROPERTY(int starfieldStarSize READ starfieldStarSize WRITE setStarfieldStarSize NOTIFY starfieldStarSizeChanged)
     Q_PROPERTY(int starfieldTrailLength READ starfieldTrailLength WRITE setStarfieldTrailLength NOTIFY starfieldTrailLengthChanged)
+    // madalone (v1.6.4): Starfield's "Touchbar": "speed", "density" (default) or "off"; any other value reads as "density"
+    Q_PROPERTY(QString starfieldTouchbar READ starfieldTouchbar WRITE setStarfieldTouchbar NOTIFY starfieldTouchbarChanged)
     Q_PROPERTY(QString analogShutoffHands READ analogShutoffHands WRITE setAnalogShutoffHands NOTIFY analogShutoffHandsChanged)
     Q_PROPERTY(int tvStaticIntensity READ tvStaticIntensity WRITE setTvStaticIntensity NOTIFY tvStaticIntensityChanged)
     Q_PROPERTY(int tvStaticSnowSize READ tvStaticSnowSize WRITE setTvStaticSnowSize NOTIFY tvStaticSnowSizeChanged)
@@ -405,6 +407,14 @@ class MockScreensaverConfig : public QObject {
     void setStarfieldStarSize(int v) { if (m_starfieldStarSize == v) return; m_starfieldStarSize = v; emit starfieldStarSizeChanged(); }
     int starfieldTrailLength() const { return m_starfieldTrailLength; }
     void setStarfieldTrailLength(int v) { if (m_starfieldTrailLength == v) return; m_starfieldTrailLength = v; emit starfieldTrailLengthChanged(); }
+    // as the real class: it only ever reads as "speed", "density" or "off" (uc::ui::starfieldTouchbarChoice)
+    QString starfieldTouchbar() const { return m_starfieldTouchbar; }
+    void setStarfieldTouchbar(const QString &v) {
+        const QString c = uc::ui::starfieldTouchbarChoice(v);
+        if (m_starfieldTouchbar == c) return;
+        m_starfieldTouchbar = c;
+        emit starfieldTouchbarChanged();
+    }
     QString analogShutoffHands() const { return m_analogShutoffHands; }
     void setAnalogShutoffHands(QString v) { if (m_analogShutoffHands == v) return; m_analogShutoffHands = v; emit analogShutoffHandsChanged(); }
     int tvStaticIntensity() const { return m_tvStaticIntensity; }
@@ -555,6 +565,7 @@ class MockScreensaverConfig : public QObject {
         setStarfieldColor("#ffffff");
         setStarfieldStarSize(50);
         setStarfieldTrailLength(50);
+        setStarfieldTouchbar("density");
         setAnalogShutoffHands("all");
         setTvStaticIntensity(70);
         setTvStaticSnowSize(2);
@@ -690,6 +701,7 @@ class MockScreensaverConfig : public QObject {
     void starfieldColorChanged();
     void starfieldStarSizeChanged();
     void starfieldTrailLengthChanged();
+    void starfieldTouchbarChanged();
     void analogShutoffHandsChanged();
     void tvStaticIntensityChanged();
     void tvStaticSnowSizeChanged();
@@ -830,6 +842,7 @@ class MockScreensaverConfig : public QObject {
     QString m_starfieldColor{"#ffffff"};
     int m_starfieldStarSize{50};
     int m_starfieldTrailLength{50};
+    QString m_starfieldTouchbar{"density"};
     QString m_analogShutoffHands{"all"};
     int m_tvStaticIntensity{70};
     int m_tvStaticSnowSize{2};

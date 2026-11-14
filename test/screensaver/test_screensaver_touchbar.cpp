@@ -1,5 +1,6 @@
 // Copyright (c) 2026 madalone. Tests for the screensaver's touch-slider steps (src/ui/screensaverTouchbar.h): raw
-// slider travel to whole steps of Matrix speed or Starfield density, one per 3 raw units, the remainder carried.
+// slider travel to whole steps of Matrix speed or Starfield speed or density, one per 3 raw units, the remainder
+// carried; and Starfield's "Touchbar" choice, which only reads as "speed", "density" or "off".
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include <QtTest>
@@ -56,6 +57,8 @@ class testScreensaverTouchbar : public QObject {
     void mapForQml_data();
     void mapForQml();
     void remainderNeverReachesAStep();
+    void starfieldTouchbarChoice_data();
+    void starfieldTouchbarChoice();
 };
 
 // v1.4.8's rate: the full 10 -> 100 sweep is 270 raw units
@@ -173,6 +176,28 @@ void testScreensaverTouchbar::remainderNeverReachesAStep() {
                      qPrintable(QStringLiteral("remainder %1, travel %2: sign").arg(remainder).arg(travel)));
         }
     }
+}
+
+void testScreensaverTouchbar::starfieldTouchbarChoice_data() {
+    QTest::addColumn<QString>("stored");
+    QTest::addColumn<QString>("reads");
+
+    QTest::newRow("speed") << QStringLiteral("speed") << QStringLiteral("speed");
+    QTest::newRow("density") << QStringLiteral("density") << QStringLiteral("density");
+    QTest::newRow("off") << QStringLiteral("off") << QStringLiteral("off");
+    QTest::newRow("no stored value: density, as up to v1.6.3") << QString() << QStringLiteral("density");
+    QTest::newRow("empty") << QStringLiteral("") << QStringLiteral("density");
+    QTest::newRow("unknown") << QStringLiteral("warp") << QStringLiteral("density");
+    QTest::newRow("other case") << QStringLiteral("Speed") << QStringLiteral("density");
+    QTest::newRow("padded") << QStringLiteral(" off") << QStringLiteral("density");
+}
+
+// Starfield's "Touchbar" choice (madalone v1.6.4): ScreensaverConfig::starfieldTouchbar() returns the stored value
+// through this, so it only ever reads as "speed", "density" or "off"
+void testScreensaverTouchbar::starfieldTouchbarChoice() {
+    QFETCH(QString, stored);
+    QFETCH(QString, reads);
+    QCOMPARE(uc::ui::starfieldTouchbarChoice(stored), reads);
 }
 
 QTEST_APPLESS_MAIN(testScreensaverTouchbar)

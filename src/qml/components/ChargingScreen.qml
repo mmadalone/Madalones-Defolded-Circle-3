@@ -687,8 +687,12 @@ Popup {
     }
 
     // --- Touchbar speed control ---
-    // Matrix: active while DPAD interactive and Touchbar speed are on and Touch directions is off; Starfield: always.
-    // A slide toward the volume-down end makes the rain faster (Starfield: denser). Shows the new value briefly.
+    // Matrix: active while DPAD interactive and Touchbar speed are on and Touch directions is off. Starfield: what its
+    // "Touchbar" setting picks (madalone v1.6.4, ScreensaverConfig.starfieldTouchbar, which only ever reads as one of
+    // these three, see src/ui/screensaverTouchbar.h): "speed" the Animation speed, "density" the Star density (the
+    // default, and what a slide always changed up to v1.6.3), "off" nothing.
+    // A slide toward the volume-down end makes the rain or the stars faster (Star density: denser). Shows the new value
+    // briefly.
     // madalone (v1.6.4): also off while Settings → Touch Slider → "Touch slider" is off ("disabled everywhere").
     // Every raw unit of travel counts: ScreensaverConfig.touchbarSteps() turns it into whole steps (one per 3 raw
     // units, v1.4.8's rate) and carries the rest to the next update; the rest starts at 0 at each touch-down (the rule
@@ -700,7 +704,8 @@ Popup {
     property int touchbarRemainder: 0
     readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing && Config.touchSliderEnabled
                                                 && (  (ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
-                                                   || (ScreensaverConfig.theme === "starfield")  )
+                                                   || (ScreensaverConfig.theme === "starfield"
+                                                       && ScreensaverConfig.starfieldTouchbar !== "off")  )
     Connections {
         target: TouchSliderProcessor
         ignoreUnknownSignals: true
@@ -719,8 +724,19 @@ Popup {
             chargingScreenRoot.touchbarRemainder = r.remainder;
             if (r.steps === 0) return;
 
-            if (ScreensaverConfig.theme === "starfield") {
-                // Starfield: touchbar adjusts density
+            if (ScreensaverConfig.theme === "starfield" && ScreensaverConfig.starfieldTouchbar === "speed") {
+                // Starfield, Touchbar "Speed": touchbar adjusts the Animation speed. The theme's speed only scales the
+                // step of each frame of its fixed 55 ms paint timer (StarfieldTheme.qml), so a write per step can't
+                // hold its frames back the way the speed writes held back Matrix's tick timer up to v1.6.3.
+                var newStarSpeed = Math.max(10, Math.min(100, ScreensaverConfig.starfieldSpeed + r.steps));
+                if (newStarSpeed !== ScreensaverConfig.starfieldSpeed) {
+                    ScreensaverConfig.starfieldSpeed = newStarSpeed;
+                    speedOverlay.text = "Speed: " + newStarSpeed;
+                    speedOverlayTimer.restart();
+                    speedOverlay.visible = true;
+                }
+            } else if (ScreensaverConfig.theme === "starfield") {
+                // Starfield, Touchbar "Density" (or any stored value but "speed" and "off"): touchbar adjusts density
                 var newDensity = Math.max(10, Math.min(100, ScreensaverConfig.starfieldDensity + r.steps));
                 if (newDensity !== ScreensaverConfig.starfieldDensity) {
                     ScreensaverConfig.starfieldDensity = newDensity;

@@ -13,7 +13,7 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 ## Unreleased — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
-Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a slide under way when the screensaver opens were checked on the maintainer's Remote 3 (firmware 2.12.1, test build 1.6.3-closeonwake-slider2); the slow-slide fix so far in the tests.
+Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with test builds of this release: Close on wake and the fix for a slide under way when the screensaver opens (1.6.3-closeonwake-slider2), the slow-slide fixes (-slider4) and Starfield's Touchbar choice (-slider5).
 
 ### Added
 
@@ -44,6 +44,19 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a sli
     known.
   - Going back to v1.6.3 shows Undocked as the switch on, which closes on every wake. If you then switch it off and
     on again there, the next update shows Undocked, not Always.
+- **Starfield: pick what the touch slider changes.** Settings → Screensaver → Starfield has a new row, "Touchbar",
+  right below "Star density", with three choices and a help line for the one you pick:
+  - **Speed**: "Sliding along the touch slider changes the Animation speed."
+  - **Density** (the default): "Sliding along the touch slider changes the Star density." The touch slider always did
+    this on Starfield, so nothing changes until you pick another choice.
+  - **Off**: "The touch slider does nothing while the screensaver shows."
+  - Sliding toward the end that turns the volume down makes the stars faster or denser, and a red label shows the new
+    value ("Speed: N" or "Density: N"), as on Matrix. Settings → Touch Slider → "Touch slider" off turns it off
+    whatever the choice.
+  - Matrix keeps its own "Touchbar speed" switch, and Starfield's choice doesn't change it.
+  - Asked for by the maintainer after trying a test build: Starfield had no touch slider setting of its own (only
+    Settings → Touch Slider → "Touch slider" off, which turns the slider off everywhere, stopped it) and no way to
+    make it change the speed.
 
 ### Changed
 
@@ -51,9 +64,9 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a sli
   seconds after it closes, even while you use the remote (not while you reorder a page)." It said "of inactivity",
   but using the remote never held it back. "Touch directions" now reads "Tap screen zones to change direction. Tap
   the center four times in a row to close." It said triple-tap, but it is the fourth tap that closes the screensaver.
-- **Docs and screenshots refreshed.** The docs were checked against the code for this change. All 54 images in
+- **Docs and screenshots refreshed.** The docs were checked against the code for this change. All 55 images in
   `docs/screenshots` are new captures of the desktop simulator running this version, at 480 × 850 pixels: the 24
-  that were there, retaken under the same names, and 30 new ones.
+  that were there, retaken under the same names, and 31 new ones.
 
 ### Fixed
 
@@ -66,8 +79,8 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a sli
   screensaver, or until you left the screen the slider belonged to. Now the slide ends the moment the screensaver
   appears, as if you had taken your finger off: the value the slider showed is sent once (unless the device
   already has it), nothing after it, and the slider's overlay closes. Slides under the screensaver no longer
-  reach the device; they change the screensaver (the Matrix speed, the Starfield star density). The Remote Two
-  has no touch slider.
+  reach the device; they change the screensaver (the Matrix speed; on Starfield what its new Touchbar row picks).
+  The Remote Two has no touch slider.
 - **A lift with no slide under way sends nothing.** Taking your finger off the touch slider sent the slider's last
   value to the device, or 0 if it had none, although no slide was under way: after a press the slider refused
   (the device was unavailable and came back before the lift, or the screensaver was showing and closed before
@@ -85,8 +98,8 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a sli
   Starfield, the screensaver threw away every small movement of the touch slider, so a slow slide changed nothing,
   and a quicker slide changed the speed by an amount that depended on how the remote reported the movement (the
   same 60 units of the slider moved it 15 to 24 steps). Now every bit of a slide counts: one step of speed
-  (Starfield: star density) per 3 units of the slider's travel, the same rate as since v1.4.8, slow or fast. Reported
-  on the maintainer's remote; the cause dates from April.
+  (Starfield: of the speed or the star density, as its new Touchbar row picks) per 3 units of the slider's travel,
+  the same rate as since v1.4.8, slow or fast. Reported on the maintainer's remote; the cause dates from April.
 - **Settings → Touch Slider → "Touch slider" off also turns off the screensaver's slider control.** Its help says the
   touch slider is then disabled everywhere, but the screensaver still changed its speed or star density.
 - **The Matrix rain keeps moving while you slide.** Each change of the speed restarted the rain's frame timer, so
@@ -194,6 +207,35 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a sli
   counts the frames the REAL item draws while its speed changes every 30 or 60 ms: v1.6.3's timer drew 1, 8 and 10
   frames where about 14, 36 and 19 were expected. The new `tst_starfield_stars.qml` (6 results, QML 374) checks that
   the stars stay when the density changes. `testScreensaverTouchbar` 34, no QWARN in the QML suite.
+- Starfield's Touchbar choice: a hand-written `Q_PROPERTY(QString starfieldTouchbar)` in `screensaverconfig.h`, stored
+  in `charging/starfieldTouchbar`. Its getter and setter go through `uc::ui::starfieldTouchbarChoice()`
+  (`screensaverTouchbar.h`), so it only ever reads as "speed", "density" or "off": no key, and any other value,
+  read as "density". `resetDefaults` emits `starfieldTouchbarChanged`. In
+  `ChargingScreen.qml`, `touchbarSpeedActive` takes Starfield only while `starfieldTouchbar !== "off"`; with "speed"
+  the steps go to `starfieldSpeed` (clamped 10..100, label "Speed: N"), otherwise to `starfieldDensity` as before
+  ("Density: N"). The Matrix branch and the `Config.touchSliderEnabled` / `isClosing` gates are unchanged. A write per
+  step can't hold Starfield's frames back: its speed only scales the step of each frame of a fixed 55 ms paint timer
+  (`StarfieldTheme.qml`), unlike Matrix's tick timer up to v1.6.3. The row in `StarfieldSettings.qml`
+  (`starfieldTouchbarRow`) is modelled on Close on wake's: a `Components.ChipPicker` (`starfieldTouchbarPicker`) under
+  a help line per choice (`controlBelow`), bound to the property as it is, a keypad pick
+  revealing the row again (`Qt.callLater(root.settingsPage.ensureVisible, starfieldTouchbarRow)`), the key chain Star
+  density ↔ the picker ↔ Star size. `en_US.ts` (lupdate): the 7 new strings (the title, 3 chips, 3 help lines), each
+  with a `//:` translator comment; the other 13 `.ts` files untouched (ADR 0006).
+- Tests for it: QML 398 (from 374), no QWARN; `testScreensaverTouchbar` 42 (from 34: 8 cases of the choice rule, 5
+  of which fail if the rule returns the stored value as it is). `tst_touchbar_speed.qml` 33 (from 25), with the REAL
+  `ChargingScreen.qml`: each choice (Speed, Density, Off, and an unknown stored value, which acts as Density: what is
+  written, one write per step, the label, nothing sent to the device behind), Speed's direction and its stops at 10
+  and 100, the "Touch slider" switch off with Speed, and Matrix ignoring Starfield's choice. The new
+  `tst_starfield_touchbar_row.qml` (two test cases, the row and the keypad reveal after a pick, with 10 test functions,
+  14 results counting their `initTestCase` / `cleanupTestCase`): the chips, the row right below Star density, the
+  stored choice, an unknown value shown as Density, a tap and LEFT / RIGHT, the help per choice, the key chain, and a
+  reveal after a keypad pick but not after a touch. `tst_config_defaults.qml`: the default Density and its reset.
+  With the pre-change `ChargingScreen.qml`, 3 of `tst_touchbar_speed.qml`'s 33 fail (Speed, Off, and Speed's
+  direction and stops), because it changes the star density whatever the choice; the row tests can only fail there
+  for what the change adds (the row, and objectNames on the sliders around it), so 8 mutants of the first version
+  were run, each caught by its own test (one, the row showing the raw stored value, tested the QML mapping that the
+  review then moved to C++). A scratch build of the real `ScreensaverConfig` class: 10 passed. Design and the check
+  on a remote: `SCREENSAVER-IMPLEMENTATION.md`, "2026-11-14 Session".
 
 ## v1.6.3 — 2026-11-07 — Messages settings: error pop-ups can make way for a banner
 

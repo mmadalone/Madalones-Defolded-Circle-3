@@ -234,6 +234,19 @@ public:
     SCRN_STRING(starfieldColor,    "charging/starfieldColor",         "#ffffff")
     SCRN_INT(starfieldStarSize,    "charging/starfieldStarSize",      50)
     SCRN_INT(starfieldTrailLength, "charging/starfieldTrailLength",   50)
+    // madalone (v1.6.4): "Touchbar", what a slide along the touch slider changes while the Starfield screensaver shows
+    // (ChargingScreen.qml): "speed" (starfieldSpeed), "density" (starfieldDensity: the default, and the behaviour up to
+    // v1.6.3) or "off", stored in charging/starfieldTouchbar. Hand-written so it only ever reads as one of those three
+    // (uc::ui::starfieldTouchbarChoice in screensaverTouchbar.h: any other stored value reads as "density"); the
+    // setter emits starfieldTouchbarChanged itself, like closeOnWake.
+    Q_PROPERTY(QString starfieldTouchbar READ starfieldTouchbar WRITE setStarfieldTouchbar
+                   NOTIFY starfieldTouchbarChanged)
+public:
+    QString starfieldTouchbar() const;
+    void setStarfieldTouchbar(const QString &value);
+signals:
+    void starfieldTouchbarChanged();
+public:
 
     // === Analog theme ===
     // Which hands animate during the native screen-off shutdown sequence.
@@ -328,9 +341,10 @@ public:
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
     /// @}
 
-    /// madalone (v1.6.4): the touch slider's steps for Matrix speed and Starfield density, asked by
-    /// ChargingScreen.qml at each slider update (the rule is in screensaverTouchbar.h). travel: the previous slider
-    /// position minus the new one, in raw units; remainder: what the last call left over (0 at a touch-down).
+    /// madalone (v1.6.4): the touch slider's steps for Matrix speed and for Starfield's speed or star density
+    /// (starfieldTouchbar), asked by ChargingScreen.qml at each slider update (the rule is in screensaverTouchbar.h).
+    /// travel: the previous slider position minus the new one, in raw units; remainder: what the last call left over
+    /// (0 at a touch-down).
     /// Returns {"steps": whole steps, positive = faster/denser; "remainder": raw units carried to the next call}.
     Q_INVOKABLE QVariantMap touchbarSteps(int remainder, int travel) const;
 

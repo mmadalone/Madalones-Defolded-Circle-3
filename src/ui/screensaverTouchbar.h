@@ -1,5 +1,5 @@
-// Copyright (c) 2026 madalone. The screensaver's touch-slider control (Matrix speed, Starfield star density): slider
-// travel in raw units to whole value steps.
+// Copyright (c) 2026 madalone. The screensaver's touch-slider control (Matrix speed; Starfield speed or star density,
+// as its "Touchbar" setting picks): slider travel in raw units to whole value steps.
 // SPDX-License-Identifier: GPL-3.0-or-later
 //
 // ChargingScreen.qml keeps the last slider position (the touch-down position at first) and a remainder, starting the
@@ -20,12 +20,12 @@
 namespace uc {
 namespace ui {
 
-// Raw units of slider travel per step of Matrix speed or Starfield density: v1.4.8's rate, the full 10 -> 100 sweep
-// over 270 raw units.
+// Raw units of slider travel per step of Matrix speed or Starfield speed or density: v1.4.8's rate, the full 10 -> 100
+// sweep over 270 raw units.
 inline constexpr int kTouchbarRawPerStep = 3;
 
 struct TouchbarSteps {
-    int steps;      // whole steps; positive = faster (Starfield: denser)
+    int steps;      // whole steps; positive = faster (Starfield density: denser)
     int remainder;  // raw units left over for the next update, with the sign of remainder + travel
 };
 
@@ -42,6 +42,18 @@ inline TouchbarSteps touchbarSteps(int remainder, int travel) {
 inline QVariantMap touchbarStepsMap(int remainder, int travel) {
     const TouchbarSteps r = touchbarSteps(remainder, travel);
     return {{QStringLiteral("steps"), r.steps}, {QStringLiteral("remainder"), r.remainder}};
+}
+
+// madalone (v1.6.4): Starfield's "Touchbar" choice, what a slide changes while the Starfield screensaver shows:
+// "speed" (Animation speed), "density" (Star density: the default, and what a slide changed up to v1.6.3) or "off".
+// ScreensaverConfig::starfieldTouchbar() returns its stored value through this, so the settings row, the screensaver
+// (ChargingScreen.qml) and the stored key always agree: no stored value, and any value but "speed" or "off", is
+// "density".
+inline QString starfieldTouchbarChoice(const QString &stored) {
+    if (stored == QLatin1String("speed") || stored == QLatin1String("off")) {
+        return stored;
+    }
+    return QStringLiteral("density");
 }
 
 }  // namespace ui
