@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
 
-## Unreleased — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
+## v1.6.4 — 2026-11-15 — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
 Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with test builds of this release: Close on wake and the fix for a slide under way when the screensaver opens (1.6.3-closeonwake-slider2), the slow-slide fixes (-slider4) and Starfield's Touchbar choice (-slider5). Not tried on a remote yet: the close when a Qi pad stops charging, and, with Undocked, the stop of a screensaver still loading when the remote leaves the dock (the desktop simulator showed both for a simulated charger loss).
 

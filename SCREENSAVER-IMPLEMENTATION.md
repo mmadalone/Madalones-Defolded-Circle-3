@@ -118,12 +118,12 @@ Menu entry: "Screensaver" in Settings (after "User interface"), icon `uc:bolt`.
 19. Reverse glow sub-toggle (indented) — Matrix only
 20. Tap effects: Scatter burst / Flash shockwave / Character scramble / Stream spawn (4 toggles) — Matrix only
 21. Double-tap to close toggle (all themes)
-22. Close on wake: three chips, Never / Undocked / Always, with a help line for the chosen one (all themes; an on/off toggle up to v1.6.3, chips since the Unreleased change, see "2026-11-11 Session")
+22. Close on wake: three chips, Never / Undocked / Always, with a help line for the chosen one (all themes; an on/off toggle up to v1.6.3, chips since v1.6.4, see "2026-11-11 Session")
 23. Idle screensaver toggle (all themes)
 24. Idle timeout slider (15-55s, visible when idle on) — all themes
 25. Run after dismissal while docked slider (5-120 s, default 60, always shown) — all themes
 
-Starfield's own rows, not in the early list above, come between the battery rows and Double-tap to close when Starfield is the theme: Animation speed, Star density, Touchbar (three chips, Speed / Density / Off, with a help line for the chosen one; Unreleased, see "2026-11-14 Session"), Star size, Trail length, Star color.
+Starfield's own rows, not in the early list above, come between the battery rows and Double-tap to close when Starfield is the theme: Animation speed, Star density, Touchbar (three chips, Speed / Density / Off, with a help line for the chosen one; since v1.6.4, see "2026-11-14 Session"), Star size, Trail length, Star color.
 
 **Scroll-to-focus:** Flickable auto-scrolls to follow DPAD navigation via `ensureVisible()`.
 
@@ -161,11 +161,11 @@ All stored in `$UC_CONFIG_HOME/config.ini`, at first via the existing `Config` C
 | chargingMatrixTapScramble | bool | true | charging/matrixTapScramble | tap character scramble toggle
 | chargingMatrixTapSpawn | bool | true | charging/matrixTapSpawn | tap stream spawn toggle
 | chargingTapToClose | bool | true | charging/tapToClose | double-tap to close (was single-tap)
-| closeOnWake ("Close on wake"; up to v1.6.3 a bool: first Config's chargingMotionToClose, from 2026-04-08 (`b09caac`) ScreensaverConfig's `motionToClose`) | int: 0 Never, 1 Undocked, 2 Always | 0 (Never) | charging/motionToClose + charging/closeOnWakeUndockedOnly (Unreleased; both keys and the rule in `src/ui/screensaverClosePolicy.h`) |
+| closeOnWake ("Close on wake"; up to v1.6.3 a bool: first Config's chargingMotionToClose, from 2026-04-08 (`b09caac`) ScreensaverConfig's `motionToClose`) | int: 0 Never, 1 Undocked, 2 Always | 0 (Never) | charging/motionToClose + charging/closeOnWakeUndockedOnly (v1.6.4; both keys and the rule in `src/ui/screensaverClosePolicy.h`) |
 | chargingIdleEnabled | bool | false | charging/idleEnabled |
 | chargingIdleTimeout | int | 45 | charging/idleTimeout |
 | reopenWhileDockedSec ("Run after dismissal while docked") | int | 60 | charging/reopenWhileDockedSec (slider 5-120 s) |
-| starfieldTouchbar ("Touchbar", on Starfield's page) | QString: "speed", "density" or "off"; any other stored value acts as "density" | "density" | charging/starfieldTouchbar (Unreleased; see "2026-11-14 Session") |
+| starfieldTouchbar ("Touchbar", on Starfield's page) | QString: "speed", "density" or "off"; any other stored value acts as "density" | "density" | charging/starfieldTouchbar (v1.6.4; see "2026-11-14 Session") |
 
 ### Battery Overlay (`src/qml/components/overlays/BatteryOverlay.qml`)
 
@@ -1429,7 +1429,7 @@ Swipe up/down on touchscreen to adjust speed when tap direction is on.
 
 ### Interaction Fixes
 
-**Touchbar idle timer** — `TouchSliderProcessor.onTouchPressed` restarts `idleScreensaverTimer` (while it runs) in main.qml. Only the press does: a slide that lasts longer than Idle timeout can still open the idle screensaver under the finger, and nothing on the slider holds back the docked re-open ("Run after dismissal while docked"). Since the Unreleased touch-slider fix (`v1.6.4` in the code), a screensaver that opens mid-slide ends the slide (2026-11-12 Session).
+**Touchbar idle timer** — `TouchSliderProcessor.onTouchPressed` restarts `idleScreensaverTimer` (while it runs) in main.qml. Only the press does: a slide that lasts longer than Idle timeout can still open the idle screensaver under the finger, and nothing on the slider holds back the docked re-open ("Run after dismissal while docked"). Since the v1.6.4 touch-slider fix, a screensaver that opens mid-slide ends the slide (2026-11-12 Session).
 
 **Hold-tap slow + pause** — Touch and hold: 0.5s = 3× slowdown (relative, no cap), 1.5s = complete pause, release = resume. Fixed: finger drift no longer cancels hold (guard `holdStage > 0`), pause uses property assignment (`matrixRainRef.running = false`), release properly restores `m_running = true`.
 
@@ -1537,7 +1537,7 @@ New file: `screensaverconfig_macros.h` — SCRN_BOOL/INT/STRING read-write macro
 - `isInteractiveTheme` (matrix only): swipe speed, direction zones, hold-to-slow, tap effects
 - `isSwipeableTheme` (matrix + starfield): swipe-to-adjust-speed
 - Minimal/Analog: only double-tap-to-close
-- Touchbar suppression: `applicationWindow.screensaverActive` gates the 4 upstream TouchSlider variants (press and release; since the Unreleased touch-slider fix also a handler that ends a slide under way when the screensaver opens, and a no-slide guard on the release). The base `TouchSlider.qml` carried a guard in `startSetup()` until v1.6.0, which took upstream's file back.
+- Touchbar suppression: `applicationWindow.screensaverActive` gates the 4 upstream TouchSlider variants (press and release; since the v1.6.4 touch-slider fix also a handler that ends a slide under way when the screensaver opens, and a no-slide guard on the release). The base `TouchSlider.qml` carried a guard in `startSetup()` until v1.6.0, which took upstream's file back.
 
 ### Settings UX
 
@@ -2797,7 +2797,7 @@ Both said a 100 % wipe "moves and lives exactly as before". That holds only at a
 
 ## 2026-11-11 Session: Close on wake — Never / Undocked / Always (GitHub issue #3)
 
-**Status:** implemented and tested (unit, QML, desktop simulator), and checked by the owner on the remote on 2026-11-12 (test build `1.6.3-closeonwake-slider2`, firmware 2.12.1): Undocked kept the screensaver at five wakes on the Qi pad and closed it at a lift, Always closed it at wakes on the pad (both in the remote's log), and, by the owner's report, Never kept it after a lift and the docked re-open played no chime. Not released yet; the code comments say "v1.6.4". Design and measurements: `logs/dock-lift/REPORT_close_on_wake_2026-11-11.md` (local and gitignored, like every `logs/` path below).
+**Status:** implemented and tested (unit, QML, desktop simulator), and checked by the owner on the remote on 2026-11-12 (test build `1.6.3-closeonwake-slider2`, firmware 2.12.1): Undocked kept the screensaver at five wakes on the Qi pad and closed it at a lift, Always closed it at wakes on the pad (both in the remote's log), and, by the owner's report, Never kept it after a lift and the docked re-open played no chime. Released in v1.6.4 (2026-11-15). Design and measurements: `logs/dock-lift/REPORT_close_on_wake_2026-11-11.md` (local and gitignored, like every `logs/` path below).
 
 ### 1. Why the switch could not do it
 
@@ -2878,7 +2878,7 @@ F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the co
 
 ## 2026-11-12 Session: the touch slider when the screensaver opens mid-slide
 
-**Status:** implemented and tested (QML suite, guard check), and reviewed through three lenses (correctness on the remote, tests and tooling, the truth of the docs) with a refutation pass, every finding fixed (`logs/bugfix-plan/b6/impl/review_findings.txt`); checked by the owner on the remote on 2026-11-12 (test build `1.6.3-closeonwake-slider2`): by the owner's report, the slider stopped changing the device as the screensaver appeared, and no slider overlay was left after it closed. Not released yet; the code comments say "v1.6.4", like Close on wake's. Plan: `logs/bugfix-plan/PLAN.md`, item 1; evidence in `logs/bugfix-plan/b6/impl/` (local and gitignored, like every `logs/` path below).
+**Status:** implemented and tested (QML suite, guard check), and reviewed through three lenses (correctness on the remote, tests and tooling, the truth of the docs) with a refutation pass, every finding fixed (`logs/bugfix-plan/b6/impl/review_findings.txt`); checked by the owner on the remote on 2026-11-12 (test build `1.6.3-closeonwake-slider2`): by the owner's report, the slider stopped changing the device as the screensaver appeared, and no slider overlay was left after it closed. Released in v1.6.4 (2026-11-15), with Close on wake. Plan: `logs/bugfix-plan/PLAN.md`, item 1; evidence in `logs/bugfix-plan/b6/impl/` (local and gitignored, like every `logs/` path below).
 
 ### 1. What went wrong
 
@@ -2918,7 +2918,7 @@ F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the co
 
 ## 2026-11-12 Session 2: the touch slider's steps on the screensaver
 
-**Status:** implemented and tested (C++ unit test, QML suite with the real `ChargingScreen.qml`), with the two fixes the v1.6.4 pre-release review found (section 3); not released yet. The code comments say "v1.6.4". Found while the owner tested the first test build: "The slider doesn't seem to speed/slow the matrix rain". Investigation: workflow wf_c8876bbe-418, summary in `logs/bugfix-plan/slider-speed/synthesis.json` (local and gitignored, like every `logs/` path below).
+**Status:** implemented and tested (C++ unit test, QML suite with the real `ChargingScreen.qml`), with the two fixes the v1.6.4 pre-release review found (section 3); released in v1.6.4 (2026-11-15). Found while the owner tested the first test build: "The slider doesn't seem to speed/slow the matrix rain". Investigation: workflow wf_c8876bbe-418, summary in `logs/bugfix-plan/slider-speed/synthesis.json` (local and gitignored, like every `logs/` path below).
 
 ### 1. What went wrong
 
@@ -2956,7 +2956,7 @@ F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the co
 
 ## 2026-11-14 Session: Starfield Touchbar choice
 
-**Status:** implemented and tested (the QML suite with the real `ChargingScreen.qml`, the settings row on its own, the C++ choice rule, a scratch check of the real `ScreensaverConfig` class), and reviewed (section 3). Not released: the code comments mark it "v1.6.4". Seen in the desktop simulator on 2026-11-14 (the settings row; see Tests), and checked by the owner on the remote the same day (test build `1.6.3-closeonwake-slider5`, firmware 2.12.1; see the end of this section). Asked by the owner on 2026-11-14, after trying the test build `1.6.3-closeonwake-slider4` on the remote (firmware 2.12.1): "Starfield has no touchbar toggle. It should have a speed/density option so users can choose whether the slider changes the animation speed, the star density or have the touch slider off." Evidence in `logs/starfield-touchbar/` (local and gitignored, like every `logs/` path below).
+**Status:** implemented and tested (the QML suite with the real `ChargingScreen.qml`, the settings row on its own, the C++ choice rule, a scratch check of the real `ScreensaverConfig` class), and reviewed (section 3). Released in v1.6.4 (2026-11-15). Seen in the desktop simulator on 2026-11-14 (the settings row; see Tests), and checked by the owner on the remote the same day (test build `1.6.3-closeonwake-slider5`, firmware 2.12.1; see the end of this section). Asked by the owner on 2026-11-14, after trying the test build `1.6.3-closeonwake-slider4` on the remote (firmware 2.12.1): "Starfield has no touchbar toggle. It should have a speed/density option so users can choose whether the slider changes the animation speed, the star density or have the touch slider off." Evidence in `logs/starfield-touchbar/` (local and gitignored, like every `logs/` path below).
 
 ### 1. Before
 
