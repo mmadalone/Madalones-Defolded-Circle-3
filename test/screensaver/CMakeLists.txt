@@ -1,4 +1,5 @@
-# Copyright (c) 2026 madalone. "Close on wake" policy tests (src/ui/screensaverClosePolicy.h, header only).
+# Copyright (c) 2026 madalone. Screensaver rule tests, both header only: "Close on wake" (src/ui/screensaverClosePolicy.h)
+# and the touch-slider steps (src/ui/screensaverTouchbar.h).
 # Links Qt5:: like upstream's test targets (docs/adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md).
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -26,6 +27,19 @@ add_test(NAME testScreensaverClosePolicy
          COMMAND testScreensaverClosePolicy)
 
 target_link_libraries(testScreensaverClosePolicy
+    PUBLIC
+    Qt5::Core
+    Qt5::Test
+)
+
+add_executable(testScreensaverTouchbar
+    "test_screensaver_touchbar.cpp"
+)
+
+add_test(NAME testScreensaverTouchbar
+         COMMAND testScreensaverTouchbar)
+
+target_link_libraries(testScreensaverTouchbar
     PUBLIC
     Qt5::Core
     Qt5::Test

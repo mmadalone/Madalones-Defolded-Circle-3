@@ -11,6 +11,7 @@
 #include <QColor>
 #include <QFont>
 #include <QJSValue>
+#include <QDateTime>
 #include <QPointer>
 #include <cstdio>
 
@@ -22,6 +23,7 @@
 #include "MockEntityController.h"
 #include "MockConfig.h"
 #include "MockTouchSlider.h"
+#include "MockChargingScreenHost.h"
 
 // ── Mock objects (singleton lifetime) ──────────────────────────────
 static MockScreensaverConfig *s_config = nullptr;
@@ -31,6 +33,9 @@ static MockWifi *s_wifi = nullptr;
 static MockEntityController *s_entityController = nullptr;
 static MockConfig *s_appConfig = nullptr;
 static MockTouchSlider *s_touchSlider = nullptr;
+static MockPower *s_power = nullptr;
+static MockScreenOffSync *s_screenOffSync = nullptr;
+static MockSoundEffects *s_soundEffects = nullptr;
 
 static QObject *configProvider(QQmlEngine *, QJSEngine *) {
     // QtQuick tests destroy/recreate the engine — prevent double-delete
@@ -60,6 +65,18 @@ static QObject *appConfigProvider(QQmlEngine *, QJSEngine *) {
 static QObject *touchSliderProvider(QQmlEngine *, QJSEngine *) {
     QQmlEngine::setObjectOwnership(s_touchSlider, QQmlEngine::CppOwnership);
     return s_touchSlider;
+}
+static QObject *powerProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_power, QQmlEngine::CppOwnership);
+    return s_power;
+}
+static QObject *screenOffSyncProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_screenOffSync, QQmlEngine::CppOwnership);
+    return s_screenOffSync;
+}
+static QObject *soundEffectsProvider(QQmlEngine *, QJSEngine *) {
+    QQmlEngine::setObjectOwnership(s_soundEffects, QQmlEngine::CppOwnership);
+    return s_soundEffects;
 }
 
 // ── Mock C++ object for fonts context property ────────────────────
@@ -339,6 +356,8 @@ class MockUi : public QObject {
     Q_PROPERTY(int actionableNotifications READ actionableNotifications NOTIFY actionableNotificationsChanged)
     // the banner's signals and the QML entry points of uc::ui::Notification
     Q_PROPERTY(QObject *notification READ notification CONSTANT)
+    // the screensaver's clock overlay reads ui.time
+    Q_PROPERTY(QDateTime time READ time CONSTANT)
 
  public:
     explicit MockUi(QObject *parent = nullptr)
@@ -374,6 +393,7 @@ class MockUi : public QObject {
         emit warningNotificationsChanged();
     }
     QObject *notification() const { return m_notification; }
+    QDateTime time() const { return QDateTime::currentDateTime(); }
 
  signals:
     void keyNavigationActiveChanged();
@@ -458,6 +478,9 @@ class Setup : public QObject {
         s_entityController = new MockEntityController;
         s_appConfig = new MockConfig;
         s_touchSlider = new MockTouchSlider;
+        s_power = new MockPower;
+        s_screenOffSync = new MockScreenOffSync;
+        s_soundEffects = new MockSoundEffects;
         qmlRegisterSingletonType<MockScreensaverConfig>("ScreensaverConfig", 1, 0, "ScreensaverConfig", configProvider);
         qmlRegisterSingletonType<MockHaptic>("Haptic", 1, 0, "Haptic", hapticProvider);
         qmlRegisterSingletonType<MockBattery>("Battery", 1, 0, "Battery", batteryProvider);
@@ -465,6 +488,12 @@ class Setup : public QObject {
         qmlRegisterSingletonType<MockEntityController>("Entity.Controller", 1, 0, "EntityController", entityControllerProvider);
         qmlRegisterSingletonType<MockConfig>("Config", 1, 0, "Config", appConfigProvider);
         qmlRegisterSingletonType<MockTouchSlider>("TouchSlider", 1, 0, "TouchSliderProcessor", touchSliderProvider);
+        // what the real ChargingScreen.qml imports (tst_touchbar_speed.qml), under the production URIs
+        qmlRegisterSingletonType<MockPower>("Power", 1, 0, "Power", powerProvider);
+        qmlRegisterUncreatableType<MockPower>("Power.Modes", 1, 0, "PowerModes", "Enum is not a type");
+        qmlRegisterSingletonType<MockScreenOffSync>("ScreenOffSync", 1, 0, "ScreenOffSync", screenOffSyncProvider);
+        qmlRegisterSingletonType<MockSoundEffects>("SoundEffects", 1, 0, "SoundEffects", soundEffectsProvider);
+        qmlRegisterType<StubMatrixRain>("MatrixRain", 1, 0, "MatrixRain");
         // test only: TestLog.typeErrors(), see the class comment
         qmlRegisterSingletonType<TestLog>("TestLog", 1, 0, "TestLog", testLogProvider);
         // SignalStrength Q_GADGET — registered separately under its own URI to match
@@ -513,6 +542,9 @@ class Setup : public QObject {
         delete s_entityController; s_entityController = nullptr;
         delete s_appConfig; s_appConfig = nullptr;
         delete s_touchSlider; s_touchSlider = nullptr;
+        delete s_power; s_power = nullptr;
+        delete s_screenOffSync; s_screenOffSync = nullptr;
+        delete s_soundEffects; s_soundEffects = nullptr;
     }
 };
 

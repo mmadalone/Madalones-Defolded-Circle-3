@@ -7,8 +7,10 @@
 #include <QColor>
 #include <QObject>
 #include <QQmlEngine>
+#include <QVariantMap>
 
 #include "ui/screensaverClosePolicy.h"
+#include "ui/screensaverTouchbar.h"
 
 class MockScreensaverConfig : public QObject {
     Q_OBJECT
@@ -148,6 +150,14 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(qreal fadeRate READ fadeRate NOTIFY fadeRateChanged)
     Q_PROPERTY(int trailLength READ trailLength NOTIFY trailLengthChanged)
     Q_PROPERTY(bool showBattery READ showBattery NOTIFY showBatteryChanged)
+
+    // what the real ChargingScreen.qml (tst_touchbar_speed.qml) and its overlays read that the settings tests never
+    // needed; constant defaults
+    Q_PROPERTY(bool screenOffEffectEnabled MEMBER m_screenOffEffectEnabled NOTIFY screenOffEffectEnabledChanged)
+    Q_PROPERTY(bool screenOffEffectUndocked MEMBER m_screenOffEffectUndocked NOTIFY screenOffEffectUndockedChanged)
+    Q_PROPERTY(QString screenOffEffectStyle MEMBER m_screenOffEffectStyle NOTIFY screenOffEffectStyleChanged)
+    Q_PROPERTY(int screenOffEffectLengthMs MEMBER m_screenOffEffectLengthMs NOTIFY screenOffEffectLengthMsChanged)
+    Q_PROPERTY(QString clockDateColor MEMBER m_clockDateColor NOTIFY clockDateColorChanged)
 
  public:
     explicit MockScreensaverConfig(QObject *parent = nullptr) : QObject(parent) {}
@@ -344,6 +354,10 @@ class MockScreensaverConfig : public QObject {
     }
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const {
         return uc::ui::closesOnChargerLoss(static_cast<uc::ui::CloseOnWake>(m_closeOnWake), loaded);
+    }
+    // ScreensaverConfig::touchbarSteps returns the same map (src/ui/screensaverTouchbar.h)
+    Q_INVOKABLE QVariantMap touchbarSteps(int remainder, int travel) const {
+        return uc::ui::touchbarStepsMap(remainder, travel);
     }
     bool idleEnabled() const { return m_idleEnabled; }
     void setIdleEnabled(bool v) { if (m_idleEnabled == v) return; m_idleEnabled = v; emit idleEnabledChanged(); }
@@ -559,6 +573,11 @@ class MockScreensaverConfig : public QObject {
 
  signals:
     void themeChanged();
+    void screenOffEffectEnabledChanged();
+    void screenOffEffectUndockedChanged();
+    void screenOffEffectStyleChanged();
+    void screenOffEffectLengthMsChanged();
+    void clockDateColorChanged();
     void showClockChanged();
     void clockDockedOnlyChanged();
     void clockSizeChanged();
@@ -694,6 +713,11 @@ class MockScreensaverConfig : public QObject {
 
  private:
     QString m_theme{"matrix"};
+    bool m_screenOffEffectEnabled{true};
+    bool m_screenOffEffectUndocked{false};
+    QString m_screenOffEffectStyle{"theme-native"};
+    int m_screenOffEffectLengthMs{800};
+    QString m_clockDateColor{"#d0d0d0"};
     bool m_showClock{false};
     bool m_clockDockedOnly{false};
     int m_clockSize{48};

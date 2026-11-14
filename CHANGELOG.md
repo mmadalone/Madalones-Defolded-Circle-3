@@ -13,7 +13,7 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 ## Unreleased — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
-Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the desktop simulator, the touch slider fix in the QML tests; neither has been tried on a remote yet.
+Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake and the fix for a slide under way when the screensaver opens were checked on the maintainer's Remote 3 (firmware 2.12.1, test build 1.6.3-closeonwake-slider2); the slow-slide fix so far in the tests.
 
 ### Added
 
@@ -36,7 +36,7 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the de
   - The remote notices that it left the dock only at its battery check, about every 5 seconds, so the screensaver
     stays in your hand for a few seconds. On the maintainer's Remote 3 on a Qi pad the report came 2.3 to 4.6
     seconds after the lift woke the remote (13 lifts, median 3.3 s).
-  - A button pressed in those seconds goes to the screensaver: most buttons just close it, and your button mappings don't run (worked out from the code, not yet tried on a remote). Whether a key also reaches a control that has the key focus on the screen under the screensaver has not been checked.
+  - A button pressed in those seconds goes to the screensaver, and most buttons close it. The screensaver is gone before you let go, so the button's release, and the repeats of a held button, reach the screen behind it, where they can run that button's mapping (worked out from the code and a test of the UI's key routing, not yet seen on a remote; a fix is planned). Whether a key also reaches a control that has the key focus on the screen under the screensaver has not been checked.
   - On a Qi pad the remote also reports the charger gone when the pad stops charging (seen at 80 % and when full,
     with the remote asleep on the pad). Undocked and Always then close the screensaver as if the remote had been
     lifted.
@@ -81,6 +81,21 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the de
 - **With Undocked, a screensaver still loading when the remote leaves the dock no longer opens afterwards.** Up to
   v1.6.3 a screensaver that was still loading when the remote left the dock opened anyway, on the lifted remote.
   Undocked stops the load. Always keeps the v1.6.3 behaviour here.
+- **Slow slides on the touch slider change the screensaver's speed.** On Matrix (with "Touchbar speed" on) and on
+  Starfield, the screensaver threw away every small movement of the touch slider, so a slow slide changed nothing,
+  and a quicker slide changed the speed by an amount that depended on how the remote reported the movement (the
+  same 60 units of the slider moved it 15 to 24 steps). Now every bit of a slide counts: one step of speed
+  (Starfield: star density) per 3 units of the slider's travel, the same rate as since v1.4.8, slow or fast. Reported
+  on the maintainer's remote; the cause dates from April.
+- **Settings → Touch Slider → "Touch slider" off also turns off the screensaver's slider control.** Its help says the
+  touch slider is then disabled everywhere, but the screensaver still changed its speed or star density.
+- **The Matrix rain keeps moving while you slide.** Each change of the speed restarted the rain's frame timer, so
+  the rain stood still while a slide changed the speed faster than the rain draws. Up to v1.6.3 a quick slide could
+  stop it for a moment; with every bit of a slide now counting, it would have stood still for a whole slow slide.
+  A speed change now never holds the next frame back.
+- **Starfield keeps its stars when the density changes.** Each density step threw all stars away and drew new ones
+  at random places, so a slide on the touch slider made the field jump at every step. Now stars are added or
+  dropped and the others stay where they are.
 
 ### Developer notes
 
@@ -120,9 +135,10 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the de
   New CMake program `testScreensaverClosePolicy` (`test/screensaver/`, links `Qt5::Core` and `Qt5::Test`): 33 passed,
   every wake and charger loss for each choice, loaded or still loading, the keys, and `config.ini` files as v1.6.3
   writes them (switch on, off, no key, empty), read and written through `QSettings`. CI's "Upstream unit tests
-  (CMake)" job builds 32 programs (31 before). The matrix (260), hardware (161) and integration (41) suites are not
+  (CMake)" job builds one more program (31 → 32). The matrix (260), hardware (161) and integration (41) suites are not
   touched by the change and were not rerun.
-- The simulator checks, and what still needs a remote: `SCREENSAVER-IMPLEMENTATION.md`, "2026-11-11 Session".
+- The simulator checks, the checks on the remote, and what is still open: `SCREENSAVER-IMPLEMENTATION.md`,
+  "2026-11-11 Session".
 - Touch slider (`src/qml/components/TouchSlider{Volume,Seek,Brightness,Position}.qml`, upstream files): a
   `Connections { target: applicationWindow }` whose `onScreensaverActiveChanged` ends a slide that is under way
   when the screensaver opens: it stops `updateDataTimer`, sends the target once if it differs and the entity is
@@ -149,8 +165,35 @@ Needs firmware 2.12.0 or newer, like v1.6.0. Close on wake was checked in the de
   QML harness: `MockTouchSlider.h` (the `TouchSliderProcessor` singleton), `TestLog.typeErrors()` in `tst_qml_main.cpp` (it
   counts logged TypeErrors; Qt 5.15's Quick Test has no failOnWarning), the four touch slider gains in
   `MockConfig.h`, `Haptic.Bump` and `ui.createActionableNotification()`. The desktop simulator can't show the fix:
-  its touch slider never produces input. Design and the check to run on a remote: `SCREENSAVER-IMPLEMENTATION.md`,
+  its touch slider never produces input. Design and the check on a remote: `SCREENSAVER-IMPLEMENTATION.md`,
   "2026-11-12 Session".
+- Touch slider on the screensaver: the new header-only `src/ui/screensaverTouchbar.h` (`uc::ui::touchbarSteps(remainder,
+  travel)`, `kTouchbarRawPerStep = 3`) turns the summed raw travel into whole steps, truncated toward zero, and carries
+  the rest with its sign. `ChargingScreen.qml` keeps the last slider position and the rest (0 at each touch-down),
+  asks `ScreensaverConfig.touchbarSteps()` (a new `Q_INVOKABLE` returning `{steps, remainder}`) at each slider update,
+  adds the steps to the value and clamps it to 10..100, as before. Up to v1.6.3 it moved its reference before its
+  3-unit check (since 40394c7, 2026-04-08) and rounded each update on its own (v1.4.8). `touchbarSpeedActive` also
+  needs `Config.touchSliderEnabled` now.
+- Tests: new CMake program `testScreensaverTouchbar` (`test/screensaver/`): 34 passed (60 raw units grouped nine ways
+  all make 20 steps, jitter, drift, the full 270-unit sweep, the sign and bounds of the rest, the map handed to QML); 5 mutants of the rule
+  each fail 4 to 19. CI's "Upstream unit tests (CMake)" job builds 33 programs (32 → 33). The new `tst_touchbar_speed.qml` runs
+  the REAL `ChargingScreen.qml` in the QML suite. It needs the new `MockChargingScreenHost.h` (Power, ScreenOffSync,
+  SoundEffects, a MatrixRain stub), `ui.time`, five more `MockScreensaverConfig` properties and
+  `Config.touchSliderEnabled`. 25 results; v1.6.3's `ChargingScreen.qml` fails 15 of them, and 5 mutants of the
+  QML change each fail 1 to 15. QML total 368, no QWARN.
+- Pre-release review fixes. `MatrixRainItem::setSpeed()` (`src/ui/matrixrain.{h,cpp}`) restarted the tick timer at
+  every speed change (`QTimer::start()` begins the countdown again), and `tick()` is the only thing that asks for a
+  frame. It now restarts the timer only when the running one would fire later than the new interval
+  (`speedIntervalMs()`); otherwise `m_rearmAtSpeed` makes the next `tick()` re-arm at the new speed, and every
+  explicit timer start clears it (so a pending re-arm can't undo the slower timer of a held OK). `StarfieldTheme.qml`:
+  `fitStars()` adds or drops stars to match `starCount` instead of rebuilding the field at each change.
+  `screensaverTouchbar.h` also builds the map QML reads (`touchbarStepsMap()`), so the unit test checks its keys and
+  the QML mock returns the same map.
+- Tests for those: the rain's unit tests 264 (from 260: the deferred re-arm, a faster speed at once, a burst of slower
+  writes, a deliberate timer start winning). The new `tst_speed_writes.qml` in the integration suite (46, from 41)
+  counts the frames the REAL item draws while its speed changes every 30 or 60 ms: v1.6.3's timer drew 1, 8 and 10
+  frames where about 14, 36 and 19 were expected. The new `tst_starfield_stars.qml` (6 results, QML 374) checks that
+  the stars stay when the density changes. `testScreensaverTouchbar` 34, no QWARN in the QML suite.
 
 ## v1.6.3 — 2026-11-07 — Messages settings: error pop-ups can make way for a banner
 

@@ -9,6 +9,7 @@
 #include "../logging.h"
 #include "../system/battery.h"
 #include "screensaverClosePolicy.h"
+#include "screensaverTouchbar.h"
 
 namespace uc {
 
@@ -181,6 +182,10 @@ bool ScreensaverConfig::closesOnWake(bool onCharger, bool loaded) const {
                                         << (loaded ? "" : " (still loading)");
     }
     return closes;
+}
+
+QVariantMap ScreensaverConfig::touchbarSteps(int remainder, int travel) const {
+    return ui::touchbarStepsMap(remainder, travel);
 }
 
 bool ScreensaverConfig::closesOnChargerLoss(bool loaded) const {

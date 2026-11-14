@@ -582,8 +582,13 @@ public:
     // only at setDisplayOff(false)'s wake path (m_displayOff just cleared).
     void startTimerAtSpeed();
     void startTimerAt(int intervalMs);
+    // the tick interval at the current speed, TICK_MIN_MS..TICK_MAX_MS
+    int speedIntervalMs() const;
 
     QTimer m_timer;
+    // madalone (v1.6.4): set by setSpeed() when the running timer is due no later than the new interval; the next
+    // tick() re-arms at the new speed. Cleared by every timer (re)start.
+    bool   m_rearmAtSpeed{false};
     int    m_glowFade{50};             // residual glow duration (0=none, 100=max persistence)
     bool   m_depthGlow{false};        // glow cells shrink with age for depth illusion
     int    m_depthGlowMin{40};        // minimum size % at oldest age (10-90)

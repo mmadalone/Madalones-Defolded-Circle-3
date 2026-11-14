@@ -4762,6 +4762,70 @@ class MatrixRainTest : public QObject {
         QVERIFY2(!trails.isEmpty() && wrongPace == 0,
                  qPrintable(QString("%1 chaos wipe streaks, %2 not at 450 %").arg(trails.size()).arg(wrongPace)));
     }
+
+    // ─────────────────────────────────────────
+    // v1.6.4: a speed change never pushes the next tick back. Up to v1.6.3 setSpeed() restarted the timer, so speed
+    // writes that came faster than one tick (a slide on the touch slider changes the speed every 3 raw units) left
+    // the rain standing still until they stopped. test/integration/tst_speed_writes.qml counts the frames.
+    // ─────────────────────────────────────────
+    void setSpeedSlowerKeepsTheNextTick() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.m_timer.start(50);  // speed 1.0: the next tick is due within 50 ms
+        item.setSpeed(0.5);      // the new interval, 100 ms, is longer: keep the tick that is due
+        QCOMPARE(item.m_timer.interval(), 50);
+        QVERIFY(item.m_timer.isActive());
+        QVERIFY(item.m_rearmAtSpeed);
+        item.tick();             // that tick re-arms at the new speed
+        QCOMPARE(item.m_timer.interval(), 100);
+        QVERIFY(!item.m_rearmAtSpeed);
+    }
+
+    void setSpeedFasterRestartsAtOnce() {
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.setSpeed(0.2);
+        item.m_running = true;
+        item.m_timer.start(250);  // speed 0.2: the next tick could be 250 ms away
+        item.setSpeed(2.0);       // the new interval, 25 ms, is shorter: start it now
+        QCOMPARE(item.m_timer.interval(), 25);
+        QVERIFY(!item.m_rearmAtSpeed);
+    }
+
+    void manySlowerWritesKeepTheTickDue() {
+        // a burst of writes, each one slower, as during a slow slide: the tick that was due stays due (v1.6.3
+        // restarted the timer at every write, so its countdown began again each time)
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.m_timer.start(50);
+        for (int n = 49; n >= 30; --n) {
+            item.setSpeed(n / 50.0);
+        }
+        // The timer is coarse, so its remaining time can read up to 5 % above 50 ms and the first write (51 ms) may
+        // restart it, which only brings the tick a little closer. Later writes never do: v1.6.3 ended at 83 ms.
+        QVERIFY2(item.m_timer.interval() <= 51, qPrintable(QString("interval %1 ms").arg(item.m_timer.interval())));
+        QVERIFY(item.m_timer.remainingTime() <= 53);
+        QVERIFY(item.m_rearmAtSpeed);
+        item.tick();
+        QCOMPARE(item.m_timer.interval(), 83);  // speed 0.6: 50 / 0.6
+    }
+
+    void timerRestartClearsPendingRearm() {
+        // a pending re-arm must not undo a timer started on purpose after it (OK held: 3 times slower)
+        MatrixRainItem item;
+        setupItem(item, 480, 800, "down");
+        item.m_running = true;
+        item.m_timer.start(50);
+        item.setSpeed(0.5);
+        QVERIFY(item.m_rearmAtSpeed);
+        item.interactiveInput("slow:hold");
+        QVERIFY(!item.m_rearmAtSpeed);
+        const int slowInterval = item.m_timer.interval();
+        item.tick();
+        QCOMPARE(item.m_timer.interval(), slowInterval);
+    }
 };
 
 int main(int argc, char *argv[]) {

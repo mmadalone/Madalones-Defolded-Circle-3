@@ -687,10 +687,18 @@ Popup {
     }
 
     // --- Touchbar speed control ---
-    // Active when DPAD direction is on + touchbar speed toggle is on.
-    // Swipe left = faster, swipe right = slower. Shows speed overlay briefly.
+    // Matrix: active while DPAD interactive and Touchbar speed are on and Touch directions is off; Starfield: always.
+    // A slide toward the volume-down end makes the rain faster (Starfield: denser). Shows the new value briefly.
+    // madalone (v1.6.4): also off while Settings → Touch Slider → "Touch slider" is off ("disabled everywhere").
+    // Every raw unit of travel counts: ScreensaverConfig.touchbarSteps() turns it into whole steps (one per 3 raw
+    // units, v1.4.8's rate) and carries the rest to the next update; the rest starts at 0 at each touch-down (the rule
+    // is in src/ui/screensaverTouchbar.h). Up to v1.6.3 each update under 3 raw units was thrown away, so a slow slide
+    // changed nothing.
+    // -1 means "no slide", which assumes the raw position is never negative (the axis minimum isn't known here: the
+    // driver reads it but doesn't log it).
     property real touchbarPrevX: -1
-    readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing
+    property int touchbarRemainder: 0
+    readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing && Config.touchSliderEnabled
                                                 && (  (ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
                                                    || (ScreensaverConfig.theme === "starfield")  )
     Connections {
@@ -700,22 +708,20 @@ Popup {
         function onTouchPressed() {
             if (!chargingScreenRoot.touchbarSpeedActive) return;
             chargingScreenRoot.touchbarPrevX = TouchSliderProcessor.touchX;
+            chargingScreenRoot.touchbarRemainder = 0;
         }
         function onTouchXChanged() {
             if (!chargingScreenRoot.touchbarSpeedActive) return;
             if (chargingScreenRoot.touchbarPrevX < 0) return;
-            var delta = TouchSliderProcessor.touchX - chargingScreenRoot.touchbarPrevX;
+            var r = ScreensaverConfig.touchbarSteps(chargingScreenRoot.touchbarRemainder,
+                                                    chargingScreenRoot.touchbarPrevX - TouchSliderProcessor.touchX);
             chargingScreenRoot.touchbarPrevX = TouchSliderProcessor.touchX;
-
-            if (Math.abs(delta) < 3) return;  // minimum 3px movement
-
-            // v1.4.8: tune sensitivity down (was 1:1 pixel-to-unit, now ~1:3)
-            var scaledDelta = delta / 3;
+            chargingScreenRoot.touchbarRemainder = r.remainder;
+            if (r.steps === 0) return;
 
             if (ScreensaverConfig.theme === "starfield") {
                 // Starfield: touchbar adjusts density
-                var newDensity = Math.round(ScreensaverConfig.starfieldDensity - scaledDelta);
-                newDensity = Math.max(10, Math.min(100, newDensity));
+                var newDensity = Math.max(10, Math.min(100, ScreensaverConfig.starfieldDensity + r.steps));
                 if (newDensity !== ScreensaverConfig.starfieldDensity) {
                     ScreensaverConfig.starfieldDensity = newDensity;
                     speedOverlay.text = "Density: " + newDensity;
@@ -724,8 +730,7 @@ Popup {
                 }
             } else {
                 // Matrix: touchbar adjusts speed
-                var newSpeed = Math.round(ScreensaverConfig.matrixSpeed - scaledDelta);
-                newSpeed = Math.max(10, Math.min(100, newSpeed));
+                var newSpeed = Math.max(10, Math.min(100, ScreensaverConfig.matrixSpeed + r.steps));
                 if (newSpeed !== ScreensaverConfig.matrixSpeed) {
                     ScreensaverConfig.matrixSpeed = newSpeed;
                     speedOverlay.text = "Speed: " + newSpeed;

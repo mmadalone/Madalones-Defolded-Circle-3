@@ -250,6 +250,10 @@ void MatrixRainItem::geometryChanged(const QRectF &n, const QRectF &o) {
 }
 
 void MatrixRainItem::tick() {
+    if (m_rearmAtSpeed) {
+        // madalone (v1.6.4): a speed change waited for this tick (setSpeed); the next tick comes at the new speed
+        startTimerAtSpeed();
+    }
     if (m_layerPipeline.enabled()) {
         // Sync config every tick — cheap (setters guard on value change) and ensures
         // all inline header setters (trailLength, glow, glitch, message, etc.) propagate.
@@ -531,12 +535,18 @@ void MatrixRainItem::setCharset(const QString &c) {
 // m_timer.start() that survives lives in setDisplayOff(false)'s wake path,
 // where m_displayOff has just been cleared and the helper would no-op anyway.
 
+int MatrixRainItem::speedIntervalMs() const {
+    return qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS);
+}
+
 void MatrixRainItem::startTimerAtSpeed() {
+    m_rearmAtSpeed = false;
     if (m_displayOff) return;
-    m_timer.start(qBound(TICK_MIN_MS, static_cast<int>(TICK_BASE_MS / m_sim.speed()), TICK_MAX_MS));
+    m_timer.start(speedIntervalMs());
 }
 
 void MatrixRainItem::startTimerAt(int intervalMs) {
+    m_rearmAtSpeed = false;
     if (m_displayOff) return;
     m_timer.start(intervalMs);
 }
@@ -566,7 +576,17 @@ void MatrixRainItem::resetAfterScreenOff() {
 void MatrixRainItem::setSpeed(qreal s) {
     if (m_sim.setSpeed(s)) {
         if (m_layerPipeline.enabled()) m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
-        if (m_running) startTimerAtSpeed();
+        // madalone (v1.6.4): never push the next frame back. QTimer::start() restarts the countdown, so speed
+        // changes that came faster than one tick (the touch slider changes the speed every 3 raw units of a slide)
+        // held every frame back and the rain stood still until the finger stopped. Restart now only when the
+        // running timer would fire later than the new interval; otherwise the next tick re-arms at the new speed.
+        if (m_running) {
+            if (!m_timer.isActive() || m_timer.remainingTime() > speedIntervalMs()) {
+                startTimerAtSpeed();
+            } else {
+                m_rearmAtSpeed = true;
+            }
+        }
         emit speedChanged();
     }
 }

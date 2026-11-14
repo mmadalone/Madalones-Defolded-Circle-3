@@ -8,6 +8,7 @@
 #include <QObject>
 #include <QQmlEngine>
 #include <QSettings>
+#include <QVariantMap>
 
 #include "screensaverconfig_macros.h"
 
@@ -326,6 +327,12 @@ public:
     /// closes the open or still-loading screensaver
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
     /// @}
+
+    /// madalone (v1.6.4): the touch slider's steps for Matrix speed and Starfield density, asked by
+    /// ChargingScreen.qml at each slider update (the rule is in screensaverTouchbar.h). travel: the previous slider
+    /// position minus the new one, in raw units; remainder: what the last call left over (0 at a touch-down).
+    /// Returns {"steps": whole steps, positive = faster/denser; "remainder": raw units carried to the next call}.
+    Q_INVOKABLE QVariantMap touchbarSteps(int remainder, int travel) const;
 
 signals:
     void colorChanged();

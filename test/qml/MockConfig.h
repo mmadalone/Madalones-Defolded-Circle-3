@@ -1,7 +1,8 @@
 // Copyright (c) 2026 madalone. Mock Config singleton for QML tests.
 // Production Config (src/config/config.h) has 100+ Q_PROPERTYs. Mock has exactly the
 // minimum the tested components read: the chips, Settings → User interface → Messages
-// (MessagesSection.qml, Notification.qml) and the touch slider gains (TouchSlider*.qml).
+// (MessagesSection.qml, Notification.qml), the touch slider gains (TouchSlider*.qml) and the global "Touch slider"
+// switch (ChargingScreen.qml).
 // Expand only when a future test needs more —
 // pre-mirroring the full surface buys nothing.
 // SPDX-License-Identifier: GPL-3.0-or-later
@@ -31,6 +32,9 @@ class MockConfig : public QObject {
     Q_PROPERTY(double touchSliderGainBrightness READ touchSliderGainBrightness CONSTANT)
     Q_PROPERTY(double touchSliderGainPosition READ touchSliderGainPosition CONSTANT)
     Q_PROPERTY(double touchSliderGainSeek READ touchSliderGainSeek CONSTANT)
+    // Settings → Touch Slider → "Touch slider" (production default on)
+    Q_PROPERTY(bool touchSliderEnabled READ getTouchSliderEnabled WRITE setTouchSliderEnabled NOTIFY
+                   touchSliderEnabledChanged)
 
  public:
     explicit MockConfig(QObject *parent = nullptr) : QObject(parent) {}
@@ -39,6 +43,13 @@ class MockConfig : public QObject {
     double touchSliderGainBrightness() const { return 1.2; }
     double touchSliderGainPosition() const { return 1.2; }
     double touchSliderGainSeek() const { return 1.0; }
+
+    bool getTouchSliderEnabled() const { return m_touchSliderEnabled; }
+    void setTouchSliderEnabled(bool v) {
+        if (m_touchSliderEnabled == v) return;
+        m_touchSliderEnabled = v;
+        emit touchSliderEnabledChanged();
+    }
 
     static constexpr int kBannerSecMin = 1;
     static constexpr int kBannerSecMax = 30;
@@ -96,6 +107,7 @@ class MockConfig : public QObject {
         setErrorBannerSec(5);
         setShowUnavailableBanners(true);
         setOtherBannerSec(4);
+        setTouchSliderEnabled(true);
     }
 
  signals:
@@ -105,6 +117,7 @@ class MockConfig : public QObject {
     void errorBannerSecChanged(int seconds);
     void showUnavailableBannersChanged(bool value);
     void otherBannerSecChanged(int seconds);
+    void touchSliderEnabledChanged();
 
  private:
     bool m_showBatteryPercentage{false};
@@ -113,4 +126,5 @@ class MockConfig : public QObject {
     int  m_errorBannerSec{5};
     bool m_showUnavailableBanners{true};
     int  m_otherBannerSec{4};
+    bool m_touchSliderEnabled{true};
 };

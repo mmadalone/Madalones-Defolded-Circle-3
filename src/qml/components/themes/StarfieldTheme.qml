@@ -79,38 +79,33 @@ Item {
 
     Canvas {
         id: canvas
+        objectName: "starCanvas"
         anchors.fill: parent
         renderTarget: Canvas.FramebufferObject
         renderStrategy: Canvas.Cooperative
 
         property var stars: []
-        property bool initialized: false
-
-        // Reset when star count changes so the array is rebuilt on next paint
-        Connections {
-            target: root
-            function onStarCountChanged() { canvas.initialized = false; }
-        }
 
         readonly property real cx: width / 2
         readonly property real cy: height / 2
 
+        // madalone (v1.6.4): the star list follows root.starCount by adding new stars or dropping the extra ones; the
+        // others stay where they are. Up to v1.6.3 a change of the count rebuilt every star at a random position, so
+        // each density step of a slide on the touch slider (one step per 3 raw units) scattered the whole field.
+        function fitStars() {
+            while (stars.length < root.starCount) {
+                var z = Math.random() * width;
+                stars.push({ x: Math.random() * width - cx, y: Math.random() * height - cy, z: z, pz: z });
+            }
+            if (stars.length > root.starCount) {
+                stars.splice(root.starCount);
+            }
+        }
+
         onPaint: {
             var ctx = getContext("2d");
 
-            if (!initialized) {
-                stars = [];
-                for (var i = 0; i < root.starCount; i++) {
-                    stars.push({
-                        x: Math.random() * width - cx,
-                        y: Math.random() * height - cy,
-                        z: Math.random() * width,
-                        pz: 0
-                    });
-                    stars[i].pz = stars[i].z;
-                }
-                initialized = true;
-            }
+            fitStars();
 
             // Fade background
             ctx.fillStyle = "rgba(0, 0, 0, 0.15)";

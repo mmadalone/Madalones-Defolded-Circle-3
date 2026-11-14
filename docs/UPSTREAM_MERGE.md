@@ -99,8 +99,10 @@ requirement "Charging screen". It departs from it with the default settings too:
 | (none) | It opens by itself. On the charger, "Run after dismissal while docked" reopens it that long after it closes (5–120 s, default 60, no off position), even while the remote is in use, unless the time runs out while a page is being reordered. Off the charger, with "Idle screensaver" on (off by default), it opens after "Idle timeout" (15–55 s, default 45) without a key press, a touch or the touch slider. |
 | Open and close fade over 300 ms | Opens over 300 ms, closes in 50 ms (`ChargingScreen.qml` `enter` / `exit`). |
 
-Not checked: whether a key that closes the screensaver also reaches the screen underneath (scenario "Key press on the
-charging screen").
+A key that closes the screensaver on its press passes its release, and the repeats of a held key, to the screen
+underneath: the screensaver is already gone, and UC's InputController sends them to the item that has the input then
+(`inputController.cpp`; shown in a QML test of that routing, not yet seen on a remote; a fix is planned). Not checked:
+the QML focus chain (scenario "Key press on the charging screen").
 
 ### Touch slider (v1.2.0, v1.4.7, Unreleased)
 
@@ -121,7 +123,9 @@ Upstream records its architecture decisions in [`docs/adr/`](adr/). Where our co
 Not listed yet: [0005](adr/0005-core-api-over-websocket-ui-holds-no-business-logic.md) (Mod 5's REST calls to
 `/api/system/power/standby_inhibitors`), [0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md)
 (`activitySessionKeeper`, `phantomWakeSuppressor` and `screenOffSync` in `src/hardware/`), and 0012 for the
-screensaver's own decisions in `main.qml` and `ChargingScreen.qml`.
+screensaver's own decisions in `main.qml` and `ChargingScreen.qml` (among them the touch slider control: the slide
+position and rest, the 10..100 clamp and the switches that enable it; its travel-to-steps rule is in C++,
+`screensaverTouchbar.h`).
 
 | ADR | Ours | Why |
 |---|---|---|
