@@ -124,9 +124,9 @@ Not listed yet: [0005](adr/0005-core-api-over-websocket-ui-holds-no-business-log
 `/api/system/power/standby_inhibitors`), [0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md)
 (`activitySessionKeeper`, `phantomWakeSuppressor` and `screenOffSync` in `src/hardware/`), and 0012 for the
 screensaver's own decisions in `main.qml` and `ChargingScreen.qml` (among them the touch slider control: the slide
-position and rest, the 10..100 clamp, the switches that enable it and Starfield's Touchbar choice of the value it
-changes, where a stored value other than "speed" and "off" counts as "density", as it does in `StarfieldSettings.qml`;
-its travel-to-steps rule is in C++, `screensaverTouchbar.h`).
+position and rest, the 10..100 clamp, the switches that enable it and which value Starfield's Touchbar choice
+changes; its travel-to-steps rule, and the rule that a stored Touchbar value other than "speed" and "off" reads as
+"density", are in C++, `screensaverTouchbar.h`).
 
 | ADR | Ours | Why |
 |---|---|---|

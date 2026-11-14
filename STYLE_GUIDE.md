@@ -511,7 +511,7 @@ SCRN_INT (idleTimeout,   "charging/idleTimeout",       20)
 SCRN_STRING(direction,   "charging/matrixDirection",   "down")
 ```
 
-Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 108 screensaver properties currently use this pattern.
+Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 126 screensaver properties use this pattern at v1.6.4. Seven settings are written out by hand instead: the five Matrix values `matrixColor`, `matrixSpeed`, `matrixDensity`, `matrixFade` and `matrixTrail` (their setters also notify a derived value), `closeOnWake` (stored in two keys) and `starfieldTouchbar` (reads only as one of its three choices).
 
 **When to use `SCRN_*`:** custom mod-specific config singletons you own outright (e.g. `ScreensaverConfig`). Use the macro for anything with more than ~5 properties — below that threshold, hand-writing is clearer.
 

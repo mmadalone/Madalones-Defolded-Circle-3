@@ -13,7 +13,7 @@ Releases below this point are from the custom-screensaver fork maintained by [@m
 
 ## Unreleased — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
-Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with test builds of this release: Close on wake and the fix for a slide under way when the screensaver opens (1.6.3-closeonwake-slider2), the slow-slide fixes (-slider4) and Starfield's Touchbar choice (-slider5).
+Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with test builds of this release: Close on wake and the fix for a slide under way when the screensaver opens (1.6.3-closeonwake-slider2), the slow-slide fixes (-slider4) and Starfield's Touchbar choice (-slider5). Not tried on a remote yet: the close when a Qi pad stops charging, and, with Undocked, the stop of a screensaver still loading when the remote leaves the dock (the desktop simulator showed both for a simulated charger loss).
 
 ### Added
 
@@ -36,10 +36,10 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
   - The remote notices that it left the dock only at its battery check, about every 5 seconds, so the screensaver
     stays in your hand for a few seconds. On the maintainer's Remote 3 on a Qi pad the report came 2.3 to 4.6
     seconds after the lift woke the remote (13 lifts, median 3.3 s).
-  - A button pressed in those seconds goes to the screensaver, and most buttons close it. The screensaver is gone before you let go, so the button's release, and the repeats of a held button, reach the screen behind it, where they can run that button's mapping (worked out from the code and a test of the UI's key routing, not yet seen on a remote; a fix is planned). Whether a key also reaches a control that has the key focus on the screen under the screensaver has not been checked.
+  - A button pressed in those seconds goes to the screensaver, and most buttons close it. That is not special to Undocked: with every Close on wake choice, on the dock too, a button that closes the screensaver does so as you press it (not new in v1.6.4), so the screensaver is gone before you let go, and the button's release, and the repeats of a held button, reach the screen behind it, where they can run that button's mapping (worked out from the code and a test of the UI's key routing, not yet seen on a remote; a fix is planned). From the code, the same goes for a button still held when Close on wake closes the screensaver: its remaining repeats and its release reach the screen behind. Whether a key also reaches a control that has the key focus on the screen under the screensaver has not been checked.
   - On a Qi pad the remote also reports the charger gone when the pad stops charging (seen at 80 % and when full,
     with the remote asleep on the pad). Undocked and Always then close the screensaver as if the remote had been
-    lifted.
+    lifted (worked out from the code, as the UI gets the same report; not tried on a remote yet).
   - Not tried on a Remote Two: the code is the same for both remotes, but how soon a Remote Two reports a lift is not
     known.
   - Going back to v1.6.3 shows Undocked as the switch on, which closes on every wake. If you then switch it off and
@@ -47,16 +47,16 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
 - **Starfield: pick what the touch slider changes.** Settings → Screensaver → Starfield has a new row, "Touchbar",
   right below "Star density", with three choices and a help line for the one you pick:
   - **Speed**: "Sliding along the touch slider changes the Animation speed."
-  - **Density** (the default): "Sliding along the touch slider changes the Star density." The touch slider always did
-    this on Starfield, so nothing changes until you pick another choice.
+  - **Density** (the default): "Sliding along the touch slider changes the Star density." The touch slider always changed
+    the Star density on Starfield, so it keeps doing that until you pick another choice.
   - **Off**: "The touch slider does nothing while the screensaver shows."
   - Sliding toward the end that turns the volume down makes the stars faster or denser, and a red label shows the new
     value ("Speed: N" or "Density: N"), as on Matrix. Settings → Touch Slider → "Touch slider" off turns it off
     whatever the choice.
   - Matrix keeps its own "Touchbar speed" switch, and Starfield's choice doesn't change it.
-  - Asked for by the maintainer after trying a test build: Starfield had no touch slider setting of its own (only
-    Settings → Touch Slider → "Touch slider" off, which turns the slider off everywhere, stopped it) and no way to
-    make it change the speed.
+  - Asked for by the maintainer after trying a test build: Starfield had no touch slider setting of its own and no way
+    to make it change the speed. In that build only Settings → Touch Slider → "Touch slider" off, which turns the
+    slider off everywhere, stopped it; in v1.6.3 not even that did (see Fixed).
 
 ### Changed
 
@@ -81,7 +81,7 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
   already has it), nothing after it, and the slider's overlay closes. Slides under the screensaver no longer
   reach the device; they change the screensaver (the Matrix speed; on Starfield what its new Touchbar row picks).
   The Remote Two has no touch slider.
-- **A lift with no slide under way sends nothing.** Taking your finger off the touch slider sent the slider's last
+- **Lifting your finger with no slide under way sends nothing.** Taking your finger off the touch slider sent the slider's last
   value to the device, or 0 if it had none, although no slide was under way: after a press the slider refused
   (the device was unavailable and came back before the lift, or the screensaver was showing and closed before
   the lift), and when the slider got ready only after your finger was down (for example while the remote was
@@ -197,8 +197,9 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
 - Pre-release review fixes. `MatrixRainItem::setSpeed()` (`src/ui/matrixrain.{h,cpp}`) restarted the tick timer at
   every speed change (`QTimer::start()` begins the countdown again), and `tick()` is the only thing that asks for a
   frame. It now restarts the timer only when the running one would fire later than the new interval
-  (`speedIntervalMs()`); otherwise `m_rearmAtSpeed` makes the next `tick()` re-arm at the new speed, and every
-  explicit timer start clears it (so a pending re-arm can't undo the slower timer of a held OK). `StarfieldTheme.qml`:
+  (`speedIntervalMs()`); otherwise `m_rearmAtSpeed` makes the next `tick()` re-arm at the new speed, and
+  `startTimerAtSpeed()` / `startTimerAt()` clear it (so a re-arm already pending when OK is held can't undo the
+  hold's slower timer). `StarfieldTheme.qml`:
   `fitStars()` adds or drops stars to match `starCount` instead of rebuilding the field at each change.
   `screensaverTouchbar.h` also builds the map QML reads (`touchbarStepsMap()`), so the unit test checks its keys and
   the QML mock returns the same map.
@@ -206,7 +207,8 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
   writes, a deliberate timer start winning). The new `tst_speed_writes.qml` in the integration suite (46, from 41)
   counts the frames the REAL item draws while its speed changes every 30 or 60 ms: v1.6.3's timer drew 1, 8 and 10
   frames where about 14, 36 and 19 were expected. The new `tst_starfield_stars.qml` (6 results, QML 374) checks that
-  the stars stay when the density changes. `testScreensaverTouchbar` 34, no QWARN in the QML suite.
+  the stars stay when the density changes. `testScreensaverTouchbar` 34, no QWARN in the QML suite. Design, the review
+  fixes and the check on a remote: `SCREENSAVER-IMPLEMENTATION.md`, "2026-11-12 Session 2".
 - Starfield's Touchbar choice: a hand-written `Q_PROPERTY(QString starfieldTouchbar)` in `screensaverconfig.h`, stored
   in `charging/starfieldTouchbar`. Its getter and setter go through `uc::ui::starfieldTouchbarChoice()`
   (`screensaverTouchbar.h`), so it only ever reads as "speed", "density" or "off": no key, and any other value,
@@ -223,9 +225,10 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
   with a `//:` translator comment; the other 13 `.ts` files untouched (ADR 0006).
 - Tests for it: QML 398 (from 374), no QWARN; `testScreensaverTouchbar` 42 (from 34: 8 cases of the choice rule, 5
   of which fail if the rule returns the stored value as it is). `tst_touchbar_speed.qml` 33 (from 25), with the REAL
-  `ChargingScreen.qml`: each choice (Speed, Density, Off, and an unknown stored value, which acts as Density: what is
-  written, one write per step, the label, nothing sent to the device behind), Speed's direction and its stops at 10
-  and 100, the "Touch slider" switch off with Speed, and Matrix ignoring Starfield's choice. The new
+  `ChargingScreen.qml`: each choice (Speed, Density, Off, and an unknown value written to the property, which reads
+  back as "density" and acts as Density: what is written, one write per step, the label, nothing sent to the device
+  behind), Speed's direction and its stops at 10 and 100, the "Touch slider" switch off with Speed, and Matrix
+  ignoring Starfield's choice. The new
   `tst_starfield_touchbar_row.qml` (two test cases, the row and the keypad reveal after a pick, with 10 test functions,
   14 results counting their `initTestCase` / `cleanupTestCase`): the chips, the row right below Star density, the
   stored choice, an unknown value shown as Density, a tap and LEFT / RIGHT, the help per choice, the key chain, and a

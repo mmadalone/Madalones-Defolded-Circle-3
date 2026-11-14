@@ -291,7 +291,7 @@ Item {
                 { tag: "Speed", choice: "speed", active: true, starSpeed: 30, density: 50, label: "Speed: 30" },
                 { tag: "Density", choice: "density", active: true, starSpeed: 50, density: 30, label: "Density: 30" },
                 { tag: "Off", choice: "off", active: false, starSpeed: 50, density: 50, label: "" },
-                { tag: "an unknown stored value acts as Density", choice: "warp", active: true, starSpeed: 50,
+                { tag: "an unknown value written to the property acts as Density", choice: "warp", active: true, starSpeed: 50,
                   density: 30, label: "Density: 30" }
             ];
         }

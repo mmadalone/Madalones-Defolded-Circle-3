@@ -587,7 +587,8 @@ public:
 
     QTimer m_timer;
     // madalone (v1.6.4): set by setSpeed() when the running timer is due no later than the new interval; the next
-    // tick() re-arms at the new speed. Cleared by every timer (re)start.
+    // tick() re-arms at the new speed. Cleared by startTimerAtSpeed() and startTimerAt(); the wake path's direct
+    // m_timer.start() leaves it, and the next tick then re-arms at the same interval.
     bool   m_rearmAtSpeed{false};
     int    m_glowFade{50};             // residual glow duration (0=none, 100=max persistence)
     bool   m_depthGlow{false};        // glow cells shrink with age for depth illusion

@@ -736,7 +736,7 @@ Popup {
                     speedOverlay.visible = true;
                 }
             } else if (ScreensaverConfig.theme === "starfield") {
-                // Starfield, Touchbar "Density" (or any stored value but "speed" and "off"): touchbar adjusts density
+                // Starfield, Touchbar "Density" (any other stored value reads as "density"): touchbar adjusts density
                 var newDensity = Math.max(10, Math.min(100, ScreensaverConfig.starfieldDensity + r.steps));
                 if (newDensity !== ScreensaverConfig.starfieldDensity) {
                     ScreensaverConfig.starfieldDensity = newDensity;

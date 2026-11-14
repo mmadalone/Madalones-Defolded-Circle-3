@@ -291,7 +291,7 @@ Log files also downloadable from the web configurator: **Settings → Developmen
 
 2. ~~**Idle timer doesn't catch DPAD presses**~~ **FIXED 2026-04-02 (Session 2)** — Connected to existing `ui.inputController.keyPressed` signal (C++ InputController event filter, fires for all 24 hardware buttons independently of QML ButtonNavigation stack). Research ruled out replacing the timer with system IDLE transition because `remote-core` controls the display backlight and the IDLE transition may coincide with display-off, making the screensaver invisible.
 
-3. ~~**Animation speed slider doesn't work**~~ **FIXED 2026-04-02 (Session 2)** — Timer was hardcoded at 50ms (20 FPS). Speed now controls frame rate: `interval = 50 / speed` clamped to 25-150ms. `setSpeed()` restarts the timer immediately.
+3. ~~**Animation speed slider doesn't work**~~ **FIXED 2026-04-02 (Session 2)** — Timer was hardcoded at 50ms (20 FPS). Speed now controls frame rate: `interval = 50 / speed` clamped to 25-150ms. `setSpeed()` restarts the timer immediately. **Changed since:** the clamp is 25–300 ms (2026-04-13); since v1.6.4 `setSpeed()` restarts the timer only when the running one would fire later than the new interval, otherwise the next tick re-arms at the new speed ("2026-11-12 Session 2", section 3).
 
 4. **Starfield and Minimal themes** still use Canvas (JS) — they're simple enough that GC stutters aren't noticeable, but could be migrated to C++ QQuickItem if needed.
 
@@ -1504,9 +1504,9 @@ New file: `screensaverconfig_macros.h` — SCRN_BOOL/INT/STRING read-write macro
 - Trail length slider (amplifies previous-position offset)
 - Seamless star/trail rendering (removed separate circle, round lineCap IS the star head)
 - Higher max speed (10x) and density (1100 stars)
-- Touchbar adjusts density (always active on Starfield)
+- Touchbar adjusts density (always active on Starfield up to v1.6.3; since v1.6.4 Starfield's Touchbar row picks the speed, the density or nothing, see "2026-11-14 Session")
 - Swipe adjusts Starfield speed (writes to starfieldSpeed, not matrixSpeed)
-- Density slider now has runtime effect (initialized flag resets on starCount change)
+- Density slider now has runtime effect (initialized flag resets on starCount change; since v1.6.4 `fitStars()` adds or drops stars instead and keeps the rest, see "2026-11-12 Session 2", section 3)
 
 **Minimal theme:**
 - Font selector (Poppins / Space Mono)
@@ -2980,7 +2980,7 @@ F12 stands for the charger (it flips only the UI's `Battery.powerSupply`; the co
 
 ### Tests
 
-- `tst_touchbar_speed.qml` (the REAL `ChargingScreen.qml`): 33 results, 8 of them new. `test_starfield_touchbar_choice` with four rows: Speed (the Animation speed 50 → 30 in 20 writes, the density untouched, label "Speed: 30"), Density (the density 50 → 30, "Density: 30"), Off (the screensaver ignores the slide, nothing written, no label) and an unknown stored value, "warp", which acts as Density; every row also checks that the Matrix speed is untouched and that the seek overlay behind sent nothing. `test_starfield_speed_direction_and_ends`: toward the volume-down end is faster, and the speed stops at 100 and at 10. `test_touch_slider_off_starfield_speed`: the global switch off with Speed changes nothing. `test_matrix_ignores_starfield_touchbar` (Off and Speed): Matrix still changes its own speed.
+- `tst_touchbar_speed.qml` (the REAL `ChargingScreen.qml`): 33 results, 8 of them new. `test_starfield_touchbar_choice` with four rows: Speed (the Animation speed 50 → 30 in 20 writes, the density untouched, label "Speed: 30"), Density (the density 50 → 30, "Density: 30"), Off (the screensaver ignores the slide, nothing written, no label) and an unknown value, "warp", written to the property (it reads back as "density"), which acts as Density; every row also checks that the Matrix speed is untouched and that the seek overlay behind sent nothing. `test_starfield_speed_direction_and_ends`: toward the volume-down end is faster, and the speed stops at 100 and at 10. `test_touch_slider_off_starfield_speed`: the global switch off with Speed changes nothing. `test_matrix_ignores_starfield_touchbar` (Off and Speed): Matrix still changes its own speed.
 - New `tst_starfield_touchbar_row.qml`, which mounts `StarfieldSettings.qml`: `StarfieldTouchbarRow`, 8 tests (the chips; the row right after Star density and before Star size, and laid out directly under it; the stored choice shown; an unknown value shown as Density; a tap storing the choice without reaching the sliders above or below; LEFT / RIGHT stopping at the ends; the help per choice; the key chain down and back up, leaving the choice alone) and `StarfieldTouchbarReveal`, 2 (a keypad pick asks the page once to reveal the row; a touch pick asks nothing): 14 results with `initTestCase` / `cleanupTestCase`. The two sliders around the row got objectNames for it (`starfieldDensitySlider`, `starfieldStarSizeSlider`). The only other test that mounts the page, `tst_settings_visibility.qml`, checks visibility only, and no keypad walk covered it.
 - `tst_config_defaults.qml`: the default Density, and `resetDefaults` bringing it back from Off (2 results). `MockScreensaverConfig.h` has the property, its default and its reset.
 - `testScreensaverTouchbar` (`test/screensaver/`, CMake): 42 results, 8 of them new. `starfieldTouchbarChoice` keeps "speed", "density" and "off" and reads no value, an empty one, "warp", "Speed" and " off" as "density". A rule that returns the stored value as it is fails 5 of the 8 (`logs/starfield-touchbar/cmake_mutants.sh`, `out_cmake3/`); the step rule's five mutants still fail as before (`out_cmake2/`).
