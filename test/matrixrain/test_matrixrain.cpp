@@ -4795,18 +4795,21 @@ class MatrixRainTest : public QObject {
 
     void manySlowerWritesKeepTheTickDue() {
         // a burst of writes, each one slower, as during a slow slide: the tick that was due stays due (v1.6.3
-        // restarted the timer at every write, so its countdown began again each time)
+        // restarted the timer at every write, so its countdown began again each time and ended at 83 ms)
         MatrixRainItem item;
         setupItem(item, 480, 800, "down");
         item.m_running = true;
+        // A precise timer, to test the rule itself. The item's own timer is coarse (Qt::CoarseTimer, "within 5 %"):
+        // right after a start its remaining time can read a few ms above the interval, so in a burst with no time
+        // between the writes, as here, a few restarts could follow each other (1 on one machine, 2 on a CI runner).
+        // Real slides write tens of ms apart; tst_speed_writes.qml counts the frames with the real timer.
+        item.m_timer.setTimerType(Qt::PreciseTimer);
         item.m_timer.start(50);
         for (int n = 49; n >= 30; --n) {
             item.setSpeed(n / 50.0);
         }
-        // The timer is coarse, so its remaining time can read up to 5 % above 50 ms and the first write (51 ms) may
-        // restart it, which only brings the tick a little closer. Later writes never do: v1.6.3 ended at 83 ms.
-        QVERIFY2(item.m_timer.interval() <= 51, qPrintable(QString("interval %1 ms").arg(item.m_timer.interval())));
-        QVERIFY(item.m_timer.remainingTime() <= 53);
+        QCOMPARE(item.m_timer.interval(), 50);
+        QVERIFY2(item.m_timer.remainingTime() <= 50, qPrintable(QString("%1 ms left").arg(item.m_timer.remainingTime())));
         QVERIFY(item.m_rearmAtSpeed);
         item.tick();
         QCOMPARE(item.m_timer.interval(), 83);  // speed 0.6: 50 / 0.6

@@ -105,7 +105,7 @@ Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the m
 - **The Matrix rain keeps moving while you slide.** Each change of the speed restarted the rain's frame timer, so
   the rain stood still while a slide changed the speed faster than the rain draws. Up to v1.6.3 a quick slide could
   stop it for a moment; with every bit of a slide now counting, it would have stood still for a whole slow slide.
-  A speed change now never holds the next frame back.
+  A speed change no longer holds the next frame back.
 - **Starfield keeps its stars when the density changes.** Each density step threw all stars away and drew new ones
   at random places, so a slide on the touch slider made the field jump at every step. Now stars are added or
   dropped and the others stay where they are.

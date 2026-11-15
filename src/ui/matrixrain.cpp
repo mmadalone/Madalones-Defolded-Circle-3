@@ -576,10 +576,12 @@ void MatrixRainItem::resetAfterScreenOff() {
 void MatrixRainItem::setSpeed(qreal s) {
     if (m_sim.setSpeed(s)) {
         if (m_layerPipeline.enabled()) m_layerPipeline.syncLayerConfig(m_sim, m_autoRotateBend);
-        // madalone (v1.6.4): never push the next frame back. QTimer::start() restarts the countdown, so speed
+        // madalone (v1.6.4): don't push the next frame back. QTimer::start() restarts the countdown, so speed
         // changes that came faster than one tick (the touch slider changes the speed every 3 raw units of a slide)
         // held every frame back and the rain stood still until the finger stopped. Restart now only when the
         // running timer would fire later than the new interval; otherwise the next tick re-arms at the new speed.
+        // The timer is coarse (Qt::CoarseTimer, within 5 %), so a restart can still land a few ms later than the
+        // tick it replaces.
         if (m_running) {
             if (!m_timer.isActive() || m_timer.remainingTime() > speedIntervalMs()) {
                 startTimerAtSpeed();
