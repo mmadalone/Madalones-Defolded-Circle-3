@@ -9,6 +9,7 @@
 #include "../logging.h"
 #include "../system/battery.h"
 #include "screensaverClosePolicy.h"
+#include "screensaverInputPolicy.h"
 #include "screensaverTouchbar.h"
 
 namespace uc {
@@ -210,6 +211,17 @@ bool ScreensaverConfig::closesOnChargerLoss(bool loaded) const {
                                         << (loaded ? "" : " (still loading)");
     }
     return closes;
+}
+
+// --- What a tap does (madalone v1.6.5), see screensaverInputPolicy.h ---
+
+bool ScreensaverConfig::matrixLoaded() const {
+    return ui::loadsMatrix(theme());
+}
+
+// TV Static's own "Flash on tap" (tvStaticFlashOnTap), not Matrix's "Flash" tap effect (tapFlash)
+QString ScreensaverConfig::loneTapAction() const {
+    return ui::loneTapAction(theme(), tvStaticFlashOnTap());
 }
 
 // --- resetDefaults: wipe all charging/* keys, then re-broadcast NOTIFY signals so

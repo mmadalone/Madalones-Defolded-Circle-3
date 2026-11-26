@@ -12,6 +12,10 @@
 //   property bool showBattery   — whether battery overlay is visible
 //   function interactiveInput(action) — handle DPAD/touch input from ChargingScreen
 //
+// Optional (madalone v1.6.5):
+//   function tapFlash() — a lone screen tap's flash (TV Static). ChargingScreen.fireLoneTap() calls it, guarded,
+//                         when ScreensaverConfig.loneTapAction() says "flash" (screensaverInputPolicy.h).
+//
 // Themes may satisfy the showClock/showBattery contract in two ways:
 //   1. Declare these as properties (optionally with custom logic, e.g. MatrixTheme
 //      adds extra conditions beyond the config value).

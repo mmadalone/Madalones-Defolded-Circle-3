@@ -10,12 +10,15 @@
 #include <QVariantMap>
 
 #include "ui/screensaverClosePolicy.h"
+#include "ui/screensaverInputPolicy.h"
 #include "ui/screensaverTouchbar.h"
 
 class MockScreensaverConfig : public QObject {
     Q_OBJECT
 
     Q_PROPERTY(QString theme READ theme WRITE setTheme NOTIFY themeChanged)
+    // v1.6.5: as the real class, true for every theme name that loads Matrix (src/ui/screensaverInputPolicy.h)
+    Q_PROPERTY(bool matrixLoaded READ matrixLoaded NOTIFY themeChanged)
     Q_PROPERTY(bool showClock READ showClock WRITE setShowClock NOTIFY showClockChanged)
     Q_PROPERTY(bool clockDockedOnly READ clockDockedOnly WRITE setClockDockedOnly NOTIFY clockDockedOnlyChanged)
     Q_PROPERTY(int clockSize READ clockSize WRITE setClockSize NOTIFY clockSizeChanged)
@@ -357,6 +360,9 @@ class MockScreensaverConfig : public QObject {
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const {
         return uc::ui::closesOnChargerLoss(static_cast<uc::ui::CloseOnWake>(m_closeOnWake), loaded);
     }
+    // ScreensaverConfig::matrixLoaded / loneTapAction (v1.6.5) through the same header (src/ui/screensaverInputPolicy.h)
+    bool matrixLoaded() const { return uc::ui::loadsMatrix(m_theme); }
+    Q_INVOKABLE QString loneTapAction() const { return uc::ui::loneTapAction(m_theme, m_tvStaticFlashOnTap); }
     // ScreensaverConfig::touchbarSteps returns the same map (src/ui/screensaverTouchbar.h)
     Q_INVOKABLE QVariantMap touchbarSteps(int remainder, int travel) const {
         return uc::ui::touchbarStepsMap(remainder, travel);

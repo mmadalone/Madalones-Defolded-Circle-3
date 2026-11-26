@@ -171,6 +171,7 @@ HEADERS += \
     src/ui/screensaverconfig_macros.h \
     src/ui/screensaverClosePolicy.h \
     src/ui/screensaverTouchbar.h \
+    src/ui/screensaverInputPolicy.h \
     src/ui/rainsimulation.h \
     src/ui/gravitydirection.h \
     src/ui/glitchengine.h \

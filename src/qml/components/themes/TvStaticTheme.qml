@@ -115,6 +115,13 @@ Item {
         easing.type: Easing.OutCubic
     }
 
+    // madalone (v1.6.5): a lone screen tap while "Flash on tap" is on. ChargingScreen.fireLoneTap() calls it when
+    // ScreensaverConfig.loneTapAction() says "flash" (the switch is checked there, in C++).
+    function tapFlash() {
+        if (root.u_tvOff > 0.0) root.cancelScreenOff();
+        root.triggerFlash();
+    }
+
     // DPAD / touch dispatch. Fires a channel-flash burst IF tvStaticFlashOnTap
     // is true. ChargingScreen separately handles cancelling the screen-off
     // countdown on every interactiveInput call (no per-theme countdown state).

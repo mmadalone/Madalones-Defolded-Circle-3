@@ -318,6 +318,8 @@ Popup {
     onOpenedChanged: {
         if (!opened) {
             isClosing = true;
+            // madalone (v1.6.5): a lone tap's window must not run out once the theme is unloaded (fireLoneTap)
+            doubleTapTimer.stop();
             if (matrixRainRef) matrixRainRef.resetEnterState();
             themeLoader.active = false;
         }
@@ -449,10 +451,13 @@ Popup {
 
     background: Rectangle { color: "black" }
 
-    // Only Matrix has interactive gestures (swipe speed, direction zones, hold-to-slow, tap effects).
+    // Matrix has the interactive gestures (swipe speed, direction zones, hold-to-slow, tap effects); Starfield also
+    // takes swipe speed, and since v1.6.5 a lone tap flashes TV Static while its "Flash on tap" is on (fireLoneTap()).
     // All themes support double-tap-to-close.
-    readonly property bool isInteractiveTheme: ScreensaverConfig.theme === "matrix"
-    readonly property bool isSwipeableTheme: ScreensaverConfig.theme === "matrix" || ScreensaverConfig.theme === "starfield"
+    // madalone (v1.6.5): matrixLoaded, not theme === "matrix": themeLoader below loads Matrix for a theme name it
+    // doesn't know, and up to v1.6.4 such a screensaver showed Matrix without its gestures (screensaverInputPolicy.h).
+    readonly property bool isInteractiveTheme: ScreensaverConfig.matrixLoaded
+    readonly property bool isSwipeableTheme: ScreensaverConfig.matrixLoaded || ScreensaverConfig.theme === "starfield"
 
     // --- Gesture handling ---
     // Three gesture types distinguished by movement + duration:
@@ -581,11 +586,12 @@ Popup {
                 // --- Normal mode: tap-based dismissal ---
                 // madalone (v1.4.43): semantics clarified.
                 //   tapToClose ON  = require double-tap to close (anti-accidental dismissal).
-                //                    Side-effect on Matrix-interactive themes: doubleTapTimer
-                //                    fires fireTapEffects() 300 ms after a single tap (line 602).
+                //                    A tap with no second tap within doubleTapMs is a lone tap:
+                //                    doubleTapTimer then calls fireLoneTap() (madalone v1.6.5:
+                //                    Matrix's tap effects, TV Static's flash, or nothing).
                 //   tapToClose OFF = single-tap closes immediately (responsive dismissal).
-                //                    The doubleTapTimer is never started, so the Matrix
-                //                    fireTapEffects() side-effect doesn't fire either.
+                //                    The doubleTapTimer is never started, so a tap has no
+                //                    lone-tap action either.
                 if (ScreensaverConfig.tapToClose) {
                     if (doubleTapTimer.running) {
                         doubleTapTimer.stop();
@@ -661,10 +667,24 @@ Popup {
         chargingScreenRoot.cancelScreenOffEffect();
     }
 
+    // madalone (v1.6.5): a lone tap does what ScreensaverConfig.loneTapAction() says (screensaverInputPolicy.h):
+    // "effects" Matrix's tap effects, "flash" TV Static's channel flash while its "Flash on tap" is on, "nothing" on
+    // the other themes. Up to v1.6.4 only Matrix had a lone-tap action, so a tap never flashed TV Static.
+    function fireLoneTap() {
+        var action = ScreensaverConfig.loneTapAction();
+        if (action === "effects") {
+            chargingScreenRoot.fireTapEffects();
+        } else if (action === "flash") {
+            // guarded like the other theme calls: the theme is unloaded while the screensaver closes
+            if (themeLoader.item && typeof themeLoader.item.tapFlash === "function") themeLoader.item.tapFlash();
+            chargingScreenRoot.cancelScreenOffEffect();
+        }
+    }
+
     // Normal mode timer — single tap confirmed after 300ms
     Timer {
         id: doubleTapTimer; interval: doubleTapMs
-        onTriggered: { if (chargingScreenRoot.isInteractiveTheme) chargingScreenRoot.fireTapEffects(); }
+        onTriggered: chargingScreenRoot.fireLoneTap()
     }
 
     // Zone mode timer — reset center tap counter after 400ms of inactivity
@@ -687,7 +707,8 @@ Popup {
     }
 
     // --- Touchbar speed control ---
-    // Matrix: active while DPAD interactive and Touchbar speed are on and Touch directions is off. Starfield: what its
+    // Matrix (madalone v1.6.5: any theme name that loads Matrix, matrixLoaded): active while DPAD interactive and
+    // Touchbar speed are on and Touch directions is off. Starfield: what its
     // "Touchbar" setting picks (madalone v1.6.4, ScreensaverConfig.starfieldTouchbar, which only ever reads as one of
     // these three, see src/ui/screensaverTouchbar.h): "speed" the Animation speed, "density" the Star density (the
     // default, and what a slide always changed up to v1.6.3), "off" nothing.
@@ -703,7 +724,7 @@ Popup {
     property real touchbarPrevX: -1
     property int touchbarRemainder: 0
     readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing && Config.touchSliderEnabled
-                                                && (  (ScreensaverConfig.theme === "matrix" && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
+                                                && (  (ScreensaverConfig.matrixLoaded && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
                                                    || (ScreensaverConfig.theme === "starfield"
                                                        && ScreensaverConfig.starfieldTouchbar !== "off")  )
     Connections {

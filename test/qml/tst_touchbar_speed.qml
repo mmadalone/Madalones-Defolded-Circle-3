@@ -358,6 +358,18 @@ Item {
             compare(r.starSpeedWrites + r.densityWrites, 0, "no Starfield value written");
         }
 
+        // v1.6.5: a theme name the Loader doesn't know loads Matrix, and its touch slider works as on Matrix (up to
+        // v1.6.4 the check compared the name with "matrix", so it did nothing; ScreensaverConfig.matrixLoaded)
+        function test_unknown_theme_name_acts_as_matrix() {
+            ScreensaverConfig.theme = "aurora";
+            openScreensaver();
+            var r = slide(200, path(200, [1], 60));
+            compare(r.touchbarSpeedActive, true);
+            compare(r.speedAfter, 30);
+            compare(r.labelText, "Speed: 30");
+            compare(r.starSpeedWrites + r.densityWrites, 0, "no Starfield value written");
+        }
+
         // a slide that began before the screensaver opened stays ended (the seek overlay sends nothing more); a new
         // touch then works, also slowly
         function test_slide_started_before_then_new_slow_slide() {

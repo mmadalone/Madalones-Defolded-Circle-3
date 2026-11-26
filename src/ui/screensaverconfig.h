@@ -341,6 +341,18 @@ public:
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
     /// @}
 
+    /// @name What a tap does, for ChargingScreen.qml (madalone v1.6.5)
+    /// ChargingScreen.qml asks these instead of comparing theme names itself (upstream ADR 0012); the rules are in
+    /// screensaverInputPolicy.h.
+    /// @{
+    /// true for every theme name that loads Matrix: ChargingScreen's Loader loads Matrix for a name it doesn't know
+    Q_PROPERTY(bool matrixLoaded READ matrixLoaded NOTIFY themeChanged)
+    bool matrixLoaded() const;
+    /// A lone screen tap (no second tap within the double-tap window): "effects" (Matrix's tap effects), "flash"
+    /// (TV Static's channel flash, while its "Flash on tap" is on) or "nothing"
+    Q_INVOKABLE QString loneTapAction() const;
+    /// @}
+
     /// madalone (v1.6.4): the touch slider's steps for Matrix speed and for Starfield's speed or star density
     /// (starfieldTouchbar), asked by ChargingScreen.qml at each slider update (the rule is in screensaverTouchbar.h).
     /// travel: the previous slider position minus the new one, in raw units; remainder: what the last call left over

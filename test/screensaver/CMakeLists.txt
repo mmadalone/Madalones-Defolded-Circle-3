@@ -1,5 +1,6 @@
-# Copyright (c) 2026 madalone. Screensaver rule tests, both header only: "Close on wake" (src/ui/screensaverClosePolicy.h)
-# and the touch-slider steps (src/ui/screensaverTouchbar.h).
+# Copyright (c) 2026 madalone. Screensaver rule tests: three header-only programs, "Close on wake"
+# (src/ui/screensaverClosePolicy.h), the touch-slider steps (src/ui/screensaverTouchbar.h) and what a tap does
+# (src/ui/screensaverInputPolicy.h, v1.6.5), plus the real ScreensaverConfig class that asks them (v1.6.5).
 # Links Qt5:: like upstream's test targets (docs/adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md).
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -42,5 +43,52 @@ add_test(NAME testScreensaverTouchbar
 target_link_libraries(testScreensaverTouchbar
     PUBLIC
     Qt5::Core
+    Qt5::Test
+)
+
+add_executable(testScreensaverInputPolicy
+    "test_screensaver_input_policy.cpp"
+)
+
+add_test(NAME testScreensaverInputPolicy
+         COMMAND testScreensaverInputPolicy)
+
+target_link_libraries(testScreensaverInputPolicy
+    PUBLIC
+    Qt5::Core
+    Qt5::Test
+)
+
+# the real ScreensaverConfig with a real core::Api and Battery: upstream testBattery's source list
+# (test/hardware/CMakeLists.txt)
+find_package(Qt5 COMPONENTS Gui Qml WebSockets REQUIRED)
+
+add_executable(testScreensaverConfig
+    "test_screensaver_config.cpp"
+    "../../src/ui/screensaverconfig.cpp"
+    "../../src/system/battery.cpp"
+    "../../src/core/core.cpp"
+    # header only: contains the Q_GADGET enums moc has to process
+    "../../src/core/enums.h"
+    "../../src/ui/notification.cpp"
+    "../../src/util.cpp"
+    "../../src/logging.cpp"
+    "../../3rd-party/QR-Code-generator/cpp/qrcodegen.cpp"
+)
+
+target_include_directories(testScreensaverConfig PRIVATE
+    ../..
+    ../../3rd-party/QR-Code-generator/cpp/
+)
+
+add_test(NAME testScreensaverConfig
+         COMMAND testScreensaverConfig)
+
+target_link_libraries(testScreensaverConfig
+    PUBLIC
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Qml
+    Qt5::WebSockets
     Qt5::Test
 )
