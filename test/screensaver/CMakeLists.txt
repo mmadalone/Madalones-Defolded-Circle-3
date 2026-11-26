@@ -1,6 +1,7 @@
 # Copyright (c) 2026 madalone. Screensaver rule tests: three header-only programs, "Close on wake"
-# (src/ui/screensaverClosePolicy.h), the touch-slider steps (src/ui/screensaverTouchbar.h) and what a tap does
-# (src/ui/screensaverInputPolicy.h, v1.6.5), plus the real ScreensaverConfig class that asks them (v1.6.5).
+# (src/ui/screensaverClosePolicy.h), the touch-slider steps (src/ui/screensaverTouchbar.h) and what a tap and the
+# remote's keys do (src/ui/screensaverInputPolicy.h, v1.6.5), plus the real ScreensaverConfig class that asks them
+# (v1.6.5).
 # Links Qt5:: like upstream's test targets (docs/adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md).
 # SPDX-License-Identifier: GPL-3.0-or-later
 

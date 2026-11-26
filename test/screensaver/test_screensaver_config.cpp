@@ -26,6 +26,9 @@ class testScreensaverConfig : public QObject {
     void construction_writesNothing();
     void loneTap_followsTvStaticsOwnSwitch();
     void matrixLoaded_notifiesWithTheTheme();
+    void keys_perTheme();
+    void direction_restoredOnMatrixOnly();
+    void steering_bothSwitchesMayBeOn();
 
  private:
     QTemporaryDir          m_dir;
@@ -96,6 +99,60 @@ void testScreensaverConfig::matrixLoaded_notifiesWithTheTheme() {
     QCOMPARE(p.read(m_cfg).toBool(), false);
     m_cfg->settheme(QStringLiteral("matrix"));
     QCOMPARE(p.read(m_cfg).toBool(), true);
+}
+
+// keyAction() / keyDirection() through the object: the theme and DPAD interactive (dpadEnabled) it reads
+void testScreensaverConfig::keys_perTheme() {
+    m_cfg->setdpadEnabled(true);
+    m_cfg->settheme(QStringLiteral("starfield"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_UP")), QStringLiteral("close"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_MIDDLE")), QStringLiteral("close"));
+    m_cfg->settheme(QStringLiteral("tvstatic"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("CHANNEL_UP")), QStringLiteral("close"));
+    m_cfg->settheme(QStringLiteral("matrix"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_UP")), QStringLiteral("steer"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_MIDDLE")), QStringLiteral("ok"));
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("BACK")), QStringLiteral("close"));
+    QCOMPARE(m_cfg->keyDirection(QStringLiteral("VOLUME_UP")), QStringLiteral("up-left"));
+    m_cfg->setdpadEnabled(false);
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_UP")), QStringLiteral("close"));
+    m_cfg->setdpadEnabled(true);
+    m_cfg->settheme(QStringLiteral("aurora"));  // a name the Loader loads Matrix for
+    QCOMPARE(m_cfg->keyAction(QStringLiteral("DPAD_UP")), QStringLiteral("steer"));
+    m_cfg->settheme(QStringLiteral("matrix"));
+}
+
+// directionToRestore() reads the theme, Remember direction (dpadPersist), both ways to steer and the stored direction
+void testScreensaverConfig::direction_restoredOnMatrixOnly() {
+    m_cfg->setlastDirection(QStringLiteral("up"));
+    m_cfg->setdpadPersist(true);
+    m_cfg->setdpadEnabled(true);
+    m_cfg->settheme(QStringLiteral("matrix"));
+    QCOMPARE(m_cfg->directionToRestore(), QStringLiteral("up"));
+    m_cfg->settheme(QStringLiteral("tvstatic"));
+    QCOMPARE(m_cfg->directionToRestore(), QString());
+    m_cfg->settheme(QStringLiteral("matrix"));
+    m_cfg->setdpadPersist(false);
+    QCOMPARE(m_cfg->directionToRestore(), QString());
+    m_cfg->setdpadPersist(true);
+    m_cfg->setdpadEnabled(false);
+    m_cfg->settapDirection(true);
+    QCOMPARE(m_cfg->directionToRestore(), QStringLiteral("up"));
+    m_cfg->settapDirection(false);
+    QCOMPARE(m_cfg->directionToRestore(), QString());
+    m_cfg->setdpadEnabled(true);
+}
+
+// Q4(a): the two ways to steer may both be on; setting one leaves the other alone, also when reading back
+void testScreensaverConfig::steering_bothSwitchesMayBeOn() {
+    m_cfg->setdpadEnabled(true);
+    m_cfg->settapDirection(true);
+    QCOMPARE(m_cfg->dpadEnabled(), true);
+    QCOMPARE(m_cfg->tapDirection(), true);
+    m_cfg->setdpadEnabled(false);
+    m_cfg->setdpadEnabled(true);
+    QCOMPARE(m_cfg->tapDirection(), true);
+    m_cfg->settapDirection(false);
 }
 
 QTEST_GUILESS_MAIN(testScreensaverConfig)

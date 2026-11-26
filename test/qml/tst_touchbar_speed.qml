@@ -255,10 +255,9 @@ Item {
             compare(r.labelText, "Density: 30");
         }
 
-        // the switches still decide; Settings lets Touch directions be on with DPAD interactive still on
+        // the switches still decide
         function test_switches_turn_it_off_data() {
-            return [ { tag: "Touch directions on", obj: ScreensaverConfig, key: "tapDirection", value: true },
-                     { tag: "DPAD interactive off", obj: ScreensaverConfig, key: "dpadEnabled", value: false },
+            return [ { tag: "DPAD interactive off", obj: ScreensaverConfig, key: "dpadEnabled", value: false },
                      { tag: "Touchbar speed off", obj: ScreensaverConfig, key: "dpadTouchbarSpeed", value: false },
                      { tag: "Touch slider off (Settings > Touch Slider)", obj: Config, key: "touchSliderEnabled",
                        value: false } ];
@@ -270,6 +269,19 @@ Item {
             compare(r.touchbarSpeedActive, false);
             compare(r.speedAfter, 50);
             compare(r.labelShown, false);
+        }
+
+        // v1.6.5: both ways to steer may be on, and Touchbar speed then works (up to v1.6.4 Touch directions on
+        // switched it off, while Settings showed Touchbar speed on)
+        function test_both_steering_switches_on() {
+            ScreensaverConfig.tapDirection = true;   // DPAD interactive and Touchbar speed are on by default
+            openScreensaver();
+            var r = slide(200, path(200, [1], 60));
+            compare(r.touchbarSpeedActive, true);
+            compare(r.speedAfter, 30);
+            compare(r.labelText, "Speed: 30");
+            compare(ScreensaverConfig.dpadEnabled, true, "DPAD interactive still on");
+            compare(ScreensaverConfig.tapDirection, true, "Touch directions still on");
         }
 
         // the global "Touch slider" switch off also turns off Starfield's density control

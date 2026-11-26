@@ -1863,7 +1863,7 @@ Climate fan</extracomment>
     </message>
     <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="116"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="176"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="181"/>
         <source>Remember direction</source>
         <translation type="unfinished"></translation>
     </message>
@@ -1873,48 +1873,48 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="155"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="156"/>
         <source>Touch directions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="158"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="159"/>
         <source>Tap screen zones to change direction. Tap the center four times in a row to close.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="261"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="266"/>
         <source>On the dock, the screensaver comes back this many seconds after it closes, even while you use the remote (not while you reorder a page).</source>
         <extracomment>Help of the &quot;Run after dismissal while docked&quot; slider. &quot;Reorder&quot; is the main screen&apos;s mode for moving entities on a page.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="197"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="202"/>
         <source>Swipe speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="214"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="219"/>
         <source>Idle screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="233"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="238"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="254"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="259"/>
         <source>Run after dismissal while docked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="287"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="292"/>
         <source>Atlas profiling overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="288"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="293"/>
         <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -5286,32 +5286,38 @@ Select the QR code to read them on the screen.</translation>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="187"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="188"/>
         <source>Channel flash</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="193"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="198"/>
         <source>Flash on tap</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="209"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="201"/>
+        <source>Needs Double-tap to close: while that is off, one tap closes the screensaver.</source>
+        <extracomment>Help of TV Static&apos;s &quot;Flash on tap&quot; while &quot;Double-tap to close&quot; is off: then a single tap closes the screensaver, so a tap can&apos;t flash it</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="220"/>
         <source>Auto flash bursts</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="225"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="237"/>
         <source>Flash interval (seconds)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="246"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="258"/>
         <source>Flash duration (ms)</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="265"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/TvStaticSettings.qml" line="277"/>
         <source>Flash brightness</source>
         <translation type="unfinished"></translation>
     </message>

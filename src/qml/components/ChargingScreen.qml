@@ -290,10 +290,10 @@ Popup {
 
     // Persist direction between sessions (gated by dpadPersist setting, works for both DPAD and touch)
     function saveDirection(dir) { if (ScreensaverConfig.dpadPersist) ScreensaverConfig.lastDirection = dir; }
+    // madalone (v1.6.5): Matrix only (ScreensaverConfig.directionToRestore(), screensaverInputPolicy.h); up to v1.6.4
+    // every theme got the remembered direction, and TV Static flashed when it opened
     function restoreDirection() {
-        if (!ScreensaverConfig.dpadPersist) return;
-        if (!ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection) return;
-        var dir = ScreensaverConfig.lastDirection;
+        var dir = ScreensaverConfig.directionToRestore();
         if (dir !== "" && themeLoader.item && themeLoader.item.interactiveInput)
             themeLoader.item.interactiveInput(dir);
     }
@@ -327,6 +327,8 @@ Popup {
 
     onOpened: {
         isClosing = false;
+        // madalone (v1.6.5): keys pressed before this opening can't close it on their release
+        chargingScreenRoot._closeOnRelease = ({});
         themeLoader.active = true;
         // Belt-and-suspenders: reset the screen-off state on every popup open
         // so each dock cycle starts fresh regardless of whether the underlying
@@ -373,71 +375,90 @@ Popup {
         chargingScreenRoot.cancelScreenOffEffect();
     }
 
+    // madalone (v1.6.5): what a key does is decided in C++ (ScreensaverConfig.keyAction(), screensaverInputPolicy.h).
+    // Only Matrix uses keys, while DPAD interactive is on: the 8 direction keys steer and DPAD_MIDDLE is OK. Every other
+    // key, and every key on Starfield, Minimal, Analog and TV Static, closes the screensaver, as on UC's own charging
+    // screen (up to v1.6.4 DPAD interactive, shown only for Matrix, kept those 9 keys from closing every theme).
+    // A key that closes it closes it on its RELEASE, and only a key pressed while the screensaver was in front. Up to
+    // v1.6.4 it closed on the press: the popup was gone about 60 ms later (the 50 ms exit, then main.qml switches its
+    // Loader off), and InputController sent the key's release, and the repeats of a held key, to the page behind
+    // (src/ui/inputController.cpp: the release and the repeats go to the item that got the press, or to the active item
+    // once that one is gone), where a cover page acts on the release (DPAD_UP opens a blind, for instance).
+    property var _closeOnRelease: ({})
+
+    function pressKey(key) {
+        var action = ScreensaverConfig.keyAction(key);
+        if (action === "steer") {
+            chargingScreenRoot.sendDirection(ScreensaverConfig.keyDirection(key));
+        } else if (action === "ok") {
+            if (matrixRainRef) matrixRainRef.enterPressed();
+        } else {
+            chargingScreenRoot._closeOnRelease[key] = true;
+        }
+    }
+
+    function releaseKey(key) {
+        if (chargingScreenRoot._closeOnRelease[key]) {
+            delete chargingScreenRoot._closeOnRelease[key];
+            chargingScreenRoot.close();
+            return;
+        }
+        // a release whose press the screensaver didn't see (the press that woke the remote, or one pressed before it
+        // opened) does nothing
+        if (key === "DPAD_MIDDLE" && matrixRainRef) matrixRainRef.enterReleased();
+    }
+
     Components.ButtonNavigation {
         id: buttonNavigation
         defaultConfig: {
-            // All physical buttons dismiss the screensaver unconditionally.
-            // DPAD buttons: interactive when dpadEnabled, otherwise dismiss.
-            "BACK": { "pressed": function() { chargingScreenRoot.close(); } },
-            "HOME": { "pressed": function() { chargingScreenRoot.close(); } },
-            "DPAD_UP":     { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("up");
-                else chargingScreenRoot.close();
-            }},
-            "DPAD_DOWN":   { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("down");
-                else chargingScreenRoot.close();
-            }},
-            "DPAD_LEFT":   { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("left");
-                else chargingScreenRoot.close();
-            }},
-            "DPAD_RIGHT":  { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("right");
-                else chargingScreenRoot.close();
-            }},
-            "DPAD_MIDDLE": {
-                "pressed": function() {
-                    if (ScreensaverConfig.dpadEnabled) {
-                        if (matrixRainRef) matrixRainRef.enterPressed();
-                    } else {
-                        chargingScreenRoot.close();
-                    }
-                },
-                "released": function() {
-                    if (!matrixRainRef) return;
-                    matrixRainRef.enterReleased();
-                }
-            },
-            "VOICE":  { "pressed": function() { chargingScreenRoot.close(); } },
-            "VOLUME_UP": { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("up-left");
-                else chargingScreenRoot.close();
-            }},
-            "VOLUME_DOWN": { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("down-left");
-                else chargingScreenRoot.close();
-            }},
-            "GREEN":  { "pressed": function() { chargingScreenRoot.close(); } },
-            "YELLOW": { "pressed": function() { chargingScreenRoot.close(); } },
-            "RED":    { "pressed": function() { chargingScreenRoot.close(); } },
-            "BLUE":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "CHANNEL_UP": { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("up-right");
-                else chargingScreenRoot.close();
-            }},
-            "CHANNEL_DOWN": { "pressed": function() {
-                if (ScreensaverConfig.dpadEnabled) chargingScreenRoot.sendDirection("down-right");
-                else chargingScreenRoot.close();
-            }},
-            "MUTE":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "PREV":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "PLAY":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "NEXT":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "POWER":  { "pressed": function() { chargingScreenRoot.close(); } },
-            "STOP":   { "pressed": function() { chargingScreenRoot.close(); } },
-            "RECORD": { "pressed": function() { chargingScreenRoot.close(); } },
-            "MENU":   { "pressed": function() { chargingScreenRoot.close(); } }
+            "BACK": { "pressed": function() { chargingScreenRoot.pressKey("BACK"); },
+                       "released": function() { chargingScreenRoot.releaseKey("BACK"); } },
+            "HOME": { "pressed": function() { chargingScreenRoot.pressKey("HOME"); },
+                       "released": function() { chargingScreenRoot.releaseKey("HOME"); } },
+            "DPAD_UP": { "pressed": function() { chargingScreenRoot.pressKey("DPAD_UP"); },
+                       "released": function() { chargingScreenRoot.releaseKey("DPAD_UP"); } },
+            "DPAD_DOWN": { "pressed": function() { chargingScreenRoot.pressKey("DPAD_DOWN"); },
+                       "released": function() { chargingScreenRoot.releaseKey("DPAD_DOWN"); } },
+            "DPAD_LEFT": { "pressed": function() { chargingScreenRoot.pressKey("DPAD_LEFT"); },
+                       "released": function() { chargingScreenRoot.releaseKey("DPAD_LEFT"); } },
+            "DPAD_RIGHT": { "pressed": function() { chargingScreenRoot.pressKey("DPAD_RIGHT"); },
+                       "released": function() { chargingScreenRoot.releaseKey("DPAD_RIGHT"); } },
+            "DPAD_MIDDLE": { "pressed": function() { chargingScreenRoot.pressKey("DPAD_MIDDLE"); },
+                       "released": function() { chargingScreenRoot.releaseKey("DPAD_MIDDLE"); } },
+            "VOICE": { "pressed": function() { chargingScreenRoot.pressKey("VOICE"); },
+                       "released": function() { chargingScreenRoot.releaseKey("VOICE"); } },
+            "VOLUME_UP": { "pressed": function() { chargingScreenRoot.pressKey("VOLUME_UP"); },
+                       "released": function() { chargingScreenRoot.releaseKey("VOLUME_UP"); } },
+            "VOLUME_DOWN": { "pressed": function() { chargingScreenRoot.pressKey("VOLUME_DOWN"); },
+                       "released": function() { chargingScreenRoot.releaseKey("VOLUME_DOWN"); } },
+            "GREEN": { "pressed": function() { chargingScreenRoot.pressKey("GREEN"); },
+                       "released": function() { chargingScreenRoot.releaseKey("GREEN"); } },
+            "YELLOW": { "pressed": function() { chargingScreenRoot.pressKey("YELLOW"); },
+                       "released": function() { chargingScreenRoot.releaseKey("YELLOW"); } },
+            "RED": { "pressed": function() { chargingScreenRoot.pressKey("RED"); },
+                       "released": function() { chargingScreenRoot.releaseKey("RED"); } },
+            "BLUE": { "pressed": function() { chargingScreenRoot.pressKey("BLUE"); },
+                       "released": function() { chargingScreenRoot.releaseKey("BLUE"); } },
+            "CHANNEL_UP": { "pressed": function() { chargingScreenRoot.pressKey("CHANNEL_UP"); },
+                       "released": function() { chargingScreenRoot.releaseKey("CHANNEL_UP"); } },
+            "CHANNEL_DOWN": { "pressed": function() { chargingScreenRoot.pressKey("CHANNEL_DOWN"); },
+                       "released": function() { chargingScreenRoot.releaseKey("CHANNEL_DOWN"); } },
+            "MUTE": { "pressed": function() { chargingScreenRoot.pressKey("MUTE"); },
+                       "released": function() { chargingScreenRoot.releaseKey("MUTE"); } },
+            "PREV": { "pressed": function() { chargingScreenRoot.pressKey("PREV"); },
+                       "released": function() { chargingScreenRoot.releaseKey("PREV"); } },
+            "PLAY": { "pressed": function() { chargingScreenRoot.pressKey("PLAY"); },
+                       "released": function() { chargingScreenRoot.releaseKey("PLAY"); } },
+            "NEXT": { "pressed": function() { chargingScreenRoot.pressKey("NEXT"); },
+                       "released": function() { chargingScreenRoot.releaseKey("NEXT"); } },
+            "POWER": { "pressed": function() { chargingScreenRoot.pressKey("POWER"); },
+                       "released": function() { chargingScreenRoot.releaseKey("POWER"); } },
+            "STOP": { "pressed": function() { chargingScreenRoot.pressKey("STOP"); },
+                       "released": function() { chargingScreenRoot.releaseKey("STOP"); } },
+            "RECORD": { "pressed": function() { chargingScreenRoot.pressKey("RECORD"); },
+                       "released": function() { chargingScreenRoot.releaseKey("RECORD"); } },
+            "MENU": { "pressed": function() { chargingScreenRoot.pressKey("MENU"); },
+                       "released": function() { chargingScreenRoot.releaseKey("MENU"); } }
         }
     }
 
@@ -693,22 +714,13 @@ Popup {
         onTriggered: chargingScreenRoot.centerTapCount = 0;
     }
 
-    // --- Mutual exclusion: tapDirection ON → dpadEnabled OFF ---
-    Connections {
-        target: ScreensaverConfig
-        function onTapDirectionChanged() {
-            if (ScreensaverConfig.tapDirection && ScreensaverConfig.dpadEnabled)
-                ScreensaverConfig.dpadEnabled = false;
-        }
-        function onDpadEnabledChanged() {
-            if (ScreensaverConfig.dpadEnabled && ScreensaverConfig.tapDirection)
-                ScreensaverConfig.tapDirection = false;
-        }
-    }
+    // madalone (v1.6.5): DPAD interactive and Touch directions may both be on. The block that switched one off when the
+    // other came on is gone: it existed only while the screensaver showed (main.qml loads it only then), so Settings
+    // could turn both on anyway, and then Touchbar speed did nothing and "Remember direction" showed twice.
 
     // --- Touchbar speed control ---
     // Matrix (madalone v1.6.5: any theme name that loads Matrix, matrixLoaded): active while DPAD interactive and
-    // Touchbar speed are on and Touch directions is off. Starfield: what its
+    // Touchbar speed are on (since v1.6.5 also with Touch directions on). Starfield: what its
     // "Touchbar" setting picks (madalone v1.6.4, ScreensaverConfig.starfieldTouchbar, which only ever reads as one of
     // these three, see src/ui/screensaverTouchbar.h): "speed" the Animation speed, "density" the Star density (the
     // default, and what a slide always changed up to v1.6.3), "off" nothing.
@@ -724,7 +736,7 @@ Popup {
     property real touchbarPrevX: -1
     property int touchbarRemainder: 0
     readonly property bool touchbarSpeedActive: !chargingScreenRoot.isClosing && Config.touchSliderEnabled
-                                                && (  (ScreensaverConfig.matrixLoaded && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled && !ScreensaverConfig.tapDirection)
+                                                && (  (ScreensaverConfig.matrixLoaded && ScreensaverConfig.dpadTouchbarSpeed && ScreensaverConfig.dpadEnabled)
                                                    || (ScreensaverConfig.theme === "starfield"
                                                        && ScreensaverConfig.starfieldTouchbar !== "off")  )
     Connections {

@@ -341,7 +341,7 @@ public:
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
     /// @}
 
-    /// @name What a tap does, for ChargingScreen.qml (madalone v1.6.5)
+    /// @name What a tap and the remote's keys do, for ChargingScreen.qml (madalone v1.6.5)
     /// ChargingScreen.qml asks these instead of comparing theme names itself (upstream ADR 0012); the rules are in
     /// screensaverInputPolicy.h.
     /// @{
@@ -351,6 +351,13 @@ public:
     /// A lone screen tap (no second tap within the double-tap window): "effects" (Matrix's tap effects), "flash"
     /// (TV Static's channel flash, while its "Flash on tap" is on) or "nothing"
     Q_INVOKABLE QString loneTapAction() const;
+    /// What a key does: "steer", "ok" or "close". Only Matrix uses keys, while "DPAD interactive" is on.
+    Q_INVOKABLE QString keyAction(const QString &key) const;
+    /// The direction a steering key turns the Matrix rain to ("" for the other keys)
+    Q_INVOKABLE QString keyDirection(const QString &key) const;
+    /// The direction the screensaver opens with ("" for none): Matrix only, with "Remember direction" on and DPAD
+    /// interactive or Touch directions on
+    Q_INVOKABLE QString directionToRestore() const;
     /// @}
 
     /// madalone (v1.6.4): the touch slider's steps for Matrix speed and for Starfield's speed or star density

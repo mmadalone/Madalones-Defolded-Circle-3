@@ -149,7 +149,8 @@ ColumnLayout {
         }
     }
 
-    // TOUCH DIRECTIONS (Matrix only, mutually exclusive with DPAD interactive), and its settings while it is on
+    // TOUCH DIRECTIONS (Matrix only; since v1.6.5 it may be on together with DPAD interactive), and its settings while
+    // it is on
     Components.SettingRow {
         visible: root.matrix
         title: qsTr("Touch directions")
@@ -167,12 +168,16 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Touch directions"
             KeyNavigation.up: ScreensaverConfig.dpadEnabled ? touchbarSpeedSwitch : dpadEnabledSwitch
-            KeyNavigation.down: ScreensaverConfig.tapDirection ? tapDirPersistSwitch : idleEnabledSwitch
+            KeyNavigation.down: ScreensaverConfig.tapDirection
+                                ? (ScreensaverConfig.dpadEnabled ? swipeSpeedSwitch : tapDirPersistSwitch)
+                                : idleEnabledSwitch
         }
     }
 
+    // madalone (v1.6.5): one "Remember direction" row. Both rows set the same switch (dpadPersist); with DPAD
+    // interactive on, its own row above is the one shown.
     Components.SettingRow {
-        visible: root.matrix && ScreensaverConfig.tapDirection
+        visible: root.matrix && ScreensaverConfig.tapDirection && !ScreensaverConfig.dpadEnabled
         title: qsTr("Remember direction")
         showDivider: false
 
@@ -204,7 +209,7 @@ ColumnLayout {
             trigger: function() { ScreensaverConfig.tapSwipeSpeed = !ScreensaverConfig.tapSwipeSpeed; }
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Swipe to adjust speed"
-            KeyNavigation.up: tapDirPersistSwitch
+            KeyNavigation.up: ScreensaverConfig.dpadEnabled ? tapDirectionSwitch : tapDirPersistSwitch
             KeyNavigation.down: idleEnabledSwitch
         }
     }

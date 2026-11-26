@@ -122,15 +122,12 @@ Item {
         root.triggerFlash();
     }
 
-    // DPAD / touch dispatch. Fires a channel-flash burst IF tvStaticFlashOnTap
-    // is true. ChargingScreen separately handles cancelling the screen-off
-    // countdown on every interactiveInput call (no per-theme countdown state).
+    // The BaseTheme input hook. madalone (v1.6.5): it only clears a partial collapse, like Analog's. Since v1.6.5 only
+    // Matrix gets steering input (ScreensaverConfig.keyAction(), directionToRestore()), and TV Static's buttons close
+    // the screensaver; up to v1.6.4 they flashed it here, and so did the remembered direction when it opened. A lone
+    // tap's flash is tapFlash() above.
     function interactiveInput(action) {
-        // Defensive: any user activity should clear a partial collapse.
         if (root.u_tvOff > 0.0) root.cancelScreenOff();
-        if (ScreensaverConfig.tvStaticFlashOnTap) {
-            root.triggerFlash();
-        }
     }
 
     // Black background — prevents flashes of previous theme while shader warms up

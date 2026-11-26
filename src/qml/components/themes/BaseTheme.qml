@@ -51,7 +51,9 @@
 // When providesNativeScreenOff === true AND the user-selected effect style is
 // "theme-native", ChargingScreen will:
 //   - Call startScreenOff() screenOffLeadMs before the end of the dim phase (ScreenOffSync)
-//   - Call cancelScreenOff() on any interactiveInput and on displayOff → false (wake)
+//   - Call cancelScreenOff() when the theme loads, on displayOff → false (wake), and when the core leaves the dim
+//     phase for Normal or Suspend while the effect is under way (since v1.6.5 no interactiveInput reaches a theme
+//     but Matrix: on TV Static and Analog every key closes the screensaver)
 //   - Call finalizeScreenOff() on displayOff → true (hardware display blanked)
 //
 // The shared ScreenOffOverlay is hidden for native-capable themes (unless the

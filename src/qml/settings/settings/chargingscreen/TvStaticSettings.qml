@@ -158,6 +158,7 @@ ColumnLayout {
 
         Components.ChipPicker {
             id: tintColorRow
+            objectName: "tvStaticTintPicker"
             columns: 4
             model: Palettes.textSwatches
             currentValue: ScreensaverConfig.tvStaticTint
@@ -189,12 +190,22 @@ ColumnLayout {
         }
 
         // ---- Flash on tap ----
+        // madalone (v1.6.5): a lone tap flashes TV Static only while "Double-tap to close" is on (with it off a tap closes
+        // the screensaver), so the switch is greyed out then, the page's way (enabled + opacity 0.4, as Tracking bar
+        // speed and Flash interval; the keypad skips it), with a help line saying why
         Components.SettingRow {
+            objectName: "flashOnTapRow"
             title: qsTr("Flash on tap")
+            //: Help of TV Static's "Flash on tap" while "Double-tap to close" is off: then a single tap closes the
+            //: screensaver, so a tap can't flash it
+            help: ScreensaverConfig.tapToClose ? "" : qsTr("Needs Double-tap to close: while that is off, one tap closes the screensaver.")
 
             Components.Switch {
                 id: flashOnTapSwitch
+                objectName: "flashOnTapSwitch"
                 icon: "uc:check"
+                enabled: ScreensaverConfig.tapToClose
+                opacity: enabled ? 1.0 : 0.4
                 checked: ScreensaverConfig.tvStaticFlashOnTap
                 trigger: function() { ScreensaverConfig.tvStaticFlashOnTap = !ScreensaverConfig.tvStaticFlashOnTap; }
                 highlight: activeFocus && ui.keyNavigationActive
@@ -211,6 +222,7 @@ ColumnLayout {
 
         Components.Switch {
             id: channelFlashAutoSwitch
+            objectName: "channelFlashAutoSwitch"
             icon: "uc:check"
             checked: ScreensaverConfig.tvStaticChannelFlashAuto
             trigger: function() { ScreensaverConfig.tvStaticChannelFlashAuto = !ScreensaverConfig.tvStaticChannelFlashAuto; }

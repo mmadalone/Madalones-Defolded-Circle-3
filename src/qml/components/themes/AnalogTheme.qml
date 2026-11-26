@@ -157,9 +157,9 @@ Item {
         }
     }
 
-    // Any user input while mid-animation should cancel immediately. This is
-    // redundant with ChargingScreen.sendDirection/fireTapEffects dispatch but
-    // provides a safety net if the dispatch races with the input.
+    // Kept for the BaseTheme contract. Since v1.6.5 ChargingScreen sends no input to Analog (its keys close the
+    // screensaver, a lone tap does nothing), so this is never called; a wake cancels the animation instead
+    // (ChargingScreen.qml: leaving the dim phase, or onDisplayOffChanged once the display is off).
     function interactiveInput(action) {
         if (root._screenOffAnimating || root.shutoffDim > 0.001) {
             root.cancelScreenOff();

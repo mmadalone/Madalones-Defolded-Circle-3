@@ -363,6 +363,12 @@ class MockScreensaverConfig : public QObject {
     // ScreensaverConfig::matrixLoaded / loneTapAction (v1.6.5) through the same header (src/ui/screensaverInputPolicy.h)
     bool matrixLoaded() const { return uc::ui::loadsMatrix(m_theme); }
     Q_INVOKABLE QString loneTapAction() const { return uc::ui::loneTapAction(m_theme, m_tvStaticFlashOnTap); }
+    // ScreensaverConfig::keyAction / keyDirection / directionToRestore (v1.6.5), the same header
+    Q_INVOKABLE QString keyAction(const QString &key) const { return uc::ui::keyAction(m_theme, key, m_dpadEnabled); }
+    Q_INVOKABLE QString keyDirection(const QString &key) const { return uc::ui::keyDirection(key); }
+    Q_INVOKABLE QString directionToRestore() const {
+        return uc::ui::directionToRestore(m_theme, m_dpadPersist, m_dpadEnabled, m_tapDirection, m_lastDirection);
+    }
     // ScreensaverConfig::touchbarSteps returns the same map (src/ui/screensaverTouchbar.h)
     Q_INVOKABLE QVariantMap touchbarSteps(int remainder, int travel) const {
         return uc::ui::touchbarStepsMap(remainder, travel);

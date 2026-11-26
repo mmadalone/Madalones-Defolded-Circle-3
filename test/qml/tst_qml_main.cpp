@@ -13,6 +13,7 @@
 #include <QJSValue>
 #include <QDateTime>
 #include <QPointer>
+#include <QHash>
 #include <cstdio>
 
 #include "MockScreensaverConfig.h"
@@ -205,6 +206,9 @@ class MockColors : public QObject {
 // ── Mock input controller (uc::ui::InputController) ───────────────
 // The stack of input owners that ButtonNavigation's takeControl() / releaseControl() push and pop; the base owner
 // holds the input when the stack is empty. No visibility clean-up: a test opens and closes what it checks.
+// v1.6.5: pressKey() / releaseKey() route a key as the real controller does (src/ui/inputController.cpp, the KeyPress
+// branch of eventFilter() and emitKeyRelease()): a press goes to the active owner and is remembered for its key; an
+// auto-repeat press and the release go to the remembered owner, or to the active owner once that one was destroyed.
 class MockInputController : public QObject {
     Q_OBJECT
     Q_PROPERTY(QObject* activeItem READ activeItem NOTIFY activeItemChanged)
@@ -233,13 +237,43 @@ class MockInputController : public QObject {
         emit activeItemChanged();
     }
 
+    Q_INVOKABLE void pressKey(const QString &key, bool autoRepeat = false) {
+        QPointer<QObject> owner;
+        if (autoRepeat) {
+            owner = m_keyOwner.value(key);
+            if (owner.isNull()) owner = activeOrBase();
+        } else {
+            owner = activeOrBase();
+            m_keyOwner[key] = owner;
+        }
+        emit keyPressed(key);
+        emit keyPressedFor(owner.data(), key);
+    }
+    Q_INVOKABLE void releaseKey(const QString &key) {
+        QPointer<QObject> owner = m_keyOwner.take(key);
+        if (owner.isNull()) owner = activeOrBase();
+        emit keyReleased(key);
+        emit keyReleasedFor(owner.data(), key);
+    }
+
  signals:
     void activeItemChanged();
-    // ButtonNavigation listens to these (src/ui/inputController.h); the mock never emits them
+    // ButtonNavigation listens to these (src/ui/inputController.h); pressKey() / releaseKey() emit them
     void keyPressedFor(QObject *owner, QString key);
     void keyReleasedFor(QObject *owner, QString key);
+    void keyPressed(QString key);
+    void keyReleased(QString key);
 
  private:
+    // the real controller drops a destroyed owner from its stack (onOwnerDestroyed); skip it here
+    QObject *activeOrBase() const {
+        for (int i = m_stack.size() - 1; i >= 0; --i) {
+            if (!m_stack[i].isNull()) return m_stack[i].data();
+        }
+        return m_baseOwner.data();
+    }
+
+    QHash<QString, QPointer<QObject>> m_keyOwner;
     QList<QPointer<QObject>> m_stack;
     QPointer<QObject>        m_baseOwner;
 };

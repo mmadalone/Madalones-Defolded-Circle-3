@@ -22,8 +22,9 @@ Item {
     property real starSize: 1.0 + ScreensaverConfig.starfieldStarSize * 0.08          // 0→1.0, 50→5.0, 100→9.0
     property real trailFactor: 0.2 + ScreensaverConfig.starfieldTrailLength * 0.018   // 0→0.2, 50→1.1, 100→2.0
 
-    // No-op stub — Starfield has no interactive input, but ChargingScreen
-    // calls this unconditionally on all themes.
+    // No-op stub for the BaseTheme contract. Since v1.6.5 ChargingScreen sends input to Matrix only
+    // (screensaverInputPolicy.h), so this is never called; Starfield's swipe speed and touch slider change
+    // ScreensaverConfig directly.
     function interactiveInput(action) {}
 
     // Wake-refresh hook — force canvas repaint to avoid binding-vs-paint race.

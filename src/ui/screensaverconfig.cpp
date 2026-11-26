@@ -213,7 +213,7 @@ bool ScreensaverConfig::closesOnChargerLoss(bool loaded) const {
     return closes;
 }
 
-// --- What a tap does (madalone v1.6.5), see screensaverInputPolicy.h ---
+// --- What a tap and the remote's keys do (madalone v1.6.5), see screensaverInputPolicy.h ---
 
 bool ScreensaverConfig::matrixLoaded() const {
     return ui::loadsMatrix(theme());
@@ -222,6 +222,18 @@ bool ScreensaverConfig::matrixLoaded() const {
 // TV Static's own "Flash on tap" (tvStaticFlashOnTap), not Matrix's "Flash" tap effect (tapFlash)
 QString ScreensaverConfig::loneTapAction() const {
     return ui::loneTapAction(theme(), tvStaticFlashOnTap());
+}
+
+QString ScreensaverConfig::keyAction(const QString &key) const {
+    return ui::keyAction(theme(), key, dpadEnabled());
+}
+
+QString ScreensaverConfig::keyDirection(const QString &key) const {
+    return ui::keyDirection(key);
+}
+
+QString ScreensaverConfig::directionToRestore() const {
+    return ui::directionToRestore(theme(), dpadPersist(), dpadEnabled(), tapDirection(), lastDirection());
 }
 
 // --- resetDefaults: wipe all charging/* keys, then re-broadcast NOTIFY signals so
