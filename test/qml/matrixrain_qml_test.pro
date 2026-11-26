@@ -13,7 +13,11 @@ macx {
     QMAKE_CXXFLAGS += -isystem $$system(xcrun --show-sdk-path)/usr/include/c++/v1
 }
 
-SOURCES += tst_qml_main.cpp
+# ui.inputController is the real uc::ui::InputController (v1.6.5): the QML under test calls the controller
+# the app has, and the screensaver's key tests go through its routing. enums.h and hardwareModel.h are header
+# only and need moc.
+SOURCES += tst_qml_main.cpp ../../src/ui/inputController.cpp ../../src/logging.cpp
+HEADERS += ../../src/ui/inputController.h ../../src/core/enums.h ../../src/hardware/hardwareModel.h
 HEADERS += MockScreensaverConfig.h MockHaptic.h \
            MockSignalStrength.h MockBattery.h MockWifi.h \
            MockEntityController.h MockConfig.h MockTouchSlider.h MockChargingScreenHost.h

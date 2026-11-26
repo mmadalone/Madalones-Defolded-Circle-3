@@ -364,6 +364,9 @@ Popup {
         doubleTapTimer.stop();
         centerTapTimer.stop();
         speedOverlayTimer.stop();
+        // madalone (v1.6.5): the keys it still has down got their press here. main.qml destroys this popup right
+        // after this signal, and InputController would then send their repeats and their release to the page behind.
+        if (buttonNavigation) ui.inputController.dropPendingKeys(buttonNavigation.scope);
         if (buttonNavigation) buttonNavigation.releaseControl();
     }
 
@@ -384,6 +387,9 @@ Popup {
     // Loader off), and InputController sent the key's release, and the repeats of a held key, to the page behind
     // (src/ui/inputController.cpp: the release and the repeats go to the item that got the press, or to the active item
     // once that one is gone), where a cover page acts on the release (DPAD_UP opens a blind, for instance).
+    // Something else can close it under a key that is still down: a wake, a lift, a tap, another key (Matrix's steering
+    // keys and OK never close it themselves). onClosed then hands the keys it still has down to InputController's
+    // dropPendingKeys(), and the page behind acts on neither their repeats nor their release.
     property var _closeOnRelease: ({})
 
     function pressKey(key) {

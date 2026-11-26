@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor).
+// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor); dropPendingKeys().
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #include "inputController.h"
@@ -206,6 +206,29 @@ void InputController::releaseControl(QObject* obj) {
     notifyActiveChanged(changed);
 }
 
+// madalone (v1.6.5): see the header. m_keyOwner is used on the UI thread only and without m_mutex, as in eventFilter().
+// The mark of a key goes away the way every entry does: emitKeyRelease() takes it, a new press overwrites it.
+void InputController::dropPendingKeys(QObject* owner) {
+    if (!owner || owner == this) {
+        return;
+    }
+
+    QStringList dropped;
+    for (auto it = m_keyOwner.begin(); it != m_keyOwner.end(); ++it) {
+        if (it.value().data() == owner) {
+            it.value() = this;
+            dropped.append(m_keyCodeMapping.value(it.key()));
+        }
+    }
+
+    if (!dropped.isEmpty()) {
+        dropped.sort();
+        qCInfo(lcInput()).nospace() << "Key(s) still down when their owner closed: "
+                                    << qUtf8Printable(dropped.join(", "))
+                                    << "; the rest of each press is ignored (owner " << owner << ")";
+    }
+}
+
 QObject* InputController::qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine) {
     Q_UNUSED(scriptEngine);
 
@@ -275,6 +298,20 @@ bool InputController::eventFilter(QObject* obj, QEvent* event) {
             }
 
             cancelDeferredRelease(key);
+
+            // madalone (v1.6.5): the auto-repeat of a key that dropPendingKeys() took from its owner. It counts as
+            // user activity (keyPressed), and the KeyPress reaches nothing else: no handler, not the keypad state,
+            // and not the QML focus chain, where the focused control of the screen in front would take it for a
+            // press. The ShortcutOverride that Qt sends before a platform key press is not held back (nothing in
+            // src/qml acts on one for these keys). The release goes through emitKeyRelease() with the controller as
+            // its owner.
+            if (keyEvent->isAutoRepeat() && m_keyOwner.value(key).data() == this) {
+                emit keyPressed(mappedKey);
+                qCDebug(lcInput()) << "Key repeat dropped:" << mappedKey;
+                event->accept();
+                return true;
+            }
+
             const bool activated = !m_keypadActive;
             setKeypadActive(true);
 

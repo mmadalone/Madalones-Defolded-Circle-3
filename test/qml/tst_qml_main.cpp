@@ -12,8 +12,9 @@
 #include <QFont>
 #include <QJSValue>
 #include <QDateTime>
-#include <QPointer>
-#include <QHash>
+#include <QCoreApplication>
+#include <QKeyEvent>
+#include <QMetaEnum>
 #include <cstdio>
 
 #include "MockScreensaverConfig.h"
@@ -25,6 +26,7 @@
 #include "MockConfig.h"
 #include "MockTouchSlider.h"
 #include "MockChargingScreenHost.h"
+#include "ui/inputController.h"
 
 // ── Mock objects (singleton lifetime) ──────────────────────────────
 static MockScreensaverConfig *s_config = nullptr;
@@ -203,79 +205,38 @@ class MockColors : public QObject {
     QColor redPressed{QColor("#FF0D2A")};
 };
 
-// ── Mock input controller (uc::ui::InputController) ───────────────
-// The stack of input owners that ButtonNavigation's takeControl() / releaseControl() push and pop; the base owner
-// holds the input when the stack is empty. No visibility clean-up: a test opens and closes what it checks.
-// v1.6.5: pressKey() / releaseKey() route a key as the real controller does (src/ui/inputController.cpp, the KeyPress
-// branch of eventFilter() and emitKeyRelease()): a press goes to the active owner and is remembered for its key; an
-// auto-repeat press and the release go to the remembered owner, or to the active owner once that one was destroyed.
-class MockInputController : public QObject {
+// ── Input controller (the real uc::ui::InputController) ───────────────
+// src/ui/inputController.cpp is compiled into this binary, so the QML under test calls the controller the app has:
+// takeControl() / releaseControl() from ButtonNavigation.qml, dropPendingKeys() from ChargingScreen.qml's onClosed,
+// and the keys are routed by the real eventFilter() and emitKeyRelease(). Up to the first v1.6.5 build this was a
+// mock with a copy of that routing.
+// A test sends a key with pressKey() / releaseKey(): they build the key event the keypad makes (a plain press, a
+// press flagged as auto-repeat, a plain release) and send it to the object the controller filters, which stands for
+// the application window. One controller per test file: MockUi, its parent, lives as long as that file's engine.
+class TestInputController : public uc::ui::InputController {
     Q_OBJECT
-    Q_PROPERTY(QObject* activeItem READ activeItem NOTIFY activeItemChanged)
 
  public:
-    explicit MockInputController(QObject *parent = nullptr) : QObject(parent) {}
+    TestInputController() : uc::ui::InputController(uc::hw::HardwareModel::UCR3) { setSource(&m_window); }
+    // m_window goes before the controller's own destructor runs: take the filter off it first
+    ~TestInputController() override { setSource(nullptr); }
 
-    QObject *activeItem() const { return m_stack.isEmpty() ? m_baseOwner.data() : m_stack.last().data(); }
-
-    Q_INVOKABLE void takeControl(QObject *obj) {
-        if (!obj) return;
-        m_stack.removeAll(obj);
-        m_stack.append(obj);
-        emit activeItemChanged();
-    }
-    Q_INVOKABLE void releaseControl(QObject *obj = nullptr) {
-        if (obj) {
-            m_stack.removeAll(obj);
-        } else if (!m_stack.isEmpty()) {
-            m_stack.removeLast();
-        }
-        emit activeItemChanged();
-    }
-    Q_INVOKABLE void setBaseOwner(QObject *obj) {
-        m_baseOwner = obj;
-        emit activeItemChanged();
-    }
-
-    Q_INVOKABLE void pressKey(const QString &key, bool autoRepeat = false) {
-        QPointer<QObject> owner;
-        if (autoRepeat) {
-            owner = m_keyOwner.value(key);
-            if (owner.isNull()) owner = activeOrBase();
-        } else {
-            owner = activeOrBase();
-            m_keyOwner[key] = owner;
-        }
-        emit keyPressed(key);
-        emit keyPressedFor(owner.data(), key);
-    }
-    Q_INVOKABLE void releaseKey(const QString &key) {
-        QPointer<QObject> owner = m_keyOwner.take(key);
-        if (owner.isNull()) owner = activeOrBase();
-        emit keyReleased(key);
-        emit keyReleasedFor(owner.data(), key);
-    }
-
- signals:
-    void activeItemChanged();
-    // ButtonNavigation listens to these (src/ui/inputController.h); pressKey() / releaseKey() emit them
-    void keyPressedFor(QObject *owner, QString key);
-    void keyReleasedFor(QObject *owner, QString key);
-    void keyPressed(QString key);
-    void keyReleased(QString key);
+    Q_INVOKABLE void pressKey(const QString &key, bool autoRepeat = false) { send(QEvent::KeyPress, key, autoRepeat); }
+    Q_INVOKABLE void releaseKey(const QString &key) { send(QEvent::KeyRelease, key, false); }
 
  private:
-    // the real controller drops a destroyed owner from its stack (onOwnerDestroyed); skip it here
-    QObject *activeOrBase() const {
-        for (int i = m_stack.size() - 1; i >= 0; --i) {
-            if (!m_stack[i].isNull()) return m_stack[i].data();
+    void send(QEvent::Type type, const QString &key, bool autoRepeat) {
+        // the button names are the names of the controller's Buttons enum
+        const int code = QMetaEnum::fromType<uc::ui::InputController::Buttons>().keyToValue(key.toLatin1().constData());
+        if (code < 0) {
+            qWarning("TestInputController: no button is called %s", qPrintable(key));
+            return;
         }
-        return m_baseOwner.data();
+        QKeyEvent event(type, code, Qt::NoModifier, QString(), autoRepeat);
+        QCoreApplication::sendEvent(&m_window, &event);
     }
 
-    QHash<QString, QPointer<QObject>> m_keyOwner;
-    QList<QPointer<QObject>> m_stack;
-    QPointer<QObject>        m_baseOwner;
+    QObject m_window;
 };
 
 // ── Mock notification (ui.notification, uc::ui::Notification) ─────
@@ -395,9 +356,9 @@ class MockUi : public QObject {
 
  public:
     explicit MockUi(QObject *parent = nullptr)
-        : QObject(parent),
-          m_inputController(new MockInputController(this)),
-          m_notification(new MockNotification(this)) {}
+        : QObject(parent), m_inputController(new TestInputController), m_notification(new MockNotification(this)) {
+        m_inputController->setParent(this);
+    }
 
     int width() const { return 480; }
     int height() const { return 850; }

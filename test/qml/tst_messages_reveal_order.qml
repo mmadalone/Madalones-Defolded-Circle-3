@@ -100,9 +100,10 @@ Item {
     }
 
     // The level-1 settings page that opens the page (Settings.qml) holds the input while the page is created, as in
-    // the app, where MainContainer.qml also sets a base owner. With no owner (the mock's default), ButtonNavigation's
-    // hasInputControl (activeItem === scope) is briefly true while its scope is still null, and the change back makes
-    // it read Window.activeFocusItem during creation: its focus handler then runs before the section's.
+    // the app, where MainContainer.qml also sets a base owner. With no owner (the controller's state when a test file
+    // starts), ButtonNavigation's hasInputControl (activeItem === scope) is briefly true while its scope is still null,
+    // and the change back makes it read Window.activeFocusItem during creation: its focus handler then runs before
+    // the section's.
     Item {
         id: settingsMenu
     }

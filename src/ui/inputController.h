@@ -1,5 +1,5 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor).
+// Copyright (c) 2026 madalone. touchDetected signal (idle timer, phantom-wake suppressor); dropPendingKeys().
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -79,6 +79,15 @@ class InputController : public QQuickItem {
 
     Q_INVOKABLE void takeControl(QObject* item);
     Q_INVOKABLE void releaseControl(QObject* item = nullptr);
+    // madalone (v1.6.5): for an owner that goes away while keys whose press it got are still down (the screensaver,
+    // closed by a wake, a lift or a tap under a held key). Those keys become the controller's own: it is the scope of
+    // no ButtonNavigation, so the rest of each key's sequence reaches no scope. Their auto-repeat presses only count
+    // as activity (the keyPressed signal: idle timer, phantom-wake check, screen-off sync) and reach no key handler
+    // and not the focus chain (eventFilter()). Their release is announced with the controller as its owner, so of the
+    // key handlers only those that listen to every owner (overrideActive) run, as the VOICE handler has to see the
+    // release of a press it saw; its Qt event still goes to the focused control. Without this call the repeats and
+    // the release of a destroyed owner's keys go to the item in front.
+    Q_INVOKABLE void dropPendingKeys(QObject* owner);
 
     static QObject* qmlInstance(QQmlEngine* engine, QJSEngine* scriptEngine);
 

@@ -3,9 +3,14 @@
 // on its RELEASE, and only a key pressed while the screensaver was in front, so neither the release nor the repeats of
 // a held key reach the page behind (up to v1.6.4 the close came on the press, and they did). A remembered direction is
 // used on Matrix only, and both ways to steer may be on.
+// When something else closes the screensaver under a key that is still down (a wake, a lift, a tap, another key), the
+// page behind acts on neither that key's repeats nor its release: ChargingScreen's onClosed hands the keys it still has
+// down to InputController.dropPendingKeys(). A handler that listens to every owner (main.qml's VOICE handler) still
+// gets the release of a press it saw. A key pressed once the screensaver is gone acts on the page.
 // Runs the REAL ChargingScreen.qml, loaded asynchronously like main.qml's chargingScreenLoader (switched off when the
-// popup has closed), over a page that logs every key reaching it. Keys go through MockInputController.pressKey() /
-// releaseKey(), which route them as the real InputController does (src/ui/inputController.cpp). The decisions are
+// popup has closed), over a page that logs every key reaching it. The keys go through the REAL InputController
+// (src/ui/inputController.cpp is compiled into the QML test binary): ui.inputController.pressKey() / releaseKey() send
+// the key events the keypad makes (test/qml/tst_qml_main.cpp, TestInputController). The decisions are
 // ScreensaverConfig.keyAction() / keyDirection() / directionToRestore() (src/ui/screensaverInputPolicy.h).
 // SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -54,6 +59,43 @@ Item {
             id: pageNav
             defaultConfig: page.makeConfig()
         }
+
+        // An activity screen has a VOICE handler of its own (entities/activity/deviceclass/Activity.qml): a long press
+        // starts the activity's voice assistant, the release stops it. Like every handler of a page it is scoped to
+        // the page.
+        property var activityLog: []
+        function recordActivity(entry) {
+            var l = page.activityLog.slice();
+            l.push(entry);
+            page.activityLog = l;
+        }
+        Components.ButtonNavigation {
+            id: activityVoiceNav
+            defaultConfig: {
+                "VOICE": { "long_press": function() { page.recordActivity("start"); },
+                           "released": function() { page.recordActivity("stop"); } }
+            }
+        }
+    }
+
+    // A handler that listens to every owner (overrideActive). VOICE as in main.qml: a long press starts the voice
+    // assistant, the release stops it. VOLUME_UP as on Page.qml's activity tile or a light's brightness page: a
+    // `pressed` action, which such a handler runs for every press it is handed, a repeat included. It sees the press
+    // of a key made on the screensaver.
+    Components.ButtonNavigation {
+        id: voiceNav
+        overrideActive: true
+        property var log: []
+        function record(entry) {
+            var l = voiceNav.log.slice();
+            l.push(entry);
+            voiceNav.log = l;
+        }
+        defaultConfig: {
+            "VOICE": { "long_press": function() { voiceNav.record("start"); },
+                       "released": function() { voiceNav.record("stop"); } },
+            "VOLUME_UP": { "pressed": function() { voiceNav.record("vol"); } }
+        }
     }
 
     // like main.qml's chargingScreenLoader: asynchronous, open when loaded, switched off when the popup has closed
@@ -81,6 +123,7 @@ Item {
             ScreensaverConfig.theme = theme;
             pageNav.takeControl();
             page.log = [];
+            page.activityLog = [];
             ssLoader.active = true;
             tryVerify(function() { return ssLoader.item !== null && ssLoader.item.opened; }, 5000, "screensaver open");
         }
@@ -89,6 +132,16 @@ Item {
         function tapKey(key) {
             ui.inputController.pressKey(key, false);
             wait(120);
+            ui.inputController.releaseKey(key);
+        }
+
+        // The same on the screensaver, with a look in between: it must still be there while the key is down. A key
+        // closes it when it is let go; since the close hands over the keys still down, a key that closed it on its
+        // press would no longer show as a leak to the page behind.
+        function tapKeyOnScreensaver(key) {
+            ui.inputController.pressKey(key, false);
+            wait(120);
+            verify(stillOpen(), key + ": still open while the key is down");
             ui.inputController.releaseKey(key);
         }
 
@@ -129,7 +182,7 @@ Item {
         }
         function test_nineKeysCloseClockThemes(d) {
             openScreensaver(d.theme);
-            tapKey(d.key);
+            tapKeyOnScreensaver(d.key);
             tryVerify(function() { return !ssLoader.active; }, 1000, d.key + " closes the screensaver");
             wait(50);
             compare(JSON.stringify(page.log), "[]", "nothing reached the page behind");
@@ -145,7 +198,7 @@ Item {
         }
         function test_otherKeysDontReachThePage(d) {
             openScreensaver("matrix");
-            tapKey(d.key);
+            tapKeyOnScreensaver(d.key);
             tryVerify(function() { return !ssLoader.active; }, 1000, d.key + " closes the screensaver");
             wait(50);
             compare(JSON.stringify(page.log), "[]", "nothing reached the page behind");
@@ -224,7 +277,7 @@ Item {
         function test_matrixKeysCloseWithDpadOff(d) {
             ScreensaverConfig.dpadEnabled = false;
             openScreensaver("matrix");
-            tapKey(d.key);
+            tapKeyOnScreensaver(d.key);
             tryVerify(function() { return !ssLoader.active; }, 1000, d.key + " closes the screensaver");
             wait(50);
             compare(JSON.stringify(page.log), "[]", "nothing reached the page behind");
@@ -269,6 +322,201 @@ Item {
             tapKey("DPAD_LEFT");
             wait(100);
             verify(rain.calls.indexOf("input:left") >= 0, "the keys steer: " + JSON.stringify(rain.calls));
+        }
+
+        // --- a key that is still down when something else closes the screensaver ---------------------------------
+        // "Something else" is Close on wake at the wake that key caused, the quick undock check, the core's charger
+        // report, a tap or another key: each ends in the popup's close(). main.qml then destroys the popup, and
+        // InputController would send the rest of the hold to the page behind (the remembered owner is gone). The
+        // popup's onClosed hands the keys it still has down to InputController.dropPendingKeys() first.
+
+        function stillOpen() { return ssLoader.active && ssLoader.item !== null && ssLoader.item.opened; }
+
+        function waitGone() {
+            tryVerify(function() { return !ssLoader.active && ssLoader.item === null; }, 2000, "screensaver gone");
+            wait(30);   // the Loader deletes the popup on the next turn of the event loop
+        }
+
+        // the rest of a hold: three auto-repeat presses 150 ms apart, then the release
+        function restOfTheHold(key) {
+            for (var i = 0; i < 3; ++i) {
+                wait(150);
+                ui.inputController.pressKey(key, true);
+            }
+            wait(150);
+            ui.inputController.releaseKey(key);
+            wait(50);
+        }
+
+        // a closing key, a Matrix steering key and Matrix's OK, each held while the screensaver is closed from outside
+        function test_heldKeyWhenSomethingElseCloses_data() {
+            return [ { tag: "starfield DPAD_UP", theme: "starfield", key: "DPAD_UP" },
+                     { tag: "minimal BACK", theme: "minimal", key: "BACK" },
+                     { tag: "tvstatic VOLUME_UP", theme: "tvstatic", key: "VOLUME_UP" },
+                     { tag: "matrix DPAD_UP (steers)", theme: "matrix", key: "DPAD_UP" },
+                     { tag: "matrix DPAD_MIDDLE (OK)", theme: "matrix", key: "DPAD_MIDDLE" },
+                     { tag: "matrix BACK", theme: "matrix", key: "BACK" } ];
+        }
+        function test_heldKeyWhenSomethingElseCloses(d) {
+            openScreensaver(d.theme);
+            ui.inputController.pressKey(d.key, false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            ssLoader.item.close();
+            waitGone();
+            restOfTheHold(d.key);
+            compare(JSON.stringify(page.log), "[]", "neither the repeats nor the release reached the page behind");
+            compare(ui.inputController.activeItem, page, "the page has the input again");
+        }
+
+        // Matrix: a steering key is held, and another key closes the screensaver
+        function test_heldSteeringKeyWhenAnotherKeyCloses() {
+            openScreensaver("matrix");
+            var rain = ssLoader.item.matrixRainRef;
+            ui.inputController.pressKey("DPAD_UP", false);
+            wait(100);
+            verify(rain.calls.indexOf("input:up") >= 0, "DPAD_UP steers: " + JSON.stringify(rain.calls));
+            tapKey("BACK");
+            waitGone();
+            restOfTheHold("DPAD_UP");
+            compare(JSON.stringify(page.log), "[]", "nothing of the steering key reached the page behind");
+        }
+
+        // "Double-tap to close" off: one tap closes it, here under a held key
+        function test_heldKeyWhenATapCloses() {
+            ScreensaverConfig.tapToClose = false;
+            openScreensaver("starfield");
+            ui.inputController.pressKey("DPAD_UP", false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            mouseClick(ssLoader.item.contentItem, 240, 425);
+            waitGone();
+            restOfTheHold("DPAD_UP");
+            compare(JSON.stringify(page.log), "[]", "nothing of the held key reached the page behind");
+        }
+
+        // a key pressed while the screensaver is closing (the 50 ms exit): the popup still has the input and gets the
+        // press, so the rest of that hold is dropped too
+        function test_keyPressedWhileClosing() {
+            openScreensaver("starfield");
+            ssLoader.item.close();
+            verify(ssLoader.item !== null, "still closing");
+            ui.inputController.pressKey("DPAD_UP", false);
+            waitGone();
+            restOfTheHold("DPAD_UP");
+            compare(JSON.stringify(page.log), "[]", "nothing of that key reached the page behind");
+        }
+
+        // the screensaver comes back while the key is still down (the docked re-arm, a wake on the charger): the new
+        // one gets nothing of that hold either, so its release doesn't close it
+        function test_keyHeldAcrossAReopen() {
+            openScreensaver("starfield");
+            ui.inputController.pressKey("DPAD_UP", false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            ssLoader.item.close();
+            waitGone();
+            ssLoader.active = true;
+            tryVerify(function() { return ssLoader.item !== null && ssLoader.item.opened; }, 5000, "open again");
+            restOfTheHold("DPAD_UP");
+            wait(300);
+            verify(ssLoader.active && ssLoader.item !== null && ssLoader.item.opened,
+                   "the second screensaver stays open");
+            compare(JSON.stringify(page.log), "[]", "and nothing reached the page behind");
+        }
+
+        // A handler that listens to every owner saw the press, so it must get the release too: without it the voice
+        // assistant that the hold started would never stop, and the handler would ignore the next VOICE press. The
+        // page behind still gets nothing.
+        function test_heldVoiceKeyStillGetsItsRelease() {
+            openScreensaver("starfield");
+            voiceNav.log = [];
+            ui.inputController.pressKey("VOICE", false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            ssLoader.item.close();
+            waitGone();
+            tryVerify(function() { return voiceNav.log.length === 1; }, 2000, "the hold started the voice assistant");
+            restOfTheHold("VOICE");
+            compare(JSON.stringify(voiceNav.log), JSON.stringify(["start", "stop"]), "and the release stopped it");
+            compare(JSON.stringify(page.log), "[]", "nothing of the key reached the page behind");
+
+            ui.inputController.pressKey("VOICE", false);
+            tryVerify(function() { return voiceNav.log.length === 3; }, 2000, "the next hold starts it again");
+            ui.inputController.releaseKey("VOICE");
+            compare(JSON.stringify(voiceNav.log), JSON.stringify(["start", "stop", "start", "stop"]));
+        }
+
+        // A limit, as it is today: a page with a VOICE handler of its own (an activity screen) never sees a VOICE
+        // press made on the screensaver, and after the close it gets nothing of that hold either. So the hold starts
+        // no assistant there; let go and press VOICE again. The handler that listens to every owner still gets its
+        // press and its release. (Up to v1.6.4 the page got the repeats, and its assistant started 0.8 s after the
+        // first of them.)
+        function test_heldVoiceKeyStartsNothingOnAPageWithItsOwnVoiceHandler() {
+            openScreensaver("starfield");
+            voiceNav.log = [];
+            page.activityLog = [];
+            ui.inputController.pressKey("VOICE", false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            ssLoader.item.close();
+            waitGone();
+            // held for a good second more: time enough for a long press of the page to fire, had it got a repeat
+            for (var i = 0; i < 8; ++i) {
+                wait(150);
+                ui.inputController.pressKey("VOICE", true);
+            }
+            wait(150);
+            ui.inputController.releaseKey("VOICE");
+            wait(50);
+            compare(JSON.stringify(page.activityLog), "[]", "the page's own VOICE handler got nothing of the hold");
+            compare(JSON.stringify(page.log), "[]", "nor did its other handlers");
+            compare(JSON.stringify(voiceNav.log), JSON.stringify(["start", "stop"]),
+                    "the handler that listens to every owner started and stopped");
+        }
+
+        // A handler that listens to every owner acts on the press made on the screensaver (upstream's rule) and on
+        // nothing else of that hold: it runs its `pressed` action for every press it is handed, so the repeats of a
+        // dropped key must be handed to no handler at all
+        function test_alwaysOnHandlerGetsNoDroppedRepeat() {
+            openScreensaver("starfield");
+            voiceNav.log = [];
+            ui.inputController.pressKey("VOLUME_UP", false);
+            wait(100);
+            verify(stillOpen(), "still open while the key is held");
+            ssLoader.item.close();
+            waitGone();
+            restOfTheHold("VOLUME_UP");
+            compare(JSON.stringify(voiceNav.log), JSON.stringify(["vol"]),
+                    "one press: the one made on the screensaver");
+            compare(JSON.stringify(page.log), "[]", "nothing of the key reached the page behind");
+        }
+
+        // the limit: a key pressed once the screensaver is gone is a key on the page, like any other
+        function test_pressAfterItIsGoneActsOnThePage() {
+            openScreensaver("starfield");
+            ssLoader.item.close();
+            waitGone();
+            tapKey("DPAD_UP");
+            wait(50);
+            compare(JSON.stringify(page.log), JSON.stringify(["p:DPAD_UP", "r:DPAD_UP"]), "the page got that key");
+        }
+
+        // only the screensaver's keys are dropped: a key pressed on the page before the screensaver opened, and held
+        // through its opening and closing, stays the page's
+        function test_keyHeldOnThePageKeepsGoingToThePage() {
+            ScreensaverConfig.theme = "starfield";
+            pageNav.takeControl();
+            page.log = [];
+            ui.inputController.pressKey("DPAD_UP", false);
+            ssLoader.active = true;
+            tryVerify(function() { return ssLoader.item !== null && ssLoader.item.opened; }, 5000, "screensaver open");
+            ssLoader.item.close();
+            waitGone();
+            restOfTheHold("DPAD_UP");
+            compare(JSON.stringify(page.log),
+                    JSON.stringify(["p:DPAD_UP", "p:DPAD_UP", "p:DPAD_UP", "p:DPAD_UP", "r:DPAD_UP"]),
+                    "the press, the repeats and the release all reached the page");
         }
     }
 }

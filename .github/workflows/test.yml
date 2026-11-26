@@ -12,6 +12,7 @@ on:
       - 'remote-ui.pro'
       - 'tools/check_touchslider_guards.py'
       - 'tools/check_undock_wiring.py'
+      - 'tools/check_dropped_keys_guard.py'
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
@@ -182,6 +183,27 @@ jobs:
 
       - name: Self-test of the check
         run: python3 tools/check_undock_wiring.py --self-test
+
+  dropped-keys-guard:
+    name: "Dropped keys guard"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed). src/ui/inputController.{h,cpp} are upstream files that carry
+    # dropPendingKeys() (v1.6.5): the page behind acts on neither the repeats nor the release of a key the
+    # screensaver still has down when it closes. A merge that drops all of it, or only the block in eventFilter() or
+    # the onClosed line, still builds, so this names each part that went missing, in the controller and in
+    # ChargingScreen.qml's onClosed (tools/check_dropped_keys_guard.py). The behaviour itself is tested on the real
+    # controller by the CMake job (test/screensaver/test_input_controller_dropped_keys.cpp) and the QML job
+    # (test/qml/tst_screensaver_keys.qml).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run guard check
+        run: python3 tools/check_dropped_keys_guard.py
+
+      - name: Self-test of the guard check
+        run: python3 tools/check_dropped_keys_guard.py --self-test
 
   upstream-unit-tests:
     name: "Upstream unit tests (CMake)"

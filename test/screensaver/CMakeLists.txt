@@ -1,7 +1,7 @@
 # Copyright (c) 2026 madalone. Screensaver rule tests: three header-only programs, "Close on wake"
 # (src/ui/screensaverClosePolicy.h), the touch-slider steps (src/ui/screensaverTouchbar.h) and what a tap and the
 # remote's keys do (src/ui/screensaverInputPolicy.h, v1.6.5), plus the real ScreensaverConfig class that asks them
-# (v1.6.5).
+# (v1.6.5) and the real InputController with the keys the screensaver still has down when it closes (v1.6.5).
 # Links Qt5:: like upstream's test targets (docs/adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md).
 # SPDX-License-Identifier: GPL-3.0-or-later
 
@@ -91,5 +91,32 @@ target_link_libraries(testScreensaverConfig
     Qt5::Gui
     Qt5::Qml
     Qt5::WebSockets
+    Qt5::Test
+)
+
+# the real uc::ui::InputController (a QQuickItem) and the keys an input owner still has down when it goes away
+# (dropPendingKeys(), v1.6.5): upstream testInputController's source list (test/ui/CMakeLists.txt). Upstream's own
+# test file stays as it is. Qml: one test makes the call the way the screensaver's QML makes it.
+find_package(Qt5 COMPONENTS Qml Quick REQUIRED)
+
+add_executable(testInputControllerDroppedKeys
+    "test_input_controller_dropped_keys.cpp"
+    "../../src/ui/inputController.cpp"
+    # header only: contains the Q_GADGET enums moc has to process
+    "../../src/core/enums.h"
+    # header only: contains the Q_OBJECT class moc has to process
+    "../../src/hardware/hardwareModel.h"
+    "../../src/logging.cpp"
+)
+
+add_test(NAME testInputControllerDroppedKeys
+         COMMAND testInputControllerDroppedKeys)
+
+target_link_libraries(testInputControllerDroppedKeys
+    PUBLIC
+    Qt5::Core
+    Qt5::Gui
+    Qt5::Qml
+    Qt5::Quick
     Qt5::Test
 )
