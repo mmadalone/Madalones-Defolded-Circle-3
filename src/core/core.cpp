@@ -3934,5 +3934,54 @@ int Api::listStandbyInhibitors() {
     return reqId;
 }
 
+// ============================================================================
+// madalone (v1.6.5): GET /api/system/power/battery for the quick undock check (src/hardware/undockCheck.h)
+// ----------------------------------------------------------------------------
+// A read, so no wire capture is needed first (STYLE_GUIDE §1.12). UC's OpenAPI BatteryStatusResponse requires capacity
+// and status and has power_supply optional; on firmware 2.12.1 (2026-11-15) the field was there and fresher than the
+// battery_status event (logs/dock-lift/probe-20261115/). Unlike the inhibitor calls above, the request and its result
+// log at debug: the check asks every 250 ms while the screensaver is lit on the charger, and for up to 6 s after a
+// close it asked for, and logs its own decisions.
+// The 1 s transfer timeout keeps a hung answer from holding the check, which asks one request at a time.
+// ============================================================================
+
+int Api::getBatteryRest() {
+    const int reqId = static_cast<int>(++m_restRequestId);
+
+    QNetworkRequest req(restEndpoint(QStringLiteral("/api/system/power/battery")));
+    req.setTransferTimeout(1000);
+    const QByteArray auth = bearerHeader();
+    if (!auth.isEmpty()) {
+        req.setRawHeader("Authorization", auth);
+    }
+
+    qCDebug(lcCore()) << "[REST] GET" << req.url().toString();
+    QNetworkReply* reply = m_restNam.get(req);
+    QObject::connect(reply, &QNetworkReply::finished, this, [this, reqId, reply]() {
+        const int        httpCode = reply->attribute(QNetworkRequest::HttpStatusCodeAttribute).toInt();
+        const QByteArray respBody = reply->readAll();
+        const QString    transportError =
+            reply->error() == QNetworkReply::NoError ? QString() : reply->errorString();
+        reply->deleteLater();
+
+        QVariantMap battery;
+        QString     errorMessage;
+        if (httpCode == 200) {
+            QJsonParseError     parseError;
+            const QJsonDocument doc = QJsonDocument::fromJson(respBody, &parseError);
+            if (parseError.error == QJsonParseError::NoError && doc.isObject()) {
+                battery = doc.object().toVariantMap();
+            } else {
+                errorMessage = QStringLiteral("not a JSON object");
+            }
+        } else {
+            errorMessage = httpCode == 0 ? transportError : QString::fromUtf8(respBody.left(200));
+        }
+        qCDebug(lcCore()) << "[REST] GET battery" << httpCode << errorMessage;
+        emit respBatteryRest(reqId, httpCode, battery, errorMessage);
+    });
+    return reqId;
+}
+
 }  // namespace core
 }  // namespace uc

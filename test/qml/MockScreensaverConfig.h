@@ -110,6 +110,8 @@ class MockScreensaverConfig : public QObject {
     Q_PROPERTY(bool tapToClose READ tapToClose WRITE setTapToClose NOTIFY tapToCloseChanged)
     // madalone (v1.6.4): "Close on wake", 0 Never / 1 Undocked / 2 Always (uc::ui::CloseOnWake)
     Q_PROPERTY(int closeOnWake READ closeOnWake WRITE setCloseOnWake NOTIFY closeOnWakeChanged)
+    // v1.6.5: "Undock delay", through the same rule as the real class (ui::undockCloseMs, screensaverClosePolicy.h)
+    Q_PROPERTY(int undockCloseMs READ undockCloseMs WRITE setUndockCloseMs NOTIFY undockCloseMsChanged)
     Q_PROPERTY(bool idleEnabled READ idleEnabled WRITE setIdleEnabled NOTIFY idleEnabledChanged)
     Q_PROPERTY(int idleTimeout READ idleTimeout WRITE setIdleTimeout NOTIFY idleTimeoutChanged)
     Q_PROPERTY(bool dpadEnabled READ dpadEnabled WRITE setDpadEnabled NOTIFY dpadEnabledChanged)
@@ -352,6 +354,13 @@ class MockScreensaverConfig : public QObject {
         m_closeOnWake = v;
         emit closeOnWakeChanged();
     }
+    int undockCloseMs() const { return m_undockCloseMs; }
+    void setUndockCloseMs(int v) {
+        v = uc::ui::undockCloseMs(v);
+        if (m_undockCloseMs == v) return;
+        m_undockCloseMs = v;
+        emit undockCloseMsChanged();
+    }
     // the rule of ScreensaverConfig::closesOnWake / closesOnChargerLoss, without its log line; the mock keeps the
     // choice in one int, the real class in two config.ini keys (screensaverClosePolicy.h, tested in test/screensaver)
     Q_INVOKABLE bool closesOnWake(bool onCharger, bool loaded) const {
@@ -359,6 +368,10 @@ class MockScreensaverConfig : public QObject {
     }
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const {
         return uc::ui::closesOnChargerLoss(static_cast<uc::ui::CloseOnWake>(m_closeOnWake), loaded);
+    }
+    // v1.6.5: the rule of ScreensaverConfig::reopensOnWake (main.qml's wake handler), without its log line
+    Q_INVOKABLE bool reopensOnWake(bool fromIdle, bool charging, bool onCharger, bool undockPending) const {
+        return uc::ui::reopensOnWake(fromIdle, charging, onCharger, undockPending);
     }
     // ScreensaverConfig::matrixLoaded / loneTapAction (v1.6.5) through the same header (src/ui/screensaverInputPolicy.h)
     bool matrixLoaded() const { return uc::ui::loadsMatrix(m_theme); }
@@ -554,6 +567,7 @@ class MockScreensaverConfig : public QObject {
         setTapRandomizeChance(50);
         setTapToClose(true);
         setCloseOnWake(0);
+        setUndockCloseMs(uc::ui::kUndockCloseMsDefault);
         setIdleEnabled(false);
         setIdleTimeout(45);
         setDpadEnabled(true);
@@ -690,6 +704,7 @@ class MockScreensaverConfig : public QObject {
     void tapRandomizeChanceChanged();
     void tapToCloseChanged();
     void closeOnWakeChanged();
+    void undockCloseMsChanged();
     void idleEnabledChanged();
     void idleTimeoutChanged();
     void dpadEnabledChanged();
@@ -831,6 +846,7 @@ class MockScreensaverConfig : public QObject {
     int m_tapRandomizeChance{50};
     bool m_tapToClose{true};
     int m_closeOnWake{0};
+    int m_undockCloseMs{uc::ui::kUndockCloseMsDefault};
     bool m_idleEnabled{false};
     int m_idleTimeout{45};
     bool m_dpadEnabled{true};

@@ -230,11 +230,13 @@ int main(int argc, char *argv[]) {
                      &uc::hw::PhantomWakeSuppressor::onUserInput);
     QObject::connect(inputController, &uc::ui::InputController::touchDetected, suppressor,
                      &uc::hw::PhantomWakeSuppressor::onUserInput);
-    // v1.4.22: EntityController::entityCommandIssued → suppressor. Critical for wake-press
-    // detection — firmware delivers wake-press events directly to integrations, bypassing
-    // InputController in our UI process. Without this connection the first press that
-    // wakes the device wouldn't cancel the grace window, and Mod 6 would force-back every
-    // real wake-press. Mirrors Mod 5's wiring at line 165-166.
+    // v1.4.22: EntityController::entityCommandIssued → suppressor, for the press that wakes
+    // the device. On firmware 2.9.1 one such press, out of standby (PLAY, 2026-05-01), went
+    // straight to the integrations and did not reach InputController in our UI process; without
+    // this connection it would not have cancelled the grace window. On firmware
+    // 2.12.1 the journal shows activity 3-53 ms before the wake in 48 of 165 wakes; test build
+    // 1.6.4-keys1 did not log of which kind. Since v1.6.5 the "skipping grace" line names the
+    // kind. Mirrors Mod 5's wiring above.
     QObject::connect(entityController, &uc::ui::EntityController::entityCommandIssued, suppressor,
                      &uc::hw::PhantomWakeSuppressor::onEntityCommandIssued);
     // madalone: ScreenOffSync input — a button, touch or entity command during the screen-off animation leaves
@@ -250,6 +252,19 @@ int main(int argc, char *argv[]) {
     QObject::connect(&config, &uc::Config::displayTimeoutChanged, screenOffSync,
                      [screenOffSync](int timeout) { screenOffSync->setDisplayOffSec(timeout); });
     screenOffSync->setDisplayOffSec(config.getDisplayTimeout());
+    // madalone (v1.6.5): the quick undock check reads Close on wake and the Undock delay from ScreensaverConfig (built
+    // after hwController). Their NOTIFY signals don't fire at start-up, so the stored values are pushed once here, with
+    // the charger as Battery last heard it (Close on wake last: it is the one that can start the check).
+    auto* undockCheck = hwController.getUndockCheck();
+    QObject::connect(&screensaverConfig, &uc::ScreensaverConfig::closeOnWakeChanged, undockCheck,
+                     [undockCheck, &screensaverConfig] { undockCheck->setCloseOnWake(screensaverConfig.closeOnWake()); });
+    QObject::connect(&screensaverConfig, &uc::ScreensaverConfig::undockCloseMsChanged, undockCheck,
+                     [undockCheck, &screensaverConfig] {
+                         undockCheck->setUndockCloseMs(screensaverConfig.undockCloseMs());
+                     });
+    undockCheck->setUndockCloseMs(screensaverConfig.undockCloseMs());
+    undockCheck->onPowerSupplyChanged(hwController.getBattery()->getPowerSupply());
+    undockCheck->setCloseOnWake(screensaverConfig.closeOnWake());
     // Initial state push — graceMs and inputLookbackMs first so the values are correct
     // when enabled flips on (which triggers the first evaluateSession path).
     suppressor->setGraceMs(config.getPhantomWakeSuppressGraceMs());

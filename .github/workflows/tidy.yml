@@ -140,6 +140,7 @@ jobs:
             src/hardware/activitySessionKeeper.cpp
             src/hardware/phantomWakeSuppressor.cpp
             src/hardware/screenOffSync.cpp
+            src/hardware/undockCheck.cpp
             src/ui/devDockToggle.cpp
           )
 

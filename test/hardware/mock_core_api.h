@@ -142,6 +142,19 @@ class MockCoreRecorder {
     // returns -1 again, unless the test sets another id. reset() restores -1.
     static void setNextEntityCommandId(int requestId);
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // v1.6.5 (the quick undock check): GET /api/system/power/battery.
+    // ──────────────────────────────────────────────────────────────────────────
+    // Api::getBatteryRest is stubbed: it records the call and returns a request id. It answers later in the event
+    // loop (QTimer::singleShot(0)), like the REST stubs above, with the next pushed answer, or 200 with
+    // {"power_supply": true} when none is pushed. With setBatteryRestManual(true) it answers nothing: the test emits
+    // respBatteryRest itself with lastBatteryRestId(). reset() turns manual off.
+    static int  batteryRestCallCount();
+    static int  lastBatteryRestId();
+    static void setBatteryRestManual(bool manual);
+    static void pushNextBatteryResponse(int httpCode, const QVariantMap& battery,
+                                        const QString& errorMessage = QString());
+
  private:
     MockCoreRecorder() = delete;
 };

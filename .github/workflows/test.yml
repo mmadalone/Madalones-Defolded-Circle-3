@@ -11,6 +11,7 @@ on:
       - 'test/**'
       - 'remote-ui.pro'
       - 'tools/check_touchslider_guards.py'
+      - 'tools/check_undock_wiring.py'
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened]
@@ -162,6 +163,26 @@ jobs:
       - name: Run guard check
         run: python3 tools/check_touchslider_guards.py
 
+  undock-wiring:
+    name: "Quick undock check wiring"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed). The quick undock check (v1.6.5, GitHub issue #3) is wired into three
+    # upstream files that no test loads: src/qml/main.qml, src/main.cpp and src/hardware/hardwareController.cpp. The
+    # first step names each piece of that wiring a merge drops (tools/check_undock_wiring.py). The second, the
+    # check's self-test, proves that every kind of message it can give has a case that brings it out; it runs only
+    # when the first passed, because it breaks the files one piece at a time and needs them whole. The logic itself
+    # is tested by the hardware and CMake jobs (test/hardware/undock_test, test/screensaver).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run wiring check
+        run: python3 tools/check_undock_wiring.py
+
+      - name: Self-test of the check
+        run: python3 tools/check_undock_wiring.py --self-test
+
   upstream-unit-tests:
     name: "Upstream unit tests (CMake)"
     runs-on: ubuntu-24.04
@@ -270,6 +291,13 @@ jobs:
           QT_QPA_PLATFORM: offscreen
           ASAN_OPTIONS: detect_leaks=0
 
+      - name: Run undock check tests (the quick undock check)
+        working-directory: test/hardware/undock_test
+        run: ./test_undockCheck -v2 -o undock_results.xml,xunitxml
+        env:
+          QT_QPA_PLATFORM: offscreen
+          ASAN_OPTIONS: detect_leaks=0
+
       - name: Upload test results
         if: always()
         uses: actions/upload-artifact@v4
@@ -281,3 +309,4 @@ jobs:
             test/hardware/entityController_test/entityController_results.xml
             test/hardware/power_test/power_results.xml
             test/hardware/screenoff_test/screenoff_results.xml
+            test/hardware/undock_test/undock_results.xml

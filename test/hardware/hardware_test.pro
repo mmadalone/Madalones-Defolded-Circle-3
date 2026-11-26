@@ -11,10 +11,11 @@ CONFIG  += ordered
 #
 # CI integration: see .github/workflows/test.yml `hardware-tests` job.
 
-SUBDIRS  = keeper_test suppressor_test entityController_test power_test screenoff_test
+SUBDIRS  = keeper_test suppressor_test entityController_test power_test screenoff_test undock_test
 
 keeper_test.file            = keeper_test/keeper_test.pro
 suppressor_test.file        = suppressor_test/suppressor_test.pro
 entityController_test.file  = entityController_test/entityController_test.pro
 power_test.file             = power_test/power_test.pro
 screenoff_test.file         = screenoff_test/screenoff_test.pro
+undock_test.file            = undock_test/undock_test.pro

@@ -70,6 +70,13 @@ int     g_entityCommandCallCount = 0;
 QString g_lastEntityCommandEntityId;
 QString g_lastEntityCommandName;
 int     g_nextEntityCommandId = -1;
+
+// v1.6.5: the quick undock check's GET /api/system/power/battery
+struct BatteryResp { int httpCode; QVariantMap battery; QString errorMessage; };
+int                 g_batteryRestCallCount = 0;
+int                 g_lastBatteryRestId = 0;
+bool                g_batteryRestManual = false;
+QQueue<BatteryResp> g_pendingBatteryResponses;
 }  // namespace
 
 void MockCoreRecorder::reset() {
@@ -94,6 +101,11 @@ void MockCoreRecorder::reset() {
     g_lastEntityCommandEntityId.clear();
     g_lastEntityCommandName.clear();
     g_nextEntityCommandId = -1;
+
+    g_batteryRestCallCount = 0;
+    g_lastBatteryRestId = 0;
+    g_batteryRestManual = false;
+    g_pendingBatteryResponses.clear();
 }
 
 int MockCoreRecorder::setPowerModeCallCount() {
@@ -147,6 +159,14 @@ int     MockCoreRecorder::entityCommandCallCount() { return g_entityCommandCallC
 QString MockCoreRecorder::lastEntityCommandEntityId() { return g_lastEntityCommandEntityId; }
 QString MockCoreRecorder::lastEntityCommandName() { return g_lastEntityCommandName; }
 void    MockCoreRecorder::setNextEntityCommandId(int requestId) { g_nextEntityCommandId = requestId; }
+
+// v1.6.5: the quick undock check's recorder accessors.
+int  MockCoreRecorder::batteryRestCallCount() { return g_batteryRestCallCount; }
+int  MockCoreRecorder::lastBatteryRestId() { return g_lastBatteryRestId; }
+void MockCoreRecorder::setBatteryRestManual(bool manual) { g_batteryRestManual = manual; }
+void MockCoreRecorder::pushNextBatteryResponse(int httpCode, const QVariantMap& battery, const QString& errorMessage) {
+    g_pendingBatteryResponses.enqueue({httpCode, battery, errorMessage});
+}
 
 }  // namespace test
 }  // namespace uc
@@ -389,6 +409,31 @@ int Api::listStandbyInhibitors() {
 
     QTimer::singleShot(0, this, [this, reqId, httpCode, inhibitors, errorMessage]() {
         emit respListInhibitors(reqId, httpCode, inhibitors, errorMessage);
+    });
+    return reqId;
+}
+
+// v1.6.5: GET /api/system/power/battery for the quick undock check (see MockCoreRecorder)
+int Api::getBatteryRest() {
+    uc::test::g_batteryRestCallCount++;
+    const int reqId = static_cast<int>(++m_restRequestId);
+    uc::test::g_lastBatteryRestId = reqId;
+    if (uc::test::g_batteryRestManual) {
+        return reqId;
+    }
+
+    int         httpCode = 200;
+    QVariantMap battery{{QStringLiteral("power_supply"), true}};
+    QString     errorMessage;
+    if (!uc::test::g_pendingBatteryResponses.isEmpty()) {
+        const auto r = uc::test::g_pendingBatteryResponses.dequeue();
+        httpCode     = r.httpCode;
+        battery      = r.battery;
+        errorMessage = r.errorMessage;
+    }
+
+    QTimer::singleShot(0, this, [this, reqId, httpCode, battery, errorMessage]() {
+        emit respBatteryRest(reqId, httpCode, battery, errorMessage);
     });
     return reqId;
 }

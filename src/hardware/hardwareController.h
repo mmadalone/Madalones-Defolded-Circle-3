@@ -1,5 +1,6 @@
 // Copyright (c) 2022-2023 Unfolded Circle ApS and/or its affiliates. <hello@unfoldedcircle.com>
-// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) + ScreenOffSync integration.
+// Copyright (c) 2026 madalone. ActivitySessionKeeper (Mod 5) + PhantomWakeSuppressor (Mod 6) + ScreenOffSync +
+// UndockCheck integration.
 // SPDX-License-Identifier: GPL-3.0-or-later
 
 #pragma once
@@ -17,6 +18,7 @@
 #include "hardwareModel.h"
 #include "phantomWakeSuppressor.h"
 #include "screenOffSync.h"
+#include "undockCheck.h"
 #include "ucr2/hapticUCR2.h"
 #include "ucr2/hapticUCR3.h"
 #include "ucr3/touchSliderUCR3.h"
@@ -41,6 +43,7 @@ class Controller : public QObject {
     ActivitySessionKeeper* getActivitySessionKeeper() { return m_activitySessionKeeper; }
     PhantomWakeSuppressor* getPhantomWakeSuppressor() { return m_phantomWakeSuppressor; }
     ScreenOffSync* getScreenOffSync() { return m_screenOffSync; }
+    UndockCheck*   getUndockCheck() { return m_undockCheck; }
 
  private slots:
     void onHapticEnabledChanged(bool enabled);
@@ -58,6 +61,7 @@ class Controller : public QObject {
     ActivitySessionKeeper* m_activitySessionKeeper;
     PhantomWakeSuppressor* m_phantomWakeSuppressor;
     ScreenOffSync* m_screenOffSync;
+    UndockCheck*   m_undockCheck;
 };
 
 }  // namespace hw

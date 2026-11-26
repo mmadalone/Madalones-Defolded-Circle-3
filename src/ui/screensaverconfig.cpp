@@ -14,23 +14,6 @@
 
 namespace uc {
 
-namespace {
-
-// the name of a "Close on wake" choice as the settings picker shows it, for the log
-const char *closeOnWakeName(ui::CloseOnWake choice) {
-    switch (choice) {
-        case ui::CloseOnWake::Never:
-            return "Never";
-        case ui::CloseOnWake::Undocked:
-            return "Undocked";
-        case ui::CloseOnWake::Always:
-            return "Always";
-    }
-    return "?";
-}
-
-}  // namespace
-
 ScreensaverConfig *ScreensaverConfig::s_instance = nullptr;
 
 ScreensaverConfig::ScreensaverConfig(QObject *parent)
@@ -72,8 +55,9 @@ ScreensaverConfig::ScreensaverConfig(QObject *parent)
     connect(batt, &hw::Battery::powerSupplyChanged, this, &ScreensaverConfig::showBatteryChanged);
     connect(batt, &hw::Battery::isChargingChanged,  this, &ScreensaverConfig::showBatteryChanged);
 
-    // madalone (v1.6.4): the "Close on wake" choice, so that a device log shows it
-    qCInfo(lcScreensaver) << "Close on wake:" << closeOnWakeName(static_cast<ui::CloseOnWake>(closeOnWake()));
+    // madalone (v1.6.4): the "Close on wake" choice, so that a device log shows it; v1.6.5: the Undock delay too
+    qCInfo(lcScreensaver) << "Close on wake:" << ui::closeOnWakeName(static_cast<ui::CloseOnWake>(closeOnWake()));
+    qCInfo(lcScreensaver) << "Undock delay:" << undockCloseMs() << "ms";
 }
 
 QObject *ScreensaverConfig::qmlInstance(QQmlEngine *engine, QJSEngine *scriptEngine) {
@@ -167,7 +151,7 @@ void ScreensaverConfig::setCloseOnWake(int choice) {
     const auto c = static_cast<ui::CloseOnWake>(qBound(0, choice, 2));
     if (static_cast<int>(c) == closeOnWake()) return;
     ui::writeCloseOnWake(*m_settings, c);
-    qCInfo(lcScreensaver) << "Close on wake set to" << closeOnWakeName(c);
+    qCInfo(lcScreensaver) << "Close on wake set to" << ui::closeOnWakeName(c);
     emit closeOnWakeChanged();
 }
 
@@ -177,7 +161,7 @@ bool ScreensaverConfig::closesOnWake(bool onCharger, bool loaded) const {
     const auto c = static_cast<ui::CloseOnWake>(closeOnWake());
     const bool closes = ui::closesOnWake(c, onCharger, loaded);
     if (c != ui::CloseOnWake::Never) {
-        qCInfo(lcScreensaver).nospace() << "Close on wake (" << closeOnWakeName(c) << "): a wake "
+        qCInfo(lcScreensaver).nospace() << "Close on wake (" << ui::closeOnWakeName(c) << "): a wake "
                                         << (onCharger ? "on the charger " : "off the charger ")
                                         << (closes ? "closes" : "keeps") << " the screensaver"
                                         << (loaded ? "" : " (still loading)");
@@ -206,11 +190,39 @@ bool ScreensaverConfig::closesOnChargerLoss(bool loaded) const {
     const auto c = static_cast<ui::CloseOnWake>(closeOnWake());
     const bool closes = ui::closesOnChargerLoss(c, loaded);
     if (c != ui::CloseOnWake::Never) {
-        qCInfo(lcScreensaver).nospace() << "Close on wake (" << closeOnWakeName(c) << "): charger gone, "
+        qCInfo(lcScreensaver).nospace() << "Close on wake (" << ui::closeOnWakeName(c) << "): charger gone, "
                                         << (closes ? "closes" : "keeps") << " the screensaver"
                                         << (loaded ? "" : " (still loading)");
     }
     return closes;
+}
+
+// A wake while charging on the charger opens the screensaver (upstream's rule), except while the quick undock check
+// waits for the core to confirm a lift. main.qml asks only while no screensaver is open or loading, so the line is
+// logged only for a wake that would open one.
+bool ScreensaverConfig::reopensOnWake(bool fromIdle, bool charging, bool onCharger, bool undockPending) const {
+    const bool reopens = ui::reopensOnWake(fromIdle, charging, onCharger, undockPending);
+    if (ui::reopensOnWake(fromIdle, charging, onCharger, false)) {
+        qCInfo(lcScreensaver) << (reopens ? "Wake on the charger: re-opens the screensaver"
+                                          : "Wake on the charger: not re-opening the screensaver, the quick undock "
+                                            "check is waiting for the core's charger report");
+    }
+    return reopens;
+}
+
+// --- "Undock delay" (madalone v1.6.5): the quick undock check, see screensaverClosePolicy.h ---
+
+int ScreensaverConfig::undockCloseMs() const {
+    return ui::undockCloseMs(
+        m_settings->value(QLatin1String(ui::kUndockCloseMsKey), ui::kUndockCloseMsDefault).toInt());
+}
+
+void ScreensaverConfig::setUndockCloseMs(int ms) {
+    const int value = ui::undockCloseMs(ms);
+    if (value == undockCloseMs()) return;
+    m_settings->setValue(QLatin1String(ui::kUndockCloseMsKey), value);
+    qCInfo(lcScreensaver) << "Undock delay set to" << value << "ms";
+    emit undockCloseMsChanged();
 }
 
 // --- What a tap and the remote's keys do (madalone v1.6.5), see screensaverInputPolicy.h ---
@@ -348,6 +360,7 @@ void ScreensaverConfig::resetDefaults() {
 
     emit tapToCloseChanged();
     emit closeOnWakeChanged();
+    emit undockCloseMsChanged();
     emit idleEnabledChanged();
     emit idleTimeoutChanged();
     emit reopenWhileDockedSecChanged();

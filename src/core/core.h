@@ -265,6 +265,13 @@ class Api : public QObject {
     int deleteStandbyInhibitor(const QString &id);
     int listStandbyInhibitors();
 
+    // madalone (v1.6.5): GET /api/system/power/battery for the quick undock check (src/hardware/undockCheck.h): in a
+    // test (2026-11-15) its answer said "off the charger" 1.4-4.5 s before the battery_status event on every lift with
+    // the screensaver lit or dimmed, as that event waits for the core's 5 s battery check. The answer goes out as
+    // respBatteryRest. Logged at debug only: the check asks every 250 ms while the screensaver is lit or dimmed on the
+    // charger, and for up to 6 s after a close it asked for, and logs its own decisions.
+    int getBatteryRest();
+
 
  private:
     // Shared handle of a response handler connection, so the handler can disconnect itself.
@@ -465,6 +472,9 @@ class Api : public QObject {
     void respCreateInhibitor(int reqId, int httpCode, QString id, QString errorMessage);
     void respDeleteInhibitor(int reqId, int httpCode, QString errorMessage);
     void respListInhibitors(int reqId, int httpCode, QList<Inhibitor> inhibitors, QString errorMessage);
+    // madalone (v1.6.5): the answer of getBatteryRest(): the JSON object on 200 (power_supply, status, capacity, ...);
+    // httpCode 0 = no HTTP answer (a transport error, or none within 1 s)
+    void respBatteryRest(int reqId, int httpCode, QVariantMap battery, QString errorMessage);
 
     void wifiStatusChanged(int reqId, int code, WifiStatus wifiStatus);
     void wifiScanStatusChanged(int reqId, int code, bool active, QList<AccessPointScan> scan);

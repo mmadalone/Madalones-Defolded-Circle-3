@@ -22,6 +22,7 @@ import "qrc:/components" as Components
 import "qrc:/settings/softwareupdate" as Softwareupdate
 import "qrc:/components/entities/activity" as ActivityComponents
 import ScreensaverConfig 1.0
+import UndockCheck 1.0
 
 ApplicationWindow {
     id: applicationWindow
@@ -711,6 +712,13 @@ ApplicationWindow {
             running: false
             interval: ScreensaverConfig.reopenWhileDockedSec * 1000
             onTriggered: {
+                // madalone (v1.6.5): a close by the quick undock check comes before the core reports the charger gone,
+                // so Battery still says docked; wait another round until that report comes (it stops this timer) or
+                // UndockCheck gives up waiting (6 s), instead of reopening the screensaver in the hand that lifted it
+                if (UndockCheck.undockPending) {
+                    restart();
+                    return;
+                }
                 if (Battery.powerSupply && !chargingScreenLoader.active && !ui.editMode) {
                     chargingScreenLoader.active = true;
                 }
@@ -731,6 +739,12 @@ ApplicationWindow {
             running: false
             interval: 350
             onTriggered: {
+                // madalone (v1.6.5): as in dockedRearmTimer above, not while the quick undock check waits for the core
+                // to confirm a lift; look again a grace later (the core's report of the lift stops this timer)
+                if (UndockCheck.undockPending) {
+                    restart();
+                    return;
+                }
                 if (Battery.powerSupply && !chargingScreenLoader.active) {
                     chargingScreenLoader.active = true;
                 }
@@ -787,6 +801,22 @@ ApplicationWindow {
             } else {
                 root._nextOpenViaDock = false;
                 chargingScreenLoader.active = false;
+            }
+        }
+
+        // madalone (v1.6.5): the quick undock check (src/hardware/undockCheck.h, GitHub issue #3) watches the charger
+        // while the screensaver is open (`opened`: neither opening nor closing); C++ decides, and asks for the close
+        Binding {
+            target: UndockCheck
+            property: "screensaverOpen"
+            value: chargingScreenLoader.item !== null && chargingScreenLoader.item.opened
+        }
+        Connections {
+            target: UndockCheck
+            function onCloseRequested() {
+                if (chargingScreenLoader.active) {
+                    root._closeScreensaverNow();
+                }
             }
         }
 
@@ -888,14 +918,23 @@ ApplicationWindow {
                         }
                         // madalone (v1.6.4): 'Close on wake' decides whether this wake closes it. With Undocked a
                         // wake on the charger keeps it: a lift reaches the UI as a wake first and as the charger loss
-                        // 2-5 s later (the core's 5 s battery check), so the charger-loss handler above closes a
-                        // lifted one.
+                        // 2-5 s later (the core's 5 s battery check). Since v1.6.5 the quick undock check (UndockCheck,
+                        // onCloseRequested above) closes a lifted one soon after this wake; when it can't, the
+                        // charger-loss handler above does.
                         if (chargingScreenLoader.active
                                 && ScreensaverConfig.closesOnWake(Battery.powerSupply, chargingScreenLoader.item !== null)) {
                             root._closeScreensaverNow();
                         }
                         // Re-open screensaver when waking from suspend while charging (if not closed above)
-                        else if (fromPowerMode !== PowerModes.Idle && Battery.isCharging && Battery.powerSupply) {
+                        // madalone (v1.6.5): ScreensaverConfig.reopensOnWake holds that rule and one more: not while
+                        // the quick undock check waits for the core to confirm a lift (UndockCheck.undockPending).
+                        // Battery still says docked then, and this branch opened the screensaver again in the hand
+                        // that had lifted the remote. The check is part of the condition, so dockedRearmTimer is left
+                        // running and opens the screensaver later if the remote stayed on the charger.
+                        else if (!chargingScreenLoader.active
+                                 && ScreensaverConfig.reopensOnWake(fromPowerMode === PowerModes.Idle,
+                                                                    Battery.isCharging, Battery.powerSupply,
+                                                                    UndockCheck.undockPending)) {
                             chargingScreenLoader.active = true;
                             dockedRearmTimer.stop();   // madalone (v1.4.15): wake re-opened it; cancel pending rearm
                         }

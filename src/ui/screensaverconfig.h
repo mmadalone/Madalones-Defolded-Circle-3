@@ -200,6 +200,19 @@ public:
 signals:
     void closeOnWakeChanged();
 public:
+
+    // madalone (v1.6.5): "Undock delay": the quick undock check (src/hardware/undockCheck.h) closes the screensaver
+    // once "off the charger" readings in a row, one every 250 ms, span the whole delay (delay / 250 ms + 1 of them):
+    // 500-2000 ms in steps of 250, default 500, in charging/undockCloseMs.
+    // Hand-written because the value goes through ui::undockCloseMs() (screensaverClosePolicy.h); the setter writes,
+    // logs and emits only on a change.
+    Q_PROPERTY(int undockCloseMs READ undockCloseMs WRITE setUndockCloseMs NOTIFY undockCloseMsChanged)
+public:
+    int undockCloseMs() const;
+    void setUndockCloseMs(int ms);
+signals:
+    void undockCloseMsChanged();
+public:
     SCRN_BOOL(idleEnabled,         "charging/idleEnabled",            false)
     SCRN_INT(idleTimeout,          "charging/idleTimeout",            45)
     // madalone (v1.4.15): "Run after dismissal while docked": the screensaver reopens this many seconds after it
@@ -330,8 +343,9 @@ public:
     Q_INVOKABLE void resetDefaults();
 
     /// @name "Close on wake" for main.qml
-    /// main.qml asks these instead of deciding itself (upstream ADR 0012); the rule is in screensaverClosePolicy.h.
-    /// Both log the decision at info (uc.ui.screensaver) unless the choice is Never.
+    /// main.qml asks these instead of deciding itself (upstream ADR 0012); the rules are in screensaverClosePolicy.h.
+    /// closesOnWake() and closesOnChargerLoss() log the decision at info (uc.ui.screensaver) unless the choice is
+    /// Never; reopensOnWake() logs it whenever the wake would open the screensaver by upstream's rule.
     /// @{
     /// true if a wake to Normal closes the open or still-loading screensaver. onCharger: Battery.powerSupply;
     /// loaded: the screensaver has finished loading.
@@ -339,6 +353,11 @@ public:
     /// true if the core's report that the charger is gone (a lift, or on a Qi pad also charging that stopped)
     /// closes the open or still-loading screensaver
     Q_INVOKABLE bool closesOnChargerLoss(bool loaded) const;
+    /// madalone (v1.6.5): true if a wake to Normal opens the screensaver while none is open or loading: a wake from
+    /// sleep while charging on the charger (upstream's rule), but not while the quick undock check waits for the core
+    /// to confirm a lift. fromIdle: the wake came from the dimmed display; charging: Battery.isCharging; onCharger:
+    /// Battery.powerSupply; undockPending: UndockCheck.undockPending.
+    Q_INVOKABLE bool reopensOnWake(bool fromIdle, bool charging, bool onCharger, bool undockPending) const;
     /// @}
 
     /// @name What a tap and the remote's keys do, for ChargingScreen.qml (madalone v1.6.5)

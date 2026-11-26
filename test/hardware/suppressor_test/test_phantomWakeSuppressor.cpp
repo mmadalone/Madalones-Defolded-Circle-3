@@ -13,15 +13,53 @@
 // 5. v1.4.23 input-lookback skip-grace logic (the wake-press timing fix)
 // 6. setGraceMs / setInputLookbackMs clamping
 // 7. setEnabled mid-grace cancels the active timer
+// 8. v1.6.5: the quick undock check's close counts as a real wake (onQuickUndock), and the log names what cancelled a
+//    grace or made a wake skip it
 
 #include <QtTest>
 #include <QCoreApplication>
+#include <QRegularExpression>
 #include <QSignalSpy>
 
 #include "../../../src/core/core.h"
 #include "../../../src/hardware/phantomWakeSuppressor.h"
 #include "../../../src/system/power.h"
 #include "../mock_core_api.h"
+
+namespace {
+
+// the info lines of uc.hw while one of these exists, oldest first (they still reach QtTest's handler)
+class HwLog {
+ public:
+    HwLog() {
+        s_lines.clear();
+        s_previous = qInstallMessageHandler(&HwLog::handle);
+    }
+    ~HwLog() { qInstallMessageHandler(s_previous); }
+    HwLog(const HwLog&) = delete;
+    HwLog& operator=(const HwLog&) = delete;
+
+    // the lines that contain `part`
+    QStringList matching(const QString& part) const { return s_lines.filter(part); }
+
+ private:
+    static void handle(QtMsgType type, const QMessageLogContext& context, const QString& message) {
+        if (type == QtInfoMsg && context.category && qstrcmp(context.category, "uc.hw") == 0) {
+            s_lines.append(message);
+        }
+        if (s_previous) {
+            s_previous(type, context, message);
+        }
+    }
+
+    static QStringList      s_lines;
+    static QtMessageHandler s_previous;
+};
+
+QStringList      HwLog::s_lines;
+QtMessageHandler HwLog::s_previous = nullptr;
+
+}  // namespace
 
 class PhantomWakeSuppressorTest : public QObject {
     Q_OBJECT
@@ -216,6 +254,68 @@ class PhantomWakeSuppressorTest : public QObject {
         QVERIFY(!m_suppressor->getArmed());
     }
 
+    // v1.6.5: the quick undock check found the remote off its charger (UndockCheck::closeRequested). That counts as
+    // activity: a grace window that is still running is cancelled, and the display stays on. On a remote the close
+    // has to come before the grace runs out for that: about 0.6-0.85 s after the wake at the default Undock delay.
+    void test_onQuickUndock_duringGrace_cancels() {
+        m_suppressor->setInputLookbackMs(0);
+        m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
+        QVERIFY(m_suppressor->getArmed());
+
+        m_suppressor->onQuickUndock();
+        QVERIFY(!m_suppressor->getArmed());
+
+        QTest::qWait(kFastGraceMs + 50);
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+    }
+
+    void test_onQuickUndock_noActiveGrace_isHarmless() {
+        QSignalSpy armedSpy(m_suppressor, &uc::hw::PhantomWakeSuppressor::armedChanged);
+        QVERIFY(!m_suppressor->getArmed());
+        m_suppressor->onQuickUndock();
+        QVERIFY(!m_suppressor->getArmed());
+        QCOMPARE(armedSpy.count(), 0);
+        QCOMPARE(uc::test::MockCoreRecorder::setPowerModeCallCount(), 0);
+    }
+
+    // v1.6.5: the cancel line names what cancelled the grace. A charger change was logged as "user input" before,
+    // which made a device log read as if a button had been pressed.
+    void test_cancelReasons_nameTheirSource_data() {
+        QTest::addColumn<int>("source");
+        QTest::addColumn<QString>("reason");
+        QTest::newRow("a key or a touch") << 0 << QStringLiteral("user input");
+        QTest::newRow("an entity command") << 1 << QStringLiteral("entity command");
+        QTest::newRow("the core's charger report") << 2 << QStringLiteral("charger change");
+        QTest::newRow("the quick undock check") << 3 << QStringLiteral("off the charger (quick undock check)");
+    }
+
+    void test_cancelReasons_nameTheirSource() {
+        QFETCH(int, source);
+        QFETCH(QString, reason);
+        HwLog log;
+        m_suppressor->setInputLookbackMs(0);
+        m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
+        QVERIFY(m_suppressor->getArmed());
+        switch (source) {
+            case 0:
+                m_suppressor->onUserInput();
+                break;
+            case 1:
+                m_suppressor->onEntityCommandIssued("light.desk", "light.toggle");
+                break;
+            case 2:
+                m_suppressor->onPowerSupplyChanged(false);
+                break;
+            default:
+                m_suppressor->onQuickUndock();
+                break;
+        }
+        QVERIFY(!m_suppressor->getArmed());
+        const QStringList lines = log.matching(QStringLiteral("PhantomWakeSuppressor cancelled:"));
+        QCOMPARE(lines.count(), 1);
+        QCOMPARE(lines.first(), QStringLiteral("PhantomWakeSuppressor cancelled: %1").arg(reason));
+    }
+
     // ──────────────────────────────────────────────────────────────────────
     // 4. v1.4.23 input-lookback skip-grace
     // ──────────────────────────────────────────────────────────────────────
@@ -245,6 +345,62 @@ class PhantomWakeSuppressorTest : public QObject {
         QTest::qWait(100);  // wait past lookback window
         m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
         QVERIFY(m_suppressor->getArmed());
+    }
+
+    // v1.6.5: a close by the quick undock check counts as recent activity too, and the skip line names the kind of
+    // activity instead of calling everything "input". It also says how long ago that activity was: 60 ms pass here
+    // (QTest::qWait waits at least that long), so that this number is told from the lookback printed after it. The
+    // lookback is the longest there is, 2000 ms: a machine that stalls for less than 1.9 s between the two calls
+    // changes nothing.
+    void test_inputLookback_quickUndockCounts() {
+        HwLog log;
+        m_suppressor->setInputLookbackMs(2000);
+        m_suppressor->onQuickUndock();
+        QTest::qWait(60);
+        m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
+        QVERIFY(!m_suppressor->getArmed());
+        const QStringList lines = log.matching(QStringLiteral("skipping grace"));
+        QCOMPARE(lines.count(), 1);
+        const QRegularExpressionMatch line =
+            QRegularExpression(QStringLiteral("^PhantomWakeSuppressor: skipping grace \\(off the charger \\(quick "
+                                              "undock check\\) (\\d+) ms ago, lookback 2000 ms\\)$"))
+                .match(lines.first());
+        QVERIFY2(line.hasMatch(), qPrintable(lines.first()));
+        const int ago = line.captured(1).toInt();
+        QVERIFY2(ago >= 60 && ago < 2000, qPrintable(lines.first()));
+    }
+
+    void test_inputLookback_skipLineNamesTheKind_data() {
+        QTest::addColumn<int>("source");
+        QTest::addColumn<QString>("kind");
+        QTest::newRow("a key or a touch") << 0 << QStringLiteral("user input");
+        QTest::newRow("an entity command") << 1 << QStringLiteral("entity command");
+        QTest::newRow("the core's charger report") << 2 << QStringLiteral("charger change");
+    }
+
+    void test_inputLookback_skipLineNamesTheKind() {
+        QFETCH(int, source);
+        QFETCH(QString, kind);
+        HwLog log;
+        m_suppressor->setInputLookbackMs(2000);  // the longest: see test_inputLookback_quickUndockCounts
+        switch (source) {
+            case 0:
+                m_suppressor->onUserInput();
+                break;
+            case 1:
+                m_suppressor->onEntityCommandIssued("light.desk", "light.toggle");
+                break;
+            default:
+                m_suppressor->onPowerSupplyChanged(true);
+                break;
+        }
+        m_suppressor->onPowerModeChanged(PowerMode::Low_power, PowerMode::Normal);
+        QVERIFY(!m_suppressor->getArmed());
+        const QStringList lines = log.matching(QStringLiteral("skipping grace"));
+        QCOMPARE(lines.count(), 1);
+        QVERIFY2(lines.first().startsWith(QStringLiteral("PhantomWakeSuppressor: skipping grace (%1 ").arg(kind)),
+                 qPrintable(lines.first()));
+        QVERIFY2(lines.first().endsWith(QStringLiteral(" ms ago, lookback 2000 ms)")), qPrintable(lines.first()));
     }
 
     void test_inputLookback_entityCommandUpdatesLastInput() {

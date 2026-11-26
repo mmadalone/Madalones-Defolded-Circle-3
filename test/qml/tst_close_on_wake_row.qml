@@ -153,8 +153,9 @@ Item {
         function test_helpFollowsTheChoice() {
             compare(row.help, "Stays until you close it.");
             ScreensaverConfig.closeOnWake = 1;
+            // v1.6.5: "soon", the Undock delay of the quick undock check (it said "a few seconds" in v1.6.4)
             compare(row.help,
-                    "Stays on the dock. Closes a few seconds after you lift the remote, or when it wakes off the dock.");
+                    "Stays on the dock. Closes soon after you lift the remote, or when it wakes off the dock.");
             ScreensaverConfig.closeOnWake = 2;
             compare(row.help, "Closes whenever the remote wakes or leaves the dock.");
         }

@@ -91,9 +91,10 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
         // ordering and skip arming entirely. m_inputLookbackMs == 0 disables the skip.
         if (m_inputLookbackMs > 0 && m_lastInputTimer.isValid()
                 && m_lastInputTimer.elapsed() < m_inputLookbackMs) {
-            qCInfo(lcHw()) << "PhantomWakeSuppressor: skipping grace (input"
-                           << m_lastInputTimer.elapsed() << "ms ago, lookback"
-                           << m_inputLookbackMs << "ms)";
+            // v1.6.5: names what the activity was; it said "input" for a charger change too
+            qCInfo(lcHw()).nospace() << "PhantomWakeSuppressor: skipping grace (" << m_lastInputKind << " "
+                                     << m_lastInputTimer.elapsed() << " ms ago, lookback " << m_inputLookbackMs
+                                     << " ms)";
             return;
         }
         // Wake event detected — arm the grace window. If the user presses something
@@ -112,11 +113,16 @@ void PhantomWakeSuppressor::onPowerModeChanged(Power::PowerMode fromPowerMode, P
 }
 
 void PhantomWakeSuppressor::onUserInput() {
+    noteActivity("user input");
+}
+
+void PhantomWakeSuppressor::noteActivity(const char* what) {
     // v1.4.23: always update last-input timestamp (used by onPowerModeChanged for
     // skip-grace logic), regardless of whether a grace window is currently active.
+    m_lastInputKind = what;
     m_lastInputTimer.restart();
     if (!m_graceTimer.isActive()) return;
-    cancelGrace("user input");
+    cancelGrace(what);
 }
 
 void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString command) {
@@ -130,15 +136,23 @@ void PhantomWakeSuppressor::onEntityCommandIssued(QString entityId, QString comm
     // phantom wake; with the names fixed it would still have missed lights and switches.
     // v1.4.23: update last-input timestamp here too, so an entity command arriving
     // before the powerModeChanged signal still counts toward the skip-grace lookback.
-    m_lastInputTimer.restart();
-    if (!m_graceTimer.isActive()) return;
-    cancelGrace("entity command");
+    noteActivity("entity command");
 }
 
 void PhantomWakeSuppressor::onPowerSupplyChanged(bool onAc) {
     // Both directions count as user activity (placing on dock or removing from dock).
+    // v1.6.5: logged as "charger change"; it said "user input".
     Q_UNUSED(onAc)
-    onUserInput();
+    noteActivity("charger change");
+}
+
+void PhantomWakeSuppressor::onQuickUndock() {
+    // The remote was found off its charger for the Undock delay (a lift, or a cut of the charging that long): the wake
+    // that came with it counts as a real one. Without this the grace ran out on a dark pick-up with no button
+    // pressed, the display went off in the user's hand, the core woke it again at once, and that second wake opened
+    // the screensaver again (seen on the maintainer's remote, 2026-11-15, grace 2000 ms). It helps only when the close
+    // comes before the grace runs out: see the header.
+    noteActivity("off the charger (quick undock check)");
 }
 
 void PhantomWakeSuppressor::onCoreDisconnected() {

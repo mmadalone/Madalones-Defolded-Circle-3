@@ -57,6 +57,13 @@ TestCase {
     function test_default_idleEnabled() { compare(ScreensaverConfig.idleEnabled, false); }
     function test_default_idleTimeout() { compare(ScreensaverConfig.idleTimeout, 45); }
     function test_default_closeOnWake() { compare(ScreensaverConfig.closeOnWake, 0, "Close on wake: Never"); }
+    function test_default_undockCloseMs() { compare(ScreensaverConfig.undockCloseMs, 500, "Undock delay: 500 ms"); }
+    function test_reset_restores_undockCloseMs() {
+        ScreensaverConfig.undockCloseMs = 1500;
+        compare(ScreensaverConfig.undockCloseMs, 1500);
+        ScreensaverConfig.resetDefaults();
+        compare(ScreensaverConfig.undockCloseMs, 500);
+    }
     function test_default_batteryDockedOnly() { compare(ScreensaverConfig.batteryDockedOnly, true); }
     function test_default_starfieldTouchbar() {
         compare(ScreensaverConfig.starfieldTouchbar, "density", "Starfield Touchbar: Density, as up to v1.6.3");

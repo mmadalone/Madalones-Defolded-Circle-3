@@ -1821,12 +1821,6 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="57"/>
-        <source>Stays on the dock. Closes a few seconds after you lift the remote, or when it wakes off the dock.</source>
-        <extracomment>Help of &quot;Close on wake&quot; set to Undocked. &quot;A few seconds&quot;: the remote notices that it left the dock at its battery check, about every 5 seconds.</extracomment>
-        <translation type="unfinished"></translation>
-    </message>
-    <message>
         <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="60"/>
         <source>Closes whenever the remote wakes or leaves the dock.</source>
         <extracomment>Help of &quot;Close on wake&quot; set to Always</extracomment>
@@ -1857,64 +1851,82 @@ Climate fan</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="98"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="106"/>
+        <source>Undock delay</source>
+        <extracomment>Screensaver setting: how long the remote must be off its charger or dock before the screensaver closes by itself (&quot;Close on wake&quot; set to Undocked or Always)</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="109"/>
+        <source>How long the remote must be off the charger before the screensaver closes. Raise it if bumping the charger closes the screensaver.</source>
+        <extracomment>Help of the &quot;Undock delay&quot; slider. A bump on a charging pad can cut the charging for a moment.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="130"/>
         <source>DPAD interactive</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="116"/>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="181"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="148"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="213"/>
         <source>Remember direction</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="137"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="169"/>
         <source>Touchbar speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="156"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="188"/>
         <source>Touch directions</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="159"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="191"/>
         <source>Tap screen zones to change direction. Tap the center four times in a row to close.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="266"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="298"/>
         <source>On the dock, the screensaver comes back this many seconds after it closes, even while you use the remote (not while you reorder a page).</source>
         <extracomment>Help of the &quot;Run after dismissal while docked&quot; slider. &quot;Reorder&quot; is the main screen&apos;s mode for moving entities on a page.</extracomment>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="202"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="234"/>
         <source>Swipe speed</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="219"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="57"/>
+        <source>Stays on the dock. Closes soon after you lift the remote, or when it wakes off the dock.</source>
+        <extracomment>Help of &quot;Close on wake&quot; set to Undocked. &quot;Soon&quot;: about the &quot;Undock delay&quot; set below (half a second by default), or a few seconds when the remote can&apos;t tell sooner.</extracomment>
+        <translation type="unfinished"></translation>
+    </message>
+    <message>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="251"/>
         <source>Idle screensaver</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="238"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="270"/>
         <source>Idle timeout</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="259"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="291"/>
         <source>Run after dismissal while docked</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="292"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="324"/>
         <source>Atlas profiling overlay</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="293"/>
+        <location filename="../../src/qml/settings/settings/chargingscreen/GeneralBehavior.qml" line="325"/>
         <source>Shows atlas build phase timings at the top of the Matrix screensaver. Profiling tool — leave off during normal use.</source>
         <translation type="unfinished"></translation>
     </message>
@@ -6141,7 +6153,7 @@ Select the QR code to read them on the screen.</translation>
 <context>
     <name>main</name>
     <message>
-        <location filename="../../src/qml/main.qml" line="1125"/>
+        <location filename="../../src/qml/main.qml" line="1164"/>
         <source>Done</source>
         <translation>Done</translation>
     </message>

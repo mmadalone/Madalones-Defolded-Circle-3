@@ -52,9 +52,9 @@ ColumnLayout {
         help: {
             switch (ScreensaverConfig.closeOnWake) {
             case 1:
-                //: Help of "Close on wake" set to Undocked. "A few seconds": the remote notices that it left the dock
-                //: at its battery check, about every 5 seconds.
-                return qsTr("Stays on the dock. Closes a few seconds after you lift the remote, or when it wakes off the dock.");
+                //: Help of "Close on wake" set to Undocked. "Soon": about the "Undock delay" set below (half a second
+                //: by default), or a few seconds when the remote can't tell sooner.
+                return qsTr("Stays on the dock. Closes soon after you lift the remote, or when it wakes off the dock.");
             case 2:
                 //: Help of "Close on wake" set to Always
                 return qsTr("Closes whenever the remote wakes or leaves the dock.");
@@ -88,6 +88,38 @@ ColumnLayout {
             }
             Accessible.name: "Close on wake"
             KeyNavigation.up: tapToCloseSwitch
+            KeyNavigation.down: ScreensaverConfig.closeOnWake !== 0 ? undockDelaySlider
+                                                                    : (root.matrix ? dpadEnabledSwitch : idleEnabledSwitch)
+        }
+    }
+
+    // UNDOCK DELAY (madalone v1.6.5, GitHub issue #3): the quick undock check closes the screensaver once "off the
+    // charger" readings in a row, one every 250 ms, span the whole delay (src/hardware/undockCheck.h; 500-2000 ms in
+    // steps of 250): the remote has then read "off the charger" for at least the delay. Shown for Undocked and Always,
+    // the choices that close on charger loss.
+    Components.SettingRow {
+        id: undockDelayRow
+        objectName: "undockDelayRow"
+        visible: ScreensaverConfig.closeOnWake !== 0
+        //: Screensaver setting: how long the remote must be off its charger or dock before the screensaver closes by
+        //: itself ("Close on wake" set to Undocked or Always)
+        title: qsTr("Undock delay")
+        value: ScreensaverConfig.undockCloseMs + " ms"
+        //: Help of the "Undock delay" slider. A bump on a charging pad can cut the charging for a moment.
+        help: qsTr("How long the remote must be off the charger before the screensaver closes. Raise it if bumping the charger closes the screensaver.")
+        controlBelow: true
+
+        Components.Slider {
+            id: undockDelaySlider
+            objectName: "undockDelaySlider"
+            height: 60
+            from: 500; to: 2000; stepSize: 250
+            value: ScreensaverConfig.undockCloseMs; live: true; showLiveValue: false
+            onMoved: ScreensaverConfig.undockCloseMs = value
+            onUserInteractionEnded: ScreensaverConfig.undockCloseMs = value
+            highlight: activeFocus && ui.keyNavigationActive
+            Accessible.name: "Undock delay " + value
+            KeyNavigation.up: closeOnWakePicker
             KeyNavigation.down: root.matrix ? dpadEnabledSwitch : idleEnabledSwitch
         }
     }
@@ -106,7 +138,7 @@ ColumnLayout {
             trigger: function() { ScreensaverConfig.dpadEnabled = !ScreensaverConfig.dpadEnabled; }
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "DPAD interactive"
-            KeyNavigation.up: closeOnWakePicker
+            KeyNavigation.up: ScreensaverConfig.closeOnWake !== 0 ? undockDelaySlider : closeOnWakePicker
             KeyNavigation.down: ScreensaverConfig.dpadEnabled ? dpadPersistSwitch : tapDirectionSwitch
         }
     }
@@ -228,7 +260,7 @@ ColumnLayout {
             highlight: activeFocus && ui.keyNavigationActive
             Accessible.name: "Idle screensaver"
             KeyNavigation.up: root.matrix ? (ScreensaverConfig.tapDirection ? swipeSpeedSwitch : tapDirectionSwitch)
-                                          : closeOnWakePicker
+                                          : (ScreensaverConfig.closeOnWake !== 0 ? undockDelaySlider : closeOnWakePicker)
             KeyNavigation.down: ScreensaverConfig.idleEnabled ? idleTimeoutSlider : dockedRearmSlider
         }
     }

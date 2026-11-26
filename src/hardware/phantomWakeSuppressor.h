@@ -50,13 +50,22 @@ class PhantomWakeSuppressor : public QObject {
     void onUserInput();
     // EntityController::entityCommandIssued — every entity command counts as user input
     // (v1.5.5; entity commands only come from user actions).
-    // v1.4.22: critical for wake-press detection. Firmware delivers wake-press events
-    // directly to integrations, bypassing InputController::keyPressed in our UI process.
-    // The first press that wakes the device only surfaces at the entity-command layer;
-    // without this slot, Mod 6 force-backs every wake-press as if it were a phantom wake.
+    // v1.4.22: added for the press that wakes the device. On firmware 2.9.1 one such press, out
+    // of standby (PLAY, 2026-05-01), went straight to the integrations and did not reach
+    // InputController::keyPressed in our UI process: it surfaced only at the entity-command
+    // layer, and without this slot Mod 6 would have forced it back as a phantom wake. On firmware
+    // 2.12.1 the journal shows activity 3-53 ms before the wake in 48 of 165 wakes; test build
+    // 1.6.4-keys1 did not log of which kind. Since v1.6.5 the "skipping grace" line names the kind.
     void onEntityCommandIssued(QString entityId, QString command);
     // Battery::powerSupplyChanged — dock/undock counts as user activity.
     void onPowerSupplyChanged(bool onAc);
+    // madalone (v1.6.5): UndockCheck::closeRequested — the quick undock check found the remote off its charger for
+    // the Undock delay (GitHub issue #3): a lift, or a cut of the charging that long. The same fact as the charger
+    // report above, known sooner (up to about 4.5 s at the default delay), and it counts as activity in the same way.
+    // On a dark pick-up it keeps the display on only when the close comes before the grace window runs out: about
+    // 0.6-0.85 s after the wake at the default Undock delay (the grace has to be about 0.4 s longer than the delay),
+    // so not within the default 500 ms: the display then goes off and the screensaver closes on the core's report.
+    void onQuickUndock();
     // core::Api::disconnected — defensive cleanup if connection drops mid-grace.
     void onCoreDisconnected();
 
@@ -67,6 +76,9 @@ class PhantomWakeSuppressor : public QObject {
     void armedChanged();
 
  private:
+    // madalone (v1.6.5): every kind of activity goes through here. It remembers when the activity came and what
+    // it was (for the lookback and its log line) and cancels a running grace with that as the reason.
+    void noteActivity(const char* what);
     void cancelGrace(const char* reason);
     void forceLowPower();
 
@@ -75,6 +87,7 @@ class PhantomWakeSuppressor : public QObject {
 
     QTimer        m_graceTimer;       // single-shot, fires forceLowPower if grace expires without user input
     QElapsedTimer m_lastInputTimer;   // v1.4.23: tracks "last user input" timestamp for skip-grace logic
+    const char*   m_lastInputKind = "input";  // v1.6.5: what that input was (a string literal), for the skip line
 
     bool m_enabled         = false;
     int  m_graceMs         = 500;
