@@ -166,6 +166,7 @@ All stored in `$UC_CONFIG_HOME/config.ini`, at first via the existing `Config` C
 | chargingIdleTimeout | int | 45 | charging/idleTimeout |
 | reopenWhileDockedSec ("Run after dismissal while docked") | int | 60 | charging/reopenWhileDockedSec (slider 5-120 s) |
 | starfieldTouchbar ("Touchbar", on Starfield's page) | QString: "speed", "density" or "off"; any other stored value acts as "density" | "density" | charging/starfieldTouchbar (v1.6.4; see "2026-11-14 Session") |
+| undockCloseMs ("Undock delay") | int, 500–2000 ms in steps of 250 | 500 | charging/undockCloseMs (v1.6.5; see "2026-11-15 Session 3") |
 
 ### Battery Overlay (`src/qml/components/overlays/BatteryOverlay.qml`)
 

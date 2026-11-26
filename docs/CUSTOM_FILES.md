@@ -33,7 +33,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 | `src/ui/inputController.cpp` | `emit touchDetected()`, and since v1.6.5 `dropPendingKeys()` with its block in `eventFilter()` for the auto-repeat presses of a dropped key. Against upstream v0.84.0 the two files differ by inserted lines only: 11 in the header, 39 in the source. |
 | `src/ui/entity/mediaPlayer.cpp` | Bugfix: re-download image when URL is present but image data is empty (2-line change). |
 | `src/qml/components/entities/media_player/ImageLoader.qml` | Same image-re-download bugfix on the QML side. |
-| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, screensaverClosePolicy (header only, v1.6.4), screensaverTouchbar (header only, v1.6.4), screensaverInputPolicy (header only, v1.6.5), rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas, matrixrain/layerpipeline, matrixrain/layerocclusion, matrixrain/atlasbuilder, matrixrain/singlelayerrenderer, matrixrain/inputhandler, matrixrain/bindinghelper). Our `src/hardware/` files (activitySessionKeeper, phantomWakeSuppressor, screenOffSync, undockCheck (v1.6.5)) sit in alphabetical order inside upstream's `src/hardware/` block, between upstream's own entries. |
+| `remote-ui.pro` | Added custom HEADERS/SOURCES at end of lists (matrixrain, screensaverconfig, screensaverClosePolicy (header only, v1.6.4), screensaverTouchbar (header only, v1.6.4), screensaverInputPolicy (header only, v1.6.5), rainsimulation, gravitydirection, glitchengine, messageengine, glyphatlas, matrixrain/layerpipeline, matrixrain/layerocclusion, matrixrain/atlasbuilder, matrixrain/singlelayerrenderer, matrixrain/inputhandler, matrixrain/bindinghelper). Our `src/hardware/` files (activitySessionKeeper, phantomWakeSuppressor, screenOffSync, undockCheck (v1.6.5)) sit inside upstream's `src/hardware/` block, between upstream's own entries. |
 | `resources/qrc/main.qrc` | Registered all custom QML files and settings sub-pages. |
 
 ---
@@ -114,7 +114,7 @@ Tracks every file that is custom (added by madalone) or modified from the upstre
 ### Modified Upstream QML
 | File | Modification |
 |------|-------------|
-| `src/qml/components/ChargingScreen.qml` | Replaced stock analog clock with theme Loader system. Added ButtonNavigation for interactive screensaver controls. Added displayOff propagation. The touch slider's control on the screensaver: the Matrix speed, and on Starfield the Animation speed, the Star density or nothing, as `ScreensaverConfig.starfieldTouchbar` picks (v1.6.4; up to v1.6.3 always the Star density). |
+| `src/qml/components/ChargingScreen.qml` | Replaced stock analog clock with theme Loader system. Added ButtonNavigation for interactive screensaver controls. Added displayOff propagation. The touch slider's control on the screensaver: the Matrix speed, and on Starfield the Animation speed, the Star density or nothing, as `ScreensaverConfig.starfieldTouchbar` picks (v1.6.4; up to v1.6.3 always the Star density). Since v1.6.5: the keys close on release (`keyAction()`), the lone tap (`loneTapAction()`), `matrixLoaded` for the Matrix checks, and `onClosed` calls `dropPendingKeys()` (see the v1.6.5 sections). |
 | `src/qml/settings/settings/ChargingScreen.qml` | Replaced stock charging settings with full screensaver configuration (theme selector + sub-pages). 2026-04-14: theme sub-pages wrapped in deferred Loaders via `sourceComponent:` + inline `Component { }` to fix settings-open freeze. |
 | `src/qml/settings/Settings.qml` | Added "Screensaver" menu entry. |
 | `src/qml/components/Switch.qml` | Added `Keys.onReturnPressed`/`onEnterPressed` for DPAD center toggle. |
@@ -279,7 +279,7 @@ round 2".
 
 ## v1.6.5: the remote's keys on the screensaver
 
-Unreleased; the code comments mark the change "v1.6.5". Checked in tests and, for the keys' close, in the desktop simulator (both steering switches on: tests only). On a remote only the greyed "Flash on tap" row and TV Static opening without a flash have been checked (the owner's checks 4 and 5 on test build 1.6.4-keys1, reported as passed on 2026-11-19); the keys themselves not yet: that build's button checks (6-10) were not done.
+Unreleased; the code comments mark the change "v1.6.5". Checked in tests and, for the keys' close, in the desktop simulator (both steering switches on: tests only). On a remote: the greyed "Flash on tap" row and TV Static opening without a flash (the owner's checks 4 and 5 on test build 1.6.4-keys1, reported as passed on 2026-11-19), and the keys' close on release on Starfield (test build 1.6.4-keys2, 2026-11-26); not Minimal, Analog, TV Static or both steering switches on.
 
 **A key closes the screensaver on its release**, and only a key pressed while it showed: `ChargingScreen.qml`
 remembers such a key at its press (`_closeOnRelease`) and closes at its release. Up to v1.6.4 the press closed it, and

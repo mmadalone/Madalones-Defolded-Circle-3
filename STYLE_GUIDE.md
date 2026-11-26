@@ -304,7 +304,7 @@ The CI workflow `.github/workflows/build.yml:37-87` already enforces gates 1 + 2
 | 3 | `git status --porcelain` empty (no untracked, no modified, no `_build_logs/` staged accidentally) | MUST | one command |
 | 4 | `lupdate` regen'd if any new `qsTr` strings landed | SHOULD | `git diff --stat resources/translations/` after running lupdate |
 | 5 | Local clean test build (`qmake && make`, plus `test/hardware/*.pro` + `test/qml/*.pro` if those changed) | SHOULD | exit code |
-| 6 | CI green on the commit you're about to tag (`build.yml`, `test.yml`, `code_guidelines.yml`, `tidy.yml`) | MUST | GH Actions UI |
+| 6 | CI green on the commit you're about to tag (`build.yml`, `test.yml`, `code_guidelines.yml`, `tidy.yml`, `docs-links.yml`) | MUST | GH Actions UI |
 
 **Skippable when:** doc/test-only release with byte-identical binary to the prior tag — note the fact in the release notes (precedent: v1.4.37, v1.4.38). Gates 4 and 5 are SHOULD, not MUST, specifically to keep this skip clean.
 
