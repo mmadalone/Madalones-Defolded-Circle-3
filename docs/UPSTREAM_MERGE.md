@@ -29,30 +29,35 @@ Messages settings modified four of them for the first time (`src/ui/notification
 `src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`). v1.6.4 modifies none for the first
 time: the upstream files it touches (`src/qml/main.qml`, `src/qml/components/ChargingScreen.qml`, the four
 `TouchSlider*.qml`, `remote-ui.pro`, `test/CMakeLists.txt`, `resources/translations/en_US.ts`, `README.md`,
-`CHANGELOG.md`) were already on the list.
+`CHANGELOG.md`) were already on the list. v1.6.5 (unreleased) modifies none for the first time either, so the count
+stays 67: its 13 upstream files (`src/core/core.{h,cpp}`, `src/hardware/hardwareController.{h,cpp}`, `src/main.cpp`,
+`src/qml/main.qml`, `src/qml/components/ChargingScreen.qml`, `src/ui/inputController.{h,cpp}`, `remote-ui.pro`,
+`resources/translations/en_US.ts`, `README.md`, `CHANGELOG.md`) were already on the list (counted on 2026-11-20:
+each changed path of the working tree that exists in `refs/upstream-public/v0.84.0` already differed from it at
+v1.6.4).
 
 | Area | Upstream files | What we keep | Conflict risk |
 |---|---|---|---|
 | Build | `remote-ui.pro`, `resources/qrc/main.qrc`, `.gitignore` | Our sources and QML in HEADERS / SOURCES / qrc; `VERSION` in sync with `deploy/release.json`; extra warning flags; ignore entries (incl. `CLAUDE.md`) | High |
 | CI | `.github/workflows/build.yml` | Version-sync + CHANGELOG gates, UCR3 install-bundle staging (every file of `deploy/config/`, no sub-dirs), GPG signing, digest-pinned 5.15.19 toolchain (upstream uses the same image unpinned) | Medium |
-| Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `ScreenOffSync` input; `DevDockToggle` in DEV; the Messages switches pushed into `Notification::setErrorFeedback` and `Notification::setUnavailableBanners` before the UI loads and on every change | High |
+| Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `ScreenOffSync` input; `DevDockToggle` in DEV; the Messages switches pushed into `Notification::setErrorFeedback` and `Notification::setUnavailableBanners` before the UI loads and on every change; Close on wake and the Undock delay pushed into `UndockCheck` at start-up and on every change, and the charger once at start-up (v1.6.5; without them it stays at Never and never runs) | High |
 | Settings store | `src/config/config.{h,cpp}` | Our Q_PROPERTYs: phantom wake, keep awake, dock chime, media buttons (v1.4.8), volume overlay, WiFi chip, Messages (`showErrorPopups`, `showErrorBanner`, `errorBannerSec`, `showUnavailableBanners`, `otherBannerSec`, keys `ui/<name>`) | High |
-| Core API | `src/core/core.{h,cpp}`, `src/core/structs.h` | `setPowerMode` (Mod 6, body field `mode`), REST helpers + standby-inhibitor calls (Mod 5), `Inhibitor` struct. Keep our declarations above upstream's `private:` | High |
-| Hardware | `src/hardware/hardwareController.{h,cpp}`, `src/system/battery.h`, `src/system/wifi.{h,cpp}` | Keeper / suppressor construction and wiring; `Battery::instance()`; WiFi W1 (WoWLAN shown), W2 link fields, W4 reassociate, W6 30 s poll, W13 diagnostics | High: upstream reworks Wi-Fi often |
+| Core API | `src/core/core.{h,cpp}`, `src/core/structs.h` | `setPowerMode` (Mod 6, body field `mode`), REST helpers + standby-inhibitor calls (Mod 5), `getBatteryRest` / `respBatteryRest` (v1.6.5, the quick undock check), `Inhibitor` struct. Keep our methods above upstream's `private:` and our `resp*` signals in its `signals:` block | High |
+| Hardware | `src/hardware/hardwareController.{h,cpp}`, `src/system/battery.h`, `src/system/wifi.{h,cpp}` | Keeper / suppressor construction and wiring; `ScreenOffSync` (v1.6.2) and `UndockCheck` (v1.6.5), built after them: `ScreenOffSync` connected to Power and the touch slider, `UndockCheck` to Power, Battery and the core's `disconnected`, and its `closeRequested` to `PhantomWakeSuppressor::onQuickUndock` (v1.6.5: a close by the quick undock check counts as activity for the phantom-wake check), both registered as the QML singletons `ScreenOffSync 1.0` / `UndockCheck 1.0` that the screensaver's QML imports, with `getScreenOffSync()` / `getUndockCheck()`; `Battery::instance()`; WiFi W1 (WoWLAN shown), W2 link fields, W4 reassociate, W6 30 s poll, W13 diagnostics | High: upstream reworks Wi-Fi often |
 | Entities | `src/ui/entity/entityController.{h,cpp}`, `src/ui/entity/mediaPlayer.{h,cpp}` | Mod 5 hook in `connectLazySignals` (only players a screen asked for), `entityCommandIssued`, `LOW_POWER` in the wake flag; `hide_volume_overlay`; browse-thumbnail preview on the artwork pipeline; the Messages block in `handleCommandFailure` (after the wake-up resend, the `voice_start` hand-off, the repeat drop and the entity-name lookup, just before `switch (code)`: with the pop-ups off, remove the pending command and show the error banner instead); in `refuseUnavailableEntity` (an activity's button mapping to an unavailable entity) `Notification::createUnavailableBanner` instead of `createNotification`, so "Show offline banners" can hide the "%1 is unavailable" toast | **High: conflicted on every merge so far.** Upstream keeps reworking wake/standby and artwork; the failure path is where upstream would land non-blocking command errors (see below) |
 | Notifications | `src/ui/notification.{h,cpp}`, `src/qml/components/Notification.qml` | Messages: static `setErrorFeedback` / `errorPopupsEnabled` / `createErrorBanner` and the `errorBannerCreated` signal, `Q_INVOKABLE bannerInsteadOfPopUp()` for QML; static `setUnavailableBanners` / `createUnavailableBanner` (the "%1 is unavailable" toast through `createNotification`, only while its switch is on) and `Q_INVOKABLE showUnavailableBanner()` for QML; the toast's handler moved into `show(message, warning, durationMs)` with a per-message `displayMs` (was a fixed 4000): `onNotificationCreated` with "Other banner duration", the new `onErrorBannerCreated` with "Error banner duration". No filter in QML: whether a toast is created is decided in C++ | Medium: our hunks replace upstream's whole toast handler |
-| Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (Mod 6); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; the Messages block in `onIntegrationError` (the error banner instead of the "%1 error" pop-up); `lcScreensaver` | Medium |
-| Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | The screensaver Loader block: dock chime (`_nextOpenViaDock`, set only while no screensaver item exists; `dockChimeGraceTimer` / `_chimeGraceForVariant`), boot grace, docked rearm (`dockedRearmTimer`), the idle screensaver (`idleScreensaverTimer` and its touch / key / touch-slider resets), Close on wake (where upstream closes the charging screen on every charger loss, ours asks `ScreensaverConfig.closesOnChargerLoss()`; while the screensaver is active a wake to Normal asks `closesOnWake()` first, and upstream's re-open on a wake on the charger became its `else` branch; both close through `_closeScreensaverNow()`, which also cancels a screensaver still loading and clears `_nextOpenViaDock`), `displayOff` on Low_power / Suspend, `screensaverActive`, the `hostContainer` binding; the screensaver popup is a full replacement | Very high |
+| Input, sound, UI | `src/ui/inputController.{h,cpp}`, `src/ui/soundEffects.{h,cpp}`, `src/ui/uiController.{h,cpp}`, `src/logging.{h,cpp}` | `touchDetected` (the idle screensaver's timer, Mod 6 and, since v1.6.2, the screen-off sync); since v1.6.5 `Q_INVOKABLE dropPendingKeys(QObject* owner)` and its block in the KeyPress branch of `eventFilter()`, between `cancelDeferredRelease(key);` and `const bool activated` (the keys a closing screensaver still has down; a block of ours in the middle of an upstream function, a deliberate exception to STYLE_GUIDE §3.5, because it has to run after that cancel and before the keypad state; it relies on upstream's `m_keyOwner[key] = owner;`, `m_keyOwner.take(key)` and `emit keyReleasedFor(owner.data(), mappedKey);`: see "Key navigation (v1.6.5)" below for the departures and the checks); bundled sounds, dock-chime variants, `UC_SOUND_EFFECTS_PATH` fallback; EntityController accessor; the Messages block in `onIntegrationError` (the error banner instead of the "%1 error" pop-up); `lcScreensaver` | Medium |
+| Main window | `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml` | The screensaver Loader block: dock chime (`_nextOpenViaDock`, set only while no screensaver item exists; `dockChimeGraceTimer` / `_chimeGraceForVariant`), boot grace, docked rearm (`dockedRearmTimer`; since v1.6.5 it and `dockChimeGraceTimer` restart instead of opening the screensaver while `UndockCheck.undockPending`), the idle screensaver (`idleScreensaverTimer` and its touch / key / touch-slider resets), Close on wake (where upstream closes the charging screen on every charger loss, ours asks `ScreensaverConfig.closesOnChargerLoss()`; while the screensaver is active a wake to Normal asks `closesOnWake()` first, and upstream's re-open on a wake on the charger became its `else` branch, which since v1.6.5 reads `else if (!chargingScreenLoader.active && ScreensaverConfig.reopensOnWake(fromPowerMode === PowerModes.Idle, Battery.isCharging, Battery.powerSupply, UndockCheck.undockPending))`: upstream's condition, asked in C++, plus no re-open while `undockPending`; both close through `_closeScreensaverNow()`, which also cancels a screensaver still loading and clears `_nextOpenViaDock`), the quick undock check (v1.6.5: `import UndockCheck 1.0`, a `Binding` of `UndockCheck.screensaverOpen` to the popup's `opened`, without which it never runs, and a `Connections` whose `onCloseRequested` is a third close through `_closeScreensaverNow()`), `displayOff` on Low_power / Suspend, `screensaverActive`, the `hostContainer` binding; the screensaver popup is a full replacement, whose `onClosed` calls `ui.inputController.dropPendingKeys(buttonNavigation.scope)` next to `releaseControl()` (v1.6.5) | Very high |
 | Settings pages | `settings/Settings.qml`, `settings/settings/{Power,Sound,Ui,Wifi,WifiInfo}.qml`, `onboarding/Wifi.qml` | Screensaver menu entry; our setting rows and chip pickers; W10 scan gate on display off; Reconnect / Diagnostics buttons; in `Ui.qml` the Messages section as the last item (our `settings/settings/userinterface/MessagesSection.qml`), reached with DPAD_DOWN from `mediaSourceButtonSwitch`. The section reveals the focused row with `Qt.callLater` so it runs after `ButtonNavigation`'s own synchronous `onWindowFocusItemChanged` reveal of the control: if upstream defers that reveal, re-check the row reveal (`test/qml/tst_messages_reveal_order.qml`) | High: upstream restyles settings |
 | Components | `Slider.qml`, `Switch.qml`, `StatusBar.qml`, `Page.qml`, `LoadingFirst.qml`, `VolumeOverlay.qml`, `TouchSlider{Volume,Seek,Brightness,Position}.qml`, `entities/Base.qml`, `entities/TitleStatus.qml`, `entities/activity/MediaComponent.qml`, `entities/media_player/MediaBrowser.qml`, `media_player/deviceclass/*.qml` | Tick gate (v1.4.33), DPAD centre toggles a switch, W3 signal bar, volume feature guards, DEV skips the splash, volume overlay toggles, screensaver touch-slider guards (press and release; v1.6.4: a handler that ends a slide under way when the screensaver opens, and a no-slide guard on the release; `tools/check_touchslider_guards.py` names a dropped one) plus `Math.round` for upstream's `Math.rodun` in `TouchSliderBrightness.qml`, and the Messages error banner for an unavailable entity (inserted before upstream's untouched "Touch slider is not available." block), Messages in `entities/Base.qml`: its 3 "%1 is unavailable" calls through `ui.notification.showUnavailableBanner()` instead of `ui.createNotification()` (two in `handleActivityOpen()`, one in `commandAllowed()`), title-row mirrors + WiFi chip, browse plumbing + MUTE/STOP/NEXT/PREV/CHANNEL keys, v1.4.8 media-button toggles | Medium; higher for `entities/Base.qml`: 11 upstream commits after v0.74.5, 3 of them on the "%1 is unavailable" lines our calls replace |
-| Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
+| Other | `resources/icons/icon-fallback.json`, `tools/design-check-allow.txt`, `README.md`, `CONTRIBUTING.md`, `SECURITY.md`, `CHANGELOG.md`, `test/**`, `docs/**`, `resources/translations/en_US.ts` | `wave-pulse` fallback; screensaver artwork on the allow-list; fork docs; our test harness and suites | Low |
 
 For the authoritative custom-file manifest (purely custom, not modified upstream), see [CUSTOM_FILES.md](CUSTOM_FILES.md).
 
 ## Divergence from upstream's specs
 
 Upstream describes what the app does in `openspec/specs/`. This section lists, for the Messages settings, the
-screensaver and the touch slider, where our app behaves differently from a requirement there, by default or only with one of our settings
+screensaver, key navigation and the touch slider, where our app behaves differently from a requirement there, by default or only with one of our settings
 changed, so a merge can check whether upstream changed that requirement in the meantime. Not listed yet: LOW_POWER in
 the wake flag of "Command retry window after wakeup" (the spec says Suspend; see the Entities row above), and the Power
 Saving page ("Power saving settings"): "Keep WiFi connected in standby" shown on a Remote 3 without `UC_WOWLAN=true`,
@@ -89,21 +94,152 @@ requirement "Charging screen". It departs from it with the default settings too:
 
 | Requirement | Ours |
 |---|---|
-| Opens when a power supply becomes connected, playing the BatteryCharge sound (scenario "Docked") | Opens with the "Dock chime" picked in Settings → Sound & Haptic (12 choices). With "Chime after screensaver" on (the default) the chime plays once the screensaver has faded in, and not at all when the screensaver is already showing; with it off the chime plays at the dock and the screensaver starts loading 350 ms to 3.03 s later (`_chimeGraceForVariant`). |
+| Opens when a power supply becomes connected, playing the BatteryCharge sound (scenario "Docked") | Opens with the "Dock chime" picked in Settings → Sound & Haptic (12 choices). With "Chime after screensaver" on (the default) the chime plays once the screensaver has faded in, and not at all when the screensaver is already showing; with it off the chime plays at the dock and the screensaver starts loading 350 ms to 3.03 s later (`_chimeGraceForVariant`), or one such grace later again for as long as `UndockCheck.undockPending` (v1.6.5; from the code: no test, simulator run or remote has exercised it). |
 | "Reboot on charger": the screen appears and the sound plays once | In the first 3 s after the UI starts, a charger report opens the screensaver 2 s later, without a chime (`_bootGraceActive`). |
-| Opens when the power mode changes to Normal from any mode but Idle while charging with a power supply connected (scenario "Wake on charger") | The same while the screensaver is closed. While it is open or loading, "Close on wake" is asked first (`closesOnWake`; the re-open is its `else` branch): Always closes a loaded one at every wake to Normal, on the charger too; Undocked keeps it while a charger is reported; Never always keeps it. In the 13 lifts recorded on the owner's Remote 3 the remote woke 2.3–4.6 s before the core reported the charger gone, so a lift that wakes a charging remote whose display is off opens a closed screensaver; with Never it then stays. |
+| Opens when the power mode changes to Normal from any mode but Idle while charging with a power supply connected (scenario "Wake on charger") | The same while the screensaver is closed, with one exception since v1.6.5: for up to 6 s after the quick undock check closed the screensaver, until the core reports the charger gone (`UndockCheck.undockPending`), the wake opens nothing (`reopensOnWake()` in `src/ui/screensaverClosePolicy.h`, asked through `ScreensaverConfig.reopensOnWake()`; checked in tests and in the desktop simulator, not yet on a remote). Battery still says "on the charger" then, and on test build 1.6.4-keys1 such a wake opened the screensaver again in the hand that had lifted the remote (seen once on the owner's remote, 2026-11-15, after "Suppress phantom wake-ups" had switched the display off and the core had woken it again). If the remote did stay on the charger, "Run after dismissal while docked" opens the screensaver later. While it is open or loading, "Close on wake" is asked first (`closesOnWake`; the re-open is its `else` branch): Always closes a loaded one at every wake to Normal, on the charger too; Undocked keeps it while a charger is reported; Never always keeps it. In the 13 lifts recorded on the owner's Remote 3 the remote woke 2.3–4.6 s before the core reported the charger gone, so a lift that wakes a charging remote whose display is off opens a closed screensaver; with Never it then stays. |
 | An analogue clock (12 dots, hour, minute and second hands) and a bolt with `<level>% - Charging`, or `<level>%` when supplied without charging | Five themes: Matrix (the default), Starfield, Minimal, Analog (UC's clock as a theme, with its own screen-off effect) and TV Static. A clock overlay on Matrix, Starfield and TV Static, off by default. The battery overlay: a bolt with "%1% - Charging", "100% - Fully charged" or "%1%", shown by default only while a charger is reported ("Charging only"). |
-| Closes when the power supply is removed | Only with "Close on wake" set to Undocked or Always (`closesOnChargerLoss`); Never, the default, keeps it showing. Undocked closes it, one still loading included, so it meets this requirement. Always closes only one that has finished loading; one still loading opens afterwards, as up to v1.6.3. The core also reports the power supply removed when a Qi pad stops charging (seen at 80 % and when full). |
-| Closes when the screen is tapped | "Double-tap to close" on (the default): two taps within 300 ms; off: one tap. On Matrix with "Touch directions" on, the 8 outer zones steer the rain and the fourth quick tap in the centre closes it. |
-| Closes on the press of 24 keys (BACK, HOME, VOICE, VOLUME_UP/DOWN, GREEN, YELLOW, RED, BLUE, DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, CHANNEL_UP/DOWN, MUTE, PREV, PLAY, NEXT, POWER, STOP, RECORD, MENU) | With "DPAD interactive" on (the default; its switch is shown only for the Matrix theme, but the setting applies to every theme) the 9 keys DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, VOLUME_UP/DOWN and CHANNEL_UP/DOWN don't close it: on Matrix the 8 direction keys steer the rain, and DPAD_MIDDLE fires a flash, or a chaos burst with "Chaos events" on (nothing with "Glitch effect" off; pressed twice: back to the set direction; held: slower rain); on TV Static the 8 direction keys flash the screen with "Flash on tap" on, and DPAD_MIDDLE does nothing; on Starfield, Minimal and Analog they do nothing visible (on every theme the 8 direction keys cancel a pending or playing screen-off animation). The other 15 keys close it (`ChargingScreen.qml` `ButtonNavigation`). |
+| Closes when the power supply is removed | Only with "Close on wake" set to Undocked or Always (`closesOnChargerLoss`); Never, the default, keeps it showing. Since v1.6.5, while the screensaver shows lit or dimmed on the charger, the quick undock check asks `GET /api/system/power/battery` every 250 ms and closes it once N answers in a row say the charger is gone, N = "Undock delay" ÷ 250 ms + 1 (3 at the default 500 ms, the first and the last at least 500 ms apart; `src/hardware/undockCheck.h`). The delay rules only this check: the core's own report closes the screensaver at once. On 7 lifts with the screensaver lit or dimmed (2026-11-15) that endpoint first said so 1.4–4.5 s before the core's report. On the owner's remote, test build 1.6.4-keys1, whose rule needed one answer fewer, closed it 0.23–4.50 s before the core's report on the 7 lifts the core confirmed (2026-11-15 to 2026-11-19); with the three-answer rule the close has not been timed on a remote yet. Undocked closes it, one still loading included, so it meets this requirement. Always closes only one that has finished loading; one still loading opens afterwards, as up to v1.6.3. The core also reports the power supply removed when a Qi pad stops charging (seen at 80 % and when full; on the owner's remote with test build 1.6.4-keys1, set to Undocked, that closed the dark screensaver six times). |
+| Closes when the screen is tapped | "Double-tap to close" on (the default): two taps within 300 ms; off: one tap. With it on, a single tap plays Matrix's tap effects, or TV Static's channel flash with "Flash on tap" on, 300 ms later (v1.6.5; `ScreensaverConfig.loneTapAction()`, `src/ui/screensaverInputPolicy.h`). On Matrix with "Touch directions" on, the 8 outer zones steer the rain and the fourth quick tap in the centre closes it. A theme name the app doesn't know loads Matrix and gets Matrix's taps (v1.6.5, `matrixLoaded`). |
+| Closes on the press of 24 keys (BACK, HOME, VOICE, VOLUME_UP/DOWN, GREEN, YELLOW, RED, BLUE, DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, CHANNEL_UP/DOWN, MUTE, PREV, PLAY, NEXT, POWER, STOP, RECORD, MENU) | On Starfield, Minimal, Analog and TV Static all 24 close it, on their release (next row). On Matrix with "DPAD interactive" on (the default) the 9 keys DPAD_UP/DOWN/LEFT/RIGHT/MIDDLE, VOLUME_UP/DOWN and CHANNEL_UP/DOWN don't: the 8 direction keys steer the rain, and DPAD_MIDDLE fires a flash, or a chaos burst with "Chaos events" on (nothing with "Glitch effect" off; pressed twice: back to the set direction; held: slower rain); the other 15 close it, and all 24 do with DPAD interactive off (`ScreensaverConfig.keyAction()`, `src/ui/screensaverInputPolicy.h`). Up to v1.6.4 DPAD interactive, although shown only for Matrix, kept those 9 keys from closing every theme (on TV Static the direction keys flashed it). |
+| (the press closes it) | The release closes it, and only the release of a key pressed while it showed (v1.6.5); a held key keeps it until it is let go, and a lone release whose press never reached the UI (the input was blocked at that moment, or the firmware didn't pass a waking press on as a key, as seen once on firmware 2.9.1) does nothing; when such a key is held, the screensaver takes its first auto-repeat for a press and closes at the release (see the limits under "Key navigation (v1.6.5)"). Up to v1.6.4 the press closed it: the popup was gone about 60 ms later (the 50 ms exit, then `main.qml` switched its Loader off), and UC's InputController sent the key's release, and the repeats of a held key, to the item that had the input then, the page behind (`inputController.cpp`), where a cover page acts on the release. UC's 300 ms fade hides a quick press, not a held key. Pinned by `test/qml/tst_screensaver_keys.qml`, which runs the real InputController (since the held-key change of v1.6.5, next row). Checked in tests and in the desktop simulator (2026-11-15), not yet on a remote: test build 1.6.4-keys1 had it, but its button checks were not done. |
+| (none; by UC's routing, once the item that got a key's press is destroyed, the key's repeats and its release go to the item in front) | When something else closes it while a key whose press it got is still down (the wake that key caused, a lift, a tap, another key), the page behind acts on neither that key's repeats nor its release (v1.6.5): `onClosed` hands the keys it still has down to `InputController::dropPendingKeys()`. Seen in the desktop simulator (2026-11-19/20): without it a blind's page moved its blind and Settings walked back under a held key; with it nothing reached the page in the same five runs. Neither this nor the close on release of the row above has been checked on a remote yet. This departs from six requirements of `key-navigation` and one of `entity-detail-controls`: see "Key navigation (v1.6.5)" below. |
 | (none) | A wake can close it (`closesOnWake` in `src/ui/screensaverClosePolicy.h`): with "Close on wake" set to Always, every wake to Normal closes one that has finished loading; with Undocked, a wake while no charger is reported closes it, one still loading included. |
-| (none) | It opens by itself. On the charger, "Run after dismissal while docked" reopens it that long after it closes (5–120 s, default 60, no off position), even while the remote is in use, unless the time runs out while a page is being reordered. Off the charger, with "Idle screensaver" on (off by default), it opens after "Idle timeout" (15–55 s, default 45) without a key press, a touch or the touch slider. |
+| (none) | It opens by itself. On the charger, "Run after dismissal while docked" reopens it that long after it closes (5–120 s, default 60, no off position), even while the remote is in use, unless the time runs out while a page is being reordered; since v1.6.5, when it runs out while `UndockCheck.undockPending` (a close by the quick undock check that the core's charger report hasn't followed yet, at most 6 s), it runs another round, so at 5 s a close the core never confirms (a lift and put-back, a bump that cut the charging for longer than the delay) brings the screensaver back about 10.5 s later (10.5–10.7 s after each of the four such closes on the owner's remote with test build 1.6.4-keys1). Off the charger, with "Idle screensaver" on (off by default), it opens after "Idle timeout" (15–55 s, default 45) without a key press, a touch or the touch slider. |
 | Open and close fade over 300 ms | Opens over 300 ms, closes in 50 ms (`ChargingScreen.qml` `enter` / `exit`). |
 
-A key that closes the screensaver on its press passes its release, and the repeats of a held key, to the screen
-underneath: the screensaver is already gone, and UC's InputController sends them to the item that has the input then
-(`inputController.cpp`; shown in a QML test of that routing, not yet seen on a remote; a fix is planned). Not checked:
-the QML focus chain (scenario "Key press on the charging screen").
+Up to v1.6.4 a key that closed the screensaver on its press passed its release, and the repeats of a held key, to the
+screen underneath: the screensaver was already gone, and UC's InputController sent them to the item that had the input
+then (`inputController.cpp`). Since v1.6.5 the release closes it, and a key that is still down when something else
+closes it is dropped (the table above). So on the input-ownership path the scoped handlers of the screen underneath
+get nothing of a key the screensaver got; handlers that listen to every owner (`overrideActive`: a light's brightness
+or colour page, the VOICE handler in `main.qml`) get its press, its repeats until the screensaver has closed and its
+release, and act on them as upstream says. On the QML focus chain ours does what upstream's scenario "Key press on
+the charging screen" says (`openspec/specs/power-and-battery/spec.md`: DPAD_MIDDLE closes the charging screen, and
+the key also reaches the keyboard focus chain of the screen underneath) for the press and for its repeats until the
+screensaver has closed: neither popup takes the keyboard focus, and the controller passes a plain key press on as
+upstream's does. So a control of the page behind that holds the keyboard focus gets the key there (for example the
+source list of a media player screen, `entities/media_player/SourceList.qml`, which calls `forceActiveFocus()` when
+it opens: in a probe with the real files an arrow pressed on the screensaver moved its selection; not tried in the
+simulator or on a remote), while a page that parks its focus when it doesn't own the input, as the Settings pages
+do, gets nothing. Seen in the desktop simulator (2026-11-15, Minimal): OK on the screensaver over a Settings page
+whose keypad focus was on a switch left the switch alone, while OK on the page itself toggled it. Besides Matrix,
+where OK and the steering keys don't close it at all while "DPAD interactive" is on (the table above), ours differs
+from that scenario in two things: the screensaver closes at the key's release, not at its press, and after a close
+under a held key that key's repeats reach neither path (next section).
+
+Checks after merging `src/qml/main.qml`, `src/main.cpp` or `src/hardware/hardwareController.cpp` (v1.6.5):
+`python3 tools/check_undock_wiring.py`. No test loads those three files, and a line dropped there breaks the quick
+undock check without a failing test. It pins, as text:
+
+- `main.qml`: `import UndockCheck 1.0`; the `Binding` of `UndockCheck.screensaverOpen` to the screensaver's `opened`;
+  the `Connections` whose `onCloseRequested` calls `root._closeScreensaverNow();`; `dockedRearmTimer` and
+  `dockChimeGraceTimer` waiting (`restart(); return;`) while `UndockCheck.undockPending`, before they open the
+  screensaver; the whole condition of the wake branch (see the Main window row above), with a body that opens the
+  screensaver and stops `dockedRearmTimer`; exactly five assignments to `chargingScreenLoader.active` that are not
+  `= false` (the idle timer, the two timers above, the dock handler, the wake branch), because a sixth place that
+  opens the screensaver would need the same guard; and the Loader's own binding, `active: HwInfo.modelNumber === "DEV"`.
+- `main.cpp`: the handlers of ScreensaverConfig's `closeOnWakeChanged` and `undockCloseMsChanged`, and the three
+  pushes at start-up in this order: `setUndockCloseMs`, `onPowerSupplyChanged`, `setCloseOnWake` (the last one can
+  start the check, so it must find the delay and the charger already set).
+- `hardwareController.cpp`: `m_undockCheck = new UndockCheck(m_core, this);`, its connections to
+  `Power::powerModeChanged`, `Battery::powerSupplyChanged` and `core::Api::disconnected`,
+  `UndockCheck::closeRequested` connected to `PhantomWakeSuppressor::onQuickUndock`, the order (Power, Battery and
+  the phantom-wake check are created before it, and it before those four connects) and the QML singleton
+  registration.
+
+A statement that is commented out counts as missing. It is a text check, so a harmless reformat of these lines trips
+it too: then compare with the list at the top of the script and update the script. What it cannot see, because it
+doesn't run the app: a statement that is there but not in force (`enabled: false` on the `Connections`, another
+condition around the close in `onCloseRequested`, C++ lines inside `#if 0`); a `!` in front of one of the two pieces
+of the `Binding`'s value; an opener written another way (a `Binding` or a `State` on the Loader's `active`,
+`chargingScreenLoader["active"]`, the Loader reached under another name or from another file); and anything in other
+files. That `ScreensaverConfig.reopensOnWake()` can be called from QML at all is a unit test
+(`test/screensaver/test_screensaver_config.cpp` calls it from JavaScript).
+
+After a merge that touches these lines, a run on a remote, or in the desktop simulator behind a relay that plays the
+charger reading, is still the proof, and it takes more than a lift. A lift shows the `Binding` and the close, with
+the pushes and connects they need. The wake branch needs a wake from the dark while that lift is unconfirmed
+(`Wake on the charger: not re-opening the screensaver, the quick undock check is waiting for the core's charger report`).
+The connect to `PhantomWakeSuppressor::onQuickUndock` shows in a pick-up from the dark with "Suppress phantom
+wake-ups" on and "Grace window after wake" longer than the close takes (2000 ms in the simulator run):
+`PhantomWakeSuppressor cancelled: off the charger (quick undock check)`. `dockedRearmTimer`'s wait needs a close the
+core never confirms (for example a lift and quick put-back) with "Run after dismissal while docked" at 5 s, and a
+remote: that timer never starts with `UC_MODEL=DEV`. `dockChimeGraceTimer`'s wait has been exercised by no test,
+simulator run or remote.
+
+`python3 tools/check_undock_wiring.py --self-test` shows that each of its checks can fail (51 broken pieces, over
+the 22 kinds of message it can give); CI runs both (job "Quick undock check wiring", see the validation checklist).
+
+### Key navigation (v1.6.5)
+
+In upstream's [`key-navigation`](../openspec/specs/key-navigation/spec.md) spec the input layer consumes no key
+event, and a key's release goes to the owner that got its press. Upstream's code sends a key's auto-repeat presses to
+that owner too, and both to the item in front once that owner is destroyed; `main.qml` destroys our screensaver right
+after it closes. So when something else closed the screensaver under a key that was still down, the page behind got
+the rest of that key. Since v1.6.5 `ChargingScreen.qml`'s `onClosed` hands the keys the screensaver still has down to
+`InputController::dropPendingKeys()` (the Input row above), and for those keys, until their release, ours departs
+from these requirements. Every other key event is routed as upstream routes it.
+
+| Spec | Requirement | For a key that was down when the screensaver closed |
+|---|---|---|
+| `key-navigation` | "Physical button set and key mapping", scenario "Mapped key press": the button name is emitted together with the current input owner, and the event is never consumed by that layer | An auto-repeat press is announced to no owner and is consumed. The release is announced with the controller itself, which is no input owner. |
+| `key-navigation` | "Every key press travels two independent paths": the input-ownership path and the QML focus chain, and a handler on the first shall not suppress the second | An auto-repeat press travels neither: without that, the focused control of the page behind takes it for a press (a Switch, Button or Checkbox acts on every Return that reaches it). The release's Qt event still travels the focus chain. |
+| `key-navigation` | "Button-navigation handler dispatch", scenario "Override active": the handlers of an `overrideActive` instance run regardless of which layer owns the input | No handler runs for an auto-repeat press, those of `overrideActive` instances included. They do get the release (`main.qml`'s VOICE handler has to see it). |
+| `key-navigation` | "Short press, repeat, long press and release semantics": `pressed` runs on the first press and on every auto-repeat press | Not on these auto-repeat presses. |
+| `key-navigation` | "Key release routing and deferred auto-repeat release": the release is delivered to the owner that received its press, even when the input ownership changed in between | It goes to no owner: the one that got the press is the closing screensaver. The 150 ms deferral of a release flagged as auto-repeat is unchanged. |
+| `key-navigation` | "Keypad-active state and selection rendering": the keypad is active from the first mapped key press until the next touch | An auto-repeat press after a touch doesn't make it active again: after a tap closed the screensaver under a held key, the selection of the page behind stays hidden and doesn't move. |
+| [`entity-detail-controls`](../openspec/specs/entity-detail-controls/spec.md) | "Light keys on the control screen": they stay active while a popup is open on top of the screen; scenario "Holding DPAD_UP": the brightness rises by 1 per key repeat | While the screensaver shows over a light's page, as upstream says. When it closes under the held key, the rise stops; the next press steps again. |
+| [`power-and-battery`](../openspec/specs/power-and-battery/spec.md) | "Charging screen", scenario "Key press on the charging screen": the key also reaches the keyboard focus chain of the screen underneath | The press does (see the screensaver section above); the auto-repeat presses after a close under the held key don't. |
+
+Upstream's `docs/key-navigation.md` (§1: the controller "never consumes the event") and ADR 0007 say the same as the
+first two rows; those files stay upstream's, so this table is where the departure is recorded.
+
+Limits, by design: a key pressed once the screensaver is gone is the page's in full; a key held on the page since
+before the screensaver opened stays the page's; a hold whose plain press the controller never got (input blocked at
+that moment, or a press the firmware didn't pass to the UI) is not recorded, so the screensaver takes its first
+auto-repeat for a press, nothing is dropped at the close and the page gets the rest; VOICE held on the screensaver
+over an activity screen starts no assistant: `main.qml`'s handler stands back while an activity is open, and the
+activity's own VOICE handler is scoped, so it gets nothing of that hold (pinned by
+`test_heldVoiceKeyStartsNothingOnAPageWithItsOwnVoiceHandler`; up to v1.6.4 its assistant started about 1.4 s after
+the press, worked out from the code; at a merge re-read upstream's `voice-assistant` requirement "Push-to-talk");
+and a mark left by a release that was lost consumes the repeats of a later hold of that key whose press was lost
+too, until its release (two lost events in a row).
+
+Checks after merging `src/ui/inputController.{h,cpp}` or `src/qml/components/ChargingScreen.qml`:
+`python3 tools/check_dropped_keys_guard.py`. A merge that drops all of this change there, or only the block in
+`eventFilter()` or the `onClosed` line, still builds. Without `dropPendingKeys()` or without the `onClosed` line the
+page behind then gets the rest of a held key again; with only the block gone its scoped handlers still get nothing,
+but the handlers that listen to every owner take each repeat for a press and the repeats go on to the QML focus
+chain. It pins, as text:
+
+- `inputController.h`: `Q_INVOKABLE void dropPendingKeys(QObject* owner);` in the public part of the class (QML
+  calls it, and QML doesn't see a private method);
+- `inputController.cpp`: `dropPendingKeys()` pointing the entries of `owner` in `m_keyOwner` at the controller; in
+  the KeyPress branch of `eventFilter()`, the block
+  `if (keyEvent->isAutoRepeat() && m_keyOwner.value(key).data() == this) {` after `cancelDeferredRelease(key);` and
+  before `setKeypadActive(true);`, with `emit keyPressed(mappedKey);`, `event->accept();` and `return true;`, and
+  without a `keyPressedFor`; and upstream's own lines the design relies on: `m_keyOwner[key] = owner;` (a new press
+  overwrites the mark), `QPointer<QObject> owner = m_keyOwner.take(key);` and
+  `emit keyReleasedFor(owner.data(), mappedKey);` (the release takes the mark and goes out with it), and
+  `timer->setInterval(150);` (the C++ test has a copy of that time);
+- `ChargingScreen.qml`: the `onClosed` that gives the input back, with
+  `if (buttonNavigation) buttonNavigation.releaseControl();`, also holds
+  `if (buttonNavigation) ui.inputController.dropPendingKeys(buttonNavigation.scope);` (the order of the two isn't
+  checked: the keys stay the popup's until it is destroyed).
+
+A statement counts only as live code at the start of a line, and a reformat that breaks one of these lines up trips
+the check too: then compare with the two tests and update the script. What it doesn't look at, because the tests
+do: the first lines of `dropPendingKeys()` (a null owner and the controller itself are left alone), the rest of
+`emitKeyRelease()`, the two log lines and the 3 s hold of POWER. The tests are
+`test/screensaver/test_input_controller_dropped_keys.cpp` (`testInputControllerDroppedKeys`, the real controller, in
+CI's CMake job) and `test/qml/tst_screensaver_keys.qml` (the real `ChargingScreen.qml` and `ButtonNavigation.qml`
+over the real controller, in CI's QML job). In the first, `destroyedOwner_upstreamSendsItsKeysToTheItemInFront`
+states upstream's own routing, the rule the drop exists for: if a merge makes it fail, upstream changed that rule,
+and `dropPendingKeys()` and this section need a new look.
+
+`python3 tools/check_dropped_keys_guard.py --self-test` shows that each of its checks can fail (23 doctored copies of
+the three texts, each one reported, on the tree as it is and on a copy with harmless edits, which the check accepts);
+CI runs both (job "Dropped keys guard", see the validation checklist).
 
 ### Touch slider (v1.2.0, v1.4.7, v1.6.4)
 
@@ -122,17 +258,28 @@ and `test/qml/tst_touch_slider_screensaver.qml` (see the validation checklist).
 
 Upstream records its architecture decisions in [`docs/adr/`](adr/). Where our code departs from one, as listed so far.
 Not listed yet: [0005](adr/0005-core-api-over-websocket-ui-holds-no-business-logic.md) (Mod 5's REST calls to
-`/api/system/power/standby_inhibitors`), [0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md)
-(`activitySessionKeeper`, `phantomWakeSuppressor` and `screenOffSync` in `src/hardware/`), and 0012 for the
+`/api/system/power/standby_inhibitors`, and since v1.6.5 the quick undock check's `GET /api/system/power/battery`, a
+REST read of state the battery_status event reports up to 5 s later),
+[0016](adr/0016-the-ui-touches-as-little-hardware-as-possible.md) (`activitySessionKeeper`, `phantomWakeSuppressor`,
+`screenOffSync` and `undockCheck` in `src/hardware/`), and 0012 for the
 screensaver's own decisions in `main.qml` and `ChargingScreen.qml` (among them the touch slider control: the slide
 position and rest, the 10..100 clamp, the switches that enable it and which value Starfield's Touchbar choice
 changes; its travel-to-steps rule, and the rule that a stored Touchbar value other than "speed" and "off" reads as
-"density", are in C++, `screensaverTouchbar.h`).
+"density", are in C++, `screensaverTouchbar.h`). What a lone tap does, what each key does, the direction the
+screensaver opens with and which theme names count as Matrix moved to C++ in v1.6.5 (`screensaverInputPolicy.h`, asked
+through `ScreensaverConfig.loneTapAction()`, `keyAction()`, `keyDirection()`, `directionToRestore()` and
+`matrixLoaded`). Also since v1.6.5, whether a wake on the charger opens the screensaver again is asked in C++
+(`reopensOnWake()` in `screensaverClosePolicy.h`, through `ScreensaverConfig.reopensOnWake()`), while the two QML
+timer guards for the same wait decide in QML: `dockedRearmTimer` and `dockChimeGraceTimer` read
+`UndockCheck.undockPending` themselves and restart instead of opening the screensaver. What happens to a key that is
+still down when the screensaver closes (v1.6.5) is decided in C++ as well: `ChargingScreen.qml`'s `onClosed` only
+calls `InputController::dropPendingKeys()`.
 
 | ADR | Ours | Why |
 |---|---|---|
 | [0012](adr/0012-qml-is-presentation-only-logic-and-models-in-cpp.md) QML is presentation only | The touch slider's screensaver rules decide in QML: the press guard (since v1.2.0), the release guards (since v1.4.7; the no-slide guard since v1.6.4) and the handler that ends a slide under way when the screensaver opens (since v1.6.4), in the 4 `TouchSlider{Volume,Seek,Brightness,Position}.qml` | They extend upstream's own slider logic, which lives in those 4 upstream QML files; moving it to C++ would rewrite them and conflict at every upstream change to them. Pinned by `test/qml/tst_touch_slider_screensaver.qml` and `tools/check_touchslider_guards.py`. Better offered upstream. |
-| [0011](adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md) CMake builds the tests | `test/qml` (the QML suite), `test/integration` and our five `test/hardware/*_test` programs build with qmake; `test/matrixrain` builds with both (qmake in our job, CMake in the upstream job) | Their qmake projects predate the ADR (2026-09-24). Programs and tests added since joined them: `power_test` (v1.5.3), `screenoff_test` (v1.6.2) and new QML tests such as `tst_touch_slider_screensaver.qml`. CI builds them with qmake as before (`test.yml`). `test/screensaver` is our only suite built with CMake alone. |
+| [0007](adr/0007-one-input-idiom-per-screen.md) Two input paths, input ownership stack | "The design does not try to make one path consume the other": since v1.6.5 the input controller consumes the auto-repeat presses of a key that was still down when the screensaver closed (`InputController::dropPendingKeys()` and its block in `eventFilter()`), so they reach neither path; see "Key navigation (v1.6.5)" above | Without it the page behind acts on the rest of a key that was pressed on the screensaver: its scoped handlers get the repeats and the release, and its focused control takes a repeat for a press. Only those repeats are consumed; no other key event is kept from either path (the release of such a key is announced with the controller as its owner, see the table above). A rule for every destroyed owner would change upstream's own flows and is better offered upstream. Pinned by `test/screensaver/test_input_controller_dropped_keys.cpp`, `test/qml/tst_screensaver_keys.qml` and `tools/check_dropped_keys_guard.py`. |
+| [0011](adr/0011-qmake-builds-the-app-cmake-builds-the-tests.md) CMake builds the tests | `test/qml` (the QML suite), `test/integration` and our six `test/hardware/*_test` programs build with qmake; `test/matrixrain` builds with both (qmake in our job, CMake in the upstream job) | Their qmake projects predate the ADR (2026-09-24). Programs and tests added since joined them: `power_test` (v1.5.3), `screenoff_test` (v1.6.2), `undock_test` (v1.6.5) and new QML tests such as `tst_touch_slider_screensaver.qml`. CI builds them with qmake as before (`test.yml`). `test/screensaver` is our only suite built with CMake alone. |
 
 ## Merge rehearsal procedure
 
@@ -193,9 +340,11 @@ After the merge, before merging the rehearsal branch back into `main`:
 - [ ] **ARM64 build** with the digest-pinned toolchain (`BUILD.md`): 0 errors; the QML compiler runs on every file
       (delete the `qrc` caches of an incremental build first)
 - [ ] **Tests**, all in a Qt 5.15 container (`test.yml` has the commands): `test/hardware` (keeper, suppressor,
-      entity controller, power, screen-off sync), `test/matrixrain`, `test/integration`, `test/qml`, and the CMake
-      suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`); CI's two quick text
-      checks, `python3 tools/check_setPowerMode_drift.py` and `python3 tools/check_touchslider_guards.py`
+      entity controller, power, screen-off sync, quick undock check), `test/matrixrain`, `test/integration`, `test/qml`, and the CMake
+      suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`); CI's four quick text
+      checks, `python3 tools/check_setPowerMode_drift.py`, `python3 tools/check_touchslider_guards.py`,
+      `python3 tools/check_undock_wiring.py` followed by `python3 tools/check_undock_wiring.py --self-test`, and
+      `python3 tools/check_dropped_keys_guard.py` followed by `python3 tools/check_dropped_keys_guard.py --self-test`
 - [ ] **Code guidelines** as CI runs them: `python3 tools/design-check.py --self-test && python3 tools/design-check.py`,
       `python3 tools/icon-font.py check --require-free`, `python3 tools/icon-font.py check-mapping`, cpplint
       (filters in `code_guidelines.yml`); the docs link check (`docs-links.yml`)
@@ -204,10 +353,21 @@ After the merge, before merging the rehearsal branch back into `main`:
 - [ ] **On the remote** via `scripts/deploy-canary.sh` (auto-revert on failure):
   - screensaver: docking opens it and plays the dock chime once; a double tap and BACK / HOME close it, also when the
     UI starts on the dock (it then opens after 2 s, without a chime); "Close on wake": Never keeps it when you lift
-    the remote, Undocked keeps it on a wake on the dock and closes it a few seconds after a lift, Always closes it on a
-    wake; all five themes render
+    the remote, Undocked keeps it on a wake on the dock and closes it soon after a lift (since v1.6.5, while it is lit
+    or dimmed, the quick undock check closes it before the core's report and logs
+    `Close on wake (Undocked): off the charger for at least N ms, 3 "off" answers in a row (quick undock check, Undock delay 500 ms), closes the screensaver`,
+    N being 500 or more; at the default delay about 1–2 lifts in 10, for a lift at a random moment, close at the
+    core's own report instead, when its battery check comes first (worked out: the quick check's 0.55–0.85 s over
+    the core's 5.004 s; not counted on a remote), but if every lift closes only at the core's report, up to 5 s after
+    the lift, that check isn't working), Always closes it on a wake; all five themes render
   - settings: Screensaver, Power, Sound, User interface, WiFi pages walked with the d-pad
   - first button press after a wake works (no backlight blinking); keep awake holds during playback
+  - a button held when something else closes the screensaver (v1.6.5): "Close on wake" on Always, the remote on the
+    charger with a Settings sub-page behind the screensaver; within a minute of the display going off, hold BACK for
+    about 2 s: the screensaver closes, the page stays where it was, and the log has
+    `Key(s) still down when their owner closed: BACK; the rest of each press is ignored (owner …)`; holding POWER
+    for 3 s on the dark screensaver still brings the power-off dialog (expected from the tests and, for BACK, the
+    desktop simulator; not yet run on a remote)
   - touch slider: on the dock, with "Run after dismissal while docked" at 5 s, slide slowly until the screensaver
     comes back: the device stops changing as it appears, and slides under it change only the screensaver
   - media browser: play an item, its artwork shows at once

@@ -11,6 +11,303 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
 
+## Unreleased (v1.6.5)
+
+### Added
+
+- **Close on wake closes the screensaver soon after you lift the remote** (GitHub issue #3), with Undocked or Always.
+  Up to v1.6.4 it waited for the remote's own battery check, which reports the charger about every 5 seconds (2.5 s
+  after a lift on average). Now, while the screensaver shows on the charger (lit or dimmed), the UI reads the charger
+  state itself four times a second (the remote's `/api/system/power/battery`, which on the maintainer's Remote 3 said
+  "off the charger" 1.4–4.5 s before the battery check did, on 7 lifts with the screensaver lit or dimmed) and closes
+  the screensaver once that reading has said "off the charger" for the whole of the new **Undock delay**: a slider
+  under Close on wake, 500–2000 ms in steps of 250, default 500, shown for Undocked and Always. Raise it if bumping
+  your charger closes the screensaver.
+  - **How soon.** At the default, a lit or dimmed screensaver closes about 0.55–0.85 s after the reading changes
+    (worked out for readings that take about 45 ms to come back, as on the maintainer's remote; in the desktop
+    simulator, where they come back in a few milliseconds, the final simulator build closed after 0.52 and 0.64 s in
+    two runs, and after 0.91 s in a third with every reading held back 200 ms). With Undocked, a dark screensaver
+    you pick up closes about 0.6–0.85 s after the lift has woken the remote (worked out the same way): about 0.6 s
+    when the first reading after the wake already says "off the charger" (0.52 s in the simulator, where it did), a
+    quarter of a second more when only the next one does. On the test build, whose rule needed one reading fewer,
+    the quick check closed four pick-ups from the dark: one 0.31 s after the wake and three 0.52–0.56 s after it.
+    With Always the wake itself closes it, as before.
+  - **What the delay means.** The screensaver closes after the delay ÷ 250 ms + 1 "off the charger" readings in a
+    row (three at the default, nine at 2000 ms), the first and the last at least the delay apart. A cut of the
+    charging shorter than the delay never closes it. One longer than the delay plus a quarter of a second and the
+    time two readings take always does (about 0.85 s at the default on the maintainer's remote). In between it
+    depends on the moment the cut begins, because the UI sees the reading only when it asks.
+  - **It doesn't come back in your hand.** After a close by the quick check nothing opens the screensaver on the
+    charger until the battery check has confirmed the lift, or 6 seconds have passed: not "Run after dismissal while
+    docked", not a wake, and not the pause before the screensaver that follows the dock chime with "Chime after
+    screensaver" off. If the battery check never saw the remote off the charger (a bump that cut the charging for
+    longer than the delay, or a lift and put back between two of its checks), the screensaver returns through "Run
+    after dismissal while docked", about 10.5 s after the close at its 5 s setting and about a minute at the default
+    60 s, without the chime.
+  - **"Suppress phantom wake-ups" takes a close by the quick check for a real wake** (Settings → Power Saving). The
+    close cancels its "Grace window after wake" and counts for its "Recent-input lookback", so the display isn't
+    switched off in your hand when you pick the remote up in the dark and press nothing. That needs the close to
+    come before the grace window runs out. The close comes the Undock delay plus about 0.1–0.35 s after the wake
+    (0.6–0.85 s at the default), so the grace window has to be about 0.4 s longer than the Undock delay: about
+    1000 ms at the default, and a 2000 ms grace window is no longer enough at an Undock delay of 1750 or 2000 ms.
+    With the default grace window of 500 ms the display goes off first and the screensaver closes at the battery
+    check, as in v1.6.4.
+  - **Limits.**
+    - The Undock delay rules only this quick check. The battery check still closes the screensaver the moment it
+      reports the charger gone, whatever the delay: worked out for a lift at a random moment, at 2000 ms it comes
+      first in 4–5 of 10 lifts (1–2 of 10 at 500 ms), and the screensaver then closes sooner than the quick check
+      would have closed it.
+    - The quick check can't tell a pick-up from a remote that stayed on the charger. A bump or jolt that cuts the
+      charging for longer than the delay, or a lift and put back, can close the screensaver, and such a close cancels
+      the grace window of "Suppress phantom wake-ups" too: in the dark the display then stays on until its own
+      timeout (about 31 s with a 30 s display timeout) instead of going off after the grace window.
+    - With Always, a dark pick-up is closed by the wake itself and the quick check doesn't run. With "Suppress
+      phantom wake-ups" on, the screensaver can then come back once when the grace window is about 1.5 s or longer
+      (the quick check closes it about 0.9 s after it begins to show and cancels the next grace window); with a
+      shorter one (the default is 500 ms) it can come and go about once a second until the battery check reports the
+      lift, as in v1.6.4; when that report comes while the screensaver is still loading, it stays showing until a
+      tap, a button or the next wake (Always closes only a screensaver that has finished loading).
+    - If you close the screensaver yourself on the charger and lift the remote in the last seconds before "Run after
+      dismissal while docked" runs out, so that it runs out before the battery check has reported the lift (that
+      report stops it), the screensaver comes back in your hand, and the quick check closes it about 0.4 s plus the
+      Undock delay after it begins to show, about 0.9 s at the default (v1.6.4 kept it until the battery check).
+    - The rest of the UI still learns about the charger from the battery check (the dock chime, keep-awake,
+      "Charging only"). Where the reading isn't available the screensaver closes at the battery check, as before.
+      With Never nothing changes.
+  - **What was checked where.** Test build 1.6.4-keys1 ran this check on the maintainer's Remote 3 (firmware
+    2.12.1, on a Qi pad) from 15 to 19 November 2026, with an earlier rule that needed one reading fewer (two, a
+    quarter of a second apart, at the default). It closed the screensaver 12 times: 7 lifts that the battery check
+    confirmed 0.23–4.50 s later, 4 closes that the battery check never confirmed (one very likely a lift and put
+    back, the others short lifts or bumps: the log can't tell), after each of which the screensaver came back
+    10.5–10.7 s later ("Run after dismissal while docked" at 5 s), and once more in the case below. On 4 pick-ups
+    from the dark it closed 0.31–0.56 s after the wake. It never closed a resting screensaver (12 lit rest periods
+    of 19–31 s) and logged no warning. Two things went wrong on that build: a bump closed the screensaver at least
+    once (the maintainer's report), and once a wake brought the screensaver back in the hand for about 0.6 s, after
+    "Suppress phantom wake-ups" (grace window 2000 ms) had switched the display off about 1.9 s after a pick-up from
+    the dark and the remote had woken again at once. Hence the whole delay, the wait for the battery check and the
+    real-wake rule above. A second test build with them (1.6.4-keys2, the same remote and firmware, 2026-11-26)
+    closed the screensaver nine times, each after three "off" readings, and left it up through a shorter cut that
+    only two readings caught. Three of the nine were pick-ups from the dark: the screensaver closed 0.8 s after the
+    screen came on, "Suppress phantom wake-ups" (2000 ms) switched nothing off, and nothing came back in the hand.
+    The wake that opens nothing while a lift is unconfirmed is checked in tests and in the desktop simulator only:
+    on the remote no such wake came. Of the other two waits,
+    the one of "Run after dismissal while docked" was already in the first test build (the four returns above) and
+    can't run in the simulator; the one after the dock chime has run nowhere yet (no test, not the simulator, not a
+    remote: only a text check that its lines are still in the code). Not run on a remote: the Undock delay at
+    2000 ms. Not tried on a Remote Two.
+
+### Fixed
+
+- **TV Static: "Flash on tap" flashes on a tap.** With "Double-tap to close" on (the default), a single tap on the
+  TV Static screensaver plays one channel flash about 0.3 s later (the wait that tells it from a double tap); two
+  quick taps still close the screensaver, without a flash. Up to v1.6.4 a tap never reached TV Static, so the switch
+  (on by default) seemed to do nothing: only the d-pad arrows and the volume and channel keys flashed it, with
+  "DPAD interactive" on. With "Flash on tap" off a tap does nothing; with "Double-tap to close" off one tap closes the
+  screensaver, as before.
+- **A theme name the app doesn't know** (a hand-edited `config.ini`, or a downgrade from a version with a new theme)
+  still loads Matrix, and now also gets Matrix's taps, touch zones, hold-to-slow, swipe speed and touch slider. Up to
+  v1.6.4 those compared the stored name with "matrix" and stayed off. Tests check the tap, a touch zone and the
+  touch slider with such a name; hold-to-slow and swipe speed read the same check in the code and have no test of
+  their own. The desktop simulator showed only, in one run, that such a name opens the Matrix rain (as it did up
+  to v1.6.4); no tap, swipe or slide was tried there. Not on a remote.
+- **Buttons close the screensaver when you let go: the screen behind it no longer gets the release.** Up to v1.6.4
+  a button closed the screensaver as you pressed it; the screensaver was gone a moment later, and the button's
+  release, and the repeats of a held button, went to the screen behind it, where they could run that button's mapping
+  (worked out from the code, not seen on a remote: on a cover page with "DPAD interactive" off, letting go of the up
+  or down arrow would open or close the device). Now a button closes it when you let go, and only a button you pressed
+  while it showed: holding a button keeps it until you let go. This covers every button, on every theme, with "DPAD
+  interactive" on or off. What happens when something else closes the screensaver while a button is held is the next
+  entry.
+- **A button that is still down when the screensaver closes doesn't reach the screen behind it.** Something else can
+  close the screensaver while you hold a button: the wake that button caused (Close on wake on Always, or on Undocked
+  off the charger), a lift, a tap, or another button. Up to v1.6.4 the screen behind then got the rest of that press,
+  its repeats and its release. In the desktop simulator a build without this fix (the code of test build
+  1.6.4-keys1) moved a blind from 50 to 53, 47 and 54 under a held arrow and to 100 on a short press, and a held BACK
+  walked from Settings → Screensaver back to the main screen. Now the screen behind acts on nothing more of that
+  press, whatever closed the screensaver: in the same five simulator runs the blind stayed at 50 and the page didn't
+  change. The next press of that button works as usual, a held button still counts as activity (for the "Idle
+  screensaver" countdown and for "Suppress phantom wake-ups"), and holding POWER through such a close still brings
+  the power-off dialog after about 3 seconds (a unit test on the input controller). This entry, the close on
+  release above and the entry below on every button closing Starfield, Minimal, Analog and TV Static are checked in
+  tests and in the desktop simulator. On the maintainer's Remote 3 (test build 1.6.4-keys2, firmware 2.12.1,
+  2026-11-26): on Starfield six button presses closed the screensaver (short presses, a one-second hold, and BACK
+  held over a Settings page, which stayed), and with Always a held BACK and a held POWER on the dark screensaver
+  left the Settings page as it was; the power-off dialog came. In normal use before that (Undocked, off the
+  charger) the rest of a press was dropped five times. Minimal, Analog and TV Static were not tried on the remote.
+  - **Limits.**
+    - A button pressed after the screensaver has gone acts on the screen behind, like any button on an open page.
+      That can be the press that wakes the remote, when the wake reaches the UI before the press does. On the
+      maintainer's Remote 3 with test build 1.6.4-keys1 (firmware 2.12.1) that showed only out of standby (off the
+      charger, and never before 90 s in the dark): in 7 of the 27 such wakes that had an activity within 100 ms of
+      the wake, the activity came 10–56 ms after the wake (that build's log didn't say whether an activity was a
+      button, a touch or a charger change); out of display-off it came before the wake in all 23 wakes that had one.
+      These counts leave out 5 wakes that had an activity within 100 ms and a battery report of the remote next to
+      the wake (4 out of standby, 1 out of display-off; in all 5 the activity came before the wake). In that log the
+      screensaver was gone 14–74 ms after it began to close (24 closes; one more took 109 ms), so, worked out,
+      roughly 1 such wake out of standby in 6 to 30 would still act on the screen behind. The log holds no such
+      case: its only two wakes out of standby that found a screensaver open had no activity within 100 ms of the
+      wake.
+    - Holding VOICE on the screensaver over an open activity starts no voice assistant: let go and press VOICE
+      again. Over the main screen, or another screen that isn't an activity, the same hold starts it. Up to v1.6.4
+      it started over an activity too, about 1.4 s after the press (worked out from the code: the first repeat
+      after 0.6 s, then the 0.8 s long press).
+    - A light's brightness or colour page still acts on its own keys while the screensaver shows over it (the up and
+      down arrows change the brightness of a light that can be dimmed; on the brightness page of a light that also
+      has colour temperature the volume buttons change the brightness and the channel buttons the colour
+      temperature): Unfolded Circle's rule for those pages, whose keys stay active under anything that opens on top,
+      unchanged.
+    - A control of the screen behind that holds the keyboard focus still gets the keys you press on the screensaver
+      through that focus, as under Unfolded Circle's charging screen: for example the source list of a media player,
+      whose selection moved with an arrow pressed on the screensaver in a one-off test with the real files (not one
+      of the repository's tests; not tried in the simulator or on a remote). Settings pages give the focus up while
+      the screensaver shows.
+    - A hold whose press the UI never received isn't covered: the screensaver takes its first repeat for a press,
+      and when something else closes it under that hold, the screen behind gets the rest. On firmware 2.9.1 a press
+      that woke the remote from standby didn't reach the UI as a button press (seen once, with PLAY, on 2026-05-01);
+      whether firmware 2.12.x always passes it on isn't known, because the test build's log didn't tell a button or
+      a touch from a charger change (this version's does).
+    - A button that was already down when the screensaver opened stays with the screen behind it: that screen goes
+      on getting its repeats and its release, after the screensaver has closed too (pinned by tests).
+- **On Starfield, Minimal, Analog and TV Static every button closes the screensaver**, as on Unfolded Circle's own
+  charging screen. Up to v1.6.4 the d-pad, OK, volume and channel keys didn't while "DPAD interactive" was on (the
+  default), although that switch is shown only for Matrix: they seemed to do nothing, and on TV Static they flashed
+  it. Matrix steers as before.
+- **No flash when TV Static opens.** The arrows, volume and channel keys stored a direction on every theme, and TV
+  Static flashed when it opened with one remembered. Directions are now stored and used on Matrix only.
+- **"DPAD interactive" and "Touch directions" may both be on** (Matrix). Up to v1.6.4 the screensaver switched one
+  off when the other came on while it was showing, but not from Settings, so both could be on; then "Touchbar speed"
+  did nothing and "Remember direction" showed twice. Now nothing switches either off, "Touchbar speed" works with both
+  on, and "Remember direction" shows once. No stored setting changes. Checked in tests only, not in the desktop
+  simulator and not yet on a remote.
+- **TV Static's "Flash on tap" is greyed out while "Double-tap to close" is off**, with a help line saying why: a tap
+  then closes the screensaver, so it can't flash it.
+
+### Developer notes
+
+- New header-only `src/ui/screensaverInputPolicy.h` (`uc::ui::loadsMatrix()`, `loneTapAction()`), asked through
+  `ScreensaverConfig.matrixLoaded` (read-only, NOTIFY `themeChanged`) and `ScreensaverConfig.loneTapAction()`, as
+  ADR 0012 asks.
+- `ChargingScreen.qml`: `doubleTapTimer` calls the new `fireLoneTap()`, whose theme call is guarded, and the close
+  stops the timer, so a tap just before a close can't call into an unloaded theme; `isInteractiveTheme`,
+  `isSwipeableTheme` and the touch slider's Matrix check use `matrixLoaded`. `TvStaticTheme.qml` gets `tapFlash()`,
+  and `BaseTheme.qml` documents it as an optional hook.
+- The keys: `screensaverInputPolicy.h` gains `keyDirection()`, `keyAction()` ("steer" / "ok" / "close") and
+  `directionToRestore()`, asked through `ScreensaverConfig.keyAction()`, `keyDirection()` and `directionToRestore()`.
+  `ChargingScreen.qml`'s 24 key entries call `pressKey()` / `releaseKey()`: a key that closes is remembered at its press
+  (`_closeOnRelease`, reset at each opening) and closes at its release; a release whose press wasn't seen does nothing.
+  The `Connections` block that switched DPAD interactive and Touch directions against each other is gone, and
+  `touchbarSpeedActive` no longer needs Touch directions off. `TvStaticTheme.interactiveInput()` only clears a partial
+  collapse, like Analog's. `GeneralBehavior.qml` shows the Touch section's "Remember direction" only while DPAD
+  interactive is off; `TvStaticSettings.qml` greys "Flash on tap" (`enabled` + opacity 0.4, the page's way; the keypad
+  skips it), with one new string.
+- The quick undock check: new `src/hardware/undockCheck.{h,cpp}` (`uc::hw::UndockCheck`, QML singleton
+  `UndockCheck 1.0`, built in `hardwareController` like `ScreenOffSync`). While the screensaver is open (`main.qml`
+  binds `screensaverOpen` to the Popup's `opened`), lit (Normal or Idle), on the charger (Battery) and Close on wake
+  isn't Never, it calls the new `core::Api::getBatteryRest()` (`GET /api/system/power/battery`, Bearer token like
+  Mod 5's REST calls, 1 s transfer timeout, logged at debug) every 250 ms, one request at a time, and emits
+  `closeRequested()` after "off the charger" N times in a row (N = Undock delay / 250 ms + 1: 3 at 500 ms, 9 at
+  2000 ms); `main.qml` then calls `_closeScreensaverNow()`. The poll timer is precise (`Qt::PreciseTimer`) and starts
+  again when the first "off" answer of a run arrives, so the question that completes the run leaves at least the
+  whole delay after that answer came, however slow an answer is. It never writes into `Battery`. It acts only after
+  the endpoint has said "on the charger" once in the UI run; a 404 turns it off until the UI restarts, a 401/403 or
+  3 failures in a row until the next opening, with one warning per UI run.
+  - The rule is in `screensaverClosePolicy.h` (`undockCloseMs()`, `undockReadingsNeeded()`, `chargerReadingFrom()`,
+    `UndockRun`, `shouldWatchCharger()`, `reopensOnWake()`, and `closeOnWakeName()` moved there); ScreensaverConfig
+    gains the hand-written `undockCloseMs` (`charging/undockCloseMs`) and `Q_INVOKABLE reopensOnWake()`. With
+    `matrixLoaded`, ScreensaverConfig has 141 properties (126 macro-made + 15 written out). The Undocked help line
+    now says "Closes soon after you lift the remote".
+  - `undockPending` is true from a close the check asked for until the core reports the charger gone, at most 6 s
+    (a precise timer too); a lost connection to the core ends it at once. `main.qml` opens no screensaver on the
+    charger meanwhile: `dockedRearmTimer` ("Run after
+    dismissal while docked") and `dockChimeGraceTimer` restart instead, and the wake branch asks
+    `ScreensaverConfig.reopensOnWake(fromIdle, charging, onCharger, undockPending)`, which is upstream's rule (a wake
+    from sleep while charging on the charger opens the screensaver) except while `undockPending`.
+  - `closeRequested()` is also connected to the new `PhantomWakeSuppressor::onQuickUndock()` (in
+    `hardwareController.cpp`): it cancels a running grace and counts as activity for the lookback. The suppressor's
+    lines now name the kind of activity: `PhantomWakeSuppressor cancelled:` `user input`, `entity command`,
+    `charger change` or `off the charger (quick undock check)` (a charger report said `user input` before), and
+    `PhantomWakeSuppressor: skipping grace (<kind> <ms> ms ago, lookback <ms> ms)` (it said `input` for every kind).
+  - While `undockPending` and the display is on, the check goes on asking until the endpoint says "on the charger"
+    again, for the log only: such an answer closes nothing and writes nothing into `Battery`, and three failed
+    answers in a row end the asking without a warning.
+  - The log (info, `uc.ui.screensaver`) gives bounds, not the length of a cut, because the check sees the reading
+    only when it asks: "at least" runs from the arrival of a run's first "off" answer to the sending of the question
+    its last "off" answer came back to, "at most" from the sending of the last question answered "on the charger"
+    before the run to the arrival of the "on" answer after it. A cut that falls between two questions leaves no
+    line. Three of the lines (`src/hardware/undockCheck.h`, "What the log can say", explains how to read them; the
+    other forms are in `undockCheck.cpp`):
+    - the close:
+      `Close on wake (Undocked): off the charger for at least 503 ms, 3 "off" answers in a row (quick undock check, Undock delay 500 ms), closes the screensaver`
+    - a run of "off" answers that closed nothing, at most 20 such lines per opening:
+      `quick undock check: off the charger for 251 to 795 ms (2 "off" answers), then on the charger again: the screensaver stays`
+    - when the core did not confirm the close:
+      `Close on wake: the core did not report the charger gone within 6 s of the quick undock check: on the charger again between 0.26 and 0.51 s after the close, so off for 0.81 to 1.35 s in all`
+
+    When the core does confirm it, the line is
+    `Close on wake: the core reported the charger gone 1.36 s after the quick undock check`, with
+    `; the reading had said "on the charger" again 0.51 s after the close` added when the check read that meanwhile.
+    ScreensaverConfig logs `Undock delay: 500 ms` at start-up and `Undock delay set to 750 ms` on a change, and, at
+    a wake that would open the screensaver by upstream's rule, `Wake on the charger: re-opens the screensaver` or
+    `Wake on the charger: not re-opening the screensaver, the quick undock check is waiting for the core's charger report`.
+  - New `tools/check_undock_wiring.py`, run by the new CI job "Quick undock check wiring" in `test.yml` (the check
+    first, then its `--self-test`): a text check, without Qt, of the check's wiring in `src/qml/main.qml`,
+    `src/main.cpp` and `src/hardware/hardwareController.cpp`, three upstream files that no test loads, so that a
+    merge can't drop a piece of it unnoticed. Its self-test breaks 51 pieces of that wiring, one at a time, and
+    expects each to be named. What it pins and what it can't see: `docs/UPSTREAM_MERGE.md`.
+- A button held when the screensaver closes: `src/ui/inputController.{h,cpp}` gain
+  `Q_INVOKABLE void dropPendingKeys(QObject* owner)`, and `ChargingScreen.qml`'s `onClosed` calls it for the
+  screensaver's key scope, next to `releaseControl()`. Both are upstream files that already carried our
+  `touchDetected`; against upstream the change only inserts lines. Upstream's controller sends a key's auto-repeat
+  presses and its release to the item that got its press, or, once that item is destroyed, to the item in front, and
+  `main.qml` destroys the screensaver right after it closes. `dropPendingKeys()` makes the keys that owner still has
+  down the controller's own: it points their `m_keyOwner` entries at the controller, which is the scope of no
+  `ButtonNavigation`.
+  - Their auto-repeat presses meet a new block in `eventFilter()`, between `cancelDeferredRelease(key)` and the line
+    that sets the keypad active: it emits `keyPressed` (so the idle timer, the phantom-wake check and the screen-off
+    sync still see activity) and consumes the event. No key handler runs, the keypad state stays as it is, and the
+    QML focus chain gets no key press. The block sits in the middle of an upstream function, which our own rule
+    forbids (STYLE_GUIDE §3.5): it has to run after the cancel and before the keypad state, and the guard below pins
+    it.
+  - Their release goes through upstream's `emitKeyRelease()` unchanged, with the controller as its owner. No scope
+    matches it, so of the key handlers only those that listen to every owner (`overrideActive`) run: `main.qml`'s
+    VOICE handler saw the press and has to see the release, or its assistant would start and never stop. The
+    release's Qt event is not consumed.
+  - The mark goes away through upstream's own lines: the release takes the entry, a new press overwrites it. A
+    3 s hold of POWER is upstream's and untouched: it starts at the press and ends at the release.
+  - The log, in `uc.ui.input`: at info, one line per close that leaves a key down, the names sorted,
+    `Key(s) still down when their owner closed: DPAD_UP; the rest of each press is ignored (owner QQuickContentItem(0x55d09cb18350, name = "QQuickPopupItem"))`;
+    at debug, `Key repeat dropped: "DPAD_UP"` per repeat (a remote doesn't store debug lines).
+  - New `tools/check_dropped_keys_guard.py`, run by the new CI job "Dropped keys guard" in `test.yml` (the check
+    first, then its `--self-test`, which doctors 23 copies in memory and expects each to be reported): a text check,
+    without Qt, of the declaration, the method's two statements, the block and its place in `eventFilter()`, the
+    upstream lines the design relies on and the `onClosed` call. A merge that drops all of it, or only the block or
+    the `onClosed` line, still builds. What it pins, what it leaves to the tests, and where the change departs from
+    upstream's key-navigation rules: `docs/UPSTREAM_MERGE.md`.
+- Tests:
+  - `test/screensaver/` (CMake): `testScreensaverInputPolicy` (68 results); `testScreensaverConfig`, the real
+    ScreensaverConfig class with a real `core::Api` and `Battery` (12 results); `testScreensaverClosePolicy` with the
+    undock rule and the re-open rule (76 results, from 33); `testInputControllerDroppedKeys`, the real
+    InputController with `QQuickItem` owners in a window that is never shown (new, 25 results; 16 of them fail on the
+    controller of before). CI's CMake job runs 36 programs (from 33).
+  - `test/hardware/undock_test` (`test_undockCheck`, 89 results, with the stub core's `getBatteryRest()`), and
+    `test_phantomWakeSuppressor` goes from 33 results to 43: the hardware tests go from 161 to 260.
+  - New QML tests: `tst_screensaver_tap.qml` and `tst_screensaver_keys.qml` (the real `ChargingScreen.qml` over the
+    real InputController; the keys file has 90 results), `tst_steering_rows.qml`,
+    `tst_tvstatic_flash_on_tap_row.qml` and `tst_undock_delay_row.qml`; `tst_touchbar_speed.qml` gains an
+    unknown-theme-name test and one with both steering switches on. `tst_reopen_on_wake.qml` asks the QML tests'
+    `ScreensaverConfig.reopensOnWake()` as `main.qml` does (7 results). QML 398 → 537, no QWARN.
+  - The QML test binary compiles the real InputController (`src/ui/inputController.cpp` and `src/logging.cpp`):
+    `ui.inputController` is `TestInputController` in `test/qml/tst_qml_main.cpp`, a subclass whose `pressKey()` /
+    `releaseKey()` send real key events to the object the controller filters. The copy of the routing the key tests
+    first ran on (`MockInputController`) is gone, so every `ButtonNavigation` of every QML test runs on the real
+    controller. `tst_screensaver_keys.qml` gains 15 results for a held key: a close from outside under a held key
+    (six rows: a closing key on Starfield, Minimal and TV Static; on Matrix a steering key, OK and BACK), another
+    key closing, a tap closing, a key pressed while it closes, a key held across a re-open, a held VOICE still giving
+    its release to a handler that listens to every owner and starting nothing on a page with its own VOICE handler,
+    such a handler getting no dropped repeat, and the two limits that are pinned (a press once the screensaver is
+    gone acts on the page; a key held on the page since before it opened stays the page's). Against the controller
+    and the popup of before, 13 of its 90 results fail.
+
 ## v1.6.4 — 2026-11-15 — Close on wake: Never, Undocked or Always; the touch slider under the screensaver
 
 Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with test builds of this release: Close on wake and the fix for a slide under way when the screensaver opens (1.6.3-closeonwake-slider2), the slow-slide fixes (-slider4) and Starfield's Touchbar choice (-slider5). Not tried on a remote yet: the close when a Qi pad stops charging, and, with Undocked, the stop of a screensaver still loading when the remote leaves the dock (the desktop simulator showed both for a simulated charger loss).

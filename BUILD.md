@@ -103,7 +103,7 @@ qtmultimedia5-dev libqt5svg5-dev libqt5websockets5-dev` and the matching `qml-mo
 commands (`.github/workflows/test.yml`):
 
 ```bash
-(cd test/hardware && qmake hardware_test.pro && make -j4)            # keep awake, phantom wake, entity controller, power
+(cd test/hardware && qmake hardware_test.pro && make -j4)            # keep awake, phantom wake, entity controller, power, screen-off sync, quick undock check
 (cd test/matrixrain && qmake matrixrain_test.pro && make -j4 && ./test_matrixrain)
 (cd test/qml && qmake matrixrain_qml_test.pro && make -j4 && xvfb-run ./test_qml)
 (cd test/integration && qmake matrixrain_integration_test.pro && make -j4 && xvfb-run ./test_integration)

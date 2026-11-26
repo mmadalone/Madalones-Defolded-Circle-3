@@ -404,7 +404,7 @@ If ~15 exchanges pass without shipping: pause, summarize, ask whether to continu
 | AP-UC-45 | ⚠️ | Polled state via Logdy log stream instead of a REST endpoint that exists for it | §13.4 |
 | AP-UC-46 | ❌ | Hand-rolled firmware functionality (timer loop, retry, state machine) when a documented native endpoint exists. Cautionary tale: Mod 5's `set_power_mode` ping vs `/system/power/standby_inhibitors`. | §13.2 |
 | AP-UC-47 | ⚠️ | REST URL query convention applied to WS RPC body (or vice versa). E.g., REST uses `?power_mode=NORMAL` query; WS RPC uses `{"mode": "NORMAL"}` body. They are NOT interchangeable. v1.4.22 cautionary tale (`project_setpowermode_field_bug.md`). | §13.2 |
-| AP-UC-48 | ℹ️ | Repeatedly polling a state when a push-event channel exists, or subscribing to events when a one-shot REST GET would do. | §13.2 |
+| AP-UC-48 | ℹ️ | Repeatedly polling a state when a push-event channel exists that comes in time, or subscribing to events when a one-shot REST GET would do. A push event that comes too late may be polled around, only while the answer matters (the quick undock check, v1.6.5; after a close it asked for it also asks for up to 6 s, for its log only, see §13.2). | §13.2 |
 | AP-UC-49 | ❌ | Hand-rolled firmware-write RPC body without an empirical wire capture of a known-good message (skipped §1.12). v1.4.14 → v1.4.22 `setPowerMode` silent-failure precedent: 8 releases of HTTP 400, Mods 5/6 no-op in production, auto-revert never tripped. | §1.12 |
 | AP-UC-50 | ⚠️ | Audit-derived remediation shipped without re-verifying the audit's claim (LOC, code path, or architectural assumption may be stale). v1.4.26 → v1.4.33: chased a GridLayout perf hypothesis the audit named; actual cause was upstream Slider's `Repeater.model`. Memo: `feedback_verify_audit_before_remediation.md`. | §1.7, §1.8 |
 | AP-UC-51 | ⚠️ | Symptom fix landed before root cause was empirically confirmed (Logdy capture, probe log, or repro test). v1.4.37 → v1.4.38: a CI-test fix shipped on a wrong assumption about `InputHandler` dispatch path; symptom (red CI) was treated as cause. Confirm the fix actually addresses the failing premise before tagging. | §1.5 |
@@ -511,7 +511,7 @@ SCRN_INT (idleTimeout,   "charging/idleTimeout",       20)
 SCRN_STRING(direction,   "charging/matrixDirection",   "down")
 ```
 
-Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 126 screensaver properties use this pattern at v1.6.4. Seven settings are written out by hand instead: the five Matrix values `matrixColor`, `matrixSpeed`, `matrixDensity`, `matrixFade` and `matrixTrail` (their setters also notify a derived value), `closeOnWake` (stored in two keys) and `starfieldTouchbar` (reads only as one of its three choices).
+Each expansion is ~8 lines of equivalent hand-written Qt boilerplate. 126 screensaver properties use this pattern at v1.6.5. Eight settings are written out by hand instead: the five Matrix values `matrixColor`, `matrixSpeed`, `matrixDensity`, `matrixFade` and `matrixTrail` (their setters also notify a derived value), `closeOnWake` (stored in two keys), `starfieldTouchbar` (reads only as one of its three choices) and `undockCloseMs` (v1.6.5: kept to 500–2000 ms in steps of 250 by `ui::undockCloseMs()`).
 
 **When to use `SCRN_*`:** custom mod-specific config singletons you own outright (e.g. `ScreensaverConfig`). Use the macro for anything with more than ~5 properties — below that threshold, hand-writing is clearer.
 
@@ -539,7 +539,7 @@ When a mod needs to call the firmware over HTTP/REST (e.g., to hit an endpoint l
 
 **Pattern:** add typed wrappers (e.g., `core::Api::createStandbyInhibitor(...)`, `core::Api::deleteStandbyInhibitor(...)`) that mirror the WS-RPC wrapper style (`setPowerMode`, `setPowerSavingCfg`). Underlying transport is an implementation detail of `core::Api`. The mod calling code shouldn't care whether the wrapper hits REST or WS.
 
-**Don't:** embed `QNetworkAccessManager` inside `activitySessionKeeper.cpp`, `phantomWakeSuppressor.cpp`, or any other mod's logic. That fragments auth handling and duplicates infra. Today the codebase has zero authenticated REST consumers — the first one to land sets the pattern for the rest.
+**Don't:** embed `QNetworkAccessManager` inside `activitySessionKeeper.cpp`, `phantomWakeSuppressor.cpp`, or any other mod's logic. That fragments auth handling and duplicates infra. Two features call the firmware's REST API today, both through `core::Api`'s helpers (`restEndpoint()`, `bearerHeader()`, the shared `m_restNam`): keep awake's standby-inhibitor calls (v1.4.39) and the quick undock check's `getBatteryRest()` (v1.6.5). A new REST consumer follows the same pattern.
 
 See §13.3 for the auth ladder a shared helper should walk.
 
@@ -963,7 +963,7 @@ Once an operation exists in *both* REST and WS form, pick by the call's shape �
 
 **Field-shape warning (AP-UC-47):** REST URL query parameters and WS RPC body fields are NOT interchangeable. The `power_mode` argument is `?power_mode=NORMAL` in REST URL convention but `{"mode": "NORMAL"}` as a WS RPC body field. Copying one shape to the other is the v1.4.22 silent failure that broke Mod 5 and Mod 6 across 8 releases. Memo: `project_setpowermode_field_bug.md`.
 
-**Polling vs push (AP-UC-48):** if the firmware emits push events for what you want, use them. If it doesn't, polling REST is fine — that's how state endpoints (`/system/power`, `/system/power/battery`) are designed to work. Don't fabricate event subscriptions where push events don't exist.
+**Polling vs push (AP-UC-48):** if the firmware emits push events for what you want, use them. If it doesn't, polling REST is fine — that's how state endpoints (`/system/power`, `/system/power/battery`) are designed to work. Don't fabricate event subscriptions where push events don't exist. A push event can also be too late: `battery_status` comes at the core's 5 s battery check, while `GET /system/power/battery` said "off the charger" 1.4–4.5 s before that event on 7 lifts with the screensaver lit or dimmed (measured 2026-11-15 from its first such answer; the lifts themselves weren't timed). Then poll only while the answer matters (the quick undock check, v1.6.5: while the screensaver is lit or dimmed on the charger, and, for the log only, for up to 6 s after a close it asked for, while the display is on), debounce it, and never write the polled value into the state the push event owns (`Battery`): a short blip the event never reports would stay there.
 
 ### §13.3 Authentication
 
