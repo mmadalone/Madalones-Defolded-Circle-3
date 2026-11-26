@@ -201,16 +201,16 @@ Quick version for anyone who's already set up. v1.6.0 and later need firmware 2.
 
 ```bash
 # 1. Download the release tarball, its signature and the checksums
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.4/remote-ui-v1.6.4-UCR3-static.tar.gz
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.4/remote-ui-v1.6.4-UCR3-static.tar.gz.asc
-curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.4/remote-ui.hash
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.5/remote-ui-v1.6.5-UCR3-static.tar.gz
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.5/remote-ui-v1.6.5-UCR3-static.tar.gz.asc
+curl -L -O https://github.com/mmadalone/Madalones-Defolded-Circle-3/releases/download/v1.6.5/remote-ui.hash
 
 # 2. Verify integrity (SHA256 + GPG signature, see docs/RELEASE_SIGNING.md)
-./scripts/verify-release.sh remote-ui-v1.6.4-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.4-UCR3-static.tar.gz.asc
+./scripts/verify-release.sh remote-ui-v1.6.5-UCR3-static.tar.gz remote-ui.hash remote-ui-v1.6.5-UCR3-static.tar.gz.asc
 
 # 3. Install on your device (replace with your UC3 host and web-configurator PIN)
 curl --location "http://${UC3_HOST}/api/system/install/ui?void_warranty=yes" \
-    --form "file=@remote-ui-v1.6.4-UCR3-static.tar.gz" \
+    --form "file=@remote-ui-v1.6.5-UCR3-static.tar.gz" \
     -u "web-configurator:${UC3_PIN}"
 ```
 
@@ -281,9 +281,9 @@ gpg --import docs/release-pubkey.asc
 
 # Verify a download
 ./scripts/verify-release.sh \
-    remote-ui-v1.6.4-UCR3-static.tar.gz \
+    remote-ui-v1.6.5-UCR3-static.tar.gz \
     remote-ui.hash \
-    remote-ui-v1.6.4-UCR3-static.tar.gz.asc
+    remote-ui-v1.6.5-UCR3-static.tar.gz.asc
 ```
 
 Key details + rotation procedure: [`docs/RELEASE_SIGNING.md`](docs/RELEASE_SIGNING.md).
@@ -368,6 +368,8 @@ Custom modifications should follow the mod pattern documented in [`STYLE_GUIDE.m
 ## Version history
 
 [`CHANGELOG.md`](CHANGELOG.md) has the full notes of every release: the fork's releases first, then upstream Unfolded Circle's. The entries below are short summaries.
+
+**v1.6.5** (2026-11-26) — **Close on wake closes the screensaver soon after you lift the remote** ([GitHub issue #3](https://github.com/mmadalone/Madalones-Defolded-Circle-3/issues/3)), **buttons close it when you let go**, and **TV Static's "Flash on tap" flashes on a tap**. With Undocked or Always the UI now reads the charger itself four times a second while the screensaver shows on the charger, and closes it once the remote has been off the charger for the new **Undock delay** (500–2000 ms, default 500): under a second after the charger reading changes at the default, where v1.6.4 waited for the remote's battery check, a few seconds. Raise the delay if bumping your charger closes the screensaver. A button now closes the screensaver when you let go of it, and a button still held when something else closes it does nothing more on the screen behind. On Starfield, Minimal, Analog and TV Static every button closes it; only Matrix uses buttons to steer. On TV Static a single tap plays a channel flash (with "Flash on tap" and "Double-tap to close" on, the defaults), and the theme no longer flashes when it opens. "DPAD interactive" and "Touch directions" may both be on. Checked on the maintainer's Remote 3 on firmware 2.12.1; the CHANGELOG says what was not tried there.
 
 **v1.6.4** (2026-11-15) — **Close on wake: Never, Undocked or Always** ([GitHub issue #3](https://github.com/mmadalone/Madalones-Defolded-Circle-3/issues/3)), and **the touch slider under the screensaver**. The "Close on wake" switch in Settings → Screensaver becomes three choices. **Never** (the default, the switch off): the screensaver stays until you close it, also when you lift the remote. **Undocked** (new): a wake on the dock, such as a touch or a bump of the nightstand, leaves it showing; lifting the remote closes it a few seconds later, and a wake away from the dock closes it. **Always** (the switch on): every wake closes it, on the dock too, and so does leaving the dock. Your setting carries over, and v1.6.3 reads Undocked as the switch on. The remote notices a lift only at its battery check, about every 5 seconds: on the maintainer's Remote 3 on a Qi pad the lift was reported 2.3–4.6 s after it woke the remote (13 recorded lifts), so with Undocked the screensaver stays in the hand that long, and a button pressed in that time goes to the screensaver and most buttons close it. As with any button that closes the screensaver, with every choice and on the dock too (not new in this release), its release, and the repeats of a held button, reach the screen behind it (worked out from the code and a test, not seen on a remote; fixed in v1.6.5). When a Qi pad stops charging (seen at 80 % and when full), the remote reports the charger gone, so Undocked, like Always, closes the screensaver on the pad (worked out from the code for this release; seen since on the maintainer's remote with a v1.6.5 test build, see "Qi pads" above). Also: with "Chime after screensaver" on, putting the remote back on the dock while the screensaver is still showing plays no chime (before, the chime played at a later, unrelated opening of the screensaver), and the help texts of "Run after dismissal while docked" and "Touch directions" now match what the remote does (the fourth quick tap in the centre closes the screensaver, not the third). The custom UI's log (`/api/system/logs?s=custom-ui&p=7`) shows the choice at start-up and whenever it changes, and, with Undocked or Always, whether each wake or charger loss closes or keeps the screensaver. The touch slider: a slide already under way when the screensaver appears now ends there, as if you had taken your finger off. Before, it kept putting the device back to the slider's value (on a seek slider, playback jumped back every second) until the slider was next used outside the screensaver or you left that screen. Lifting your finger off the touch slider with no slide under way no longer sends the slider's last value, or 0. On the screensaver every bit of a slide now counts, slow or fast (a slow slide changed nothing before), and Settings → Touch Slider → "Touch slider" off turns that off too. The Matrix rain keeps moving while the speed changes, and Starfield keeps its stars when the density changes. Starfield gets a Touchbar row (Settings → Screensaver, right below Star density) that picks what the touch slider changes on its screensaver: **Speed**, **Density** (the default, as before) or **Off**. Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Close on wake, the end of a slide under way, the slow-slide fixes and Starfield's Touchbar choice were checked on the maintainer's Remote 3 with test builds of this release; the close when a Qi pad stops charging was not tried there, and nothing was tried on a Remote Two. See [`CHANGELOG.md`](CHANGELOG.md) for the details.
 

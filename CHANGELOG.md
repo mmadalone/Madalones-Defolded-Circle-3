@@ -11,7 +11,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
 
-## Unreleased (v1.6.5)
+## v1.6.5 — 2026-11-26 — Close on wake closes soon after a lift; buttons close the screensaver when you let go; TV Static's Flash on tap
+
+Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with two test builds of this release: TV Static's tap and the first version of the quick undock check (1.6.4-keys1), then the whole Undock delay, pick-ups from the dark, buttons on Starfield and a button held when the screensaver closes (1.6.4-keys2). Not tried on a remote: the wake that opens nothing while a lift is unconfirmed, the wait after the dock chime, the Undock delay at 2000 ms, buttons on Minimal, Analog and TV Static, "DPAD interactive" with "Touch directions" both on, and a theme name the app doesn't know.
 
 ### Added
 

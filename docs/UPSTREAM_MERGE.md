@@ -23,13 +23,13 @@ git fetch upstream refs/tags/vX.Y.Z:refs/upstream-public/vX.Y.Z   # the upstream
 git diff --name-status refs/upstream-public/vX.Y.Z HEAD
 ```
 
-As of v1.6.4 (upstream v0.84.0): 67 upstream files modified, 3 removed (`.github/dependabot.yml`,
+As of v1.6.5 (upstream v0.84.0): 67 upstream files modified, 3 removed (`.github/dependabot.yml`,
 `.github/workflows/openspec-version.yml`, the `CLAUDE.md` symlink), the rest of the tree is upstream's or ours. v1.6.3's
 Messages settings modified four of them for the first time (`src/ui/notification.{h,cpp}`,
 `src/qml/components/Notification.qml`, `src/qml/components/entities/Base.qml`). v1.6.4 modifies none for the first
 time: the upstream files it touches (`src/qml/main.qml`, `src/qml/components/ChargingScreen.qml`, the four
 `TouchSlider*.qml`, `remote-ui.pro`, `test/CMakeLists.txt`, `resources/translations/en_US.ts`, `README.md`,
-`CHANGELOG.md`) were already on the list. v1.6.5 (unreleased) modifies none for the first time either, so the count
+`CHANGELOG.md`) were already on the list. v1.6.5 modifies none for the first time either, so the count
 stays 67: its 13 upstream files (`src/core/core.{h,cpp}`, `src/hardware/hardwareController.{h,cpp}`, `src/main.cpp`,
 `src/qml/main.qml`, `src/qml/components/ChargingScreen.qml`, `src/ui/inputController.{h,cpp}`, `remote-ui.pro`,
 `resources/translations/en_US.ts`, `README.md`, `CHANGELOG.md`) were already on the list (counted on 2026-11-20:

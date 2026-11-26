@@ -1,10 +1,10 @@
 {
   "bomFormat": "CycloneDX",
   "specVersion": "1.5",
-  "serialNumber": "urn:uuid:dc6b9044-de87-4275-96f3-240cbb4134f5",
+  "serialNumber": "urn:uuid:28f559ab-76de-45a0-8410-7170a459417b",
   "version": 1,
   "metadata": {
-    "timestamp": "2026-11-14T23:37:25Z",
+    "timestamp": "2026-11-26T18:39:31Z",
     "tools": [
       {
         "vendor": "madalone",
@@ -24,11 +24,11 @@
       }
     ],
     "component": {
-      "bom-ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.4",
+      "bom-ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.5",
       "type": "application",
       "group": "madalone",
       "name": "remote-ui",
-      "version": "1.6.4",
+      "version": "1.6.5",
       "description": "Custom screensaver firmware fork of unfoldedcircle/remote-ui for the UC Remote 3 (ARM64, Qt 5.15, GPL-3.0-or-later).",
       "licenses": [
         {
@@ -37,7 +37,7 @@
           }
         }
       ],
-      "purl": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.4",
+      "purl": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.5",
       "externalReferences": [
         {
           "type": "vcs",
@@ -191,7 +191,7 @@
   ],
   "dependencies": [
     {
-      "ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.4",
+      "ref": "pkg:github/mmadalone/madalones-defolded-circle-3@v1.6.5",
       "dependsOn": [
         "pkg:generic/qt-static@5.15.19",
         "pkg:generic/freetype@bundled",

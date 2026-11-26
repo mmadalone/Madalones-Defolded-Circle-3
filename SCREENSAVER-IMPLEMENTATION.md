@@ -3462,5 +3462,5 @@ What the simulator cannot show: whether and when a real remote passes the waking
 
 **Seen, not part of v1.6.5:**
 
-- The one docking with Starfield in the test logged seven ALSA underruns in the 1.4 s after the screensaver opened (18:04:31 UTC); the eight dockings with Matrix in the same half hour logged none, and neither did the six days. v1.6.5 changes only a comment in `StarfieldTheme.qml`. To be looked at before the release.
+- The one docking with Starfield in the test logged seven ALSA underruns in the 1.4 s after the screensaver opened (18:04:31 UTC); the eight dockings with Matrix in the same half hour logged none, and neither did the six days. v1.6.5 changes only a comment in `StarfieldTheme.qml`, and the lines are older than v1.6.5: a device log of 2026-11-02, from before the quick undock check existed, has them at two dockings with Matrix (`logs/rainfix-test/watch_all_p7.txt`).
 - "Suppress phantom wake-ups" in the six days: 137 forced sleeps, 72 of them followed by a new wake within 1.5 s. The owner's "Not now" of 2026-10-15 stands.
