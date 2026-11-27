@@ -11,6 +11,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 Releases below this point are from the custom-screensaver fork maintained by [@mmadalone](https://github.com/mmadalone), not from upstream Unfolded Circle. Upstream `unfoldedcircle/remote-ui` release history continues further down starting at `v0.84.0`.
 
+## Unreleased
+
+### Changed
+
+- **The Linux desktop download is now a self-contained static build**
+  (`remote-ui-<version>-Linux-x64-static.tar.gz`), made in Unfolded Circle's static x64 toolchain image the way
+  upstream builds its simulator: it runs without a Qt installation, where the download up to v1.6.5 needed Qt 5.15.2
+  installed. `BUILD.md`, "Desktop simulator", tells how to start it. The download for the remote keeps its name and
+  layout.
+- **A release is published only after the tests pass**, and so is the Development Build (`latest`). Up to v1.6.5 the
+  tests ran beside the build on `main`, and a tag was published without them.
+- **A release is never published unsigned**: without the signing key the release stops. The release job also runs
+  `scripts/verify-release.sh` on its own files before it publishes them.
+- **`scripts/verify-release.sh` is stricter.** A release without its `.asc` signature now fails the check (it passed
+  with a note), and only a signature by the project's release key counts
+  (`8A6F 881E 750D 0CE1 D22A  D58B 3172 A28D ABF0 7621`), whatever keys your own keyring trusts. Nothing has to be
+  imported any more: the script reads `docs/release-pubkey.asc` and leaves your keyring alone. Development Builds are
+  not signed: check those with `--checksum-only`.
+
+### Fixed
+
+- **The font's licence ships with the font**: `config/NotoSansMonoCJKjp-LICENSE.txt` in every bundle (SIL Open Font
+  License 1.1, with the font's copyright notice). The Matrix screensaver's katakana font is a subset of Noto Sans Mono
+  CJK JP, and the bundles up to v1.6.5 carried it without the licence text.
+- `scripts/verify-release.sh` reported "SHA256 MISMATCH" for a good download when its path had a backslash in it
+  (a Windows path).
+
+### Developer notes
+
+- **The release pipeline was rebuilt on upstream's v0.84.0 `build.yml`**, which the fork had not followed since the
+  merge with it. Every action is pinned to a commit (except `lycheeverse/lychee-action@v2` in upstream's
+  `docs-links.yml`), the job token is read-only except in the two release jobs, and the releases are made with
+  GitHub's own `gh` instead of the unpinned, archived `marvinpinto/action-automatic-releases@latest`. `test.yml` has
+  no push or pull-request trigger of its own any more: `build.yml` runs it on every run and both release jobs need
+  it. The release notes are the version's CHANGELOG section
+  (`tools/release_notes.py`, which is also the tag gate), every UCR3 tarball is checked before it can be uploaded
+  (`tools/check_bundle.py`), and `tools/check_workflows.py` fails CI when a workflow loses a pin, its read-only
+  default token or a checkout's `persist-credentials: false`. A manual run with "release_dry_run" rehearses the
+  release steps without publishing. `docs/UPSTREAM_MERGE.md` (the "CI" row and "Workflows after a merge") has the
+  differences from upstream's file and what to do at the next merge; `docs/RELEASE_SIGNING.md` §6 has the release
+  job's steps. Checked on GitHub on 2026-11-27 (UTC), on a branch, before it reached `main`: a push run (every test job, the device
+  build and its bundle check; no release job) and a manual dry run of the release steps (both builds, signing with
+  the release key, the verification script on the signed files, the notes of 1.6.5). No release has been published
+  through it yet.
+
 ## v1.6.5 — 2026-11-26 — Close on wake closes soon after a lift; buttons close the screensaver when you let go; TV Static's Flash on tap
 
 Needs firmware 2.12.0 or newer, like v1.6.0; checked on 2.12.1. Checked on the maintainer's Remote 3 with two test builds of this release: TV Static's tap and the first version of the quick undock check (1.6.4-keys1), then the whole Undock delay, pick-ups from the dark, buttons on Starfield and a button held when the screensaver closes (1.6.4-keys2). Not tried on a remote: the wake that opens nothing while a lift is unconfirmed, the wait after the dock chime, the Undock delay at 2000 ms, buttons on Minimal, Analog and TV Static, "DPAD interactive" with "Touch directions" both on, and a theme name the app doesn't know.

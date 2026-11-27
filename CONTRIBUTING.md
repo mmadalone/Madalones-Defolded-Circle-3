@@ -30,10 +30,10 @@ With that out of the way, here's the process of creating a pull request and maki
 Install the project's pre-commit hook so `cpplint` and `clang-format` run automatically on each commit:
 
 ```shell
-git config core.hooksDir .githooks
+git config core.hooksPath .githooks
 ```
 
-The hook only checks staged C++ files (fast) and skips either tool gracefully if it isn't installed on your machine. CI enforces the same checks in `code_guidelines.yml` so nothing slips through on push even if the hook is skipped locally. See [.githooks/pre-commit](.githooks/pre-commit) for the exact script.
+The hook only checks staged C++ files (fast) and skips either tool gracefully if it isn't installed on your machine. CI runs cpplint in `code_guidelines.yml`, so that check also runs on a push to `main` and in pull requests when the hook is skipped locally; clang-format is checked by the hook only. See [.githooks/pre-commit](.githooks/pre-commit) for the exact script.
 
 ### Contributing Code :bulb:
 

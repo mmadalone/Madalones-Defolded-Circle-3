@@ -39,7 +39,7 @@ v1.6.4).
 | Area | Upstream files | What we keep | Conflict risk |
 |---|---|---|---|
 | Build | `remote-ui.pro`, `resources/qrc/main.qrc`, `.gitignore` | Our sources and QML in HEADERS / SOURCES / qrc; `VERSION` in sync with `deploy/release.json`; extra warning flags; ignore entries (incl. `CLAUDE.md`) | High |
-| CI | `.github/workflows/build.yml` | Version-sync + CHANGELOG gates, UCR3 install-bundle staging (every file of `deploy/config/`, no sub-dirs), GPG signing, digest-pinned 5.15.19 toolchain (upstream uses the same image unpinned) | Medium |
+| CI | `.github/workflows/build.yml` | Rebuilt on upstream's v0.84.0 file for v1.6.6, so upstream's pins, read-only token and concurrency merge in from now on. Ours, each marked `# madalone`: the push trigger (every branch but i18n) with five more paths, no path filter on pull requests, the `release_dry_run` input, the `version-sync-check` job, `tests` (calls our `test.yml`) in place of upstream's `unit-tests`, the matrix (UCR3 naming, both images pinned by digest, the x64 build on manual runs too), the install-bundle staging and `tools/check_bundle.py`, no conventional-changelog steps, and two release jobs, `release-dev` (unsigned) and `release` (signed), that publish with `gh` in place of upstream's one with `softprops/action-gh-release`. Two behaviours differ from upstream's on purpose: a manual run publishes nothing (upstream's manual run on `main` published a Development Build), and a release's notes are its CHANGELOG section alone, without GitHub's generated notes. See "Workflows after a merge" below | Medium |
 | Start-up | `src/main.cpp` | MatrixRain / Palettes registration; `ScreensaverConfig` built after `hwController` and before `uiController`; keeper + suppressor wiring; `ScreenOffSync` input; `DevDockToggle` in DEV; the Messages switches pushed into `Notification::setErrorFeedback` and `Notification::setUnavailableBanners` before the UI loads and on every change; Close on wake and the Undock delay pushed into `UndockCheck` at start-up and on every change, and the charger once at start-up (v1.6.5; without them it stays at Never and never runs) | High |
 | Settings store | `src/config/config.{h,cpp}` | Our Q_PROPERTYs: phantom wake, keep awake, dock chime, media buttons (v1.4.8), volume overlay, WiFi chip, Messages (`showErrorPopups`, `showErrorBanner`, `errorBannerSec`, `showUnavailableBanners`, `otherBannerSec`, keys `ui/<name>`) | High |
 | Core API | `src/core/core.{h,cpp}`, `src/core/structs.h` | `setPowerMode` (Mod 6, body field `mode`), REST helpers + standby-inhibitor calls (Mod 5), `getBatteryRest` / `respBatteryRest` (v1.6.5, the quick undock check), `Inhibitor` struct. Keep our methods above upstream's `private:` and our `resp*` signals in its `signals:` block | High |
@@ -333,10 +333,34 @@ git replace -d 4077183
 After the merge commit the merge base with upstream is upstream's own commit (`781882a` for v0.84.0), so the next
 merge needs no graft, unless upstream rewrites its history again.
 
+## Workflows after a merge
+
+The merge with v0.84.0 kept the fork's older `build.yml` whole, and upstream's hardening of that file (actions pinned
+to commits, a read-only default token, the abandoned release action replaced) did not arrive: the release job ran an
+unpinned, archived action with write access until v1.6.5. For v1.6.6 `build.yml` was rebuilt on upstream's file, and
+`tools/check_workflows.py` (CI job "Workflow and release-tool checks") now fails when a workflow loses a pin, its
+top-level read-only `permissions`, or a checkout's `persist-credentials: false`.
+
+- **`build.yml`:** merge it like any other upstream file with our changes: take upstream's edits, keep the blocks
+  marked `# madalone` (the table above lists them). Do not keep "ours" for the whole file.
+- **`test.yml` and `tidy.yml` are ours.** After the merge, pin their actions to the commits upstream's workflows use
+  (`git grep -h "uses:" refs/upstream-public/vX.Y.Z -- .github/workflows`; the upstream tag, because two of the
+  actions, install-qt-action and cache, are used only by upstream's unit-tests job, which our `build.yml` does not
+  have). The check fails while one action is pinned to two commits.
+- **`code_guidelines.yml` and `docs-links.yml`** are upstream's, byte-identical. `docs-links.yml` uses
+  `lycheeverse/lychee-action@v2`, a tag; that one is listed as an exception in the check. Remove the exception when
+  upstream pins it.
+- **No dependabot.** The fork removed upstream's `.github/dependabot.yml` on purpose (commit `471e2ef`): it takes
+  action and submodule updates with upstream merges, not through weekly pull requests. The step above is what
+  replaces it.
+- **Toolchain images:** `build.yml` pins both by digest (the aarch64 device image and the x64 simulator image);
+  upstream names them without a digest. `BUILD.md` ("Toolchain pinning rationale") tells how to rotate them.
+
 ## Validation checklist
 
 After the merge, before merging the rehearsal branch back into `main`:
 
+- [ ] **Workflows:** `python3 tools/check_workflows.py` passes ("Workflows after a merge" above)
 - [ ] **ARM64 build** with the digest-pinned toolchain (`BUILD.md`): 0 errors; the QML compiler runs on every file
       (delete the `qrc` caches of an incremental build first)
 - [ ] **Tests**, all in a Qt 5.15 container (`test.yml` has the commands): `test/hardware` (keeper, suppressor,
@@ -344,7 +368,9 @@ After the merge, before merging the rehearsal branch back into `main`:
       suite in `test/` (upstream's programs plus our `test/matrixrain` and `test/screensaver`); CI's four quick text
       checks, `python3 tools/check_setPowerMode_drift.py`, `python3 tools/check_touchslider_guards.py`,
       `python3 tools/check_undock_wiring.py` followed by `python3 tools/check_undock_wiring.py --self-test`, and
-      `python3 tools/check_dropped_keys_guard.py` followed by `python3 tools/check_dropped_keys_guard.py --self-test`
+      `python3 tools/check_dropped_keys_guard.py` followed by `python3 tools/check_dropped_keys_guard.py --self-test`;
+      the release tools' self-tests (`python3 tools/release_notes.py --self-test`,
+      `python3 tools/check_bundle.py --self-test`) and `bash scripts/test-verify-release.sh`
 - [ ] **Code guidelines** as CI runs them: `python3 tools/design-check.py --self-test && python3 tools/design-check.py`,
       `python3 tools/icon-font.py check --require-free`, `python3 tools/icon-font.py check-mapping`, cpplint
       (filters in `code_guidelines.yml`); the docs link check (`docs-links.yml`)

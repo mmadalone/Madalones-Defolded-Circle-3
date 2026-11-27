@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
 # Pre-commit hook — validates staged C++ changes against cpplint + clang-format.
-# Install: `git config core.hooksDir .githooks` (see CONTRIBUTING.md → Local setup).
-# CI enforces the same checks in .github/workflows/code_guidelines.yml so nothing
-# slips through on push even if the hook is skipped locally.
+# Install: `git config core.hooksPath .githooks` (see CONTRIBUTING.md → Local setup).
+# CI runs cpplint in .github/workflows/code_guidelines.yml, so that check also runs
+# on a push to main and in pull requests when the hook is skipped locally;
+# clang-format is checked here only.
 
 # Collect staged C++ files (added, copied, modified — not deleted)
 STAGED_CXX=$(git diff --cached --name-only --diff-filter=ACM \

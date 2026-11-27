@@ -295,20 +295,20 @@ Custom additions at END of lists in `config.h`, `remote-ui.pro`, `main.qrc` to m
 
 A tag commits to a binary the world can install. v1.4.18 (6 releases shipped with mismatched VERSION fields), v1.4.27 → v1.4.32 (link-error chain on hardware tests), and v1.4.37 → v1.4.38 (audit-fix introduced a fresh bug) are the cost of skipping gates.
 
-The CI workflow `.github/workflows/build.yml:37-87` already enforces gates 1 + 2 on tag push. Running them locally before push saves a tag-rebuild roundtrip when they fail. Single-maintainer fork — `--no-verify`-equivalent skips defeat the gate.
+The CI workflow `.github/workflows/build.yml` enforces gates 1 + 2 on tag push (job `version-sync-check`) and, since v1.6.6, the tests of gate 6: its release job needs the `tests` job, so a tag publishes nothing unless every test job passed. Running the gates locally before push saves a tag-rebuild roundtrip when they fail. Single-maintainer fork — `--no-verify`-equivalent skips defeat the gate.
 
 | # | Gate | Status | Verify locally with |
 |---|---|---|---|
-| 1 | `remote-ui.pro` `VERSION` == `deploy/release.json` `version` == tag string | MUST | grep both files; CI mirrors at `build.yml:44-67` |
-| 2 | `CHANGELOG.md` has a heading for the version | MUST | grep; CI mirrors at `build.yml:68-87` |
+| 1 | `remote-ui.pro` `VERSION` == `deploy/release.json` `version` == tag string | MUST | grep both files; CI: job `version-sync-check` |
+| 2 | `CHANGELOG.md` has a section for the version (it becomes the release notes) | MUST | `python3 tools/release_notes.py X.Y.Z`; CI: the same call in `version-sync-check` |
 | 3 | `git status --porcelain` empty (no untracked, no modified, no `_build_logs/` staged accidentally) | MUST | one command |
 | 4 | `lupdate` regen'd if any new `qsTr` strings landed | SHOULD | `git diff --stat resources/translations/` after running lupdate |
 | 5 | Local clean test build (`qmake && make`, plus `test/hardware/*.pro` + `test/qml/*.pro` if those changed) | SHOULD | exit code |
-| 6 | CI green on the commit you're about to tag (`build.yml`, `test.yml`, `code_guidelines.yml`, `tidy.yml`, `docs-links.yml`) | MUST | GH Actions UI |
+| 6 | CI green on the commit you're about to tag: `build.yml` with its test jobs (the tag's own run repeats them and gates the release), `code_guidelines.yml`, `tidy.yml`, `docs-links.yml` (not repeated on a tag) | MUST | GH Actions UI |
 
 **Skippable when:** doc/test-only release with byte-identical binary to the prior tag — note the fact in the release notes (precedent: v1.4.37, v1.4.38). Gates 4 and 5 are SHOULD, not MUST, specifically to keep this skip clean.
 
-**No automation prescribed in this rev.** A `tools/release_gate.sh` mirroring gates 1-3 + 5 is a valid follow-up; out of scope here. The pre-commit hook stays focused on cpplint / clang-format (its current role at `.githooks/pre-commit`); release gates run at tag time, not commit time.
+**What is automated (v1.6.6):** gates 1 and 2 and the tests run in CI on every tag before anything is published; the release job signs, checks its own files with `scripts/verify-release.sh` and takes the notes from CHANGELOG.md; every UCR3 tarball is checked by `tools/check_bundle.py` (run it on a local test build too: `python3 tools/check_bundle.py <tarball> --built-version vX.Y.Z-label`). A manual run of `build.yml` with "release_dry_run" rehearses the release steps without publishing. Gates 3 to 5 stay manual. The pre-commit hook stays focused on cpplint / clang-format (its current role at `.githooks/pre-commit`); release gates run at tag time, not commit time.
 
 **Pairs with:** §3.3 (BUILD-mode pre-flight is per edit; this is per tag), §11.1, AP-UC-50, AP-UC-51.
 

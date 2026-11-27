@@ -44,7 +44,7 @@ Output: `binaries/linux-arm64/release/remote-ui`
 Intermediate files go to `build/linux-arm64/release-static/` and survive between runs. After a toolchain change, delete
 that folder first so nothing compiled against the old Qt is linked in.
 
-> **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. The pinned digest is Docker Hub's `1.0.0` tag of the image (pushed 2026-09-23); upstream's `make ucr2` target uses the same image by its `:latest` tag. The pin is the same in `.github/workflows/build.yml`. To rotate the pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:
+> **Toolchain pinning rationale.** The image is pinned by digest, not the `:latest` tag, so builds are reproducible from a tag check-out — `:latest` could be re-pushed by upstream and silently change the compiler / Qt minor / static-libs without a local indication. The pinned digest is Docker Hub's `1.0.0` tag of the image (pushed 2026-09-23); upstream's `make ucr2` target uses the same image by its `:latest` tag. The pin is the same in `.github/workflows/build.yml`, which since v1.6.6 also pins the x64 simulator image for the release's Linux download (`unfoldedcircle/remote-ui-toolchain-qt-5.15.19-static-x64@sha256:5e16e99c575c1571051fe3de8100163c3537a61916e1decf7e0d28ef0c3e5396`, what its `:latest` tag pointed to on 2026-11-27; `make linux-x64` and the command under "Desktop simulator" below still use `:latest`). To rotate a pin (e.g. UC ships an updated toolchain you want to adopt), pull the new image then resolve the digest:
 >
 > ```bash
 > docker pull unfoldedcircle/r2-toolchain-qt-5.15.19-static:latest
@@ -74,7 +74,8 @@ curl -X PUT "http://${UC3_HOST}/api/system/install/ui?enable=false" -u "web-conf
 ## Desktop simulator
 
 Upstream's static Linux x64 toolchain image builds the simulator without a Qt installation
-([docs/static-compile.md](docs/static-compile.md)):
+([docs/static-compile.md](docs/static-compile.md)). Since v1.6.6 CI builds it the same way for every release and
+Development Build (the `…-Linux-x64-static.tar.gz` download: the binary and `version.txt`):
 
 ```bash
 make linux-x64        # -> binaries/linux-x64/release/remote-ui

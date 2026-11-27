@@ -92,7 +92,7 @@
       "group": "qt",
       "name": "Qt (desktop host build)",
       "version": "5.15.2",
-      "description": "Qt 5.15.2 used on the host side for macOS dev builds and GitHub Actions runners (Linux x64). Installed via jurplel/install-qt-action@v3. Source-compatible with 5.15.19 for the custom screensaver code.",
+      "description": "Qt 5.15.2 used on the host side for macOS dev builds and by the test and clang-tidy jobs on GitHub Actions runners (Linux x64), installed there by jurplel/install-qt-action. Not shipped: since v1.6.6 the release's Linux x64 simulator is built with the static Qt 5.15.19 of the unfoldedcircle/remote-ui-toolchain-qt-5.15.19-static-x64 Docker image. Source-compatible with 5.15.19 for the custom screensaver code.",
       "licenses": [
         {
           "license": {
@@ -172,7 +172,7 @@
       "group": "unicode",
       "name": "libicu (build tool dependency)",
       "version": "56.2",
-      "description": "ICU 56 used only by Qt's lupdate/lrelease translation tools on the Linux CI runner (via build.yml libicu56 build step). Not linked into the runtime binary; build-only dependency. Listed for completeness because it's fetched during CI.",
+      "description": "ICU 56 needed on the Linux CI runners by Qt 5.15.2: by its lupdate/lrelease translation tools in tidy.yml (built from source there; up to v1.6.5 also in build.yml), and by libQt5Core in every Qt job of test.yml (aqt's icu archive: named explicitly in the upstream unit-tests job, part of the default archives in the others). Not linked into the runtime binary; build-only dependency. Listed for completeness because it's fetched during CI.",
       "licenses": [
         {
           "license": {
