@@ -1,4 +1,4 @@
-# GitHub Action that runs clang-tidy against custom C++ files in src/ui/.
+# GitHub Action that runs clang-tidy against custom C++ files in src/ui/ and src/hardware/.
 #
 # Mode: baseline/tolerant — warnings are reported to the workflow log and
 # annotated on PRs, but the job exits 0 even with findings. Flip to strict
@@ -20,6 +20,10 @@ on:
       - '.github/workflows/tidy.yml'
       - 'src/ui/**/*.cpp'
       - 'src/ui/**/*.h'
+      # madalone (v1.6.6): the job lints files of src/hardware too (CUSTOM_FILES below); a push that touched only
+      # that folder ran nothing
+      - 'src/hardware/**/*.cpp'
+      - 'src/hardware/**/*.h'
       - 'remote-ui.pro'
   pull_request:
     branches:
@@ -32,6 +36,10 @@ on:
         required: false
         default: 'false'
 
+# Least privilege default for the job token (tools/check_workflows.py checks it)
+permissions:
+  contents: read
+
 env:
   QT_VERSION: 5.15.2
 
@@ -41,8 +49,9 @@ jobs:
     runs-on: ubuntu-22.04
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           fetch-depth: 1
           # bear -- make compiles src/util.cpp which transitively includes the
           # QR-Code-generator submodule via util.h:13. clang-tidy then re-parses
@@ -60,10 +69,10 @@ jobs:
       # Qt 5.15 lupdate/lrelease require libicu56 which Ubuntu 22.04 no
       # longer ships. qmake auto-invokes lupdate when processing the .pro
       # file's TRANSLATIONS, so qmake itself fails without libicu56 present.
-      # Mirror the libicu56 cache/build/install steps from build.yml.
+      # The same libicu56 cache/build/install steps as upstream's unit-tests job (build.yml up to v1.6.5).
       - name: Cache libicu56 build
         id: cache-libicu56
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: icu
           key: libicu56-tidy
@@ -85,7 +94,7 @@ jobs:
           sudo ldconfig
 
       - name: Install Qt
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
           modules: 'qtvirtualkeyboard'
@@ -112,6 +121,9 @@ jobs:
 
       - name: Run clang-tidy on custom C++ files
         shell: bash
+        env:
+          # the manual run's input reaches the script as a variable, not as text pasted into it
+          STRICT: ${{ github.event.inputs.strict || 'false' }}
         run: |
           set -o pipefail
 
@@ -175,8 +187,6 @@ jobs:
           echo "Warnings: $WARNING_COUNT"
           echo "Errors:   $ERROR_COUNT"
 
-          STRICT="${{ github.event.inputs.strict || 'false' }}"
-
           if [ "$ERROR_COUNT" -gt 0 ]; then
             echo "::error::clang-tidy reported $ERROR_COUNT error(s) — failing build"
             exit 1
@@ -194,7 +204,7 @@ jobs:
           fi
 
       - name: Upload clang-tidy report
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: always()
         with:
           name: clang-tidy-report

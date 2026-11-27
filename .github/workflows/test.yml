@@ -1,21 +1,23 @@
-# Run unit tests on every push and PR. Gates merges on test passage.
+# The fork's test suites and guard scripts.
+#
+# madalone (v1.6.6): called by build.yml ("Build & Release") on every one of its runs: pushes that touch code, tests,
+# tools or the bundle, every pull request to main, and every release tag, where its jobs gate both release jobs. It
+# has no push or pull-request trigger of its own any more (up to v1.6.5 it ran beside the build, on main and in pull
+# requests only, and a tag was published without it). "Run workflow" in the Actions tab runs it alone.
+#
+# No `concurrency:` here: inside a called workflow `github.workflow` is the caller's name, so a group built from it
+# would be the caller's own group.
 ---
 name: "Tests"
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - '.github/workflows/test.yml'
-      - 'src/**'
-      - 'test/**'
-      - 'remote-ui.pro'
-      - 'tools/check_touchslider_guards.py'
-      - 'tools/check_undock_wiring.py'
-      - 'tools/check_dropped_keys_guard.py'
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  workflow_call:
+  workflow_dispatch:
+
+# Least privilege default for the job token (tools/check_workflows.py checks it). A called workflow cannot get more
+# than its caller has.
+permissions:
+  contents: read
 
 env:
   QT_VERSION: "5.15.2"
@@ -27,10 +29,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
           modules: ""
@@ -50,7 +54,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: unit-test-results
           path: test/matrixrain/results.xml
@@ -63,10 +67,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
           modules: ""
@@ -88,7 +94,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: qml-test-results
           path: test/qml/results.xml
@@ -101,10 +107,12 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
           modules: ""
@@ -127,7 +135,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: integration-test-results
           path: test/integration/results.xml
@@ -143,7 +151,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Run drift check
         run: python3 tools/check_setPowerMode_drift.py
@@ -159,7 +169,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Run guard check
         run: python3 tools/check_touchslider_guards.py
@@ -176,7 +188,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Run wiring check
         run: python3 tools/check_undock_wiring.py
@@ -197,13 +211,60 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Run guard check
         run: python3 tools/check_dropped_keys_guard.py
 
       - name: Self-test of the guard check
         run: python3 tools/check_dropped_keys_guard.py --self-test
+
+  workflow-checks:
+    name: "Workflow and release-tool checks"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed), v1.6.6. The first step names every workflow that lost a pinned
+    # action, its read-only default token or a checkout's `persist-credentials: false`: the merge with upstream
+    # v0.84.0 kept the fork's older workflows and nothing failed (tools/check_workflows.py). The self-tests prove
+    # that the three tools of the release path still report what they are there for: the workflow check, the release
+    # notes taken from CHANGELOG.md (tools/release_notes.py, also the tag gate) and the install-bundle check that
+    # build.yml runs on every UCR3 tarball (tools/check_bundle.py).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Run workflow check
+        run: python3 tools/check_workflows.py
+
+      - name: Self-test of the workflow check
+        run: python3 tools/check_workflows.py --self-test
+
+      - name: Self-test of the release notes tool
+        run: python3 tools/release_notes.py --self-test
+
+      - name: Self-test of the bundle check
+        run: python3 tools/check_bundle.py --self-test
+
+  verify-release:
+    name: "Release verification script"
+    runs-on: ubuntu-latest
+    # Fast standalone job (no Qt install needed), v1.6.6. scripts/verify-release.sh is what a user runs on a
+    # download, and what build.yml's release job runs before it publishes. This test signs throwaway files with
+    # throwaway keys and checks that the script refuses a missing signature, a signature by another key, a changed
+    # file and a wrong hash, and accepts a good one (scripts/test-verify-release.sh).
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Test the verification script
+        run: bash scripts/test-verify-release.sh
 
   upstream-unit-tests:
     name: "Upstream unit tests (CMake)"
@@ -216,8 +277,9 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           submodules: recursive
 
       - name: Install Qt ${{ env.QT_VERSION }}
@@ -259,15 +321,16 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           # keeper_test.pro / suppressor_test.pro pull src/util.cpp and util.h
           # via mock_core_api.cpp; util.h:13 includes the QR-Code-generator
           # submodule. Default checkout skips submodules → fatal compile error.
           submodules: recursive
 
       - name: Install Qt ${{ env.QT_VERSION }}
-        uses: jurplel/install-qt-action@v3
+        uses: jurplel/install-qt-action@a9c63c7c123f3069cff414e7e482d95dfa9d8125 # v4.4.1
         with:
           version: ${{ env.QT_VERSION }}
           modules: ""
@@ -322,7 +385,7 @@ jobs:
 
       - name: Upload test results
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: hardware-test-results
           path: |

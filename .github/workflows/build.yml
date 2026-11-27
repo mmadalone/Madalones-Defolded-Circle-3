@@ -1,9 +1,19 @@
-# GitHub Action to build the remote-ui Qt project for the Remote Two as a static Qt app and
-# as a shared library desktop app for Linux (and maybe later also for macOS and Windows).
+# GitHub Action to build the remote-ui Qt project as a static Qt app for the Remote 3 and, for release builds,
+# as a static Linux x64 desktop simulator. Both are built in the Docker toolchain images of
+# https://github.com/unfoldedcircle/ucr2-toolchain (see docs/cross-compile.md and docs/static-compile.md).
+#
+# madalone (v1.6.6): rebuilt on upstream's v0.84.0 workflow, which this file had not followed since the merge with
+# it: the read-only default token, the pinned actions and the static builds are upstream's. Ours, each marked
+# "# madalone" below: the push trigger and paths, the version gate, the tests from test.yml in place of upstream's
+# unit-tests job, the digest-pinned images, the UCR3 install bundle and its check, and two release jobs (a
+# Development Build for main, a signed release for a tag) that publish with GitHub's own `gh` instead of a
+# third-party action. docs/UPSTREAM_MERGE.md lists the differences for the next merge.
 ---
 name: "Build & Release"
 
 on:
+  # madalone: every branch but i18n is built on push: the fork works without pull requests (upstream builds only
+  # main and release tags on push)
   push:
     branches-ignore:
       - i18n
@@ -13,13 +23,40 @@ on:
       - 'remote-ui.pro'
       - 'resources/**'
       - 'src/**'
+      - 'test/**'
+      - 'tools/**'
+      # madalone: what else the jobs below read
+      - '3rd-party/**'
+      - 'deploy/**'
+      - 'docs/release-pubkey.asc'
+      - 'scripts/**'
+      - 'version.txt.in'
     tags:
       # This is not regex: https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#filter-pattern-cheat-sheet
       - v[0-9]+.[0-9]+.[0-9]+*
+  # madalone: no path filter, every pull request is built and tested (upstream filters them like pushes)
   pull_request:
-    branches: 
+    branches:
       - main
     types: [ opened, synchronize, reopened ]
+  # Allow a manual build from the Actions tab. Path filters don't apply to a manual run.
+  workflow_dispatch:
+    # madalone: a manual run builds both targets; with this box ticked it also runs the release job's steps
+    inputs:
+      release_dry_run:
+        description: "Also run the release steps (sign, verify, notes) without publishing"
+        type: boolean
+        default: false
+
+# Avoid duplicate and superseded runs: a new push to a branch cancels the previous run. Release builds are never
+# cancelled.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' && !startsWith(github.ref, 'refs/tags/') }}
+
+# Least privilege default for the job token. The release jobs raise it to contents: write.
+permissions:
+  contents: read
 
 env:
   QT_VERSION: 5.15.2
@@ -34,18 +71,21 @@ env:
   HASH_FILENAME: remote-ui.hash
 
 jobs:
+  # madalone: remote-ui.pro, deploy/release.json and (on a tag) the tag name one version, and on a tag a CHANGELOG
+  # section for it. Runs before the builds.
   version-sync-check:
     name: Version sync gate
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          fetch-depth: 0
+          persist-credentials: false
       - name: Check VERSION consistency across artifacts
         shell: bash
         run: |
           PRO_VERSION=$(grep '^VERSION = ' remote-ui.pro | awk '{print $3}')
-          JSON_VERSION=$(grep '"version"' deploy/release.json | sed 's/.*"version": *"\([^"]*\)".*/\1/')
+          # json.load, not grep: a release.json that is not valid JSON fails here, not on a user's remote
+          JSON_VERSION=$(python3 -c 'import json; print(json.load(open("deploy/release.json", encoding="utf-8"))["version"])')
           echo "remote-ui.pro VERSION:   $PRO_VERSION"
           echo "deploy/release.json:     $JSON_VERSION"
           if [ -z "$PRO_VERSION" ] || [ -z "$JSON_VERSION" ]; then
@@ -69,77 +109,79 @@ jobs:
         if: startsWith(github.ref, 'refs/tags/v')
         shell: bash
         run: |
+          # The release job publishes this section as the release notes (tools/release_notes.py)
           TAG_VERSION="${GITHUB_REF#refs/tags/v}"
-          if [ ! -f CHANGELOG.md ]; then
-            echo "::error::CHANGELOG.md not found at repo root"
-            exit 1
-          fi
-          # Accept common heading styles:
-          #   ## 1.2.3 ...
-          #   ## [1.2.3] ...
-          #   ## v1.2.3 ...
-          #   ### 1.2.3 ...
-          if ! grep -qE "^(##|###) +v?\[?${TAG_VERSION}[]\b ]" CHANGELOG.md; then
-            echo "::error::CHANGELOG.md has no entry for version $TAG_VERSION"
-            echo "Add a heading like '## $TAG_VERSION — <summary>' before tagging a release."
-            exit 1
-          fi
-          echo "CHANGELOG.md entry found for $TAG_VERSION"
+          python3 tools/release_notes.py "$TAG_VERSION" > /dev/null
+          echo "CHANGELOG.md has a section for $TAG_VERSION"
 
-  build-embedded:
+  # madalone: the fork's test suites (C++, QML, integration, hardware, upstream's unit tests, the guard scripts) in
+  # place of upstream's unit-tests job. They run beside the builds; both release jobs need them.
+  tests:
+    name: Tests
+    uses: ./.github/workflows/test.yml
+
+  # The static builds run in Docker toolchain images. The Linux x64 desktop simulator is only built for release
+  # builds (push to main and version tags), not for pull requests, so the matrix is computed here.
+  build-matrix:
+    name: Build matrix
+    runs-on: ubuntu-latest
+    outputs:
+      config: ${{ steps.matrix.outputs.config }}
+    steps:
+      - name: Select the static build targets
+        id: matrix
+        shell: bash
+        run: |
+          # madalone: the device target is named UCR3 (upstream: UCR2) and "bundle" marks it as the one that is
+          # staged as a firmware install bundle. Both images are pinned by digest, so a release can be rebuilt from
+          # the same toolchain; BUILD.md ("Toolchain pinning rationale") pins the same two and tells how to rotate.
+          UCR3='{ "name": "UCR3 aarch64", "artifact": "UCR3", "build": "static", "output": "linux-arm64/release",
+                  "build-image": "unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f", "bundle": true }'
+          LINUX_X64='{ "name": "Linux x64 desktop", "artifact": "Linux-x64", "build": "static", "output": "linux-x64/release",
+                       "build-image": "unfoldedcircle/remote-ui-toolchain-qt-5.15.19-static-x64@sha256:5e16e99c575c1571051fe3de8100163c3537a61916e1decf7e0d28ef0c3e5396", "bundle": false }'
+          # madalone: also on a manual run
+          if [[ "$GITHUB_REF" == "refs/heads/main" || "$GITHUB_REF" == refs/tags/v* || "$GITHUB_EVENT_NAME" == "workflow_dispatch" ]]; then
+            CONFIG="[$UCR3, $LINUX_X64]"
+          else
+            CONFIG="[$UCR3]"
+          fi
+          echo "config=$(echo "$CONFIG" | tr -d '\n')" >> "$GITHUB_OUTPUT"
+          echo "$CONFIG"
+
+  build-static:
     name: ${{ matrix.config.name }}
     runs-on: ubuntu-latest
-    needs: version-sync-check
+    # madalone: after the version gate (upstream: after its unit tests)
+    needs: [version-sync-check, build-matrix]
     strategy:
       matrix:
-        config:
-          - {
-            name: "UCR3 aarch64", artifact: "UCR3", build: "static",
-            qmake-args: "CONFIG+=release CONFIG+=static",
-            # madalone (v1.4.28, audit-driven): digest-pin the toolchain image
-            # so CI builds are reproducible (audit-v1.4.26-thorough.md Finding 1).
-            # Qt 5.15.19 = the image upstream builds with (Docker Hub tag 1.0.0,
-            # pushed 2026-09-23); the fork used Qt 5.15.8 up to v1.6.0. BUILD.md
-            # pins the same digest; to rotate it see "Toolchain pinning rationale" there.
-            build-image: "unfoldedcircle/r2-toolchain-qt-5.15.19-static@sha256:7d8fbf28308bd1c5628921fd79e10fe4cde17bbbea5efd0ec64606782feb271f"
-          }
-# TODO add YIO Remote support
-#          - {
-#            name: "YIO Remote", artifact: "YIO", build: "static",
-#            qmake-args: "CONFIG+=release CONFIG+=static",
-#            build-image: ""
-#          }
+        config: ${{ fromJSON(needs.build-matrix.outputs.config) }}
 
     steps:
       - name: Checkout ${{ env.PROJECT_NAME }}
-        uses: actions/checkout@v4
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # history required to determine number of commits since last release tag
+          persist-credentials: false
+          # history and tags required to determine number of commits since last release tag
           fetch-depth: 0
           path: ${{ env.PROJECT_NAME }}
           submodules: recursive
 
-      - name: Fetch all tags to determine version
-        run: |
-          cd ${{ env.PROJECT_NAME }}
-          git fetch origin +refs/tags/*:refs/tags/*
-
       - name: Set build output directory
         shell: bash
         run: |
-          # replicate default path from remote-ui.pro
+          # the toolchain images write to binaries/<platform>/release (default path of remote-ui.pro, or UC_BIN)
           mkdir ${{ env.PROJECT_NAME }}/build
           mkdir ${{ env.PROJECT_NAME }}/${{env.BIN_OUTPUT_PATH }}
-          echo "UC_BIN=${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/${BIN_OUTPUT_PATH}/linux-arm64/release" >> $GITHUB_ENV
+          echo "UC_BIN=${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/${BIN_OUTPUT_PATH}/${{ matrix.config.output }}" >> $GITHUB_ENV
 
-      - name: Cross compile
+      - name: Build in the Docker toolchain image
         run: |
           docker pull ${{ matrix.config.build-image }}
           docker run --rm  \
               --user=$(id -u):$(id -g) \
               -v ${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}:/sources \
               ${{ matrix.config.build-image }}
-
       - name: Set build artifact name
         shell: bash
         run: |
@@ -151,19 +193,19 @@ jobs:
 
       # madalone (post-v1.4.21): stage the firmware's expected install-bundle layout
       # (release.json + bin/remote-ui + config/) before tarring. The /api/system/install/ui
-      # endpoint expects the binary at bin/remote-ui — CI previously tarred only the raw
-      # build directory (binary at root + version.txt), which the firmware rejected with
-      # "Missing file: remote-ui" on user installs. The manual deploy procedure in
-      # CLAUDE.md has always produced the correct structure; this aligns CI with that.
+      # endpoint expects the binary at bin/remote-ui: a tarball of the raw build directory
+      # (binary at root + version.txt) is refused with "Missing file: remote-ui".
       - name: Stage install bundle
+        if: matrix.config.bundle
         shell: bash
         run: |
           STAGING="${GITHUB_WORKSPACE}/install-bundle"
           mkdir -p "${STAGING}/bin" "${STAGING}/config"
           cp "${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/release.json" "${STAGING}/"
-          # Every file of deploy/config/ goes into config/: the charging-screen JSON, the CJK font and,
-          # since v1.4.41, the 16 sound files (UI clicks + dock chimes). This step used to copy only the
-          # first two by name, so no GitHub release from v1.4.41 to v1.5.3 shipped any sound (v1.5.4).
+          # Every file of deploy/config/ goes into config/: the charging-screen JSON, the CJK font with its licence
+          # and the sound files (UI clicks + dock chimes: 10 at v1.4.41, 16 since v1.4.42). This step used to copy
+          # only the JSON and the font, by name, so no GitHub release from v1.4.41 to v1.5.3 shipped any sound
+          # (v1.5.4).
           # The firmware rejects sub-directories under config/ ("Could not extract archive").
           CONFIG_SRC="${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/deploy/config"
           if [ -n "$(find "${CONFIG_SRC}" -mindepth 1 -type d)" ]; then
@@ -171,261 +213,42 @@ jobs:
             exit 1
           fi
           cp "${CONFIG_SRC}"/* "${STAGING}/config/"
-          SRC_COUNT=$(find "${CONFIG_SRC}" -maxdepth 1 -type f | wc -l)
-          STAGED_COUNT=$(find "${STAGING}/config" -maxdepth 1 -type f | wc -l)
-          if [ "${SRC_COUNT}" -ne "${STAGED_COUNT}" ]; then
-            echo "::error::staged ${STAGED_COUNT} of ${SRC_COUNT} files of deploy/config"
-            exit 1
-          fi
           cp "${{ env.UC_BIN }}/remote-ui" "${STAGING}/bin/"
-          # Include version.txt at root for downstream diagnostics; firmware install ignores it.
-          cp "${{ env.UC_BIN }}/version.txt" "${STAGING}/" || true
+          # version.txt at the root names the build (`git describe`); the firmware's install ignores it
+          cp "${{ env.UC_BIN }}/version.txt" "${STAGING}/"
           echo "=== Staging contents ==="
           find "${STAGING}" -type f | sort
-          ls -laR "${STAGING}"
-
-      # Archive is required to preserve file permissions and re-used for release uploads.
-      # Now packaged in the install-bundle layout — drop-in usable with the firmware's
-      # `/api/system/install/ui?void_warranty=yes` endpoint per README.md.
-      - name: Create upload artifact
-        shell: bash
-        run: |
-          tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C "${GITHUB_WORKSPACE}/install-bundle" .
-          echo "=== Tarball contents ==="
-          tar tvf ${{ env.ARTIFACT_NAME }}.tar.gz
-          ls -lah
-
-      - uses: actions/upload-artifact@v4
-        id: upload_artifact
-        with:
-          name: ${{ env.ARTIFACT_NAME }}
-          path: ${{ env.ARTIFACT_NAME }}.tar.gz
-          if-no-files-found: error
-          retention-days: 3
-
-  build-desktop:
-    name: ${{ matrix.config.name }}
-    runs-on: ${{ matrix.config.os }}
-    needs: version-sync-check
-    strategy:
-      matrix:
-        config:
-          - {
-            name: "Linux x64", artifact: "Linux-x64", build: "release",
-            qmake-args: "CONFIG+=release",
-            # ubuntu-20.04 runners were deprecated by GitHub in April 2025.
-            # Qt 5.15.2 builds fine with GCC 11 on 22.04.
-            os: ubuntu-22.04
-          }
-          # Attention: macOS minutes count 10x more than Linux!
-#          - {
-#            name: "macOS x64", artifact: "macOS-x64", build: "release",
-#            qmake-args: "CONFIG+=release",
-#            os: macos-latest
-#          }
-# TODO Windows not yet tested! Not sure if bash shell can be used...
-#          # TODO for Windows build install: https://download.qt.io/official_releases/jom/jom.zip
-#          - {
-#            name: "Windows x64", artifact: "Windows-x64", build: "release",
-#            msvc: win64_msvc2017_64,
-#            qmake-args: "CONFIG+=release",
-#            os: windows-latest,
-#            environment_script: "C:/Program Files (x86)/Microsoft Visual Studio/2019/Enterprise/VC/Auxiliary/Build/vcvars64.bat"
-#          }
-
-    steps:
-      - name: Cache libicu56 build
-        id: cache-libicu56
-        uses: actions/cache@v4
-        with:
-          path: icu
-          key: libicu56-${{ matrix.config.artifact }}
-
-      # Qt lrelease & lupdate tools require a very old libicu version which is not available on Linux!
-      # Even installing the Ubuntu qt5dev (or similar) package which provides these tools is broken!!!
-      - name: Build libicu56 library for lupdate
-        if: runner.os == 'Linux' && steps.cache-libicu56.outputs.cache-hit != 'true'
-        run: |
-          wget https://github.com/unicode-org/icu/releases/download/release-56-2/icu4c-56_2-src.tgz
-          tar xzf icu4c-56_2-src.tgz
-          cd icu/source
-          chmod +x runConfigureICU configure install-sh
-          ./runConfigureICU Linux
-          make -j$(nproc)
-
-      - name: Install libicu56 library
-        if: runner.os == 'Linux'
-        run: |
-          cd icu/source
-          sudo make install
-
-      - name: Install Qt
-        uses: jurplel/install-qt-action@v3
-        with:
-          version: ${{ env.QT_VERSION }}
-          # modules & archives: https://ddalcino.github.io/aqt-list-server/
-          modules: 'qtvirtualkeyboard'
-          # qtbase: qmake
-          # qttools: lrelease & lupdate
-          archives: 'qtbase qtdeclarative qtmultimedia qtquickcontrols2 qtsvg qttools qtwebsockets'
-          cache: true
-          cache-key-prefix: ${{ env.QT_VERSION }}-${{ matrix.config.artifact }}
-
-      - name: Show environment
-        if: env.DEBUG_OUTPUT == 'true'
-        run: |
-          printenv
-          ls -lah ..
-          echo "Qt5 bin directory:"
-          ls -lah $Qt5_DIR/bin
-          echo "Qt5 lib directory:"
-          ls -lah $Qt5_DIR/lib
-          echo "qmake   : $(which qmake)"
-          echo "lrelease: $(which lrelease)"
-          echo "lupdate : $(which lupdate)"
-          #aqt list-tool linux desktop
-          #aqt list-qt linux desktop --archives 5.15.2 gcc_64
-          qmake --version
-          qmake -query
-
-      - name: Checkout ${{ env.PROJECT_NAME }}
-        uses: actions/checkout@v4
-        with:
-          # history required to determine number of commits since last release tag
-          fetch-depth: 0
-          path: ${{ env.PROJECT_NAME }}
-          submodules: recursive
-          
-      - name: Fetch all tags to determine version
-        run: |
-          cd ${{ env.PROJECT_NAME }}
-          git fetch origin +refs/tags/*:refs/tags/*
-
-      - name: Set build output directory
-        shell: bash
-        run: |
-          mkdir ${{ env.PROJECT_NAME }}/build
-          mkdir ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }}
-          echo "UC_BIN=${GITHUB_WORKSPACE}/${BIN_OUTPUT_PATH}/${{ matrix.config.artifact }}" >> $GITHUB_ENV
-
-      # The easy way, but only for Linux
-      - name: Configure with qmake
-        if: env.USE_CMAKE_SHELL == 'false'
-        run: |
-          cd ${{ env.PROJECT_NAME }}/build
-          qmake ${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}/${{ env.APP_PRO }} ${{ matrix.config.qmake-args }}
-          ls -lah
-
-      - name: Build with make
-        if: env.USE_CMAKE_SHELL == 'false'
-        run: |
-          cd ${{ env.PROJECT_NAME }}/build
-          make -j $(nproc --all)
-          cp version.txt ${{ env.UC_BIN }}
-
-      # Use cmake as a platform independent shell
-      # Credits go to: https://github.com/fpoussin/qtcreator-doxygen/blob/master/.github/workflows/build_qmake.yml
-      - name: Configure with cmake shell
-        if: env.USE_CMAKE_SHELL == 'true'
-        shell: cmake -P {0}
-        run: |
-          if ("${{ runner.os }}" STREQUAL "Windows" AND NOT "x${{ matrix.config.environment_script }}" STREQUAL "x")
-            execute_process(
-              COMMAND "${{ matrix.config.environment_script }}" && set
-              OUTPUT_FILE environment_script_output.txt
-            )
-            file(STRINGS environment_script_output.txt output_lines)
-            foreach(line IN LISTS output_lines)
-              if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
-                set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
-                # Set for other steps
-                message("::set-env name=${CMAKE_MATCH_1}::${CMAKE_MATCH_2}")
-              endif()
-            endforeach()
-          endif()
-          
-          execute_process(
-            COMMAND qmake
-              $ENV{GITHUB_WORKSPACE}/$ENV{PROJECT_NAME}/$ENV{APP_PRO}
-              ${{ matrix.config.qmake-args }}
-            WORKING_DIRECTORY $ENV{GITHUB_WORKSPACE}/$ENV{PROJECT_NAME}/build
-            RESULT_VARIABLE result
-          )
-          if (NOT result EQUAL 0)
-            message(FATAL_ERROR "Bad exit status")
-          endif()
-
-      - name: Build with cmake shell
-        if: env.USE_CMAKE_SHELL == 'true'
-        shell: cmake -P {0}
-        run: |
-          if ("${{ runner.os }}" STREQUAL "Windows")
-            file(STRINGS environment_script_output.txt output_lines)
-            foreach(line IN LISTS output_lines)
-              if (line MATCHES "^([a-zA-Z0-9_-]+)=(.*)$")
-                set(ENV{${CMAKE_MATCH_1}} "${CMAKE_MATCH_2}")
-              endif()
-            endforeach()
-            set(ENV{PATH} "${{ steps.qt.outputs.qt_dir }}/bin/;$ENV{PATH}")
-          else()
-            set(ENV{PATH} "${{ steps.qt.outputs.qt_dir }}/bin/:$ENV{PATH}")
-          endif()
-  
-          if ("${{ runner.os }}" STREQUAL "Windows")
-            set(make_program jom)
-          else()
-            include(ProcessorCount)
-            ProcessorCount(N)            
-            set(make_program make -j ${N})
-          endif()
-  
-          execute_process(
-            COMMAND ${make_program}
-            WORKING_DIRECTORY $ENV{GITHUB_WORKSPACE}/$ENV{PROJECT_NAME}/build
-            RESULT_VARIABLE result
-          )
-          if (NOT result EQUAL 0)
-            message(FATAL_ERROR "Build failed: bad exit status")
-          endif()
-  
-          execute_process(
-            COMMAND cp $ENV{GITHUB_WORKSPACE}/$ENV{PROJECT_NAME}/build/version.txt $ENV{UC_BIN}
-          )
-
-      - name: Show output
-        if: env.DEBUG_OUTPUT == 'true'
-        run: |
-          pwd
-          ls -lah
-          cd ${{ env.PROJECT_NAME }}/build
-          pwd
-          ls -lah
-          cd ${GITHUB_WORKSPACE}/${BIN_OUTPUT_PATH}
-          pwd
-          ls -lah
-          cd ${{ env.UC_BIN }}
-          pwd
-          ls -lah
-          cd ${GITHUB_WORKSPACE}/${{ env.PROJECT_NAME }}
-          pwd
-          ls -lah
-
-      - name: Set build artifact name
-        shell: bash
-        run: |
-          APP_VERSION=$(cat "${{ env.UC_BIN }}/version.txt" | awk '{print $1}')
-          echo "App version: $APP_VERSION"
-          echo "ARTIFACT_NAME=${{ env.APP_NAME }}-$APP_VERSION-Qt${{ env.QT_VERSION }}-${{ matrix.config.artifact }}-${{ matrix.config.build }}" >> $GITHUB_ENV
 
       # Archive is required to preserve file permissions and re-used for release uploads
       - name: Create upload artifact
         shell: bash
         run: |
-          pwd
-          tar czvf ${{ env.ARTIFACT_NAME }}.tar.gz -C ${GITHUB_WORKSPACE}/${{env.BIN_OUTPUT_PATH }} .
+          # madalone: the UCR3 target is packed from the staged install bundle, drop-in usable with the firmware's
+          # /api/system/install/ui?void_warranty=yes (README.md)
+          if [ "${{ matrix.config.bundle }}" = "true" ]; then
+            SOURCE="${GITHUB_WORKSPACE}/install-bundle"
+          else
+            SOURCE="${{ env.UC_BIN }}"
+          fi
+          # ARTIFACT_NAME as a shell variable, not pasted into the script: it holds a tag name
+          tar czvf "${ARTIFACT_NAME}.tar.gz" -C "${SOURCE}" .
           ls -lah
 
-      - uses: actions/upload-artifact@v4
+      # madalone (v1.6.6): the tarball itself is checked before it can be uploaded: the layout, release.json, the
+      # binary and its version, every file of config/ (tools/check_bundle.py tells why each check exists)
+      - name: Check the install bundle
+        if: matrix.config.bundle
+        shell: bash
+        run: |
+          TARBALL="${GITHUB_WORKSPACE}/${ARTIFACT_NAME}.tar.gz"
+          cd ${{ env.PROJECT_NAME }}
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            python3 tools/check_bundle.py "${TARBALL}" --tag "${GITHUB_REF#refs/tags/}"
+          else
+            python3 tools/check_bundle.py "${TARBALL}"
+          fi
+
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         id: upload_artifact
         with:
           name: ${{ env.ARTIFACT_NAME }}
@@ -433,95 +256,161 @@ jobs:
           if-no-files-found: error
           retention-days: 3
 
-  release:
-    name: Create Release
-    if: github.ref == 'refs/heads/main' || contains(github.ref, 'tags/v')
+  # madalone (v1.6.6): two release jobs in place of upstream's one. Both wait for the tests and the builds, and
+  # both publish with `gh`, GitHub's own command-line tool, which is on every hosted runner: no third-party action
+  # runs with the write token (up to v1.6.5: marvinpinto/action-automatic-releases@latest, unpinned and archived).
+  #
+  # Development Build: every push to main that runs this workflow (the paths above) replaces the "latest"
+  # pre-release. Unsigned, as before.
+  release-dev:
+    name: Development Build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    needs: [build-desktop, build-embedded]
-    # marvinpinto/action-automatic-releases needs write access to create/update
-    # the 'latest' tag and upload release artifacts. GitHub default is read-only.
+    needs: [tests, build-static]
     permissions:
       contents: write
 
     steps:
       - name: Download build artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Extract build archives from downloaded files
-        run: |
-          ls -R
-          # extract tar.gz build archives from downloaded artifacts
-          # (wrapped in tar from actions/upload-artifact, then extracted into a directory by actions/download-artifact)
-          for D in * 
-            do if [ -d "${D}" ]; then
-              mv $D/* ./
-            fi
-          done;
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          # the builds only: the test jobs' result files are artifacts of this run too
+          pattern: ${{ env.APP_NAME }}-*
+          merge-multiple: true
 
       # Use a common timestamp for all matrix build artifacts
-      - name: Get timestamp
+      - name: Add the timestamp and write the hash file
+        shell: bash
         run: |
-          echo "TIMESTAMP=$(date +"%Y%m%d_%H%M%S")" >> $GITHUB_ENV
+          TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+          for filename in *.tar.gz; do mv "$filename" "$(basename "$filename" .tar.gz)-${TIMESTAMP}.tar.gz"; done
+          for filename in *.tar.gz; do echo "sha256  $(sha256sum "$filename")" >> "${HASH_FILENAME}"; done
+          cat "${HASH_FILENAME}"
 
-      # Add timestamp to development builds
-      - name: Create GitHub development build archives
-        if: "!contains(github.ref, 'tags/v')"
+      # `gh release create` only adds to a release, so the previous "latest" goes first, with its tag: the new tag
+      # is then made on the commit that was built (--target), not on whatever main points to by now.
+      # --target only counts for a tag that does not exist yet. So only "there is no such release" is let through
+      # here, and a "latest" tag that outlived its release (a delete that stopped half-way) is removed as well:
+      # otherwise every later Development Build would sit on that old commit, with a green run.
+      - name: Replace the "latest" pre-release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
         run: |
-          # append timestamp
-          for filename in *.tar.gz; do mv $filename "$(basename $filename .tar.gz)-${{ env.TIMESTAMP }}.tar.gz"; done;
-          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          if gh release view latest > /dev/null 2>&1; then
+            gh release delete latest --cleanup-tag --yes
+          fi
+          if gh api "repos/${GH_REPO}/git/ref/tags/latest" --silent 2> /dev/null; then
+            gh api -X DELETE "repos/${GH_REPO}/git/refs/tags/latest" --silent
+          fi
+          gh release create latest --prerelease --latest=false --target "${GITHUB_SHA}" \
+              --title "Development Build" \
+              --notes "Built from \`main\` at ${GITHUB_SHA}. Not a release: it has passed the tests, but nobody has tried it on a remote. The files are unsigned; \`scripts/verify-release.sh --checksum-only\` checks the download." \
+              --generate-notes \
+              *.tar.gz "${HASH_FILENAME}"
 
-      - name: Create Pre-Release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        if: "!contains(github.ref, 'tags/v')"
+  # Release: a pushed tag vX.Y.Z publishes the signed release. A manual run with "release_dry_run" does every step
+  # but the last, on any branch or tag: only a push publishes, also when the manual run is started from a tag.
+  release:
+    name: Create Release
+    if: (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')) || (github.event_name == 'workflow_dispatch' && inputs.release_dry_run)
+    runs-on: ubuntu-latest
+    needs: [tests, build-static]
+    permissions:
+      contents: write
+
+    steps:
+      # the scripts, the public key and the changelog of the commit that was built
+      - name: Checkout ${{ env.PROJECT_NAME }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          automatic_release_tag: "latest"
-          prerelease: true
-          title: "Development Build"
-          files: |
-            *.tar.gz
-            ${{ env.HASH_FILENAME }}
+          persist-credentials: false
+          path: ${{ env.PROJECT_NAME }}
 
-      - name: Create GitHub release archives
-        if: "contains(github.ref, 'tags/v')"
+      - name: Download build artifacts
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          # the builds only: the test jobs' result files are artifacts of this run too
+          pattern: ${{ env.APP_NAME }}-*
+          merge-multiple: true
+          path: assets
+
+      - name: Write the hash file
+        shell: bash
+        working-directory: assets
         run: |
-          for filename in *.tar.gz; do echo "sha256  `sha256sum $filename`" >> ${{ env.HASH_FILENAME }}; done;
+          for filename in *.tar.gz; do echo "sha256  $(sha256sum "$filename")" >> "${HASH_FILENAME}"; done
+          cat "${HASH_FILENAME}"
 
-      # GPG-sign release artifacts (see docs/RELEASE_SIGNING.md).
-      # Gracefully skips signing if the RELEASE_GPG_PRIVATE_KEY secret is
-      # not configured — the pipeline still publishes unsigned tarballs +
-      # SHA256 hashes, and scripts/verify-release.sh handles both cases.
-      - name: GPG-sign release artifacts (if key configured)
-        if: "contains(github.ref, 'tags/v')"
+      # GPG-sign the release files (docs/RELEASE_SIGNING.md). Without the key nothing is published: up to v1.6.5
+      # a missing secret gave an unsigned release with a notice in the log.
+      # The key lives in a keyring of its own that is gone before the next step.
+      - name: Sign the release files
+        shell: bash
+        working-directory: assets
         env:
           GPG_PRIVATE_KEY: ${{ secrets.RELEASE_GPG_PRIVATE_KEY }}
           GPG_PASSPHRASE: ${{ secrets.RELEASE_GPG_PASSPHRASE }}
         run: |
           if [ -z "$GPG_PRIVATE_KEY" ]; then
-            echo "::notice::RELEASE_GPG_PRIVATE_KEY secret not set — skipping signing"
-            echo "  To enable: see docs/RELEASE_SIGNING.md"
-            exit 0
+            echo "::error::RELEASE_GPG_PRIVATE_KEY is not set: a release is not published unsigned (docs/RELEASE_SIGNING.md)"
+            exit 1
           fi
-          echo "$GPG_PRIVATE_KEY" | gpg --batch --import
+          export GNUPGHOME="$(mktemp -d)"
+          chmod 700 "$GNUPGHOME"
+          printf '%s\n' "$GPG_PRIVATE_KEY" | gpg --batch --quiet --import
           for filename in *.tar.gz; do
             echo "signing $filename"
-            gpg --batch --yes --pinentry-mode loopback \
-                --passphrase "$GPG_PASSPHRASE" \
-                --detach-sign --armor \
-                --output "${filename}.asc" \
-                "$filename"
+            gpg --batch --yes --pinentry-mode loopback --passphrase-fd 3 \
+                --detach-sign --armor --output "${filename}.asc" "$filename" 3<<<"$GPG_PASSPHRASE" \
+                || { echo "::error::Signing $filename failed. If the key has a passphrase: is RELEASE_GPG_PASSPHRASE set? (docs/RELEASE_SIGNING.md)"; exit 1; }
           done
-          echo "signed artifacts:"
+          gpgconf --kill gpg-agent || true
+          rm -rf "$GNUPGHOME"
           ls -la *.asc
 
-      - name: Create Release
-        uses: "marvinpinto/action-automatic-releases@latest"
-        if: "contains(github.ref, 'tags/v')"
-        with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
-          files: |
-            *.tar.gz
-            *.asc
-            ${{ env.HASH_FILENAME }}
+      # The check a user runs, on the files a user gets: the hash, and a signature by the key in
+      # docs/release-pubkey.asc. A secret that holds another key stops the release here.
+      - name: Verify the release files
+        shell: bash
+        working-directory: assets
+        run: |
+          for filename in *.tar.gz; do
+            bash "../${{ env.PROJECT_NAME }}/scripts/verify-release.sh" "$filename" "${HASH_FILENAME}" "${filename}.asc"
+          done
+
+      - name: Release notes from CHANGELOG.md
+        shell: bash
+        run: |
+          if [[ "$GITHUB_REF" == refs/tags/v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/v}"
+          else
+            VERSION=$(grep '^VERSION = ' "${{ env.PROJECT_NAME }}/remote-ui.pro" | awk '{print $3}')
+          fi
+          python3 "${{ env.PROJECT_NAME }}/tools/release_notes.py" "$VERSION" \
+              --changelog "${{ env.PROJECT_NAME }}/CHANGELOG.md" > release-notes.md
+          echo "Notes for $VERSION: $(wc -c < release-notes.md) bytes"
+          head -n 12 release-notes.md
+
+      # --verify-tag: only for a tag that is on GitHub already (the pushed one). gh uploads the files to a draft
+      # and publishes the release when they are all there.
+      - name: Publish the release
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: bash
+        working-directory: assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          TAG="${GITHUB_REF#refs/tags/}"
+          gh release create "$TAG" --verify-tag --title "$TAG" --notes-file ../release-notes.md \
+              *.tar.gz *.asc "${HASH_FILENAME}"
+
+      - name: Dry run - what a tag would publish
+        if: github.event_name != 'push'
+        shell: bash
+        run: |
+          echo "Nothing was published. A tag would upload:"
+          ls -la assets
+          cat "assets/${HASH_FILENAME}"
